@@ -41,7 +41,7 @@ Read the plan and report the following to the user:
     - If scale warrants (>= 2 of: 8+ features, 3+ domain categories, cross-cutting concerns present) → present 2-3 recommendations with plain-language explanations, pros/cons, and tech stack fit → wait for user selection
     - If scale does not warrant → "Simple Layered recommended" → ask user to confirm or override
 11. **Domain persona draft** (project purpose, key entities with invariants, domain rules, vocabulary, stakeholder concerns, success criteria — extracted from plan MD per setup-guide.md Section 3)
-12. **Execution mode recommendation** (per setup-guide.md Section 8.0)
+12. **Execution mode recommendation** (per setup-guide.md Section 9.0)
     - Analyze module independence, feature parallelism, integration complexity, domain categories
     - If 3+ independent modules with distinct domains → recommend **Agent Team** (with architecture pattern: Fan-out/Fan-in, Supervisor, etc.)
     - If features are tightly sequential → recommend **Sub-agent** (current default)
@@ -49,7 +49,7 @@ Read the plan and report the following to the user:
     - Reference: `${CLAUDE_PLUGIN_ROOT}/docs/references/agent-design-patterns.md`
     - Wait for developer confirmation (never auto-select)
 13. **QA agent inclusion** — If 3+ modules with integration points, recommend adding a QA agent for cross-boundary verification (per `${CLAUDE_PLUGIN_ROOT}/docs/references/qa-agent-guide.md`)
-14. **CI/CD platform detection** (per setup-guide.md Section 13)
+14. **CI/CD platform detection** (per setup-guide.md Section 14)
     - Check `git remote get-url origin` → detect GitHub/GitLab/Bitbucket
     - If no remote or unrecognized → ask developer: "GitHub Actions / GitLab CI / None"
     - If "None" → skip CI workflow generation (local hooks still enforce gates)
@@ -109,14 +109,14 @@ Record execution mode in orchestrator agent's `metadata.execution-mode` frontmat
 Each skill follows the [Anthropic Agent Skills Specification](https://github.com/anthropics/skills).
 Generate as `skill-name/SKILL.md` (uppercase) with optional `references/`, `scripts/`, `assets/` subdirectories.
 
-Refer to `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md` Section 7 for complete generation rules:
-- 7.2: YAML frontmatter schema (field validation rules)
-- 7.3: 7-section anatomy template with full example
-- 7.4: Progressive disclosure (3-tier token budget)
-- 7.5: Description writing guide (TRIGGER/DO NOT TRIGGER pattern)
-- 7.6: Skill list with specific triggers per skill
-- 7.7: Complete skill example (new-feature)
-- 7.8: Validation checklist (10 items)
+Refer to `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md` Section 8 for complete generation rules:
+- 8.2: YAML frontmatter schema (field validation rules)
+- 8.3: 7-section anatomy template with full example
+- 8.4: Progressive disclosure (3-tier token budget)
+- 8.5: Description writing guide (TRIGGER/DO NOT TRIGGER pattern)
+- 8.6: Skill list with specific triggers per skill
+- 8.7: Complete skill example (new-feature)
+- 8.8: Validation checklist (10 items)
 
 Must follow 7-section anatomy (Overview / When to Use / TDD Focus / Process / Common Rationalizations (>= 3 rows) / Red Flags (>= 2 items) / Verification (with evidence)).
 
@@ -151,7 +151,7 @@ Generate sub CLAUDE.md for each target directory identified in Step 1.
 Verify the entire generated harness:
 1. File completeness: settings.json + 6 hooks + 9+ agents + 8 skills + 5 protocols + feature-list.json + scripts/update-feature-status.sh + CI/CD workflow (if platform selected)
 2. Runtime guardrails: hook stdin JSON parsing, security-gate exit 2, doc-sync-check commit blocking, coverage-gate commit blocking
-3. Skill anatomy (per setup-guide.md Section 7.8):
+3. Skill anatomy (per setup-guide.md Section 8.8):
    - Directory name matches `name` field (lowercase a-z/numbers/hyphens)
    - File named `SKILL.md` (uppercase)
    - `name` field: 1-64 chars, valid chars, no leading/trailing/consecutive hyphens

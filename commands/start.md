@@ -66,12 +66,12 @@ Call sub-agents using the Claude Code `Agent` tool with isolated contexts:
 - Within implementer: `Agent(tdd-test-writer)` for Red, `Agent(tdd-implementer)` for Green, `Agent(tdd-refactorer)` for Refactor
 - `Agent(reviewer)` for Gate 2
 
-Pass task input (feature ID, tdd_focus, acceptance_criteria, doc_sync targets) as the agent's prompt argument.
+Pass task input (feature ID, tdd_focus, acceptance_test, doc_sync targets) as the agent's prompt argument.
 
 Execution flow:
 
 ```
-Plan (analyze acceptance_criteria)
+Plan (analyze acceptance_test)
   ↓
 Red: call tdd-test-writer sub-agent
   - Write failing tests (happy/boundary/error)

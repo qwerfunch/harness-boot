@@ -78,7 +78,7 @@ Are there 3+ independent modules to develop?
                          No team overhead needed.
 ```
 
-> **Core principle:** Agent Team is recommended when 3+ independent modules are detected. Sub-agent is the baseline default. When choosing Sub-agent over Agent Team, ask: "Is inter-agent communication truly unnecessary?"
+> **Core principle:** Agent Team is recommended when 3+ independent modules with distinct domain categories are detected (see setup-guide.md Section 9.0 decision criteria table for full factors). Sub-agent is the baseline default. When choosing Sub-agent over Agent Team, ask: "Is inter-agent communication truly unnecessary?"
 
 ### Hybrid Mode
 
