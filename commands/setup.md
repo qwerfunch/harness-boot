@@ -54,13 +54,14 @@ Read the plan and report the following to the user:
 
 ### Step 2: Phase 1 — Infrastructure
 - `.claude/settings.json` (hook configuration)
-- `hooks/` 5 scripts (executable bash, shebang + stdin JSON parsing)
+- `hooks/` 6 scripts (executable bash, shebang + stdin JSON parsing)
 - `.claude/environment.md`
 - `.claude/security.md`
 - `.claude/domain-persona.md` (domain context for agents, from Step 1 draft)
 - `scripts/init-harness.sh`
 - `scripts/doc-impact-check.sh`
 - `scripts/task-decompose.sh`
+- `scripts/update-feature-status.sh` (auto-update feature-list.json passes field after Gate 4)
 - `_workspace/.gitkeep` (intermediate outputs directory for Agent Team file-based transfer)
 
 **Phase 1 completion report → record `last_completed_phase: 1` in PROGRESS.md → user confirmation → Phase 2**
@@ -143,8 +144,8 @@ Generate sub CLAUDE.md for each target directory identified in Step 1.
 
 ### Step 8: Verification
 Verify the entire generated harness:
-1. File completeness: settings.json + 5 hooks + 9+ agents + 8 skills + 5 protocols + feature-list.json
-2. Runtime guardrails: hook stdin JSON parsing, security-gate exit 2, doc-sync-check commit blocking
+1. File completeness: settings.json + 6 hooks + 9+ agents + 8 skills + 5 protocols + feature-list.json + scripts/update-feature-status.sh
+2. Runtime guardrails: hook stdin JSON parsing, security-gate exit 2, doc-sync-check commit blocking, coverage-gate commit blocking
 3. Skill anatomy (per setup-guide.md Section 7.8):
    - Directory name matches `name` field (lowercase a-z/numbers/hyphens)
    - File named `SKILL.md` (uppercase)
