@@ -15,6 +15,7 @@ Starts actual development work with the harness in place.
 ### Step 1: Load Harness
 1. Load `.claude/agents/orchestrator.md`
 2. Receive context provided by SessionStart hook (PROGRESS.md summary, incomplete feature count, last 5 git log entries)
+3. Load `.claude/domain-persona.md` for domain context
 
 ### Step 2: Determine Mode
 - **PROGRESS.md is empty or has no tasks** → First start after Initializer

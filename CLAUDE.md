@@ -36,7 +36,7 @@ The plugin is structured as Claude Code native commands + hooks:
 
 Phase 1-6 sequential generation with user confirmation and checkpoint (`last_completed_phase` in PROGRESS.md) between each phase. Interrupted sessions can resume from the last completed phase.
 
-1. Infrastructure (settings.json, hooks/, environment.md, security.md)
+1. Infrastructure (settings.json, hooks/, environment.md, security.md, domain-persona.md)
 2. Protocols (tdd-loop, iteration-cycle, code-doc-sync, session-management, message-format) + CLAUDE.md
 3. Agents (9 agents with `model:` frontmatter — opus for judgment, sonnet for execution)
 4. Skills (8 skills in [Anthropic Agent Skills format](https://github.com/anthropics/skills): `skill-name/SKILL.md` with 7-section anatomy, YAML frontmatter with name/description/metadata/allowed-tools, Rationalizations >= 3 rows)
@@ -45,7 +45,7 @@ Phase 1-6 sequential generation with user confirmation and checkpoint (`last_com
 
 ## Key Design: `/start` Flow
 
-1. Load orchestrator agent + session context (bootstrap hook verifies PROGRESS.md ↔ feature-list.json consistency)
+1. Load orchestrator agent + session context (bootstrap hook verifies PROGRESS.md ↔ feature-list.json consistency) + domain-persona.md
 2. Detect mode (Initializer vs Coding) from PROGRESS.md
 3. Select next `passes: false` feature from feature-list.json (array order = priority)
 4. Run TDD cycle via Claude Code `Agent` tool: Red (tdd-test-writer) -> Green (tdd-implementer) -> Refactor (tdd-refactorer). Max 5 iterations, then escalate.

@@ -42,6 +42,10 @@ harness-boot doesn't produce a one-size-fits-all scaffold. It reads your plan an
 
 The agent writing tests cannot see the implementation, and vice versa. Since the test-writer has never read the production code, tests can't be reverse-engineered to pass. Each TDD phase — writing a failing test (Red), making it pass (Green), cleaning up (Refactor) — runs in a separate sub-agent with its own isolated context.
 
+### Domain Persona — Agents That Understand Your Business
+
+An agent implementing `hashPassword` needs to know it's bound by SOC2 compliance, not just that it takes a string and returns a hash. During `/setup`, harness-boot extracts a domain persona from your plan — project purpose, key entities, business rules, domain vocabulary, stakeholder concerns — and feeds the right slice to each agent. The orchestrator sees the full picture; the test writer sees only the entities and invariants relevant to the current feature. Agents stop making locally correct but globally wrong decisions.
+
 ### Anti-Rationalization — Preemptive Rebuttals
 
 "It's just a refactor, no tests needed." "It's an internal function, docs aren't necessary." Agents reach for these justifications regularly. Every skill includes a rebuttal table that anticipates these excuses: *"I know you'll say X. You still need to do Y. Here's why."* This turns out to work better than repeating the rules.
@@ -98,6 +102,7 @@ project-root/
 │   ├── skills/                # Skills (Anthropic Agent Skills format)
 │   ├── protocols/             # TDD, iteration convergence, doc sync, etc.
 │   ├── examples/              # Golden samples
+│   ├── domain-persona.md      # Domain context for agents
 │   └── *.md                   # context-map, security, quality-gates, etc.
 ├── hooks/                     # Hook scripts
 └── scripts/                   # Automation utilities
