@@ -280,6 +280,8 @@ exit 0
 ```
 
 > **Tech stack adaptation**: During `/setup` Phase 1, replace `{COVERAGE_COMMAND}` with the appropriate coverage command for the project's tech stack (e.g., `npx vitest run --coverage --reporter=json` for Node.js, `go test -coverprofile=coverage.out ./...` for Go, `pytest --cov --cov-report=json` for Python).
+>
+> **Limitation**: The `grep -q "$FUNC"` check above is a simplified template. During `/setup`, adapt this to use structured coverage data (e.g., parsing JSON coverage output) rather than plain text grep, which can produce false positives from comments or string matches.
 
 ### Feature Status Auto-Update (scripts/update-feature-status.sh)
 
@@ -642,9 +644,46 @@ The agent selects the next feature from feature-list.json → **works on only on
 
 Only the `passes` field may be changed. Never add/delete/reorder/modify items.
 
+### PROGRESS.md Structure
+
+```markdown
+# PROGRESS.md
+
+## Status
+- last_completed_phase: 6          # /setup checkpoint (1-6), or "setup_complete"
+- current_feature: FEAT-003        # Feature ID currently in progress (empty if none)
+- mode: coding                     # "initializer" or "coding"
+- execution_mode: sub-agent        # "sub-agent", "agent-team", or "hybrid"
+
+## Current TDD State
+- phase: Green                     # "Red", "Green", "Refactor", or empty
+- iteration: 2                     # Current iteration (1-5)
+- tdd_focus_progress: 3/5 complete # How many tdd_focus functions are done
+
+## Completed Features
+| Feature ID | Completed Date | Commit Hash |
+|------------|---------------|-------------|
+| FEAT-001   | 2026-04-15    | a1b2c3d     |
+| FEAT-002   | 2026-04-16    | e4f5g6h     |
+
+## Metrics
+- total_iterations: 12
+- avg_iterations_per_feature: 2.4
+- gate_failures: 1
+- coverage_trend: [85%, 87%, 89%]
+
+## Incidents
+<!-- Logged when escalation occurs (5 iteration limit, crashes, repeated hook blocks) -->
+| Date       | Feature  | Type              | Resolution          |
+|------------|----------|-------------------|---------------------|
+| 2026-04-15 | FEAT-002 | Gate 2 failure x2 | Reduced scope, retry |
+```
+
+> The bootstrap hook reads `## Status` and `## Metrics` sections at session start to provide context. `## Incidents` is appended by the orchestrator when escalation occurs.
+
 ---
 
-## 4. TDD Sub-Agent Context Isolation
+## 5. TDD Sub-Agent Context Isolation
 
 When TDD is performed in a single context, the test writer's analysis leaks to the implementer.
 Separating Red/Green/Refactor into distinct sub-agents prevents this.
@@ -731,7 +770,7 @@ Sub-agents have independent context windows. If a sub-agent's context fills (lar
 
 ---
 
-## 5. Model Routing
+## 6. Model Routing
 
 Agents where reasoning is critical use Opus; agents where code generation is critical use Sonnet.
 Specified via the frontmatter `model:` field.
@@ -760,9 +799,9 @@ Expected cost savings: execution agents (~70% of tokens) drop to Sonnet, yieldin
 
 ---
 
-## 6. Code Style, Linting, and Comment Rules
+## 7. Code Style, Linting, and Comment Rules
 
-### 6.1 Code Style
+### 7.1 Code Style
 
 **Follow Google Style Guide** — Use the corresponding Google Style Guide for each language as the baseline.
 
@@ -782,7 +821,7 @@ Expected cost savings: execution agents (~70% of tokens) drop to Sonnet, yieldin
 
 > **Enforcement**: Formatting rules (whitespace, semicolons, indentation) are auto-enforced by the `post-tool-format.sh` hook (prettier/black). Structural style rules (naming, nesting depth, function length) are enforced by the **reviewer agent** during Gate 2 code review.
 
-### 6.2 Comment Rules
+### 7.2 Comment Rules
 
 **Philosophy**: Let the code say "what," and comments say only **"why."**
 Function/class-level JSDoc is required. Inline comments are for gotchas only.
@@ -833,7 +872,7 @@ await db.query(sql); // ⚠️ Runs outside transaction — cannot rollback
 const total = price * quantity; // Multiply price by quantity
 ```
 
-### 6.3 Logging Design Rules
+### 7.3 Logging Design Rules
 
 **Philosophy**: Logs are production's black box recorder.
 No `console.log` / `print`. Use a structured logger appropriate for the project's tech stack.
@@ -956,12 +995,12 @@ Scheduler/batch/worker logs follow their execution environment's rotation. No se
 
 ---
 
-## 7. Skills — Anthropic Agent Skills Format
+## 8. Skills — Anthropic Agent Skills Format
 
 > **Reference**: Skills follow the [Anthropic Agent Skills Specification](https://github.com/anthropics/skills).
 > All generated skills must comply with this spec while embedding harness-specific sections (TDD Focus, Rationalizations, Red Flags).
 
-### 7.1 Skill Directory Structure
+### 8.1 Skill Directory Structure
 
 Each skill is a self-contained directory. The directory name **must match** the `name` field in SKILL.md.
 
@@ -975,7 +1014,7 @@ skill-name/
 └── assets/                   # Optional: static resources (templates, data files)
 ```
 
-### 7.2 YAML Frontmatter Schema
+### 8.2 YAML Frontmatter Schema
 
 ```yaml
 ---
@@ -1022,7 +1061,7 @@ allowed-tools: "Read Glob Grep Write Edit Bash"
 ---
 ```
 
-### 7.3 SKILL.md Body — 7-Section Anatomy
+### 8.3 SKILL.md Body — 7-Section Anatomy
 
 The Markdown body merges Anthropic's recommended structure with harness-specific requirements.
 All 7 sections are mandatory for harness skills.
@@ -1089,7 +1128,7 @@ See [detailed examples](references/REFERENCE.md) for edge cases.
 - [ ] Code-doc sync mapping targets updated
 ```
 
-### 7.4 Progressive Disclosure (3-Tier Token Budget)
+### 8.4 Progressive Disclosure (3-Tier Token Budget)
 
 Skills follow a progressive disclosure model to minimize context consumption:
 
@@ -1105,7 +1144,7 @@ Skills follow a progressive disclosure model to minimize context consumption:
 - Reference supplementary files with relative paths: `See [details](references/REFERENCE.md)`
 - Delete any section that doesn't change agent behavior — no padding.
 
-### 7.5 Description Writing Guide
+### 8.5 Description Writing Guide
 
 The `description` field is the **single most important field** — it determines whether the skill activates.
 
@@ -1125,7 +1164,7 @@ description: >
 description: "Helps with bugs."
 ```
 
-### 7.6 Skill List
+### 8.6 Skill List
 
 | Skill | Directory | Triggers | TDD Focus | Key Rationalization Defense |
 |-------|-----------|----------|-----------|---------------------------|
@@ -1138,7 +1177,7 @@ description: "Helps with bugs."
 | `deployment` | `deployment/SKILL.md` | "deploy", "release", "ship" | Full test suite pass | "Worked in staging" → environment differences |
 | `context-engineering` | `context-engineering/SKILL.md` | Session start, task switch, context overload | N/A | "I'll read all files" → read only what's needed |
 
-### 7.7 Complete Skill Example
+### 8.7 Complete Skill Example
 
 ```markdown
 ---
@@ -1228,7 +1267,7 @@ Verify rollback capability: `git revert <sha>` must cleanly undo.
 - [ ] PROGRESS.md updated with `iteration_count` and `duration`
 ```
 
-### 7.8 Skill Generation Validation Checklist
+### 8.8 Skill Generation Validation Checklist
 
 During `/setup` Phase 4, validate each generated skill against:
 
@@ -1247,9 +1286,9 @@ During `/setup` Phase 4, validate each generated skill against:
 
 ---
 
-## 8. Agent Definitions
+## 9. Agent Definitions
 
-### 8.0 Execution Mode & Team Architecture
+### 9.0 Execution Mode & Team Architecture
 
 > Patterns adapted from [revfactory/harness](https://github.com/revfactory/harness) (Apache-2.0). Full reference: `docs/references/agent-design-patterns.md`.
 
@@ -1356,12 +1395,12 @@ metadata:
 
 When Agent Team mode: add `TeamCreate, SendMessage, TaskCreate, TaskUpdate` to tools; set `execution-mode: agent-team`.
 
-### 8.1 Common Input/Output
+### 9.1 Common Input/Output
 
 ```jsonc
 // Input
 { "task_id": "", "type": "feature|bugfix|refactor|test", "description": "",
-  "target_files": [], "acceptance_criteria": [],
+  "target_files": [], "acceptance_test": [],
   "tdd_focus": [], "doc_sync_targets": [], "feature_id": "FEAT-XXX",
   "domain_context": { "entities": [], "rules": [], "vocabulary": {} } }
 
@@ -1372,7 +1411,7 @@ When Agent Team mode: add `TeamCreate, SendMessage, TaskCreate, TaskUpdate` to t
   "feature_passes": false, "blockers": [], "notes": "" }
 ```
 
-### 8.2 Agent Roles
+### 9.2 Agent Roles
 
 | Agent | Model | Core Role | Domain View |
 |-------|-------|-----------|-------------|
@@ -1386,7 +1425,7 @@ When Agent Team mode: add `TeamCreate, SendMessage, TaskCreate, TaskUpdate` to t
 | **tdd-implementer** | sonnet | Green phase only. Minimal implementation | Feature-scoped entities + rules (from implementer prompt) |
 | **tdd-refactorer** | sonnet | Refactor phase only. No behavior changes | Vocabulary only (from implementer prompt) |
 
-### 8.3 Agent Rationalization Defense
+### 9.3 Agent Rationalization Defense
 
 Each generated agent MD must include a "Common Rationalizations" section (minimum 2 rows). Examples:
 
@@ -1399,7 +1438,7 @@ Each generated agent MD must include a "Common Rationalizations" section (minimu
 
 ---
 
-## 9. Quality Gates
+## 10. Quality Gates
 
 > "Looks good" is not a passing criterion. Every gate requires **evidence**.
 
@@ -1434,7 +1473,7 @@ The rollback procedure is: `git revert <feature-commit-sha>` + run down-migratio
 
 ---
 
-## 10. Code-Doc Sync
+## 11. Code-Doc Sync
 
 ### Triple Defense
 
@@ -1464,7 +1503,7 @@ all changes         → PROGRESS.md
 
 ---
 
-## 11. Learning / Evolution
+## 12. Learning / Evolution
 
 > Harness evolution patterns adapted from [revfactory/harness](https://github.com/revfactory/harness) (Apache-2.0).
 
@@ -1525,7 +1564,7 @@ Proactively suggest harness evolution when:
 
 ---
 
-## 12. Error Recovery Playbook
+## 13. Error Recovery Playbook
 
 ### Purpose
 
@@ -1581,7 +1620,7 @@ Proactively suggest harness evolution when:
    - Current batch has too many functions → split into 2-3 smaller batches
    - Each batch runs a full Red-Green-Refactor cycle independently
 3. Retry with reduced scope:
-   - Pass fewer acceptance_criteria to the sub-agent
+   - Pass fewer acceptance_test items to the sub-agent
    - Reduce context by referencing only directly relevant type files
 4. If crash persists after 2 retries:
    - Log the failure in PROGRESS.md under `## Incidents`
@@ -1696,7 +1735,7 @@ Proactively suggest harness evolution when:
 
 ---
 
-## 13. CI/CD Integration (Multi-Platform)
+## 14. CI/CD Integration (Multi-Platform)
 
 ### Purpose
 
@@ -1928,7 +1967,7 @@ gate-4-commit-hygiene:
 
 ---
 
-## 14. Generation Order
+## 15. Generation Order
 
 ```
 Phase 1: Infrastructure ── settings.json, hooks/ (6 scripts), environment.md, security.md, domain-persona.md, scripts/ (init-harness.sh, doc-impact-check.sh, task-decompose.sh, update-feature-status.sh), CI/CD workflow (optional: GitHub Actions or GitLab CI, per platform detection)
@@ -1941,7 +1980,7 @@ Phase 6: State ── feature-list.json, PROGRESS.md, CHANGELOG.md, error-recove
 
 ---
 
-## 15. Plan-to-Harness Conversion Rules
+## 16. Plan-to-Harness Conversion Rules
 
 | Plan Content | Conversion Target |
 |-------------|-------------------|
@@ -1969,7 +2008,7 @@ Phase 6: State ── feature-list.json, PROGRESS.md, CHANGELOG.md, error-recove
 
 ---
 
-## 16. Token Budget
+## 17. Token Budget
 
 | Deliverable | File Count | Tokens per File | Subtotal |
 |-------------|-----------|-----------------|----------|
@@ -1991,4 +2030,4 @@ TDD sub-agents run in independent context windows → no additional token consum
 >
 > Per-task estimate of ~3,900-4,000 tokens assumes the agent loads only the relevant sub CLAUDE.md
 > plus feature-scoped domain context (~100-200 tokens injected by orchestrator).
-> With full feature context (acceptance_criteria, tdd_focus, doc_sync targets), expect **~4,600-5,200 tokens**.
+> With full feature context (acceptance_test, tdd_focus, doc_sync targets), expect **~4,600-5,200 tokens**.

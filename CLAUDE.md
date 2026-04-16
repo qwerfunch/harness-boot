@@ -51,7 +51,7 @@ Phase 1-6 sequential generation with user confirmation and checkpoint (`last_com
 3. Check execution mode (Agent Team / Sub-agent / Hybrid)
 4. Select feature(s): Sub-agent → one at a time; Agent Team → parallel independent modules
 5. Run TDD cycle: Sub-agent via `Agent` tool, Agent Team via `TeamCreate`+`SendMessage`+`TaskCreate`. Red -> Green -> Refactor in isolated sub-agent contexts regardless of mode. Max 5 iterations, then escalate.
-6. QA agent verifies cross-boundary consistency (if included, Agent Team mode)
+6. QA agent verifies cross-boundary consistency (if included per QA criteria)
 7. Quality gates 0-4 (Gate 0 enforced by implementer + reviewer), coverage gate hook, code-doc sync, auto-update feature-list.json, single commit per feature (never batch)
 
 ## Four Core Principles

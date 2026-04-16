@@ -13,7 +13,7 @@ Harness ready. Start development.
 3. Select highest-priority feature with passes: false from feature-list.json
 4. Work on only one feature at a time
 5. Implement via 3-way TDD sub-agent split
-5a. Max 5 TDD iterations per feature. After 5, escalate to user with failure summary.
+5a. Max 5 TDD iterations per feature. After 5, escalate to user: stop TDD cycle, log in PROGRESS.md ## Incidents (date, feature, failure type), report failure summary with attempted approaches and suggested next steps. Do not commit partial work.
 6. On completion: run scripts/update-feature-status.sh → single commit (code + tests + docs + feature-list.json)
 7. CRITICAL: One feature per commit. Even if user requests "implement everything", execute sequentially: TDD → gates → commit → next feature.
 
@@ -56,7 +56,7 @@ Harness ready. Start development with Agent Team mode.
 6. TaskCreate with feature assignments per implementer
 7. Each implementer runs TDD sub-agent cycle independently
 8. Members coordinate integration points via SendMessage
-9. QA agent verifies cross-boundary consistency after each module completes
+9. QA agent verifies cross-boundary consistency after each module completes (reports written to _workspace/qa-{module_name}-report.md)
 10. Reviewer reviews each module, leader verifies cross-module consistency
 11. Run scripts/update-feature-status.sh for each completed feature
 12. Single commit per feature (code + tests + docs + feature-list.json) — never batch features
