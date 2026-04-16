@@ -58,7 +58,8 @@ project-root/
 │   │   ├── session-management.md
 │   │   └── message-format.md
 │   ├── examples/                          # Golden samples + anti-patterns
-│   ├── context-map.md
+│   ├── domain-persona.md                  # Domain context for agents (~500 tokens)
+│   ├── context-map.md                     # Bounded context mapping (references domain-persona.md)
 │   ├── environment.md
 │   ├── security.md
 │   ├── quality-gates.md
@@ -146,7 +147,118 @@ To mitigate: keep hook logic fast (grep-based, not AST-based).
 
 ---
 
-## 3. Cross-Session State Management
+## 3. Domain Persona
+
+### Purpose
+
+Agents need persistent, project-level domain context — not just what to implement, but why it matters, what business rules are non-negotiable, and what terms mean in this specific domain. Without this, agents make locally correct but globally wrong decisions (e.g., implementing password hashing without awareness of compliance requirements).
+
+### Extraction
+
+Domain persona is extracted from the plan MD during `/setup` Step 1 (Analyze Plan and Report) and generated as `.claude/domain-persona.md` in Phase 1 (Infrastructure). This ensures all subsequent phases (Protocols, Agents, Skills) can reference domain context during generation.
+
+**Extraction rules**:
+1. Read the plan MD for explicit business context: purpose statements, user stories, regulatory mentions, business rules, entity definitions, non-functional requirements.
+2. Infer implicit domain knowledge from feature descriptions (e.g., features mentioning "HIPAA", "PCI", "GDPR" → compliance stakeholder concerns; entity relationships → key entities).
+3. Present the draft to the user for confirmation — domain knowledge is too critical to get wrong silently.
+4. Mark uncertain extractions with `{TODO: confirm}`.
+
+### Format Template
+
+```markdown
+# Domain Persona
+
+## Purpose
+{1-2 sentences: what this system does and why it exists. Not what it's built with — why it matters.}
+
+## Key Entities
+| Entity | Definition | Invariants |
+|--------|-----------|------------|
+| {e.g., Order} | {what it represents in this domain} | {rules that must never be violated} |
+
+## Domain Rules
+- {rule 1: e.g., "Discount is applied before tax — legal requirement in KR jurisdiction"}
+- {rule 2: e.g., "Passwords must be hashed with bcrypt (min cost 12) per SOC2 compliance"}
+
+## Vocabulary
+| Term | Means | Not |
+|------|-------|-----|
+| {e.g., "active user"} | {logged in within 30 days} | {ever registered} |
+
+## Stakeholder Concerns
+- {e.g., "Regulatory: GDPR data residency for EU users"}
+- {e.g., "Performance: checkout flow must complete in < 2s P99"}
+
+## Success Criteria
+- {criterion 1: measurable outcome the system must achieve}
+```
+
+**Constraints**: ~400-600 tokens. Each section answers a specific question:
+- **Purpose**: "Why does this system exist?" (guards against scope creep)
+- **Key Entities**: "What are the core nouns and their constraints?" (prevents naming drift)
+- **Domain Rules**: "What business logic is non-negotiable?" (prevents implementation shortcuts)
+- **Vocabulary**: "What do terms actually mean?" (prevents ambiguity)
+- **Stakeholder Concerns**: "What non-functional requirements matter?" (guides tradeoff decisions)
+- **Success Criteria**: "How do we know we're done?" (anchors acceptance testing)
+
+### Validation Criteria
+
+- File exists at `.claude/domain-persona.md`
+- All 6 sections present (Purpose, Key Entities, Domain Rules, Vocabulary, Stakeholder Concerns, Success Criteria)
+- Key Entities table has >= 2 rows
+- Domain Rules has >= 2 items
+- No `{TODO: confirm}` markers remain after user confirmation
+
+### Agent Domain Views
+
+The orchestrator acts as the **domain context broker**. When selecting a feature and calling sub-agents, it extracts the relevant subset from domain-persona.md based on the feature's `category` and `tdd_focus` fields.
+
+| Agent | Domain View | Mechanism |
+|-------|------------|-----------|
+| orchestrator, architect, debugger | Full persona | Agent MD: "Read `.claude/domain-persona.md`" |
+| reviewer | Entities + Rules + Vocabulary | Inlined in Agent MD `## Domain Context` section |
+| implementer | Feature-scoped entities + rules | Orchestrator includes in task prompt |
+| tdd-test-writer | Feature-scoped entities + invariants | Implementer includes in sub-agent prompt |
+| tdd-implementer | Feature-scoped entities + rules | Implementer includes in sub-agent prompt |
+| tdd-refactorer | Vocabulary only (naming consistency) | Implementer includes in sub-agent prompt |
+| tester | Success criteria + rules | Agent MD section |
+
+### Code-Doc Sync Integration
+
+Add `domain-persona.md` to the code-doc sync mapping so changes to domain-critical code (entities, business rules) trigger a doc-sync check:
+
+```
+# Domain context sync
+src/domain/**      → .claude/domain-persona.md (Key Entities, Domain Rules)
+src/models/**      → .claude/domain-persona.md (Key Entities)
+```
+
+### Context Map Integration
+
+With domain-persona.md handling *semantic* context (why), context-map.md handles *structural* context (what). Context-map.md should include:
+
+```markdown
+# Context Map
+
+## Bounded Contexts
+| Context | Owner Module | Key Entities (from domain-persona.md) |
+|---------|-------------|---------------------------------------|
+| {e.g., Authentication} | src/auth/ | User, Credential |
+
+## Context Relationships
+| Upstream | Downstream | Integration Pattern |
+|----------|-----------|-------------------|
+| Auth | Orders | Shared Kernel (User ID) |
+
+## Module-to-Domain Mapping
+| Module | Domain Rules (from domain-persona.md) | Notes |
+|--------|---------------------------------------|-------|
+| src/auth/ | Rules #1, #2 | Password and session rules |
+```
+
+---
+
+## 4. Cross-Session State Management
 
 ### Initializer Mode (First Session)
 Auto-detected when PROGRESS.md doesn't exist or is empty:
@@ -782,6 +894,8 @@ See [detailed examples](references/REFERENCE.md) for edge cases.
 
 > Minimum 3 rows required. Each rebuttal must be specific to THIS skill's domain.
 > Use the "I know you'll say X. But you're wrong because Y" framing.
+> When generating rebuttals, reference specific domain rules and invariants from
+> `.claude/domain-persona.md` to make rebuttals concrete and project-specific.
 
 ## Red Flags
 - {Observable sign that this skill's process is being violated — minimum 2 items}
@@ -960,7 +1074,8 @@ During `/setup` Phase 4, validate each generated skill against:
 // Input
 { "task_id": "", "type": "feature|bugfix|refactor|test", "description": "",
   "target_files": [], "acceptance_criteria": [],
-  "tdd_focus": [], "doc_sync_targets": [], "feature_id": "FEAT-XXX" }
+  "tdd_focus": [], "doc_sync_targets": [], "feature_id": "FEAT-XXX",
+  "domain_context": { "entities": [], "rules": [], "vocabulary": {} } }
 
 // Output
 { "task_id": "", "status": "success|failure|partial|blocked", "iteration_count": 0,
@@ -971,17 +1086,17 @@ During `/setup` Phase 4, validate each generated skill against:
 
 ### 8.2 Agent Roles
 
-| Agent | Model | Core Role |
-|-------|-------|-----------|
-| **orchestrator** | opus | Initializer/Coding mode switching, task decomposition, tdd_focus/doc_sync assignment, one-at-a-time |
-| **implementer** | sonnet | Sequential TDD sub-agent calls, convergence loop management (max 5), single commit |
-| **reviewer** | opus | 3-stage review: (1) TDD compliance (2) Code quality (3) Doc sync. REJECT if docs missing |
-| **tester** | sonnet | Core function selection, feedback with expected vs actual values |
-| **architect** | opus | ADR writing, impact doc listing, schema changes require migration + docs together |
-| **debugger** | opus | Root cause analysis, minimal fix, mandatory regression test |
-| **tdd-test-writer** | sonnet | Red phase only. Does not read implementation code |
-| **tdd-implementer** | sonnet | Green phase only. Minimal implementation |
-| **tdd-refactorer** | sonnet | Refactor phase only. No behavior changes |
+| Agent | Model | Core Role | Domain View |
+|-------|-------|-----------|-------------|
+| **orchestrator** | opus | Initializer/Coding mode switching, task decomposition, tdd_focus/doc_sync assignment, one-at-a-time | Full persona (reads domain-persona.md) |
+| **implementer** | sonnet | Sequential TDD sub-agent calls, convergence loop management (max 5), single commit | Feature-scoped entities + rules (from orchestrator prompt) |
+| **reviewer** | opus | 3-stage review: (1) TDD compliance (2) Code quality (3) Doc sync. REJECT if docs missing | Entities + Rules + Vocabulary (inlined in agent MD) |
+| **tester** | sonnet | Core function selection, feedback with expected vs actual values | Success criteria + rules (agent MD section) |
+| **architect** | opus | ADR writing, impact doc listing, schema changes require migration + docs together | Full persona (reads domain-persona.md) |
+| **debugger** | opus | Root cause analysis, minimal fix, mandatory regression test | Full persona (reads domain-persona.md) |
+| **tdd-test-writer** | sonnet | Red phase only. Does not read implementation code | Feature-scoped entities + invariants (from implementer prompt) |
+| **tdd-implementer** | sonnet | Green phase only. Minimal implementation | Feature-scoped entities + rules (from implementer prompt) |
+| **tdd-refactorer** | sonnet | Refactor phase only. No behavior changes | Vocabulary only (from implementer prompt) |
 
 ### 8.3 Agent Rationalization Defense
 
@@ -1084,7 +1199,7 @@ Metrics are appended to `PROGRESS.md` under a `## Metrics` section:
 ## 12. Generation Order
 
 ```
-Phase 1: Infrastructure ── settings.json, hooks/ (5 scripts), environment.md, security.md, scripts/ (init-harness.sh, doc-impact-check.sh, task-decompose.sh)
+Phase 1: Infrastructure ── settings.json, hooks/ (5 scripts), environment.md, security.md, domain-persona.md, scripts/ (init-harness.sh, doc-impact-check.sh, task-decompose.sh)
 Phase 2: Protocols ── protocols/ (5 protocols), CLAUDE.md, quality-gates.md
 Phase 3: Agents ── agents/ (9 agents, with model: field)
 Phase 4: Skills ── skills/ (8 skills, Anthropic Agent Skills format, 7-section anatomy), examples/, context-map.md
@@ -1113,6 +1228,10 @@ Phase 6: State ── feature-list.json, PROGRESS.md, CHANGELOG.md, error-recove
 | Architecture (unspecified, scale warrants) | Scale assessment → present 2-3 recommendations → **reflect after developer selection** |
 | Architecture (unspecified, small scale) | Default to Simple Layered → **confirm with developer** |
 | Architecture (prototype/PoC/MVP) | Skip → Simple Flat structure, inform developer |
+| Business rules / regulations | domain-persona.md Domain Rules |
+| Entity definitions / data model | domain-persona.md Key Entities |
+| Non-functional requirements | domain-persona.md Stakeholder Concerns |
+| Success metrics / KPIs | domain-persona.md Success Criteria |
 | Schedule | PROGRESS.md Backlog |
 
 ---
@@ -1127,15 +1246,16 @@ Phase 6: State ── feature-list.json, PROGRESS.md, CHANGELOG.md, error-recove
 | Skills (7-section, Anthropic format) | 8 | ~800 | 6,400 |
 | Protocols | 5 | ~500 | 2,500 |
 | Hook scripts | 5 | ~150 | 750 |
-| Other | 8 | ~400 | 3,200 |
-| **Total** | **~52** | | **~24,550** |
+| Other (incl. domain-persona.md) | 9 | ~400 | 3,600 |
+| **Total** | **~53** | | **~24,950** |
 
-**Per-task actual consumption**: CLAUDE.md + sub CLAUDE.md + agent + skill + tdd-loop = **~3,800 tokens**
+**Per-task actual consumption**: CLAUDE.md + sub CLAUDE.md + agent + skill + tdd-loop + domain context = **~3,900-4,000 tokens**
 TDD sub-agents run in independent context windows → no additional token consumption in the main context.
 
-> **Note**: The ~24,550 token estimate covers generated output only. The `/setup` command also loads
+> **Note**: The ~24,950 token estimate covers generated output only. The `/setup` command also loads
 > the plan MD and this guide into context (~8,000 tokens). Total context consumption during setup
 > is approximately **35,000-45,000 tokens** depending on plan size.
 >
-> Per-task estimate of ~3,800 tokens assumes the agent loads only the relevant sub CLAUDE.md.
-> With full feature context (acceptance_criteria, tdd_focus, doc_sync targets), expect **~4,500-5,000 tokens**.
+> Per-task estimate of ~3,900-4,000 tokens assumes the agent loads only the relevant sub CLAUDE.md
+> plus feature-scoped domain context (~100-200 tokens injected by orchestrator).
+> With full feature context (acceptance_criteria, tdd_focus, doc_sync targets), expect **~4,600-5,200 tokens**.
