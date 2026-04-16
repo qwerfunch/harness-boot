@@ -135,19 +135,29 @@ Update related documents per the mapping table:
 - Feature complete → feature-list.json (passes: true)
 - All changes → PROGRESS.md
 
-### Step 7: Single Commit
-Stage only changed code, tests, and docs explicitly — never use `git add .` to avoid accidentally staging sensitive files.
+### Step 7: Update Feature Status + Single Commit
+After all quality gates pass, update feature status and commit:
+
+1. Run `scripts/update-feature-status.sh FEAT-XXX` to mark `passes: true` in feature-list.json
+2. Update PROGRESS.md with completion record
+3. Stage only changed code, tests, and docs explicitly — never use `git add .`
 ```bash
+bash scripts/update-feature-status.sh FEAT-XXX
 git add {changed source files} {test files} {doc files} feature-list.json PROGRESS.md
 git commit -m "feat(FEAT-XXX): {description}"
 ```
 
-The PreToolUse hook (pre-tool-doc-sync-check.sh) automatically verifies doc sync and blocks the commit if docs are missing.
+The PreToolUse hooks automatically verify:
+- **doc-sync-check**: blocks commit if docs are missing
+- **coverage-gate**: blocks commit if tdd_focus functions lack test coverage
+
+**This step is mandatory per feature.** Do not batch multiple features — commit each feature individually before proceeding to the next.
 
 ### Step 8: Ask About Next Feature
 Ask the user whether to continue with the next feature:
 ```
-FEAT-XXX complete. Recorded as passes: true in feature-list.json.
+FEAT-XXX complete and committed. Marked as passes: true in feature-list.json.
+Progress: {completed}/{total} features ({percentage}%).
 Continue with the next feature? (y/n)
 ```
 
@@ -156,6 +166,7 @@ Continue with the next feature? (y/n)
 
 ## Principles
 - **One feature per agent at a time** (key Anthropic lesson). Sub-agent mode: one feature total. Agent Team mode: one feature per team member, multiple in parallel across the team.
+- **One feature per commit** (non-negotiable). Each feature must be committed individually with its tests and docs before proceeding to the next. Never batch multiple features into a single commit — this enables `git revert` per feature and satisfies Gate 4. If the user requests "implement all features at once", still execute them sequentially: TDD cycle → quality gates → commit → next feature. Parallel Agent Team mode commits each module's feature independently.
 - Do not auto-proceed without phase-level user confirmation
 - On convergence failure (> 5 iterations), suggest switching to debugger
 - Only modify the `passes` field in feature-list.json; never add/delete/modify items
