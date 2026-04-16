@@ -16,18 +16,10 @@
 
 ## Installation
 
-### Local Development Testing
 ```bash
 git clone <this-repo>
 cd harness-boot
 claude --plugin-dir .
-```
-
-### Marketplace Installation (after GitHub deployment)
-```bash
-# Inside Claude Code
-/plugin marketplace add github:{your-username}/harness-boot
-/plugin install harness-boot@harness-boot-marketplace
 ```
 
 ## Usage
@@ -62,9 +54,8 @@ project-root/
 ├── .claude/
 │   ├── settings.json          # Hook configuration
 │   ├── agents/                # 9 sub-agents
-│   ├── skills/                # 8 skills (6-section anatomy)
+│   ├── skills/                # 8 skills (Anthropic Agent Skills format, 7-section anatomy)
 │   ├── protocols/             # TDD, iteration convergence, doc sync, etc.
-│   ├── references/            # Progressive disclosure separated references
 │   ├── examples/              # Golden samples
 │   └── *.md                   # context-map, security, quality-gates, etc.
 ├── hooks/                     # 5 executable hook scripts

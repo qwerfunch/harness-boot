@@ -8,7 +8,7 @@ Starts actual development work with the harness in place.
 
 ## Prerequisites
 - `/setup` must be completed
-- `.claude/settings.json`, `PROGRESS.md`, and `feature-list.json` must exist
+- `.claude/settings.json`, `.claude/skills/`, `PROGRESS.md`, and `feature-list.json` must exist
 
 ## Procedure
 

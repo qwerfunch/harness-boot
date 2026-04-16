@@ -1,4 +1,3 @@
 {
-  "_comment": "This file is the plugin's own hook config. Actual project hooks are generated into the target project's .claude/settings.json when /setup is run.",
   "hooks": {}
 }

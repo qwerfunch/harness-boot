@@ -35,6 +35,11 @@ Read the plan and report the following to the user:
 7. **Hook script project-specific customizations**
 8. **Rationalization candidates per skill**
 9. **Expected file count per phase**
+10. **Architecture pattern**
+    - If plan states prototype/PoC/MVP/spike → skip architecture (Simple Flat), inform user
+    - If plan specifies architecture → adopt as-is
+    - If scale warrants (>= 2 of: 8+ features, 3+ domain categories, cross-cutting concerns present) → present 2-3 recommendations with plain-language explanations, pros/cons, and tech stack fit → wait for user selection
+    - If scale does not warrant → "Simple Layered recommended" → ask user to confirm or override
 
 **Proceed to Step 2 only after user confirmation.**
 
@@ -44,6 +49,8 @@ Read the plan and report the following to the user:
 - `.claude/environment.md`
 - `.claude/security.md`
 - `scripts/init-harness.sh`
+- `scripts/doc-impact-check.sh`
+- `scripts/task-decompose.sh`
 
 **Phase 1 completion report → record `last_completed_phase: 1` in PROGRESS.md → user confirmation → Phase 2**
 
@@ -68,17 +75,38 @@ Each agent YAML frontmatter includes a `model:` field:
 
 **Phase 3 completion report → record `last_completed_phase: 3` in PROGRESS.md → user confirmation → Phase 4**
 
-### Step 5: Phase 4 — 8 Skills
-Must follow 6-section anatomy (Overview / When to Use / TDD Focus / Process / Common Rationalizations (>= 3 rows) / Red Flags (>= 2 items) / Verification (with evidence)):
+### Step 5: Phase 4 — 8 Skills (Anthropic Agent Skills Format)
+Each skill follows the [Anthropic Agent Skills Specification](https://github.com/anthropics/skills).
+Generate as `skill-name/SKILL.md` (uppercase) with optional `references/`, `scripts/`, `assets/` subdirectories.
+
+Refer to `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md` Section 7 for complete generation rules:
+- 7.2: YAML frontmatter schema (field validation rules)
+- 7.3: 7-section anatomy template with full example
+- 7.4: Progressive disclosure (3-tier token budget)
+- 7.5: Description writing guide (TRIGGER/DO NOT TRIGGER pattern)
+- 7.6: Skill list with specific triggers per skill
+- 7.7: Complete skill example (new-feature)
+- 7.8: Validation checklist (10 items)
+
+Must follow 7-section anatomy (Overview / When to Use / TDD Focus / Process / Common Rationalizations (>= 3 rows) / Red Flags (>= 2 items) / Verification (with evidence)).
+
+YAML frontmatter must include:
+- `name` (1-64 chars, lowercase a-z/numbers/hyphens, matches directory name)
+- `description` (WHAT + WHEN + TRIGGER + DO NOT TRIGGER, max 1024 chars)
+- `metadata` (author, version, category at minimum)
+- `allowed-tools` (space-separated tool list)
+
+Skills to generate:
 - `new-feature`, `bug-fix`, `refactor`, `tdd-workflow`
 - `api-endpoint`, `db-migration`, `deployment`, `context-engineering`
 
-Additional: `.claude/references/`, `.claude/examples/`, `.claude/context-map.md`
+Additional: `.claude/examples/`, `.claude/context-map.md`
 
 **Phase 4 completion report → record `last_completed_phase: 4` in PROGRESS.md → user confirmation → Phase 5**
 
 ### Step 6: Phase 5 — Sub CLAUDE.md
 Generate sub CLAUDE.md for each target directory identified in Step 1.
+- If an architecture pattern was selected in Step 1, each sub CLAUDE.md must include an "Architecture Context" section specifying which layer/boundary the directory belongs to and its dependency rules.
 
 **Phase 5 completion report → record `last_completed_phase: 5` in PROGRESS.md → user confirmation → Phase 6**
 
@@ -93,13 +121,24 @@ Generate sub CLAUDE.md for each target directory identified in Step 1.
 Verify the entire generated harness:
 1. File completeness: settings.json + 5 hooks + 9 agents + 8 skills + 5 protocols + feature-list.json
 2. Runtime guardrails: hook stdin JSON parsing, security-gate exit 2, doc-sync-check commit blocking
-3. Skill anatomy: 6 sections + Rationalizations >= 3 rows + Red Flags >= 2 items + Verification evidence types + <= 500 lines
+3. Skill anatomy (per setup-guide.md Section 7.8):
+   - Directory name matches `name` field (lowercase a-z/numbers/hyphens)
+   - File named `SKILL.md` (uppercase)
+   - `name` field: 1-64 chars, valid chars, no leading/trailing/consecutive hyphens
+   - `description` field: 1-1024 chars, includes WHAT + WHEN + TRIGGER + DO NOT TRIGGER
+   - All 7 sections present (Overview/When to Use/TDD Focus/Process/Rationalizations/Red Flags/Verification)
+   - Rationalizations >= 3 rows, each rebuttal domain-specific
+   - Red Flags >= 2 items
+   - Verification includes evidence types (logs/diff/reports/coverage)
+   - SKILL.md <= 500 lines
+   - File references use relative paths, referenced files exist
 4. Quality gates: Gates 0-4, all checks with evidence types, rationalization defense
 5. TDD: 3 sub-agent frontmatters, Red → Green call order
 6. Model routing: opus for 4 agents / sonnet for 5 agents via frontmatter model: field
 7. Cross-session: bootstrap hook → reads PROGRESS.md + feature-list.json
 8. Code-doc sync: triple defense operational, mapping table matches project structure
 9. Tokens: CLAUDE.md <= 1,500 tokens, per-task ~3,800 tokens
+10. Architecture: If pattern was selected, verify environment.md contains pattern rules, sub CLAUDE.md files reference their layer/boundary, and architect agent includes pattern constraints
 
 Report each item as PASS/FAIL. For each FAIL:
 1. Identify the specific gap (missing file, missing section, wrong model routing, etc.)
@@ -121,4 +160,5 @@ Guide the user to the next step: start development with the `/start` command.
 - Follow the 4 principles: TDD-First / Iteration Convergence / Code-Doc Sync / Anti-Rationalization
 - User confirmation required between each phase (no autonomous progression)
 - If tech stack is unspecified, wait for developer selection (no autonomous selection)
+- If architecture pattern is unspecified and project scale warrants it, wait for developer selection (no autonomous selection)
 - Mark anything not in the plan as `{TODO: needs confirmation}`

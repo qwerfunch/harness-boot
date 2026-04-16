@@ -29,7 +29,7 @@ The plugin is structured as Claude Code native commands + hooks:
 
 - `commands/` — Slash command definitions (`setup.md`, `start.md`) with YAML frontmatter
 - `docs/setup-guide.md` — Full harness engineering spec referenced by `/setup` at runtime via `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md`
-- `docs/start-prompts.md` — Kickoff and situational prompts for `/start`
+- `docs/start-prompts.md` — Development start and situational prompts for `/start`
 - `hooks/hooks.json` — Plugin's own hook config (empty; actual project hooks are generated into target project's `.claude/settings.json`)
 
 ## Key Design: `/setup` Flow
@@ -39,8 +39,8 @@ Phase 1-6 sequential generation with user confirmation and checkpoint (`last_com
 1. Infrastructure (settings.json, hooks/, environment.md, security.md)
 2. Protocols (tdd-loop, iteration-cycle, code-doc-sync, session-management, message-format) + CLAUDE.md
 3. Agents (9 agents with `model:` frontmatter — opus for judgment, sonnet for execution)
-4. Skills (8 skills, each must follow 6-section Anatomy with Rationalizations >= 3 rows)
-5. Sub CLAUDE.md per directory
+4. Skills (8 skills in [Anthropic Agent Skills format](https://github.com/anthropics/skills): `skill-name/SKILL.md` with 7-section anatomy, YAML frontmatter with name/description/metadata/allowed-tools, Rationalizations >= 3 rows)
+5. Sub CLAUDE.md per directory (with architecture layer context if pattern selected)
 6. State files (feature-list.json, PROGRESS.md, CHANGELOG.md)
 
 ## Key Design: `/start` Flow
@@ -64,6 +64,7 @@ Phase 1-6 sequential generation with user confirmation and checkpoint (`last_com
 - Hook scripts: shebang + stdin JSON parsing; exit 0 = proceed, exit 1 = hook error (proceeds), exit 2 = block action
 - feature-list.json: array order = priority; only `passes` field may be changed; no add/delete/reorder/modify items
 - Tech stack not specified in plan -> present 2-3 recommendations, wait for developer choice (never auto-select). Stored in CLAUDE.md (summary) + environment.md (detail).
+- Architecture pattern: prototype/PoC/MVP -> skip (Simple Flat). Otherwise assessed by project scale (8+ features, 3+ domain categories, cross-cutting concerns). If warranted and unspecified -> present 2-3 recommendations with plain-language explanations, wait for developer choice (never auto-select). Stored alongside tech stack in CLAUDE.md (summary) + environment.md (detail section).
 - Quality gates require evidence; Gate 3 coverage: tdd_focus functions 100% line coverage, overall no regression
 - Gate 4 rollback: single commit enables `git revert`; DB migrations require down-migration
 

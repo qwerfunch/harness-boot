@@ -40,16 +40,17 @@ project-root/
 │   │   ├── tester.md                      #   Integration/E2E testing (model: sonnet)
 │   │   ├── architect.md                   #   Design decisions (model: opus)
 │   │   └── debugger.md                    #   Debugging specialist (model: opus)
-│   ├── skills/                            # 8 skills (YAML frontmatter)
-│   │   ├── new-feature/skill.md
-│   │   ├── bug-fix/skill.md
-│   │   ├── refactor/skill.md
-│   │   ├── db-migration/skill.md
-│   │   ├── api-endpoint/skill.md
-│   │   ├── tdd-workflow/skill.md
-│   │   ├── context-engineering/skill.md
-│   │   └── deployment/skill.md
-│   ├── references/                        # Overflow content when skills exceed 500 lines
+│   ├── skills/                            # 8 skills (Anthropic Agent Skills format)
+│   │   ├── new-feature/                   #   Each skill directory contains:
+│   │   │   ├── SKILL.md                   #     YAML frontmatter + 7-section body
+│   │   │   └── references/               #     Overflow content (optional)
+│   │   ├── bug-fix/
+│   │   ├── refactor/
+│   │   ├── tdd-workflow/
+│   │   ├── api-endpoint/
+│   │   ├── db-migration/
+│   │   ├── context-engineering/
+│   │   └── deployment/                    #   (same structure as new-feature/)
 │   ├── protocols/                         # 5 protocols
 │   │   ├── tdd-loop.md
 │   │   ├── iteration-cycle.md
@@ -153,7 +154,7 @@ Auto-detected when PROGRESS.md doesn't exist or is empty:
 #### Checkpoint / Resume
 If `/setup` is interrupted mid-phase, PROGRESS.md records `last_completed_phase: N`. On re-running `/setup`, the system detects this and offers to resume from Phase N+1 instead of starting over.
 
-1. Load detailed plan MD → **confirm tech stack** (see rules below)
+1. Load detailed plan MD → **confirm tech stack** (see rules below) → **assess architecture pattern** (see rules below)
 2. Generate feature-list.json (all features `passes: false`)
 3. Create initial PROGRESS.md
 4. Run init-harness.sh (environment validation, dependency installation)
@@ -198,6 +199,129 @@ Project requirements analysis:
 Once selected, the tech stack is recorded in exactly two places:
 - `CLAUDE.md`: one-line summary (e.g., "Stack: Next.js 14 + TypeScript + Prisma + PostgreSQL")
 - `.claude/environment.md`: full detail (versions, package manager, runtime requirements, dev dependencies)
+
+### Architecture Pattern Decision Rules
+
+Architecture patterns (DDD, Clean Architecture, Hexagonal, etc.) provide structural guardrails for maintainability. They are recommended only when the project's scale and domain complexity justify the overhead.
+
+#### Skip Condition
+
+If the plan explicitly states prototype, PoC, MVP, spike, or experimental purpose, **skip architecture selection entirely**. Use a Simple Flat structure and inform the developer:
+
+> "Project identified as {prototype/PoC/MVP}. Proceeding without architecture pattern (Simple Flat structure)."
+
+No further confirmation needed for skip — proceed directly.
+
+#### Scale Assessment
+
+When the skip condition does not apply, evaluate three factors from the plan:
+
+| Factor | Threshold | How to Measure |
+|--------|-----------|----------------|
+| Feature count | >= 8 features | Count items in feature-list.json draft |
+| Domain categories | >= 3 distinct categories | Count unique `category` values in feature-list.json draft |
+| Cross-cutting concerns | Present | Auth, payments, notifications, external integrations, event-driven flows |
+
+- **2 or 3 factors met** → Recommend architecture pattern
+- **0 or 1 factors met** → Default to Simple Layered structure, but ask developer if they want to adopt a pattern anyway
+
+#### Decision Rules
+
+| Priority | Condition | Action |
+|----------|-----------|--------|
+| **0th** | Plan states prototype/PoC/MVP/spike | Skip architecture (Simple Flat). Inform developer. |
+| **1st** | Architecture pattern specified in the plan | Adopt as-is. Reflect in CLAUDE.md + environment.md. |
+| **2nd** | Scale assessment triggers recommendation | Analyze tech stack fit → **present 2-3 recommendations** with explanations. Proceed after developer selects. |
+| **3rd** | Scale assessment does NOT trigger | Note "Simple Layered structure recommended." Ask developer to confirm or override. |
+
+#### Architecture Pattern Reference
+
+Each recommendation must include a plain-language explanation so that non-developers can also make informed decisions.
+
+| Pattern | What It Is (Plain Language) | Best For | Trade-offs |
+|---------|---------------------------|----------|------------|
+| **DDD (Domain-Driven Design)** | Organizes code around business concepts (e.g., "Order", "User", "Payment") rather than technical layers. Like organizing a company by business units rather than by job function. | Complex business logic with many rules, enterprise systems | Higher upfront design cost; requires deep domain understanding; overkill for simple CRUD |
+| **Clean Architecture** | Separates code into concentric rings: core business logic in the center, external tools (DB, APIs) on the outside. Inner rings never depend on outer rings. Like building a house where the floor plan doesn't change even if you swap the plumbing. | Projects needing long-term maintainability, easy testing, and framework independence | More files and indirection; slower initial development; can feel over-engineered for small projects |
+| **Hexagonal (Ports & Adapters)** | Core logic communicates with the outside world only through defined "ports" (interfaces). External systems plug in via "adapters". Like a universal power strip that works with any plug type. | Systems with many external integrations (APIs, databases, message queues) | Similar overhead to Clean Architecture; port/adapter boilerplate; best value with 3+ external systems |
+| **Vertical Slice** | Each feature is a self-contained vertical slice through all layers (UI → logic → DB). Features are independent folders rather than shared layers. Like organizing a restaurant by dish (each chef handles their dish end-to-end) rather than by station. | Feature-rich applications where features rarely share logic; microservice-like structure in a monolith | Code duplication across slices; harder to share cross-cutting logic; less suitable for deep shared domains |
+| **Simple Layered** | Traditional Controller → Service → Repository layers. Straightforward and widely understood. Like a factory assembly line — each station does one type of work. | Small-to-medium projects, CRUD-heavy apps, teams new to architecture patterns | Tends to create "God services" as project grows; tight coupling between layers; harder to test in isolation |
+
+#### Language/Framework Compatibility
+
+| Pattern | Best Fit | Acceptable Fit | Poor Fit |
+|---------|----------|----------------|----------|
+| **DDD** | Java/Spring, C#/.NET, Kotlin | TypeScript/NestJS, Python/FastAPI | Go (lacks OOP), simple CRUD apps |
+| **Clean Architecture** | Go, Java/Spring, TypeScript/NestJS | Python/FastAPI, C#/.NET | Rapid prototypes, small scripts |
+| **Hexagonal** | Java/Spring, TypeScript/NestJS, Rust | Go, Python | Frontend-heavy apps |
+| **Vertical Slice** | C#/.NET, TypeScript/NestJS | Java/Spring, Go | Projects with deep shared domain logic |
+| **Simple Layered** | Any | Any | Large-scale domain-heavy projects |
+
+#### Recommendation Template
+
+```
+## Architecture Pattern Recommendations
+
+Scale assessment:
+- Feature count: {N} (threshold: 8)
+- Domain categories: {N} (threshold: 3)
+- Cross-cutting concerns: {list or "none detected"}
+- Result: {recommend / simple layered default}
+
+### Option A: {e.g., Clean Architecture}
+- **What it is**: {plain-language explanation — 1-2 sentences}
+- **Why it fits this project**: {specific reasons tied to the plan's features}
+- **Pros**: {reasons}
+- **Cons**: {reasons}
+- **Fit with {tech stack}**: {compatibility assessment}
+- **Directory structure impact**: {outline}
+
+### Option B: {e.g., DDD with Hexagonal}
+- **What it is**: {plain-language explanation — 1-2 sentences}
+- **Why it fits this project**: {specific reasons tied to the plan's features}
+- **Pros**: {reasons}
+- **Cons**: {reasons}
+- **Fit with {tech stack}**: {compatibility assessment}
+- **Directory structure impact**: {outline}
+
+→ Wait for developer selection, then reflect in CLAUDE.md + environment.md and proceed.
+```
+
+> **Never auto-select without developer confirmation.** Architecture pattern decisions affect the entire project structure and must be made by the developer.
+
+#### Architecture Pattern Storage
+
+Once selected (or confirmed as "Simple Layered"), the architecture pattern is recorded alongside the tech stack:
+- `CLAUDE.md`: appended to the stack summary line (e.g., "Stack: Next.js 14 + TypeScript + Prisma + PostgreSQL | Architecture: Clean Architecture")
+- `.claude/environment.md`: dedicated section with pattern name, layer definitions, dependency rules, and directory-to-layer mapping
+
+#### environment.md Architecture Section Template
+
+```markdown
+## Architecture Pattern
+
+**Pattern**: {Clean Architecture | DDD | Hexagonal | Vertical Slice | Simple Layered | Simple Flat (prototype)}
+
+### Layer Definitions
+| Layer | Responsibility | Allowed Dependencies |
+|-------|---------------|---------------------|
+| {e.g., Domain/Entities} | {description} | {none / only domain} |
+| {e.g., Use Cases} | {description} | {Domain only} |
+| {e.g., Interface Adapters} | {description} | {Use Cases, Domain} |
+| {e.g., Infrastructure} | {description} | {all layers} |
+
+### Dependency Rules
+- {e.g., Dependencies flow inward only: Infrastructure → Adapters → Use Cases → Domain}
+- {e.g., Domain layer has zero external imports}
+- {e.g., Use Cases define port interfaces; Infrastructure implements them}
+
+### Directory-to-Layer Mapping
+| Directory | Layer | Notes |
+|-----------|-------|-------|
+| src/domain/ | Domain | Entities, value objects, domain events |
+| src/usecases/ | Use Cases | Application services, port interfaces |
+| src/adapters/ | Interface Adapters | Controllers, presenters, gateways |
+| src/infrastructure/ | Infrastructure | DB, external APIs, frameworks |
+```
 
 ### Coding Mode (Subsequent Sessions)
 The SessionStart hook automatically provides a PROGRESS.md summary + incomplete feature count + git log.
@@ -539,69 +663,292 @@ Scheduler/batch/worker logs follow their execution environment's rotation. No se
 
 ---
 
-## 7. Skills — Claude Code Native Format
+## 7. Skills — Anthropic Agent Skills Format
 
-### 7.1 Skill Anatomy (6-Section Mandatory)
+> **Reference**: Skills follow the [Anthropic Agent Skills Specification](https://github.com/anthropics/skills).
+> All generated skills must comply with this spec while embedding harness-specific sections (TDD Focus, Rationalizations, Red Flags).
+
+### 7.1 Skill Directory Structure
+
+Each skill is a self-contained directory. The directory name **must match** the `name` field in SKILL.md.
+
+```
+skill-name/
+├── SKILL.md                  # Required: YAML frontmatter + Markdown instructions
+├── references/               # Optional: supplementary documentation (overflow content)
+│   └── REFERENCE.md         #   Detailed technical reference, examples, edge cases
+├── scripts/                  # Optional: executable code (Python, Bash, JavaScript)
+│   └── validate.sh          #   Helper scripts referenced from SKILL.md
+└── assets/                   # Optional: static resources (templates, data files)
+```
+
+### 7.2 YAML Frontmatter Schema
+
+```yaml
+---
+# ── Required Fields ──────────────────────────────────────────────
+name: skill-name
+  # 1-64 chars. Lowercase a-z, numbers, hyphens only.
+  # No leading/trailing hyphens, no consecutive hyphens.
+  # MUST match the parent directory name.
+  # Valid:   new-feature, bug-fix, api-endpoint
+  # Invalid: New-Feature, -bug-fix, api--endpoint
+
+description: >
+  {WHAT the skill does}. {WHEN to use it — specific trigger keywords}.
+  TRIGGER when: {activation conditions}.
+  DO NOT TRIGGER when: {exclusion conditions}.
+  # Max 1024 chars. Must include both WHAT + WHEN.
+  # The description is the primary activation mechanism — agents decide
+  # whether to load the skill based on this field alone.
+
+# ── Optional per Anthropic spec ──────────────────────────────────
+license: "Proprietary"
+  # License name or reference to bundled LICENSE file.
+
+compatibility: "Requires {tech stack from environment.md}"
+  # Max 500 chars. Environment requirements, system packages,
+  # language versions, network access needs.
+
+# ── Optional per Anthropic spec, REQUIRED for harness skills ─────
+metadata:
+  author: "harness-boot"
+  version: "1.0"
+  category: "{skill category}"
+  harness-section: "tdd|workflow|infrastructure"
+  # Arbitrary key-value pairs (string → string).
+  # Use for organization, filtering, and versioning.
+  # Harness requires at minimum: author, version, category.
+
+allowed-tools: "Read Glob Grep Write Edit Bash"
+  # Space-separated string of pre-approved tools.
+  # Restricts which tools the skill may use.
+  # Pattern: ToolName or ToolName(glob:pattern)
+  # Example: "Bash(npm:*) Bash(git:*) Read Write Edit"
+  # Harness requires this field to align with security gate.
+---
+```
+
+### 7.3 SKILL.md Body — 7-Section Anatomy
+
+The Markdown body merges Anthropic's recommended structure with harness-specific requirements.
+All 7 sections are mandatory for harness skills.
 
 ```markdown
 ---
-name: {skill-name}
-description: >
-  {trigger description}. Trigger: "{trigger1}", "{trigger2}".
-  Does NOT trigger for {non-triggers}.
+name: {skill-name}                    # Must match directory name
+description: >                        # See 7.5 for writing guide
+  {WHAT the skill does}.
+  TRIGGER when: {conditions}.
+  DO NOT TRIGGER when: {exclusions}.
+metadata:                             # Required for harness skills
+  author: harness-boot
+  version: "1.0"
+  category: "{category}"
+allowed-tools: "{tool list}"          # Required for harness skills
 ---
-# {Skill Name}
+# {Skill Display Name}
 
 ## Overview
-{1-2 sentences}
+{1-2 sentences: what this skill accomplishes and its role in the harness workflow.}
 
 ## When to Use
-- {trigger conditions}
-- Not when: {exclusion conditions}
+- **Trigger**: {specific activation conditions — keywords, file patterns, task types}
+- **Not when**: {explicit exclusion conditions to prevent false activation}
+- **Related skills**: {skills that complement or conflict with this one}
 
 ## TDD Focus
-- {must test}
-- {test exempt}
+- **Must test**: {what functions/behaviors require tests under this skill}
+- **Test exempt**: {what is explicitly excluded from testing requirements}
+- **Coverage target**: {specific coverage criteria for tdd_focus functions}
 
 ## Process
-### Step 1-N (specific — "run npm test" level)
+### Step 1: {Verb phrase — e.g., "Analyze the change request"}
+{Specific instructions at "run npm test" level of detail.}
+
+### Step 2: {Verb phrase}
+{Instructions. Reference supplementary files:}
+See [detailed examples](references/REFERENCE.md) for edge cases.
+
+### Step N: {Verb phrase}
+{Final step — typically verification and commit.}
 
 ## Common Rationalizations
 | Excuse | Rebuttal |
 |--------|----------|
-| "This function is simple enough to skip tests" | Even simple code has edge cases. Tests serve as specifications. |
-| "I'll update docs later" | "Later" never comes. Other agents will reference incorrect docs. |
-| {add at least 3 skill-specific rows} | |
+| "{tempting shortcut 1}" | {specific, compelling counter-argument} |
+| "{tempting shortcut 2}" | {specific, compelling counter-argument} |
+| "{tempting shortcut 3}" | {specific, compelling counter-argument} |
+
+> Minimum 3 rows required. Each rebuttal must be specific to THIS skill's domain.
+> Use the "I know you'll say X. But you're wrong because Y" framing.
 
 ## Red Flags
-- {signs this skill is being violated — minimum 2 items}
+- {Observable sign that this skill's process is being violated — minimum 2 items}
+- {Another sign — agents and reviewers check for these}
 
 ## Verification
-- [ ] {verify with evidence — logs/diff/reports}
-- [ ] feature-list.json passes: true
-- [ ] PROGRESS.md updated
+- [ ] {Verify with evidence — specify evidence type: logs/diff/reports/coverage}
+- [ ] feature-list.json `passes: true` for this feature
+- [ ] PROGRESS.md updated with iteration metrics
+- [ ] Code-doc sync mapping targets updated
 ```
 
-### 7.2 Progressive Disclosure
+### 7.4 Progressive Disclosure (3-Tier Token Budget)
 
-| Criterion | Rule |
-|-----------|------|
-| SKILL.md | 500 lines max. Overflow goes to references/ |
-| Inline code | 50 lines max. Overflow goes to scripts/ |
-| Unnecessary sections | Delete if removing doesn't change agent behavior |
+Skills follow a progressive disclosure model to minimize context consumption:
 
-### 7.3 Skill List
+| Tier | Content | Token Budget | When Loaded |
+|------|---------|-------------|-------------|
+| **Metadata** | `name` + `description` fields | ~100 tokens | Always (skill discovery) |
+| **Instructions** | Full SKILL.md body | < 5,000 tokens (~500 lines max) | When skill activates (trigger match) |
+| **Resources** | `references/`, `scripts/`, `assets/` | On-demand | Only when explicitly referenced in instructions |
 
-| Skill | Trigger | TDD Focus | Key Rationalization Defense |
-|-------|---------|-----------|---------------------------|
-| `new-feature` | "new feature", "implement" | Business logic, input validation | "I'll build it all at once" → incrementally |
-| `bug-fix` | "bug", "fix" | Reproduction test required | "I know the cause, just fix it" → reproduction test first |
-| `refactor` | "refactor" | 100% existing test preservation | "Behavior unchanged, tests unnecessary" → tests are the proof |
-| `tdd-workflow` | "TDD", "test first" | Full TDD cycle | "Too simple for tests" → tests serve as specs |
-| `api-endpoint` | "API" | Request/response validation | "Internal API, docs unnecessary" → next agent needs them |
-| `db-migration` | "migration" | Data integrity | "Rollback won't be needed" → always needed |
-| `deployment` | "deploy" | Full test suite pass | "Worked in staging" → environment differences |
-| `context-engineering` | Session start, task switch | N/A | "I'll read all files" → read only what's needed |
+**Rules**:
+- SKILL.md body must stay under 500 lines. Move detailed content to `references/` subdirectory.
+- Inline code blocks within SKILL.md: 50 lines max. Move longer code to `scripts/`.
+- Reference supplementary files with relative paths: `See [details](references/REFERENCE.md)`
+- Delete any section that doesn't change agent behavior — no padding.
+
+### 7.5 Description Writing Guide
+
+The `description` field is the **single most important field** — it determines whether the skill activates.
+
+**Good description** (specific triggers, clear boundaries):
+```yaml
+description: >
+  Guides bug reproduction and fix workflow with mandatory reproduction test
+  before any code changes. Ensures root cause analysis and regression prevention.
+  TRIGGER when: user says "bug", "fix", "broken", "regression", or debugger
+  agent identifies a failing test requiring a targeted fix.
+  DO NOT TRIGGER when: user says "new feature", "refactor", or when adding
+  new behavior rather than correcting existing behavior.
+```
+
+**Bad description** (vague, no boundaries):
+```yaml
+description: "Helps with bugs."
+```
+
+### 7.6 Skill List
+
+| Skill | Directory | Triggers | TDD Focus | Key Rationalization Defense |
+|-------|-----------|----------|-----------|---------------------------|
+| `new-feature` | `new-feature/SKILL.md` | "new feature", "implement", "add" | Business logic, input validation | "I'll build it all at once" → incrementally |
+| `bug-fix` | `bug-fix/SKILL.md` | "bug", "fix", "broken" | Reproduction test required | "I know the cause, just fix it" → reproduction test first |
+| `refactor` | `refactor/SKILL.md` | "refactor", "restructure", "clean up" | 100% existing test preservation | "Behavior unchanged, tests unnecessary" → tests are the proof |
+| `tdd-workflow` | `tdd-workflow/SKILL.md` | "TDD", "test first", "red green" | Full TDD cycle | "Too simple for tests" → tests serve as specs |
+| `api-endpoint` | `api-endpoint/SKILL.md` | "API", "endpoint", "route" | Request/response validation | "Internal API, docs unnecessary" → next agent needs them |
+| `db-migration` | `db-migration/SKILL.md` | "migration", "schema change" | Data integrity, down-migration | "Rollback won't be needed" → always needed |
+| `deployment` | `deployment/SKILL.md` | "deploy", "release", "ship" | Full test suite pass | "Worked in staging" → environment differences |
+| `context-engineering` | `context-engineering/SKILL.md` | Session start, task switch, context overload | N/A | "I'll read all files" → read only what's needed |
+
+### 7.7 Complete Skill Example
+
+```markdown
+---
+name: new-feature
+description: >
+  Guides implementation of new features using TDD workflow with incremental
+  delivery. Handles feature decomposition, acceptance criteria mapping, and
+  tdd_focus function identification.
+  TRIGGER when: user says "new feature", "implement", "add functionality",
+  or orchestrator assigns a new feature from feature-list.json.
+  DO NOT TRIGGER when: user says "fix", "bug", "refactor", or when modifying
+  existing behavior without new acceptance criteria.
+metadata:
+  author: harness-boot
+  version: "1.0"
+  category: development
+allowed-tools: "Read Glob Grep Write Edit Bash"
+---
+# New Feature
+
+## Overview
+Orchestrates new feature implementation through the TDD cycle (Red → Green →
+Refactor) with incremental delivery and mandatory code-doc synchronization.
+
+## When to Use
+- **Trigger**: Orchestrator selects a `passes: false` feature from feature-list.json,
+  or user explicitly requests implementing a new feature
+- **Not when**: Fixing bugs (use `bug-fix`), restructuring existing code (use `refactor`),
+  or modifying existing behavior without new acceptance criteria
+- **Related skills**: `tdd-workflow` (subprocess), `api-endpoint` (if feature includes API)
+
+## TDD Focus
+- **Must test**: All functions listed in the feature's `tdd_focus` array —
+  happy path, boundary conditions, error cases
+- **Test exempt**: Config files, static assets, type definitions (unless they
+  contain validation logic)
+- **Coverage target**: 100% line coverage for `tdd_focus` functions; no regression
+  on overall project coverage
+
+## Process
+### Step 1: Load feature context
+Read the feature entry from feature-list.json. Extract `acceptance_test`,
+`tdd_focus`, and `doc_sync` targets.
+
+### Step 2: Decompose into increments
+Split the feature into testable increments. Each increment maps to 1-3
+`tdd_focus` functions. Order by dependency (foundational logic first).
+
+### Step 3: Run TDD cycle per increment
+For each increment, invoke the TDD sub-agents in sequence:
+1. **Red** (tdd-test-writer): Write failing tests from interfaces only
+2. **Green** (tdd-implementer): Write minimal code to pass tests
+3. **Refactor** (tdd-refactorer): Improve without behavior changes
+Max 5 iterations per increment. Escalate if exceeded.
+
+### Step 4: Verify acceptance criteria
+Run all acceptance tests. Each `acceptance_test` item must have a
+corresponding passing test.
+
+### Step 5: Code-doc sync
+Update all files listed in the feature's `doc_sync` array.
+Verify via doc-impact-check.sh before commit.
+
+### Step 6: Single commit
+Stage code + tests + docs together. Commit message references feature ID.
+Verify rollback capability: `git revert <sha>` must cleanly undo.
+
+## Common Rationalizations
+| Excuse | Rebuttal |
+|--------|----------|
+| "I'll build the entire feature at once, then add tests" | Incremental TDD catches integration issues early. Batch implementation hides bugs in complexity. |
+| "This helper function is too simple to test" | If it's in `tdd_focus`, it gets tests. Simple functions have edge cases (null, empty, overflow). |
+| "I'll update the docs after I finish coding" | The pre-tool hook blocks commits with missing doc updates. Do it now or you can't commit. |
+| "The acceptance criteria are obvious, I don't need to check them" | Obvious criteria are the easiest to verify. Skip verification and the reviewer will reject at Gate 2. |
+
+## Red Flags
+- Implementation code written before any test files exist (TDD violation)
+- Feature commit contains only code changes without corresponding doc updates
+- Multiple `tdd_focus` functions implemented in a single Green phase (over-implementation)
+
+## Verification
+- [ ] All `tdd_focus` functions have tests with happy/boundary/error cases (evidence: test file list)
+- [ ] All `acceptance_test` items pass (evidence: test runner output)
+- [ ] `doc_sync` targets updated (evidence: git diff showing doc changes)
+- [ ] Coverage: 100% line on `tdd_focus`, no regression overall (evidence: coverage report)
+- [ ] feature-list.json `passes: true`
+- [ ] PROGRESS.md updated with `iteration_count` and `duration`
+```
+
+### 7.8 Skill Generation Validation Checklist
+
+During `/setup` Phase 4, validate each generated skill against:
+
+| # | Check | Criterion |
+|---|-------|-----------|
+| 1 | **Directory name** | Matches `name` field, lowercase a-z/numbers/hyphens only |
+| 2 | **File name** | `SKILL.md` (uppercase) |
+| 3 | **name field** | 1-64 chars, valid characters, no leading/trailing/consecutive hyphens |
+| 4 | **description field** | 1-1024 chars, includes WHAT + WHEN + TRIGGER + DO NOT TRIGGER |
+| 5 | **Body sections** | All 7 sections present: Overview, When to Use, TDD Focus, Process, Common Rationalizations, Red Flags, Verification |
+| 6 | **Rationalizations** | >= 3 rows, each rebuttal is specific to the skill's domain |
+| 7 | **Red Flags** | >= 2 items |
+| 8 | **Verification** | Includes evidence types (logs/diff/reports/coverage) |
+| 9 | **Line count** | SKILL.md <= 500 lines |
+| 10 | **File references** | Relative paths from skill root, referenced files exist |
 
 ---
 
@@ -737,10 +1084,10 @@ Metrics are appended to `PROGRESS.md` under a `## Metrics` section:
 ## 12. Generation Order
 
 ```
-Phase 1: Infrastructure ── settings.json, hooks/ (5 scripts), environment.md, security.md, init-harness.sh
+Phase 1: Infrastructure ── settings.json, hooks/ (5 scripts), environment.md, security.md, scripts/ (init-harness.sh, doc-impact-check.sh, task-decompose.sh)
 Phase 2: Protocols ── protocols/ (5 protocols), CLAUDE.md, quality-gates.md
 Phase 3: Agents ── agents/ (9 agents, with model: field)
-Phase 4: Skills ── skills/ (8 skills, 6-section anatomy), references/, examples/, context-map.md
+Phase 4: Skills ── skills/ (8 skills, Anthropic Agent Skills format, 7-section anatomy), examples/, context-map.md
 Phase 5: Sub CLAUDE.md ── per directory
 Phase 6: State ── feature-list.json, PROGRESS.md, CHANGELOG.md, error-recovery.md, observability.md
 ```
@@ -762,6 +1109,10 @@ Phase 6: State ── feature-list.json, PROGRESS.md, CHANGELOG.md, error-recove
 | Test strategy | quality-gates.md + tdd-loop.md |
 | Coding conventions | CLAUDE.md + sub CLAUDE.md |
 | Documentation targets | code-doc-sync.md mapping table |
+| Architecture (specified) | CLAUDE.md + environment.md → **1st priority: adopt as-is** |
+| Architecture (unspecified, scale warrants) | Scale assessment → present 2-3 recommendations → **reflect after developer selection** |
+| Architecture (unspecified, small scale) | Default to Simple Layered → **confirm with developer** |
+| Architecture (prototype/PoC/MVP) | Skip → Simple Flat structure, inform developer |
 | Schedule | PROGRESS.md Backlog |
 
 ---
@@ -771,18 +1122,18 @@ Phase 6: State ── feature-list.json, PROGRESS.md, CHANGELOG.md, error-recove
 | Deliverable | File Count | Tokens per File | Subtotal |
 |-------------|-----------|-----------------|----------|
 | Main CLAUDE.md | 1 | ~1,200 | 1,200 |
-| Sub CLAUDE.md | 5-8 | ~500 | 3,000 |
+| Sub CLAUDE.md | 5-8 | ~550 | 3,300 |
 | Agent MD | 9 | ~800 | 7,200 |
-| Skills (6-section) | 8 | ~800 | 6,400 |
+| Skills (7-section, Anthropic format) | 8 | ~800 | 6,400 |
 | Protocols | 5 | ~500 | 2,500 |
 | Hook scripts | 5 | ~150 | 750 |
 | Other | 8 | ~400 | 3,200 |
-| **Total** | **~52** | | **~24,250** |
+| **Total** | **~52** | | **~24,550** |
 
 **Per-task actual consumption**: CLAUDE.md + sub CLAUDE.md + agent + skill + tdd-loop = **~3,800 tokens**
 TDD sub-agents run in independent context windows → no additional token consumption in the main context.
 
-> **Note**: The ~24,250 token estimate covers generated output only. The `/setup` command also loads
+> **Note**: The ~24,550 token estimate covers generated output only. The `/setup` command also loads
 > the plan MD and this guide into context (~8,000 tokens). Total context consumption during setup
 > is approximately **35,000-45,000 tokens** depending on plan size.
 >
