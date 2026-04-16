@@ -40,6 +40,7 @@ Read the plan and report the following to the user:
     - If plan specifies architecture → adopt as-is
     - If scale warrants (>= 2 of: 8+ features, 3+ domain categories, cross-cutting concerns present) → present 2-3 recommendations with plain-language explanations, pros/cons, and tech stack fit → wait for user selection
     - If scale does not warrant → "Simple Layered recommended" → ask user to confirm or override
+11. **Domain persona draft** (project purpose, key entities with invariants, domain rules, vocabulary, stakeholder concerns, success criteria — extracted from plan MD per setup-guide.md Section 3)
 
 **Proceed to Step 2 only after user confirmation.**
 
@@ -48,6 +49,7 @@ Read the plan and report the following to the user:
 - `hooks/` 5 scripts (executable bash, shebang + stdin JSON parsing)
 - `.claude/environment.md`
 - `.claude/security.md`
+- `.claude/domain-persona.md` (domain context for agents, from Step 1 draft)
 - `scripts/init-harness.sh`
 - `scripts/doc-impact-check.sh`
 - `scripts/task-decompose.sh`
@@ -137,8 +139,9 @@ Verify the entire generated harness:
 6. Model routing: opus for 4 agents / sonnet for 5 agents via frontmatter model: field
 7. Cross-session: bootstrap hook → reads PROGRESS.md + feature-list.json
 8. Code-doc sync: triple defense operational, mapping table matches project structure
-9. Tokens: CLAUDE.md <= 1,500 tokens, per-task ~3,800 tokens
+9. Tokens: CLAUDE.md <= 1,500 tokens, per-task ~3,900-4,000 tokens
 10. Architecture: If pattern was selected, verify environment.md contains pattern rules, sub CLAUDE.md files reference their layer/boundary, and architect agent includes pattern constraints
+11. Domain persona: domain-persona.md exists, contains all 6 sections (Purpose, Key Entities, Domain Rules, Vocabulary, Stakeholder Concerns, Success Criteria), entities table has >= 2 rows, domain rules has >= 2 items
 
 Report each item as PASS/FAIL. For each FAIL:
 1. Identify the specific gap (missing file, missing section, wrong model routing, etc.)

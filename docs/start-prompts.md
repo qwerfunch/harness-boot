@@ -8,6 +8,7 @@
 Harness ready. Start development.
 
 1. Load orchestrator.md
+1b. Load domain-persona.md for domain context
 2. Check PROGRESS.md → determine Initializer/Coding mode
 3. Select highest-priority feature with passes: false from feature-list.json
 4. Work on only one feature at a time
