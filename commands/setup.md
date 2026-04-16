@@ -63,6 +63,7 @@ Read the plan and report the following to the user:
 - `scripts/task-decompose.sh`
 - `scripts/update-feature-status.sh` (auto-update feature-list.json passes field after Gate 4)
 - `_workspace/.gitkeep` (intermediate outputs directory for Agent Team file-based transfer)
+- `.github/workflows/quality-gates.yml` (CI/CD quality gate pipeline, adapted per tech stack)
 
 **Phase 1 completion report → record `last_completed_phase: 1` in PROGRESS.md → user confirmation → Phase 2**
 
@@ -144,7 +145,7 @@ Generate sub CLAUDE.md for each target directory identified in Step 1.
 
 ### Step 8: Verification
 Verify the entire generated harness:
-1. File completeness: settings.json + 6 hooks + 9+ agents + 8 skills + 5 protocols + feature-list.json + scripts/update-feature-status.sh
+1. File completeness: settings.json + 6 hooks + 9+ agents + 8 skills + 5 protocols + feature-list.json + scripts/update-feature-status.sh + .github/workflows/quality-gates.yml
 2. Runtime guardrails: hook stdin JSON parsing, security-gate exit 2, doc-sync-check commit blocking, coverage-gate commit blocking
 3. Skill anatomy (per setup-guide.md Section 7.8):
    - Directory name matches `name` field (lowercase a-z/numbers/hyphens)
@@ -167,6 +168,7 @@ Verify the entire generated harness:
 11. Domain persona: domain-persona.md exists, contains all 6 sections (Purpose, Key Entities, Domain Rules, Vocabulary, Stakeholder Concerns, Success Criteria), entities table has >= 2 rows, domain rules has >= 2 items
 12. Execution mode: orchestrator has `metadata.execution-mode` field; if Agent Team mode, agents have `## Team Communication Protocol` section; if QA agent included, qa-agent.md exists with `model: opus`
 13. Data transfer: if Agent Team or Hybrid mode, orchestrator specifies data transfer protocols (message/task/file-based); `_workspace/` directory convention documented
+14. CI/CD: `.github/workflows/quality-gates.yml` exists, placeholders replaced with tech-stack-specific commands, gates 1-4 jobs present
 
 Report each item as PASS/FAIL. For each FAIL:
 1. Identify the specific gap (missing file, missing section, wrong model routing, etc.)
@@ -177,7 +179,7 @@ Report each item as PASS/FAIL. For each FAIL:
 ### Step 9: Initial Commit
 Stage only the generated harness files explicitly — never use `git add .` to avoid accidentally staging sensitive files.
 ```bash
-git add CLAUDE.md PROGRESS.md CHANGELOG.md feature-list.json .claude/ hooks/ scripts/ _workspace/.gitkeep src/**/CLAUDE.md
+git add CLAUDE.md PROGRESS.md CHANGELOG.md feature-list.json .claude/ hooks/ scripts/ _workspace/.gitkeep src/**/CLAUDE.md .github/workflows/quality-gates.yml
 git commit -m "harness: initial setup via harness-boot"
 ```
 

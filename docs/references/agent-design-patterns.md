@@ -90,6 +90,80 @@ Mix modes per phase when phase characteristics differ significantly:
 
 When using hybrid, specify the execution mode at the top of each phase in the orchestrator.
 
+### Hybrid Mode Decision Criteria
+
+Use this decision tree to determine whether Hybrid mode is appropriate, and how to assign modes per phase.
+
+#### When to Choose Hybrid
+
+```
+Does the project have phases with fundamentally different parallelism needs?
+|
+|-- Yes -> Are some phases parallel AND some strictly sequential?
+|          |
+|          |-- Yes -> Do parallel phases have 3+ independent modules?
+|          |          |-- Yes -> Hybrid (team for parallel, sub for sequential)
+|          |          +-- No  -> Sub-agent is sufficient for everything
+|          |
+|          +-- No  -> Single mode (Agent Team or Sub-agent)
+|
++-- No  -> Single mode (Agent Team or Sub-agent)
+```
+
+#### Concrete Conditions for Hybrid
+
+Choose Hybrid when **all three** conditions are met:
+
+| # | Condition | Example |
+|---|-----------|---------|
+| 1 | Project has distinct phases with different parallelism profiles | Analysis (sequential) → Implementation (parallel) → Integration testing (sequential) |
+| 2 | At least one phase benefits from Agent Team (3+ independent work units) | 4 modules can be implemented in parallel |
+| 3 | At least one phase requires strict sequencing (shared state, coordination) | Integration testing must run after all modules complete; DB migration must be sequential |
+
+If only conditions 1+2 are met → Agent Team (team handles sequencing internally).
+If only conditions 1+3 are met → Sub-agent (no parallel phase to justify team overhead).
+
+#### Per-Phase Mode Assignment
+
+| Phase Characteristic | Assign Mode | Reason |
+|---------------------|-------------|--------|
+| Independent module implementation | **Agent Team** | Parallel TDD cycles, real-time cross-module coordination |
+| Sequential dependency chain (A → B → C) | **Sub-agent** | No benefit from team; sub-agent is faster and cheaper |
+| Gathering independent analyses | **Sub-agent** | No inter-agent communication needed; just collect results |
+| Cross-module integration testing | **Agent Team** | QA agent + module owners need real-time communication |
+| Final review / merge | **Sub-agent** | Single reviewer, no coordination needed |
+| Architecture analysis / planning | **Sub-agent** | Single architect, sequential reasoning |
+
+#### Hybrid Orchestrator Template
+
+The orchestrator must declare the mode per phase explicitly:
+
+```markdown
+## Phase Execution Plan
+
+### Phase 1: Architecture Analysis — Mode: Sub-agent
+  Agent(architect): Analyze module boundaries, define interfaces
+
+### Phase 2: Parallel Implementation — Mode: Agent Team
+  TeamCreate(impl-auth, impl-task, impl-notification, reviewer, qa-agent)
+  Each member runs TDD cycle independently
+
+### Phase 3: Integration Testing — Mode: Agent Team
+  TeamCreate(qa-agent, impl-auth, impl-task) for cross-boundary verification
+
+### Phase 4: Final Review — Mode: Sub-agent
+  Agent(reviewer): Final consolidated review
+```
+
+#### Common Hybrid Anti-Patterns
+
+| Anti-Pattern | Problem | Correct Approach |
+|-------------|---------|------------------|
+| Team for everything | Wasted tokens on sequential phases | Use sub-agent for analysis, review, planning |
+| Sub-agent for everything | Missed parallelism opportunities | Use team when 3+ modules are independent |
+| Switching modes within a phase | Coordination overhead, state loss | One mode per phase; switch only at phase boundaries |
+| Team with only 2 members | Team overhead exceeds benefit | Sub-agent with background execution is sufficient |
+
 ---
 
 ## Team Architecture Patterns
