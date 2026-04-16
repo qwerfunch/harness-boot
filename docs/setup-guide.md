@@ -1,46 +1,46 @@
-# 하네스 엔지니어링 가이드
+# Harness Engineering Guide
 
-> **전제**: 상세 계획 MD는 이미 존재한다.
-> 이 가이드는 상세 계획을 Claude Code 네이티브 멀티 에이전트 실행 체계로 변환하는 설계 명세이다.
-
----
-
-## 0. 핵심 철학
-
-| 원칙 | 설명 | 강제 메커니즘 |
-|------|------|-------------|
-| **TDD-First** | 테스트 먼저 → 최소 구현 → 리팩토링. 핵심 로직에만 집중. | Gate 0 + 서브에이전트 컨텍스트 격리 |
-| **반복 수렴** | 구현→테스트→검증→피드백→수정 루프. 수렴할 때까지 반복. | 최대 5회 후 에스컬레이션 |
-| **코드-문서 동기화** | 코드 변경 시 관련 문서를 같은 커밋에서 함께 업데이트. | PreToolUse 훅으로 **런타임 차단** |
-| **Anti-Rationalization** | 에이전트가 단계를 건너뛰는 변명을 사전 차단. | 모든 스킬에 변명-반론 테이블 내장 |
-
-> LLM은 "이 작은 변경에는 테스트가 불필요하다" 같은 코너 커팅 추론에 능숙하다.
-> "~하지 마라"보다 **"네가 X라고 말할 것을 안다. 그러나 Y 때문에 틀렸다"**가 더 효과적이다.
+> **Premise**: A detailed plan MD already exists.
+> This guide is the design specification for converting a detailed plan into a Claude Code native multi-agent execution system.
 
 ---
 
-## 1. 디렉토리 구조
+## 0. Core Philosophy
+
+| Principle | Description | Enforcement Mechanism |
+|-----------|-------------|----------------------|
+| **TDD-First** | Test first → minimal implementation → refactor. Focus on core logic only. | Gate 0 + sub-agent context isolation |
+| **Iteration Convergence** | Implement → test → verify → feedback → fix loop. Repeat until convergence. | Max 5 iterations then escalation |
+| **Code-Doc Sync** | When code changes, update related docs in the same commit. | **Runtime blocking** via PreToolUse hook |
+| **Anti-Rationalization** | Pre-empt agent excuses for skipping steps. | Excuse-rebuttal tables in every skill |
+
+> LLMs are adept at corner-cutting reasoning like "this small change doesn't need tests."
+> **"I know you'll say X. But you're wrong because Y"** is more effective than "don't do X."
+
+---
+
+## 1. Directory Structure
 
 ```
-프로젝트 루트/
-├── CLAUDE.md                              # 메인 엑기스 (<1500 토큰)
-├── PROGRESS.md                            # 상태 추적
-├── feature-list.json                      # 기능 목록 + 통과 상태 (JSON)
-├── CHANGELOG.md                           # 하네스 변경 이력
+project-root/
+├── CLAUDE.md                              # Main summary (<1,500 tokens)
+├── PROGRESS.md                            # State tracking
+├── feature-list.json                      # Feature list + pass status (JSON)
+├── CHANGELOG.md                           # Harness change history
 │
 ├── .claude/
-│   ├── settings.json                      # 훅 설정 (런타임 가드레일)
-│   ├── agents/                            # 서브에이전트 9종
-│   │   ├── orchestrator.md                #   총괄 (model: opus)
-│   │   ├── implementer.md                 #   TDD 오케스트레이션 (model: sonnet)
-│   │   ├── tdd-test-writer.md             #   Red 단계 전용 (model: sonnet)
-│   │   ├── tdd-implementer.md             #   Green 단계 전용 (model: sonnet)
-│   │   ├── tdd-refactorer.md              #   Refactor 단계 전용 (model: sonnet)
-│   │   ├── reviewer.md                    #   코드 리뷰 (model: opus)
-│   │   ├── tester.md                      #   통합/E2E 테스트 (model: sonnet)
-│   │   ├── architect.md                   #   설계 결정 (model: opus)
-│   │   └── debugger.md                    #   디버깅 전문 (model: opus)
-│   ├── skills/                            # 스킬 8종 (YAML 프론트매터)
+│   ├── settings.json                      # Hook configuration (runtime guardrails)
+│   ├── agents/                            # 9 sub-agents
+│   │   ├── orchestrator.md                #   Orchestrator (model: opus)
+│   │   ├── implementer.md                 #   TDD orchestration (model: sonnet)
+│   │   ├── tdd-test-writer.md             #   Red phase only (model: sonnet)
+│   │   ├── tdd-implementer.md             #   Green phase only (model: sonnet)
+│   │   ├── tdd-refactorer.md              #   Refactor phase only (model: sonnet)
+│   │   ├── reviewer.md                    #   Code review (model: opus)
+│   │   ├── tester.md                      #   Integration/E2E testing (model: sonnet)
+│   │   ├── architect.md                   #   Design decisions (model: opus)
+│   │   └── debugger.md                    #   Debugging specialist (model: opus)
+│   ├── skills/                            # 8 skills (YAML frontmatter)
 │   │   ├── new-feature/skill.md
 │   │   ├── bug-fix/skill.md
 │   │   ├── refactor/skill.md
@@ -49,14 +49,14 @@
 │   │   ├── tdd-workflow/skill.md
 │   │   ├── context-engineering/skill.md
 │   │   └── deployment/skill.md
-│   ├── references/                        # 스킬 500줄 초과 시 분리 참조
-│   ├── protocols/                         # 프로토콜 5종
+│   ├── references/                        # Overflow content when skills exceed 500 lines
+│   ├── protocols/                         # 5 protocols
 │   │   ├── tdd-loop.md
 │   │   ├── iteration-cycle.md
 │   │   ├── code-doc-sync.md
 │   │   ├── session-management.md
 │   │   └── message-format.md
-│   ├── examples/                          # 골든 샘플 + anti-patterns
+│   ├── examples/                          # Golden samples + anti-patterns
 │   ├── context-map.md
 │   ├── environment.md
 │   ├── security.md
@@ -64,7 +64,7 @@
 │   ├── error-recovery.md
 │   └── observability.md
 │
-├── hooks/                                 # 실행 가능한 훅 스크립트 5종
+├── hooks/                                 # 5 executable hook scripts
 │   ├── session-start-bootstrap.sh
 │   ├── pre-tool-security-gate.sh
 │   ├── pre-tool-doc-sync-check.sh
@@ -77,16 +77,23 @@
 │   └── task-decompose.sh
 │
 └── src/
-    ├── CLAUDE.md                          # 서브 CLAUDE.md (디렉토리별)
+    ├── CLAUDE.md                          # Sub CLAUDE.md (per directory)
     └── ...
 ```
 
 ---
 
-## 2. 런타임 가드레일
+## 2. Runtime Guardrails
 
-`.claude/settings.json`으로 훅을 등록하고, `hooks/` 스크립트가 시스템 수준에서 규칙을 강제한다.
-exit 2 = 액션 차단 (bypassPermissions에서도 차단됨).
+Hooks are registered via `.claude/settings.json`, and `hooks/` scripts enforce rules at the system level.
+
+### Hook Exit Codes
+
+| Exit Code | Meaning | Effect |
+|-----------|---------|--------|
+| 0 | Success | Action proceeds; stdout is shown to the agent as context |
+| 1 | Hook error | Action proceeds; hook failure is logged but does not block |
+| 2 | Block | Action is blocked (even under bypassPermissions); stderr shown to agent |
 
 ### settings.json
 
@@ -109,65 +116,92 @@ exit 2 = 액션 차단 (bypassPermissions에서도 차단됨).
 }
 ```
 
-### 훅 스크립트 스펙
+### Hook Script Specifications
 
-| 훅 | 이벤트 | 동작 | 차단 조건 |
-|----|--------|------|----------|
-| `session-start-bootstrap.sh` | SessionStart | PROGRESS.md/feature-list.json 확인, git log 5건 출력 | 차단 없음 (컨텍스트 제공) |
-| `pre-tool-security-gate.sh` | PreToolUse(Bash) | rm -rf, git push --force, curl\|sh, .env 접근 차단 | exit 2 |
-| `pre-tool-doc-sync-check.sh` | PreToolUse(Bash) | git commit 시 소스 변경 있는데 .md 변경 없으면 차단 | exit 2 ([skip-doc-sync] 예외) |
-| `post-tool-format.sh` | PostToolUse(Write\|Edit) | 확장자별 포맷터 자동 실행 (prettier/black) | 차단 없음 |
-| `post-tool-test-runner.sh` | PostToolUse(Write\|Edit) | 변경된 소스의 대응 테스트 자동 실행 | 차단 없음 (결과 전달) |
+| Hook | Event | Behavior | Blocking Condition |
+|------|-------|----------|--------------------|
+| `session-start-bootstrap.sh` | SessionStart | Check PROGRESS.md/feature-list.json, verify state consistency, output last 5 git log entries | None (context provider) |
+| `pre-tool-security-gate.sh` | PreToolUse(Bash) | Block rm -rf, git push --force, curl\|sh, .env access | exit 2 |
+| `pre-tool-doc-sync-check.sh` | PreToolUse(Bash) | Block git commit when source changed but no .md changes | exit 2 ([skip-doc-sync] exception) |
+| `post-tool-format.sh` | PostToolUse(Write\|Edit) | Auto-run formatter by file extension (prettier/black) | None |
+| `post-tool-test-runner.sh` | PostToolUse(Write\|Edit) | Auto-run corresponding tests for changed source files | None (passes result) |
+
+> **Timeout customization**: The default timeouts above are baselines. For projects with large test suites, increase `post-tool-test-runner.sh` timeout (e.g., 60000-120000ms). Adjust in the generated `.claude/settings.json` after `/setup` completes.
+
+### Timeout Behavior
+
+When a hook exceeds its timeout, Claude Code kills the process:
+- **PreToolUse hook timeout**: The action proceeds (not blocked). The agent receives a timeout warning.
+- **PostToolUse hook timeout**: Results are discarded. The agent receives a timeout warning.
+- **SessionStart hook timeout**: Session starts without hook context.
+
+To mitigate: keep hook logic fast (grep-based, not AST-based).
+
+### State Consistency Check (bootstrap hook)
+
+`session-start-bootstrap.sh` must verify consistency between PROGRESS.md and feature-list.json on every session start:
+- If PROGRESS.md marks a feature as "Complete" but feature-list.json has `passes: false` (or vice versa), output a warning with the conflicting feature IDs.
+- The agent must resolve the inconsistency before proceeding with new work.
 
 ---
 
-## 3. 크로스 세션 상태 관리
+## 3. Cross-Session State Management
 
-### Initializer Mode (첫 세션)
-PROGRESS.md가 없거나 비어있으면 자동 감지:
-1. 상세 계획 MD 로드 → **기술 스택 확정** (아래 규칙)
-2. feature-list.json 생성 (모든 기능 `passes: false`)
-3. PROGRESS.md 초기 생성
-4. init-harness.sh 실행 (환경 검증, 의존성 설치)
-5. 첫 커밋 → Coding Mode 전환
+### Initializer Mode (First Session)
+Auto-detected when PROGRESS.md doesn't exist or is empty:
 
-### 기술 스택 결정 규칙
+#### Checkpoint / Resume
+If `/setup` is interrupted mid-phase, PROGRESS.md records `last_completed_phase: N`. On re-running `/setup`, the system detects this and offers to resume from Phase N+1 instead of starting over.
 
-| 우선순위 | 조건 | 액션 |
-|---------|------|------|
-| **1순위** | 상세 계획에 언어/프레임워크가 명시됨 | 그대로 채택. CLAUDE.md + environment.md에 반영. |
-| **2순위** | 상세 계획에 명시 없음 | 프로젝트 요구사항을 분석하여 최적 스택을 **추천안 2~3개로 제시**. 개발자가 선택한 후 진행. |
+1. Load detailed plan MD → **confirm tech stack** (see rules below)
+2. Generate feature-list.json (all features `passes: false`)
+3. Create initial PROGRESS.md
+4. Run init-harness.sh (environment validation, dependency installation)
+5. First commit → switch to Coding Mode
 
-2순위 시 추천 기준:
-- 프로젝트 특성 (웹/모바일/CLI/데이터 등)에 맞는 생태계
-- 팀 규모 · 유지보수 용이성 · 커뮤니티 성숙도
-- 상세 계획의 기능 요구사항과의 적합도 (실시간 → WebSocket 지원, 대용량 → 스트리밍 등)
-- 각 추천안에 장단점 + 선택 이유 명시
+### Tech Stack Decision Rules
+
+| Priority | Condition | Action |
+|----------|-----------|--------|
+| **1st** | Language/framework specified in the plan | Adopt as-is. Reflect in CLAUDE.md + environment.md. |
+| **2nd** | Not specified in the plan | Analyze project requirements → **present 2-3 recommendations**. Proceed after developer selects. |
+
+Recommendation criteria for 2nd priority:
+- Ecosystem fit for project type (web/mobile/CLI/data, etc.)
+- Team size, maintainability, community maturity
+- Fit with the plan's feature requirements (real-time → WebSocket support, high-volume → streaming, etc.)
+- Include pros/cons and rationale for each recommendation
 
 ```
-## 기술 스택 추천 (상세 계획에 명시되지 않은 경우)
+## Tech Stack Recommendations (when not specified in the plan)
 
-프로젝트 요구사항 분석 결과:
-- {핵심 요구사항 요약}
+Project requirements analysis:
+- {key requirements summary}
 
-### 추천안 A: {예: Next.js + TypeScript + Prisma}
-- 장점: {이유}
-- 단점: {이유}
-- 적합도: {왜 이 프로젝트에 맞는가}
+### Option A: {e.g., Next.js + TypeScript + Prisma}
+- Pros: {reasons}
+- Cons: {reasons}
+- Fit: {why it suits this project}
 
-### 추천안 B: {예: FastAPI + Python + SQLAlchemy}
-- 장점: {이유}
-- 단점: {이유}
-- 적합도: {왜 이 프로젝트에 맞는가}
+### Option B: {e.g., FastAPI + Python + SQLAlchemy}
+- Pros: {reasons}
+- Cons: {reasons}
+- Fit: {why it suits this project}
 
-→ 개발자 선택을 기다린 후 CLAUDE.md + environment.md에 반영하고 진행.
+→ Wait for developer selection, then reflect in CLAUDE.md + environment.md and proceed.
 ```
 
-⚠️ **개발자 확인 없이 임의 선택 금지.** 기술 스택은 프로젝트 전체에 영향을 미치는 결정이므로 반드시 개발자가 결정한다.
+> **Never auto-select without developer confirmation.** Tech stack decisions affect the entire project and must be made by the developer.
 
-### Coding Mode (이후 세션)
-SessionStart 훅이 자동으로 PROGRESS.md 요약 + 미완료 기능 수 + git log를 제공.
-에이전트는 feature-list.json에서 다음 기능 선택 → **한 번에 하나만 작업**.
+### Tech Stack Storage
+
+Once selected, the tech stack is recorded in exactly two places:
+- `CLAUDE.md`: one-line summary (e.g., "Stack: Next.js 14 + TypeScript + Prisma + PostgreSQL")
+- `.claude/environment.md`: full detail (versions, package manager, runtime requirements, dev dependencies)
+
+### Coding Mode (Subsequent Sessions)
+The SessionStart hook automatically provides a PROGRESS.md summary + incomplete feature count + git log.
+The agent selects the next feature from feature-list.json → **works on only one at a time**.
 
 ### feature-list.json
 
@@ -175,144 +209,168 @@ SessionStart 훅이 자동으로 PROGRESS.md 요약 + 미완료 기능 수 + git
 [{
   "id": "FEAT-001",
   "category": "auth",
-  "description": "사용자가 이메일/비밀번호로 회원가입할 수 있다",
-  "acceptance_test": ["회원가입 폼 입력", "계정 생성 확인", "중복 이메일 에러"],
+  "description": "User can sign up with email and password",
+  "acceptance_test": ["Signup form input", "Account creation confirmation", "Duplicate email error"],
   "tdd_focus": ["validateSignupInput", "createUser", "hashPassword"],
   "doc_sync": ["docs/api.md", "src/api/CLAUDE.md"],
   "passes": false
 }]
 ```
-`passes` 필드만 변경 가능. 항목 추가/삭제/설명 수정 금지.
+
+**Priority**: Array order determines priority. The first `passes: false` item is the next feature to work on. `/setup` must order features with foundational dependencies first (e.g., auth before profile, profile before order).
+
+**Dependency Validation**: During `/setup` Step 1, after drafting feature-list.json, validate:
+- No circular dependencies (A depends on B depends on A). If detected, report to user and ask for resolution.
+- Dependencies must reference only features within the list.
+
+Only the `passes` field may be changed. Never add/delete/reorder/modify items.
 
 ---
 
-## 4. TDD 서브에이전트 컨텍스트 격리
+## 4. TDD Sub-Agent Context Isolation
 
-하나의 컨텍스트에서 TDD를 수행하면 테스트 작성자의 분석이 구현자에게 누출된다.
-Red/Green/Refactor를 별도 서브에이전트로 분리하여 이를 방지한다.
+When TDD is performed in a single context, the test writer's analysis leaks to the implementer.
+Separating Red/Green/Refactor into distinct sub-agents prevents this.
 
-| 서브에이전트 | 단계 | 규칙 | model |
-|------------|------|------|-------|
-| `tdd-test-writer` | Red | 구현 코드를 읽지 않고 인터페이스만으로 테스트 작성 | sonnet |
-| `tdd-implementer` | Green | 테스트를 통과시키는 최소한의 코드만 작성 | sonnet |
-| `tdd-refactorer` | Refactor | 동작 변경 금지. 테스트가 여전히 통과해야 함 | sonnet |
+| Sub-Agent | Phase | Rules | Model |
+|-----------|-------|-------|-------|
+| `tdd-test-writer` | Red | Write tests from interfaces only, without reading implementation code | sonnet |
+| `tdd-implementer` | Green | Write only the minimal code needed to pass tests | sonnet |
+| `tdd-refactorer` | Refactor | No behavior changes allowed. Tests must continue to pass | sonnet |
 
-### 서브에이전트 프론트매터 예시
+### Sub-Agent Frontmatter Examples
 
 ```markdown
 ---
 name: tdd-test-writer
-description: TDD Red 단계 전용. 실패하는 테스트를 작성한다. 구현 코드를 보지 않는다.
+description: TDD Red phase only. Writes failing tests. Does not read implementation code.
 tools: Read, Glob, Grep, Write, Bash
 model: sonnet
 ---
 # TDD Test Writer (Red Phase)
 
-## 규칙
-- 기존 구현 코드를 **읽지 않는다** (컨텍스트 오염 방지)
-- 인터페이스/타입 정의만 참조하여 테스트 작성
-- 필수 케이스: happy path, boundary, error
-- 반환: 테스트 파일 경로 + 예상 실패 수
+## Rules
+- **Do not read** existing implementation code (prevents context contamination)
+- Write tests referencing only interfaces/type definitions
+- Required cases: happy path, boundary, error
+- Return: test file paths + expected failure count
 ```
 
 ```markdown
 ---
 name: tdd-implementer
-description: TDD Green 단계 전용. 실패하는 테스트를 통과시키는 최소 코드를 작성한다.
+description: TDD Green phase only. Writes minimal code to pass failing tests.
 tools: Read, Glob, Grep, Write, Edit, Bash
 model: sonnet
 effort: medium
 ---
 # TDD Implementer (Green Phase)
 
-## 규칙
-- 테스트를 먼저 읽고 기대 동작을 파악
-- 테스트를 통과시키는 **최소한의** 코드만 작성
-- 과도한 추상화 금지
-- 반환: 구현 파일 경로 + 테스트 실행 결과
+## Rules
+- Read tests first to understand expected behavior
+- Write only the **minimal** code to pass tests
+- No over-abstraction
+- Return: implementation file paths + test results
 ```
 
 ```markdown
 ---
 name: tdd-refactorer
-description: TDD Refactor 단계 전용. 테스트가 통과하는 상태에서 코드 품질을 개선한다.
+description: TDD Refactor phase only. Improves code quality while tests remain passing.
 tools: Read, Glob, Grep, Write, Edit, Bash
 model: sonnet
 effort: low
 ---
 # TDD Refactorer (Refactor Phase)
 
-## 규칙
-- 리팩토링 전 테스트 실행 → 전부 통과 확인 후 시작
-- 동작 변경 금지 (테스트는 계속 통과해야 함)
-- 반환: 변경 파일 목록 + 테스트 결과
+## Rules
+- Run tests before refactoring → confirm all pass before starting
+- No behavior changes (tests must continue to pass)
+- Return: changed file list + test results
 ```
 
-### implementer의 TDD 조율 흐름
+### File Classification for tdd-test-writer
+
+The "do not read implementation code" rule applies to:
+- **Forbidden**: `src/**/*.{ts,js,py,go,...}` (domain logic files — excluding type/interface definitions)
+- **Allowed**: type definition files (`*.d.ts`, `*.types.ts`, `*.interface.ts`), test files (`*.test.*`, `*.spec.*`), config files, documentation
+
+The implementer agent must pass the allowed file list to tdd-test-writer's prompt.
+
+### Implementer's TDD Orchestration Flow
 
 ```
 Plan → Red(tdd-test-writer) → Green(tdd-implementer) → Refactor(tdd-refactorer)
-  → Verify(전체 테스트+기능 검증) → 실패 시 Green/Red로 복귀 (최대 5회)
-  → Doc Sync → 코드+테스트+문서 원커밋
+  → Verify(full test suite + feature verification) → on failure, return to Green/Red (max 5 iterations)
+  → Doc Sync → single commit (code + tests + docs)
 ```
+
+### Context Window Limits
+
+Sub-agents have independent context windows. If a sub-agent's context fills (large test suites, many files):
+- The implementer should split the feature's tdd_focus into smaller batches
+- Each batch runs a full Red-Green-Refactor cycle independently
+- This is an escalation condition: report to user if a single tdd_focus function cannot fit in one sub-agent context
 
 ---
 
-## 5. 모델 라우팅
+## 5. Model Routing
 
-추론이 핵심인 에이전트는 Opus, 코드 생성이 핵심인 에이전트는 Sonnet.
-프론트매터 `model:` 필드로 지정한다.
+Agents where reasoning is critical use Opus; agents where code generation is critical use Sonnet.
+Specified via the frontmatter `model:` field.
 
 ```
-Opus (판단) ── orchestrator, architect, reviewer, debugger
-Sonnet (실행) ── implementer, tdd-×3, tester
+Opus (judgment) ── orchestrator, architect, reviewer, debugger
+Sonnet (execution) ── implementer, tdd-×3, tester
 ```
 
 ```markdown
 ---
 name: tdd-implementer
-description: TDD Green 단계 전용.
+description: TDD Green phase only.
 tools: Read, Glob, Grep, Write, Edit, Bash
 model: sonnet
 effort: medium
 ---
 ```
 
-환경변수로 기본값 설정 가능:
+Default can be set via environment variable:
 ```bash
-export CLAUDE_CODE_SUBAGENT_MODEL=sonnet  # 기본 Sonnet, Opus 필요한 에이전트만 프론트매터로 오버라이드
+export CLAUDE_CODE_SUBAGENT_MODEL=sonnet  # Default Sonnet, override with frontmatter for Opus agents only
 ```
 
-예상 비용 절감: 실행 에이전트(토큰 ~70%)가 Sonnet으로 내려가므로 **총 30~40% 절감**.
+Expected cost savings: execution agents (~70% of tokens) drop to Sonnet, yielding **~30-40% total savings**.
 
 ---
 
-## 6. 코드 스타일 · 린트 · 주석 규칙
+## 6. Code Style, Linting, and Comment Rules
 
-### 6.1 코드 스타일
+### 6.1 Code Style
 
-**Google Style Guide 준수** — 모든 언어에서 해당 언어의 Google Style Guide를 기본으로 따른다.
+**Follow Google Style Guide** — Use the corresponding Google Style Guide for each language as the baseline.
 
-**시큐어 코딩** — 사용자 입력 항상 검증, SQL 파라미터화, XSS 이스케이프, eval/innerHTML 금지.
+**Secure coding** — Always validate user input, parameterize SQL, escape for XSS, prohibit eval/innerHTML.
 
-**가독성 우선** — 복잡한 원라이너보다 명확한 여러 줄. 네스팅 최대 3단계. 삼항 중첩 금지.
+**Readability first** — Prefer clear multi-line code over complex one-liners. Max nesting depth: 3 levels. No nested ternaries.
 
-**리팩토링 트리거**:
+**Refactoring triggers**:
 
-| 지표 | 임계값 | 액션 |
-|------|--------|------|
-| 함수 길이 | > 40줄 | 분할 검토 |
-| 파일 길이 | > 300줄 | 모듈 분리 검토 |
-| 네스팅 깊이 | > 3단계 | early return / 함수 추출 |
-| 파라미터 수 | > 4개 | 객체 파라미터 전환 |
-| 순환 복잡도 | > 10 | 반드시 분할 |
+| Metric | Threshold | Action |
+|--------|-----------|--------|
+| Function length | > 40 lines | Consider splitting |
+| File length | > 300 lines | Consider module separation |
+| Nesting depth | > 3 levels | Early return / extract function |
+| Parameter count | > 4 | Convert to object parameter |
+| Cyclomatic complexity | > 10 | Must split |
 
-### 6.2 주석 규칙
+> **Enforcement**: Formatting rules (whitespace, semicolons, indentation) are auto-enforced by the `post-tool-format.sh` hook (prettier/black). Structural style rules (naming, nesting depth, function length) are enforced by the **reviewer agent** during Gate 2 code review.
 
-**철학**: 코드가 "무엇을(What)" 말하게 하고, 주석은 **"왜(Why)"**만 말한다.
-함수/클래스 단위 JSDoc은 필수. 인라인 주석은 함정(gotcha)에만.
+### 6.2 Comment Rules
 
-**파일 헤더** (모든 소스 파일에 필수):
+**Philosophy**: Let the code say "what," and comments say only **"why."**
+Function/class-level JSDoc is required. Inline comments are for gotchas only.
+
+**File header** (required for all source files):
 ```typescript
 /* ┌─────────────────────────────────────────────────────────────┐
  * │  Order Calculation Service                                  │
@@ -325,7 +383,7 @@ export CLAUDE_CODE_SUBAGENT_MODEL=sonnet  # 기본 Sonnet, Opus 필요한 에이
  * └─────────────────────────────────────────────────────────────┘ */
 ```
 
-**섹션 구분선**:
+**Section dividers**:
 ```typescript
 /* ── Public API ─────────────────────────────────────────────── */
 
@@ -334,7 +392,7 @@ export CLAUDE_CODE_SUBAGENT_MODEL=sonnet  # 기본 Sonnet, Opus 필요한 에이
 /* ── Types & Constants ──────────────────────────────────────── */
 ```
 
-**함수 주석** (필수):
+**Function comments** (required):
 ```typescript
 /**
  * Calculate total order amount with tax.
@@ -349,207 +407,207 @@ function calculateTotal(items: LineItem[], taxRate: number, discount = 0): numbe
 }
 ```
 
-**인라인 주석 — 좋은 예 vs 나쁜 예**:
+**Inline comments — good vs bad examples**:
 ```typescript
-// ✅ "왜" — 함정 경고
-await db.query(sql); // ⚠️ 트랜잭션 밖에서 실행됨 — 롤백 불가
+// Good: "why" — gotcha warning
+await db.query(sql); // ⚠️ Runs outside transaction — cannot rollback
 
-// ❌ "무엇" — 코드가 이미 말하고 있음
-const total = price * quantity; // 가격에 수량을 곱한다
+// Bad: "what" — the code already says this
+const total = price * quantity; // Multiply price by quantity
 ```
 
-### 6.3 로그 설계 규칙
+### 6.3 Logging Design Rules
 
-**철학**: 로그는 프로덕션의 블랙박스 레코더다.
-`console.log` / `print` 금지. 프로젝트 기술 스택에 맞는 구조화 로거를 사용한다.
-애플리케이션 유형(서버/데스크톱/모바일/CLI)에 따라 세부 전략을 조정하되, 아래 원칙은 공통이다.
+**Philosophy**: Logs are production's black box recorder.
+No `console.log` / `print`. Use a structured logger appropriate for the project's tech stack.
+Adjust detailed strategy based on application type (server/desktop/mobile/CLI), but the following principles are universal.
 
-#### 어디에 찍는가 (로그 포인트)
+#### Where to Log (Log Points)
 
-모든 함수에 찍지 않는다. **시스템 경계와 상태 전이**에만 찍는다.
+Don't log in every function. Log only at **system boundaries and state transitions**.
 
-**공통 포인트** (모든 애플리케이션):
+**Common points** (all applications):
 
-| 지점 | 레벨 | 필수 포함 정보 |
-|------|------|--------------|
-| 애플리케이션 시작/종료 | INFO | 버전, 환경, 주요 설정 |
-| 외부 경계 호출 (API, DB, 파일 I/O, OS 호출) | DEBUG | 대상, duration_ms, 결과 요약 |
-| 비즈니스 이벤트 (상태 전이) | INFO | 엔티티 ID, 상태 변화, 사용자 ID |
-| 에러/예외 | ERROR | 에러 메시지, 스택 트레이스, 관련 ID |
-| 재시도/폴백 | WARN | 시도 횟수, 원인, 다음 액션 |
-| 스케줄러/배치/워커 작업 | INFO | 작업명, 시작/완료, 처리 건수, duration |
+| Point | Level | Required Information |
+|-------|-------|---------------------|
+| Application start/stop | INFO | Version, environment, key settings |
+| External boundary calls (API, DB, file I/O, OS calls) | DEBUG | Target, duration_ms, result summary |
+| Business events (state transitions) | INFO | Entity ID, state change, user ID |
+| Errors/exceptions | ERROR | Error message, stack trace, related IDs |
+| Retries/fallbacks | WARN | Attempt count, cause, next action |
+| Scheduler/batch/worker jobs | INFO | Job name, start/end, processed count, duration |
 
-**애플리케이션 유형별 추가 포인트**:
+**Additional points by application type**:
 
-| 유형 | 추가 지점 | 비고 |
-|------|----------|------|
-| **웹/API 서버** | HTTP 요청 진입/완료 (method, path, status, duration) | requestId 필수 |
-| **데스크톱 (PC 앱)** | 사용자 액션 (메뉴 클릭, 단축키), 윈도우 생명주기, 자동 업데이트 | 민감 사용자 입력 제외 |
-| **모바일 앱** | 화면 전환, 앱 생명주기(foreground/background), 푸시 수신 | 배터리/네트워크 영향 고려, 배치 전송 |
-| **CLI 도구** | 명령 실행 시작/완료, 종료 코드, 주요 플래그 | stdout은 결과용, 로그는 stderr 또는 파일로 |
-| **백그라운드 워커** | 작업 수신, 큐 상태, 재시도, 데드레터 | 작업 ID로 추적 |
+| Type | Additional Points | Notes |
+|------|-------------------|-------|
+| **Web/API server** | HTTP request entry/completion (method, path, status, duration) | requestId required |
+| **Desktop (PC app)** | User actions (menu clicks, shortcuts), window lifecycle, auto-updates | Exclude sensitive user input |
+| **Mobile app** | Screen transitions, app lifecycle (foreground/background), push notifications | Consider battery/network impact, use batch sending |
+| **CLI tool** | Command execution start/end, exit code, key flags | stdout for results, logs to stderr or file |
+| **Background worker** | Job receipt, queue status, retries, dead letters | Track by job ID |
 
-#### 무엇을 담는가 (필수 컨텍스트)
+#### What to Include (Required Context)
 
-모든 로그에 자동 포함 (child logger / context binding):
+Auto-include in all logs (via child logger / context binding):
 - `timestamp` — ISO 8601
 - `level` — info/debug/warn/error/fatal
-- `service` 또는 `module` — 컴포넌트명
-- **추적 ID** — 애플리케이션 유형에 따라:
-  - 서버: `requestId` (분산 환경 필수)
-  - 데스크톱/모바일: `sessionId` (앱 실행 단위)
-  - CLI: `runId` (명령 실행 단위)
-  - 워커: `jobId`
+- `service` or `module` — component name
+- **Trace ID** — varies by application type:
+  - Server: `requestId` (required for distributed systems)
+  - Desktop/Mobile: `sessionId` (per app launch)
+  - CLI: `runId` (per command execution)
+  - Worker: `jobId`
 
-비즈니스 로그에 추가: 관련 엔티티 ID (`orderId`, `userId` 등), 상태 전이.
+Additional for business logs: related entity IDs (`orderId`, `userId`, etc.), state transitions.
 
-#### 절대 금지
+#### Absolute Prohibitions
 
-- `console.log` / `print` / `NSLog` (프로덕션 코드에서)
-- 비밀번호, API 키, 토큰, 인증 쿠키 등 시크릿 로깅
-- 개인정보(PII) 평문 로깅 (이메일, 전화번호, 주민번호 등 — 마스킹 필수)
-- 로그 메시지에 사용자 입력 직접 삽입 (로그 인젝션 방지)
-- 루프 내부에서 매 반복 로깅 (성능 저하)
-- 모바일: 사용자 개인 식별자를 서버로 무단 전송 (개인정보보호법 위반 가능)
+- `console.log` / `print` / `NSLog` (in production code)
+- Logging secrets: passwords, API keys, tokens, auth cookies
+- Logging PII in plaintext (email, phone number, SSN, etc. — must be masked)
+- Inserting user input directly into log messages (prevents log injection)
+- Logging every iteration inside loops (performance degradation)
+- Mobile: sending user identifiers to server without consent (potential privacy law violation)
 
-#### 레벨 기준
-
-```
-FATAL — 애플리케이션 동작 불가. 즉시 알림. (DB 연결 불가, 필수 리소스 없음)
-ERROR — 요청/작업 실패. 조치 필요. (결제 실패, 외부 API 5xx, 파일 저장 실패)
-WARN  — 자동 복구했지만 주의. (재시도 성공, 캐시 미스 폴백, 네트워크 불안정)
-INFO  — 핵심 비즈니스 흐름. 프로덕션에서 이것만 보고 정상 여부를 판단.
-DEBUG — 상세 파라미터, 쿼리, 중간 결과. 프로덕션에서는 기본 OFF.
-```
-
-**INFO 레벨 설계 테스트**: "프로덕션에서 INFO 로그만 켜고 일정 시간 운영했을 때, 시스템이 정상인지 비정상인지 판단할 수 있는가?" — YES면 적절한 밸런스.
-
-#### 로그 포맷 (환경별 전환)
+#### Level Guidelines
 
 ```
-프로덕션: JSON (구조화, 수집기 호환)
+FATAL — Application cannot function. Immediate alert. (DB connection failure, missing critical resource)
+ERROR — Request/job failed. Action required. (Payment failure, external API 5xx, file save failure)
+WARN  — Auto-recovered but needs attention. (Retry succeeded, cache miss fallback, network instability)
+INFO  — Core business flow. In production, this alone should tell whether the system is healthy.
+DEBUG — Detailed parameters, queries, intermediate results. Off by default in production.
+```
+
+**INFO level design test**: "If only INFO logs were enabled in production for a period, could you determine whether the system is healthy or not?" — If YES, the balance is right.
+
+#### Log Format (Environment-Dependent)
+
+```
+Production: JSON (structured, collector-compatible)
   {"level":"info","time":"2026-04-16T09:00:05Z","service":"order","event":"order.created","orderId":"ORD-001","runId":"run-7f4e"}
 
-로컬 개발: Pretty-print (가독성)
+Local development: Pretty-print (readable)
   [09:00:05] INFO  order  order.created  orderId=ORD-001  runId=run-7f4e
 ```
 
-같은 코드, 환경변수(`LOG_FORMAT` 또는 `NODE_ENV`)로 전환. 코드에서 분기하지 않는다.
+Same code, switched via environment variable (`LOG_FORMAT` or `NODE_ENV`). No branching in code.
 
-#### 로그 전송 · 저장 전략 (유형별)
+#### Log Transport & Storage Strategy (by Type)
 
-| 유형 | 기본 대상 | 원격 수집 | 주의사항 |
-|------|----------|----------|---------|
-| **웹/API 서버** | stdout | 즉시 스트리밍 (Loki/ELK/Datadog/CloudWatch) | 고빈도 처리, 비동기 로거 필수 |
-| **데스크톱 앱** | 로컬 파일 (OS별 표준 위치) | 크래시 리포트는 필수, 일반 로그는 옵트인 | 사용자 동의 필수, 디스크 용량 관리 |
-| **모바일 앱** | 로컬 파일 (앱 샌드박스) | 배치 전송 (Wi-Fi 시 또는 임계값 도달 시) | 배터리·데이터 비용 고려, 오프라인 큐잉 |
-| **CLI 도구** | stderr 또는 사용자 지정 파일 | 기본 없음 (로컬만) | `--verbose` 플래그로 레벨 조정 |
-| **백그라운드 워커** | stdout | 즉시 스트리밍 | 작업 ID로 요청 상관관계 유지 |
+| Type | Default Target | Remote Collection | Notes |
+|------|---------------|-------------------|-------|
+| **Web/API server** | stdout | Immediate streaming (Loki/ELK/Datadog/CloudWatch) | High throughput, async logger required |
+| **Desktop app** | Local file (OS-standard path) | Crash reports required, general logs opt-in | User consent required, manage disk usage |
+| **Mobile app** | Local file (app sandbox) | Batch send (on Wi-Fi or threshold reached) | Consider battery/data costs, offline queuing |
+| **CLI tool** | stderr or user-specified file | None by default (local only) | Adjust level via `--verbose` flag |
+| **Background worker** | stdout | Immediate streaming | Maintain request correlation via job ID |
 
-**데스크톱 로그 파일 표준 위치**:
+**Desktop log file standard paths**:
 - macOS: `~/Library/Logs/{AppName}/`
 - Windows: `%LOCALAPPDATA%\{AppName}\logs\`
 - Linux: `~/.local/state/{AppName}/logs/` (XDG)
 
-**모바일 로그 파일 위치**:
-- iOS: 앱 샌드박스 내 `Documents/Logs/` 또는 `Library/Caches/Logs/`
-- Android: 앱 내부 저장소 `context.getFilesDir()/logs/`
+**Mobile log file paths**:
+- iOS: App sandbox `Documents/Logs/` or `Library/Caches/Logs/`
+- Android: Internal storage `context.getFilesDir()/logs/`
 
-#### 로그 로테이션 · 보관
+#### Log Rotation & Retention
 
-| 유형 | 로테이션 | 보관 기간 |
-|------|---------|----------|
-| **서버 (원격 수집)** | 일별 + 100MB | ERROR 90일 / INFO 30일 / DEBUG 7일 |
-| **서버 (로컬 파일 폴백)** | 일별 | 7일 |
-| **데스크톱 앱** | 크기 기반 (10MB) | 최근 5개 파일 유지 (~50MB 상한) |
-| **모바일 앱** | 크기 기반 (2MB) | 최근 3개 파일 유지 (~6MB 상한) |
-| **CLI 도구** | 실행별 또는 일별 | 30일 또는 수동 |
-| **로컬 개발** | 없음 | 수동 |
+| Type | Rotation | Retention Period |
+|------|----------|-----------------|
+| **Server (remote collection)** | Daily + 100MB | ERROR 90 days / INFO 30 days / DEBUG 7 days |
+| **Server (local file fallback)** | Daily | 7 days |
+| **Desktop app** | Size-based (10MB) | Keep last 5 files (~50MB cap) |
+| **Mobile app** | Size-based (2MB) | Keep last 3 files (~6MB cap) |
+| **CLI tool** | Per-run or daily | 30 days or manual |
+| **Local development** | None | Manual |
 
-스케줄러/배치/워커 로그도 해당 실행 환경의 로테이션을 따른다. 별도 분리하지 않고 `service` 또는 `job` 필드로 필터.
+Scheduler/batch/worker logs follow their execution environment's rotation. No separate splitting; filter by `service` or `job` field.
 
-#### Rationalization 방어
+#### Rationalization Defense
 
-| 변명 | 반론 |
-|------|------|
-| "로그는 나중에 추가" | 로그 없는 코드는 프로덕션에서 블라인드. 기능과 함께 작성. |
-| "DEBUG에 다 찍으면 되지" | DEBUG는 프로덕션에서 꺼짐. INFO만으로 시스템 상태를 파악할 수 있어야 함. |
-| "에러만 찍으면 충분" | 에러 직전의 맥락(INFO/WARN)이 없으면 원인 분석 불가. |
-| "성능에 영향 줄까봐" | 구조화 로거(Pino, structlog 등)는 비동기 처리. 올바른 로거를 쓰면 무시 가능. |
-| "모바일은 배터리 때문에 로그 최소화" | 레벨 조정과 배치 전송으로 해결. 로그 자체를 없애면 크래시 원인 추적 불가. |
-| "데스크톱 앱은 오프라인이라 원격 수집 불가" | 로컬 로그 필수. 사용자 동의 시 크래시 리포트만 전송해도 충분. |
+| Excuse | Rebuttal |
+|--------|----------|
+| "I'll add logs later" | Code without logs is blind in production. Write logs with the feature. |
+| "Just log everything at DEBUG" | DEBUG is off in production. INFO alone must convey system state. |
+| "Logging errors only is sufficient" | Without context (INFO/WARN) before the error, root cause analysis is impossible. |
+| "I'm worried about performance impact" | Structured loggers (Pino, structlog, etc.) process asynchronously. Negligible with the right logger. |
+| "Mobile needs minimal logging due to battery" | Solve with level adjustment and batch sending. Removing logs entirely makes crash investigation impossible. |
+| "Desktop apps are offline, can't do remote collection" | Local logs are essential. Even crash reports alone (with user consent) are sufficient. |
 
 ---
 
-## 7. 스킬 — Claude Code 네이티브 포맷
+## 7. Skills — Claude Code Native Format
 
-### 7.1 Skill Anatomy (6섹션 의무)
+### 7.1 Skill Anatomy (6-Section Mandatory)
 
 ```markdown
 ---
 name: {skill-name}
 description: >
-  {트리거 설명}. Trigger: "{트리거1}", "{트리거2}".
-  Does NOT trigger for {비트리거}.
+  {trigger description}. Trigger: "{trigger1}", "{trigger2}".
+  Does NOT trigger for {non-triggers}.
 ---
-# {스킬명}
+# {Skill Name}
 
 ## Overview
-{1~2문장}
+{1-2 sentences}
 
 ## When to Use
-- {트리거 조건}
-- ❌ NOT when: {제외 조건}
+- {trigger conditions}
+- Not when: {exclusion conditions}
 
 ## TDD Focus
-- ✅ {테스트 필수 대상}
-- ❌ {테스트 면제 대상}
+- {must test}
+- {test exempt}
 
 ## Process
-### Step 1~N (구체적 — "npm test 실행" 수준)
+### Step 1-N (specific — "run npm test" level)
 
 ## Common Rationalizations
-| 변명 | 반론 |
-|------|------|
-| "이 함수는 단순해서 테스트 불필요" | 단순해도 엣지 케이스 있음. 테스트는 명세 역할. |
-| "나중에 문서 업데이트" | "나중"은 오지 않음. 다른 에이전트가 잘못된 문서 참조. |
-| {스킬별 추가 3행 이상} | |
+| Excuse | Rebuttal |
+|--------|----------|
+| "This function is simple enough to skip tests" | Even simple code has edge cases. Tests serve as specifications. |
+| "I'll update docs later" | "Later" never comes. Other agents will reference incorrect docs. |
+| {add at least 3 skill-specific rows} | |
 
 ## Red Flags
-- {이 스킬이 위반되고 있다는 징후 — 최소 2항목}
+- {signs this skill is being violated — minimum 2 items}
 
 ## Verification
-- [ ] {증거와 함께 확인 — 로그/diff/리포트}
+- [ ] {verify with evidence — logs/diff/reports}
 - [ ] feature-list.json passes: true
-- [ ] PROGRESS.md 업데이트
+- [ ] PROGRESS.md updated
 ```
 
 ### 7.2 Progressive Disclosure
 
-| 기준 | 규칙 |
-|------|------|
-| SKILL.md | 500줄 이내. 초과 시 references/ 분리 |
-| 인라인 코드 | 50줄 이내. 초과 시 scripts/ 분리 |
-| 불필요한 섹션 | 제거해도 에이전트 동작 불변이면 삭제 |
+| Criterion | Rule |
+|-----------|------|
+| SKILL.md | 500 lines max. Overflow goes to references/ |
+| Inline code | 50 lines max. Overflow goes to scripts/ |
+| Unnecessary sections | Delete if removing doesn't change agent behavior |
 
-### 7.3 스킬 목록
+### 7.3 Skill List
 
-| 스킬 | 트리거 | TDD Focus | 핵심 Rationalization 차단 |
-|------|--------|-----------|-------------------------|
-| `new-feature` | "새 기능", "구현" | 비즈니스 로직, 입력 검증 | "한 번에 다 만들겠다" → 점진적으로 |
-| `bug-fix` | "버그", "수정" | 재현 테스트 필수 | "원인 알고 있으니 바로 수정" → 재현 테스트 먼저 |
-| `refactor` | "리팩토링" | 기존 테스트 100% 보존 | "동작 안 바뀌니 테스트 불필요" → 증명이 테스트 |
-| `tdd-workflow` | "TDD", "테스트 먼저" | 전체 TDD 사이클 | "단순해서 테스트 불필요" → 명세 역할 |
-| `api-endpoint` | "API" | 요청/응답 검증 | "내부 API라 문서 불필요" → 다음 에이전트가 참조 |
-| `db-migration` | "마이그레이션" | 데이터 무결성 | "롤백 필요 없을 것" → 항상 필요 |
-| `deployment` | "배포" | 전체 테스트 통과 | "스테이징에서 됐으니" → 환경 차이 |
-| `context-engineering` | 세션 시작, 태스크 전환 | N/A | "모든 파일 읽겠다" → 필요한 것만 |
+| Skill | Trigger | TDD Focus | Key Rationalization Defense |
+|-------|---------|-----------|---------------------------|
+| `new-feature` | "new feature", "implement" | Business logic, input validation | "I'll build it all at once" → incrementally |
+| `bug-fix` | "bug", "fix" | Reproduction test required | "I know the cause, just fix it" → reproduction test first |
+| `refactor` | "refactor" | 100% existing test preservation | "Behavior unchanged, tests unnecessary" → tests are the proof |
+| `tdd-workflow` | "TDD", "test first" | Full TDD cycle | "Too simple for tests" → tests serve as specs |
+| `api-endpoint` | "API" | Request/response validation | "Internal API, docs unnecessary" → next agent needs them |
+| `db-migration` | "migration" | Data integrity | "Rollback won't be needed" → always needed |
+| `deployment` | "deploy" | Full test suite pass | "Worked in staging" → environment differences |
+| `context-engineering` | Session start, task switch | N/A | "I'll read all files" → read only what's needed |
 
 ---
 
-## 8. 에이전트 정의
+## 8. Agent Definitions
 
-### 8.1 공통 Input/Output
+### 8.1 Common Input/Output
 
 ```jsonc
 // Input
@@ -564,120 +622,169 @@ description: >
   "feature_passes": false, "blockers": [], "notes": "" }
 ```
 
-### 8.2 에이전트별 역할
+### 8.2 Agent Roles
 
-| 에이전트 | model | 핵심 역할 |
-|---------|-------|----------|
-| **orchestrator** | opus | Initializer/Coding 모드 전환, 태스크 분해, tdd_focus/doc_sync 지정, 한 번에 하나만 |
-| **implementer** | sonnet | TDD 서브에이전트 3종 순서 호출, 수렴 루프 관리 (최대 5회), 원커밋 |
-| **reviewer** | opus | 3단계 리뷰: ①TDD 준수 ②코드 품질 ③문서 동기화. docs 비면 REJECT |
-| **tester** | sonnet | 핵심 함수 선별, 피드백 시 기대값 vs 실제값 전달 |
-| **architect** | opus | ADR 작성, 영향 문서 목록, 스키마 변경 시 마이그레이션+문서 동시 |
-| **debugger** | opus | 근본 원인 분석, 최소 수정, 회귀 테스트 추가 의무 |
-| **tdd-test-writer** | sonnet | Red 전용. 구현 코드를 읽지 않음 |
-| **tdd-implementer** | sonnet | Green 전용. 최소 구현 |
-| **tdd-refactorer** | sonnet | Refactor 전용. 동작 변경 금지 |
+| Agent | Model | Core Role |
+|-------|-------|-----------|
+| **orchestrator** | opus | Initializer/Coding mode switching, task decomposition, tdd_focus/doc_sync assignment, one-at-a-time |
+| **implementer** | sonnet | Sequential TDD sub-agent calls, convergence loop management (max 5), single commit |
+| **reviewer** | opus | 3-stage review: (1) TDD compliance (2) Code quality (3) Doc sync. REJECT if docs missing |
+| **tester** | sonnet | Core function selection, feedback with expected vs actual values |
+| **architect** | opus | ADR writing, impact doc listing, schema changes require migration + docs together |
+| **debugger** | opus | Root cause analysis, minimal fix, mandatory regression test |
+| **tdd-test-writer** | sonnet | Red phase only. Does not read implementation code |
+| **tdd-implementer** | sonnet | Green phase only. Minimal implementation |
+| **tdd-refactorer** | sonnet | Refactor phase only. No behavior changes |
 
----
+### 8.3 Agent Rationalization Defense
 
-## 9. 품질 게이트
+Each generated agent MD must include a "Common Rationalizations" section (minimum 2 rows). Examples:
 
-> "괜찮아 보인다"는 통과 기준이 아니다. 모든 게이트에 **증거**가 필요하다.
-
-| Gate | 체크 | 증거 | 🛡️ Rationalization 방어 |
-|------|------|------|------------------------|
-| **0: TDD** (전제) | tdd_focus에 테스트 존재, Red→Green 순서, happy/boundary/error | 테스트 파일, 호출 순서 로그 | "단순해서 불필요" → tdd_focus 지정이면 예외 없음 |
-| **1: 구현** | 컴파일 0, 린트 0, 테스트 전부 통과, docs 변경 포함 | tsc/eslint/테스트 출력, git diff | "문서는 나중에" → 훅이 커밋 차단 |
-| **2: 리뷰** | Critical/Major 0개 | 리뷰어 피드백 (파일/라인/심각도) | "사소한 변경이라 불필요" → 모든 변경은 리뷰 대상 |
-| **3: 테스트** | tdd_focus 커버리지 ≥ 목표, 통합 통과, 기능 검증 | 커버리지 리포트, 실행 로그 | — |
-| **4: 배포** | Gate 0~3 통과, feature passes: true, 롤백 절차 | sync-docs 통과 로그 | "스테이징에서 됐으니" → 환경 차이 체크 |
-
-⚠️ Gate 0 미충족 시 Gate 1~4 진행 불가.
+| Agent | Excuse | Rebuttal |
+|-------|--------|----------|
+| **orchestrator** | "This feature is simple, skip TDD" | All features with tdd_focus use TDD, no exceptions |
+| **reviewer** | "Minor change, quick approval" | All changes get full 3-stage review regardless of size |
+| **implementer** | "Tests are passing, skip refactor phase" | Refactor is mandatory even if no changes result |
+| **debugger** | "I know the fix, skip root cause analysis" | Root cause must be documented; symptom fixes recur |
 
 ---
 
-## 10. 코드-문서 동기화
+## 9. Quality Gates
 
-### 3중 방어
+> "Looks good" is not a passing criterion. Every gate requires **evidence**.
 
-| 레이어 | 메커니즘 | 시점 |
-|--------|---------|------|
-| 프롬프트 | code-doc-sync.md 프로토콜 | 작업 중 |
-| 훅 | pre-tool-doc-sync-check.sh | git commit 직전 (차단) |
-| 리뷰 | reviewer 3단계 리뷰 | 코드 리뷰 시 |
+| Gate | Check | Evidence | Rationalization Defense |
+|------|-------|----------|------------------------|
+| **0: TDD** (prerequisite) | Tests exist for tdd_focus, Red → Green order, happy/boundary/error | Test files, call order logs | "Too simple to need tests" → if tdd_focus specified, no exceptions |
+| **1: Implementation** | 0 compile errors, 0 lint errors, all tests pass, docs changes included | tsc/eslint/test output, git diff | "Docs later" → hook blocks commit |
+| **2: Review** | 0 Critical/Major issues | Reviewer feedback (file/line/severity) | "Trivial change, skip review" → all changes are reviewed |
+| **3: Testing** | tdd_focus functions: 100% line coverage; overall project coverage: no regression from baseline | Coverage report, execution logs | — |
+| **4: Deploy** | Gates 0-3 pass, feature passes: true, rollback procedure ready | sync-docs pass log | "Worked in staging" → check environment differences |
 
-### 매핑 테이블
+> Gate 0 not met → Gates 1-4 cannot proceed.
+
+### Gate 0 Enforcement
+
+The **implementer agent** checks Gate 0 before proceeding to Gate 1:
+1. Verify test files exist for each `tdd_focus` item
+2. Verify Red phase produced failing tests (evidence: test runner output with failures)
+3. Verify Green phase made them pass (evidence: test runner output with all passes)
+
+If Gate 0 fails: return to Red phase. This counts toward the 5-iteration convergence limit.
+The **reviewer agent** independently re-checks Gate 0 compliance during Gate 2.
+
+### Rollback Procedure (Gate 4 Requirement)
+
+Before marking a feature as `passes: true`, verify:
+1. All changes are in a single commit (enables `git revert <sha>`)
+2. If a DB migration exists: a corresponding down-migration file must exist
+3. If config changes exist: previous values are documented in the commit message
+
+The rollback procedure is: `git revert <feature-commit-sha>` + run down-migrations if applicable.
+
+---
+
+## 10. Code-Doc Sync
+
+### Triple Defense
+
+| Layer | Mechanism | Timing |
+|-------|-----------|--------|
+| Prompt | code-doc-sync.md protocol | During work |
+| Hook | pre-tool-doc-sync-check.sh | Just before git commit (blocking) |
+| Review | Reviewer 3-stage review | During code review |
+
+### Mapping Table
+
+The following is an **example** mapping. `/setup` generates a project-specific mapping table based on the plan's directory structure and tech stack.
 
 ```
+# Example (customize per project during /setup)
 src/api/**          → docs/api.md, src/api/CLAUDE.md
 src/components/**   → docs/components.md, src/components/CLAUDE.md
 prisma/**           → docs/schema.md, .claude/environment.md
 package.json        → .claude/environment.md
-신규 디렉토리       → 해당 서브 CLAUDE.md 생성
+
+# These rules are always applied regardless of project
+new directory       → create corresponding sub CLAUDE.md
 .claude/**          → CHANGELOG.md
-기능 완료           → feature-list.json (passes: true)
-모든 변경           → PROGRESS.md
+feature complete    → feature-list.json (passes: true)
+all changes         → PROGRESS.md
 ```
 
 ---
 
-## 11. 학습/진화
+## 11. Learning / Evolution
 
-### 수집 메트릭
-태스크별 iteration_count, 서브에이전트별 소요 시간, 테스트 실패 빈도 TOP 10, 문서 누락 빈도, 에스컬레이션 빈도.
+### Collected Metrics
+Per-task iteration_count, per-sub-agent duration, top 10 test failure frequency, doc-missing frequency, escalation frequency.
 
-### 개선 트리거
-- 평균 iteration_count > 3 → 테스트 전략 재검토
-- 동일 파일 3회 이상 문서 누락 → 매핑 테이블 추가
-- 특정 서브에이전트 실패 빈발 → 프롬프트 개선
-- 에스컬레이션 빈발 → 스킬 절차 구체화
+### Storage
+
+Metrics are appended to `PROGRESS.md` under a `## Metrics` section:
+- Per-feature: `FEAT-XXX: iterations={N}, duration={M}s, escalated={bool}`
+- Per-session summary at session end
+- The bootstrap hook reads this section to provide trend data at session start
+
+### Improvement Triggers
+- Average iteration_count > 3 → review test strategy
+- Same file missing docs 3+ times → add to mapping table
+- Specific sub-agent failing frequently → improve prompt
+- Frequent escalations → make skill procedures more specific
 
 ---
 
-## 12. 생성 순서
+## 12. Generation Order
 
 ```
-Phase 1: 기반 ── settings.json, hooks/ 5종, environment.md, security.md, init-harness.sh
-Phase 2: 프로토콜 ── protocols/ 5종, CLAUDE.md, quality-gates.md
-Phase 3: 에이전트 ── agents/ 9종 (model: 필드 포함)
-Phase 4: 스킬 ── skills/ 8종 (6섹션 Anatomy), references/, examples/, context-map.md
-Phase 5: 서브 CLAUDE.md ── 디렉토리별
-Phase 6: 상태 ── feature-list.json, PROGRESS.md, CHANGELOG.md, error-recovery.md, observability.md
+Phase 1: Infrastructure ── settings.json, hooks/ (5 scripts), environment.md, security.md, init-harness.sh
+Phase 2: Protocols ── protocols/ (5 protocols), CLAUDE.md, quality-gates.md
+Phase 3: Agents ── agents/ (9 agents, with model: field)
+Phase 4: Skills ── skills/ (8 skills, 6-section anatomy), references/, examples/, context-map.md
+Phase 5: Sub CLAUDE.md ── per directory
+Phase 6: State ── feature-list.json, PROGRESS.md, CHANGELOG.md, error-recovery.md, observability.md
 ```
 
 ---
 
-## 13. 상세 계획 → 하네스 변환 규칙
+## 13. Plan-to-Harness Conversion Rules
 
-| 상세 계획의 내용 | 변환 대상 |
-|----------------|----------|
-| 프로젝트 목적 | CLAUDE.md 한 줄 요약 |
-| 기술 스택 (명시됨) | CLAUDE.md + environment.md → **1순위: 그대로 채택** |
-| 기술 스택 (미명시) | 요구사항 분석 → 추천안 2~3개 제시 → **개발자 선택 후 반영** |
-| 기능 명세 | **feature-list.json** (JSON, passes: false) |
-| 핵심 비즈니스 로직 | 각 feature의 tdd_focus 필드 |
-| API 설계 | skills/api-endpoint + src/api/CLAUDE.md |
-| DB 스키마 | skills/db-migration + 스키마 문서 |
-| 보안 요구사항 | security.md + hooks/security-gate.sh |
-| 테스트 전략 | quality-gates.md + tdd-loop.md |
-| 코딩 규칙 | CLAUDE.md + 서브 CLAUDE.md |
-| 문서화 대상 | code-doc-sync.md 매핑 테이블 |
-| 일정 | PROGRESS.md Backlog |
+| Plan Content | Conversion Target |
+|-------------|-------------------|
+| Project purpose | CLAUDE.md one-line summary |
+| Tech stack (specified) | CLAUDE.md + environment.md → **1st priority: adopt as-is** |
+| Tech stack (unspecified) | Analyze requirements → present 2-3 recommendations → **reflect after developer selection** |
+| Feature specs | **feature-list.json** (JSON, passes: false) |
+| Core business logic | Each feature's tdd_focus field |
+| API design | skills/api-endpoint + src/api/CLAUDE.md |
+| DB schema | skills/db-migration + schema docs |
+| Security requirements | security.md + hooks/security-gate.sh |
+| Test strategy | quality-gates.md + tdd-loop.md |
+| Coding conventions | CLAUDE.md + sub CLAUDE.md |
+| Documentation targets | code-doc-sync.md mapping table |
+| Schedule | PROGRESS.md Backlog |
 
 ---
 
-## 14. 토큰 예산
+## 14. Token Budget
 
-| 산출물 | 파일 수 | 파일당 토큰 | 소계 |
-|--------|---------|-----------|------|
-| 메인 CLAUDE.md | 1 | ~1,200 | 1,200 |
-| 서브 CLAUDE.md | 5~8 | ~500 | 3,000 |
-| 에이전트 MD | 9 | ~800 | 7,200 |
-| 스킬 (6섹션) | 8 | ~800 | 6,400 |
-| 프로토콜 | 5 | ~500 | 2,500 |
-| 훅 스크립트 | 5 | ~150 | 750 |
-| 기타 | 8 | ~400 | 3,200 |
-| **합계** | **~52** | | **~24,250** |
+| Deliverable | File Count | Tokens per File | Subtotal |
+|-------------|-----------|-----------------|----------|
+| Main CLAUDE.md | 1 | ~1,200 | 1,200 |
+| Sub CLAUDE.md | 5-8 | ~500 | 3,000 |
+| Agent MD | 9 | ~800 | 7,200 |
+| Skills (6-section) | 8 | ~800 | 6,400 |
+| Protocols | 5 | ~500 | 2,500 |
+| Hook scripts | 5 | ~150 | 750 |
+| Other | 8 | ~400 | 3,200 |
+| **Total** | **~52** | | **~24,250** |
 
-**1회 태스크 실제 소비**: CLAUDE.md + 서브 CLAUDE.md + 에이전트 + 스킬 + tdd-loop = **~3,800 토큰**
-TDD 서브에이전트는 독립 컨텍스트 윈도우 → 메인 컨텍스트 토큰 추가 소비 없음.
+**Per-task actual consumption**: CLAUDE.md + sub CLAUDE.md + agent + skill + tdd-loop = **~3,800 tokens**
+TDD sub-agents run in independent context windows → no additional token consumption in the main context.
+
+> **Note**: The ~24,250 token estimate covers generated output only. The `/setup` command also loads
+> the plan MD and this guide into context (~8,000 tokens). Total context consumption during setup
+> is approximately **35,000-45,000 tokens** depending on plan size.
+>
+> Per-task estimate of ~3,800 tokens assumes the agent loads only the relevant sub CLAUDE.md.
+> With full feature context (acceptance_criteria, tdd_focus, doc_sync targets), expect **~4,500-5,000 tokens**.

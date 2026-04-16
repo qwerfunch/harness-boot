@@ -1,4 +1,4 @@
 {
-  "_comment": "이 파일은 플러그인 자체의 훅 설정입니다. 실제 프로젝트의 훅은 /setup 실행 시 대상 프로젝트의 .claude/settings.json에 생성됩니다.",
+  "_comment": "This file is the plugin's own hook config. Actual project hooks are generated into the target project's .claude/settings.json when /setup is run.",
   "hooks": {}
 }

@@ -31,11 +31,11 @@ The plugin is structured as Claude Code native commands + hooks:
 - `docs/setup-guide.md` — Full harness engineering spec referenced by `/setup` at runtime via `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md`
 - `docs/start-prompts.md` — Kickoff and situational prompts for `/start`
 - `hooks/hooks.json` — Plugin's own hook config (empty; actual project hooks are generated into target project's `.claude/settings.json`)
-- `agents/`, `skills/`, `scripts/` — Reserved directories for future plugin-level agents/skills/scripts (currently empty)
 
 ## Key Design: `/setup` Flow
 
-Phase 1-6 sequential generation with user confirmation between each phase:
+Phase 1-6 sequential generation with user confirmation and checkpoint (`last_completed_phase` in PROGRESS.md) between each phase. Interrupted sessions can resume from the last completed phase.
+
 1. Infrastructure (settings.json, hooks/, environment.md, security.md)
 2. Protocols (tdd-loop, iteration-cycle, code-doc-sync, session-management, message-format) + CLAUDE.md
 3. Agents (9 agents with `model:` frontmatter — opus for judgment, sonnet for execution)
@@ -45,11 +45,11 @@ Phase 1-6 sequential generation with user confirmation between each phase:
 
 ## Key Design: `/start` Flow
 
-1. Load orchestrator agent + session context
+1. Load orchestrator agent + session context (bootstrap hook verifies PROGRESS.md ↔ feature-list.json consistency)
 2. Detect mode (Initializer vs Coding) from PROGRESS.md
-3. Select next `passes: false` feature from feature-list.json
-4. Run TDD cycle via sub-agent isolation: Red (tdd-test-writer) -> Green (tdd-implementer) -> Refactor (tdd-refactorer)
-5. Quality gates 0-4, code-doc sync, single commit
+3. Select next `passes: false` feature from feature-list.json (array order = priority)
+4. Run TDD cycle via Claude Code `Agent` tool: Red (tdd-test-writer) -> Green (tdd-implementer) -> Refactor (tdd-refactorer). Max 5 iterations, then escalate.
+5. Quality gates 0-4 (Gate 0 enforced by implementer + reviewer), code-doc sync, single commit
 
 ## Four Core Principles
 
@@ -61,10 +61,11 @@ Phase 1-6 sequential generation with user confirmation between each phase:
 ## Constraints for Generated Harnesses
 
 - CLAUDE.md <= 1,500 tokens; SKILL.md <= 500 lines
-- Hook scripts: shebang + stdin JSON parsing; `exit 2` = block action
-- feature-list.json: only `passes` field may be changed; no add/delete/modify items
-- Tech stack not specified in plan -> present 2-3 recommendations, wait for developer choice (never auto-select)
-- All quality gate checks must include evidence type
+- Hook scripts: shebang + stdin JSON parsing; exit 0 = proceed, exit 1 = hook error (proceeds), exit 2 = block action
+- feature-list.json: array order = priority; only `passes` field may be changed; no add/delete/reorder/modify items
+- Tech stack not specified in plan -> present 2-3 recommendations, wait for developer choice (never auto-select). Stored in CLAUDE.md (summary) + environment.md (detail).
+- Quality gates require evidence; Gate 3 coverage: tdd_focus functions 100% line coverage, overall no regression
+- Gate 4 rollback: single commit enables `git revert`; DB migrations require down-migration
 
 ## Model Routing
 
@@ -72,7 +73,3 @@ Phase 1-6 sequential generation with user confirmation between each phase:
 Opus (judgment): orchestrator, architect, reviewer, debugger
 Sonnet (execution): implementer, tdd-test-writer, tdd-implementer, tdd-refactorer, tester
 ```
-
-## Language
-
-All documentation and prompts in this repository are written in Korean (한국어).
