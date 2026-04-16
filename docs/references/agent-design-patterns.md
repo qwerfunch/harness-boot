@@ -164,6 +164,80 @@ The orchestrator must declare the mode per phase explicitly:
 | Switching modes within a phase | Coordination overhead, state loss | One mode per phase; switch only at phase boundaries |
 | Team with only 2 members | Team overhead exceeds benefit | Sub-agent with background execution is sufficient |
 
+### Phase Transition Mechanism
+
+In Hybrid mode, the orchestrator switches between Sub-agent and Agent Team at phase boundaries. All transitions use `_workspace/` as the state transfer medium.
+
+#### Sub-agent → Agent Team Transition
+
+```
+1. Sub-agent writes results to _workspace/
+   Agent(architect, prompt="... Write output to _workspace/01_architect_analysis.md")
+   → Wait for completion
+
+2. Orchestrator reads results and plans team
+   Read _workspace/01_architect_analysis.md
+   → Extract module list, dependency map, interface contracts
+
+3. Create team with module-specific members
+   TeamCreate("impl-team", members=["impl-auth", "impl-task", "impl-notification", "reviewer"])
+
+4. Assign tasks referencing previous phase output
+   TaskCreate(assignee="impl-auth", description="Implement auth module. Read _workspace/01_architect_analysis.md for interface contracts.")
+   TaskCreate(assignee="impl-task", description="Implement task module. Read _workspace/01_architect_analysis.md for interface contracts.")
+```
+
+#### Agent Team → Sub-agent Transition
+
+```
+1. Verify all team tasks are complete
+   All TaskUpdate status == "completed"
+   All members have written outputs to _workspace/02_impl_*.md
+
+2. Team auto-dissolves (one active team per session)
+   No explicit TeamDelete needed — creating a new team or calling Agent() after team completes is sufficient
+
+3. Call sub-agent with references to team outputs
+   Agent(reviewer, prompt="Review all module implementations. Read:
+     - _workspace/02_impl_auth_code.md
+     - _workspace/02_impl_task_code.md
+     - _workspace/02_impl_notification_code.md
+   Check cross-module consistency.")
+```
+
+#### Agent Team → Agent Team Transition (Team Reformation)
+
+```
+1. Current team completes all tasks → outputs in _workspace/02_*.md
+2. New TeamCreate replaces current team (auto-dissolution)
+   TeamCreate("verification-team", members=["qa-agent", "impl-auth", "impl-task"])
+3. New team members reference previous outputs:
+   TaskCreate(assignee="qa-agent", description="Verify boundaries. Read _workspace/02_impl_*.md")
+```
+
+#### State Transfer Rules
+
+| Method | When | Format | Size Limit |
+|--------|------|--------|------------|
+| `_workspace/` files | Every phase transition (mandatory) | `{NN}_{agent}_{artifact}.{ext}` (NN = phase number) | No hard limit; keep under 10KB per file |
+| Agent prompt injection | Lightweight context summary | Plain text, < 500 tokens | Summaries only, not full outputs |
+| PROGRESS.md | Session recovery (crash/interrupt) | `current_phase: N, mode: sub-agent\|agent-team` | Updated by orchestrator at each transition |
+
+#### Phase Numbering Convention
+
+Files in `_workspace/` use zero-padded phase numbers to maintain ordering:
+
+```
+_workspace/
+├── 01_architect_analysis.md        # Phase 1 (Sub-agent)
+├── 01_explore_structure.md         # Phase 1 (Sub-agent)
+├── 02_impl_auth_code.md            # Phase 2 (Agent Team)
+├── 02_impl_task_code.md            # Phase 2 (Agent Team)
+├── 02_impl_notification_code.md    # Phase 2 (Agent Team)
+├── 03_qa_boundary_report.md        # Phase 3 (Agent Team)
+└── 04_reviewer_final_review.md     # Phase 4 (Sub-agent)
+```
+
 ---
 
 ## Team Architecture Patterns
