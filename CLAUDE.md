@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-harness-boot is a Claude Code plugin that converts detailed plan MDs into executable multi-agent harnesses. It generates ~53 files (9+ agents, 8 skills, 6 hooks, 5 protocols) with TDD sub-agent isolation, code-doc sync enforcement, coverage gate enforcement, anti-rationalization skills, Opus/Sonnet model routing, and execution mode selection (Agent Team / Sub-agent / Hybrid) for module-parallel development.
+harness-boot is a Claude Code plugin that converts detailed plan MDs into executable multi-agent harnesses. It generates ~56 files (9+ agents, 8 skills, 6 hooks, 5 protocols) with TDD sub-agent isolation, code-doc sync enforcement, coverage gate enforcement, anti-rationalization skills, Opus/Sonnet model routing, and execution mode selection (Agent Team / Sub-agent / Hybrid) for module-parallel development.
 
 ## Commands
 
@@ -37,12 +37,12 @@ The plugin is structured as Claude Code native commands + hooks:
 
 Phase 1-6 sequential generation with user confirmation and checkpoint (`last_completed_phase` in PROGRESS.md) between each phase. Interrupted sessions can resume from the last completed phase.
 
-1. Infrastructure (settings.json, hooks/, environment.md, security.md, domain-persona.md, scripts/update-feature-status.sh)
+1. Infrastructure (settings.json, hooks/, environment.md, security.md, domain-persona.md, scripts/update-feature-status.sh, CI/CD workflow (optional, GitHub Actions or GitLab CI))
 2. Protocols (tdd-loop, iteration-cycle, code-doc-sync, session-management, message-format) + CLAUDE.md
 3. Agents (9+ agents with `model:` frontmatter — opus for judgment, sonnet for execution) + Execution mode selection + optional QA agent
 4. Skills (8 skills in [Anthropic Agent Skills format](https://github.com/anthropics/skills): `skill-name/SKILL.md` with 7-section anatomy, YAML frontmatter with name/description/metadata/allowed-tools, Rationalizations >= 3 rows)
 5. Sub CLAUDE.md per directory (with architecture layer context if pattern selected)
-6. State files (feature-list.json, PROGRESS.md, CHANGELOG.md)
+6. State files (feature-list.json, PROGRESS.md, CHANGELOG.md, error-recovery.md with 5 scenario playbooks)
 
 ## Key Design: `/start` Flow
 
@@ -79,7 +79,7 @@ Phase 1-6 sequential generation with user confirmation and checkpoint (`last_com
 Setup analyzes module independence to recommend the best mode:
 - **Agent Team**: 3+ independent modules → parallel development with `TeamCreate`/`SendMessage`/`TaskCreate`
 - **Sub-agent**: Sequential features → baseline default with `Agent` tool
-- **Hybrid**: Per-phase mode switching
+- **Hybrid**: Per-phase mode switching (concrete decision criteria: 3 conditions + per-phase assignment table)
 
 Team architecture patterns: Fan-out/Fan-in, Pipeline, Supervisor, Producer-Reviewer, Expert Pool, Hierarchical.
 

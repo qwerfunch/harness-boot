@@ -156,22 +156,52 @@ metadata:
 
 ```
 Phase 1: Analysis (Sub-agent mode)
-  |-- Agent(architect, run_in_background=true) -- analyze module dependencies
-  |-- Agent(Explore, run_in_background=true) -- scan codebase structure
-  |-- Collect results
+  |-- Agent(architect, prompt="Analyze module boundaries and interfaces.
+  |     Write dependency map to _workspace/01_architect_dependencies.md
+  |     Write interface contracts to _workspace/01_architect_contracts.md")
+  |-- Agent(Explore, prompt="Scan codebase structure.
+  |     Write module inventory to _workspace/01_explore_modules.md")
+  |-- Read _workspace/01_*.md → extract independent modules + dependency map
+  |-- Decide: which modules can be parallelized?
+  |
+  ← TRANSITION: Sub-agent → Agent Team
+  |   Orchestrator reads _workspace/01_* outputs, identifies independent modules
   |
 Phase 2: Implementation (Agent Team mode)
-  |-- TeamCreate based on Phase 1 analysis
-  |-- Parallel module implementation with TDD
-  |-- Team coordination via SendMessage
+  |-- TeamCreate("impl-team", members=["impl-{module}" for each independent module] + ["reviewer"])
+  |-- For each module:
+  |     TaskCreate(assignee="impl-{module}",
+  |       description="Implement {module}. Interface contracts: _workspace/01_architect_contracts.md.
+  |       Write results to _workspace/02_impl_{module}_code.md")
+  |-- Team members run TDD cycles independently (sub-agents for Red/Green/Refactor)
+  |-- SendMessage for integration point coordination between modules
+  |-- Leader monitors TaskUpdate events → all tasks completed?
+  |-- Verify: _workspace/02_impl_*.md files exist for all modules
+  |
+  ← TRANSITION: Agent Team → Sub-agent
+  |   All team tasks completed, outputs in _workspace/02_*
   |
 Phase 3: Verification (Sub-agent mode)
-  |-- Agent(reviewer) -- independent review of each module
-  |-- Agent(tester) -- integration testing
+  |-- Agent(reviewer, prompt="Review all modules independently.
+  |     Read _workspace/02_impl_*.md for each module.
+  |     Write review to _workspace/03_reviewer_report.md")
+  |-- Agent(tester, prompt="Run integration tests across module boundaries.
+  |     Read _workspace/01_architect_contracts.md for expected interfaces.
+  |     Read _workspace/02_impl_*.md for implementations.
+  |     Write results to _workspace/03_tester_integration.md")
   |
 Phase 4: Commit
-  |-- Single commit per feature
+  |-- Read _workspace/03_*.md → verify all gates pass
+  |-- Single commit per feature (code + tests + docs)
+  |-- Update feature-list.json, PROGRESS.md
 ```
+
+### Phase Transition Details
+
+Each `← TRANSITION` step follows the rules in `agent-design-patterns.md` > "Phase Transition Mechanism":
+- **All outputs persisted to `_workspace/`** before transition (mandatory)
+- **Next phase references `_workspace/` paths** in agent prompts (not in-memory state)
+- **PROGRESS.md updated** with `current_phase: N, mode: {mode}` at each transition (enables session recovery)
 
 ---
 

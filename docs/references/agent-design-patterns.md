@@ -90,6 +90,154 @@ Mix modes per phase when phase characteristics differ significantly:
 
 When using hybrid, specify the execution mode at the top of each phase in the orchestrator.
 
+### Hybrid Mode Decision Criteria
+
+Use this decision tree to determine whether Hybrid mode is appropriate, and how to assign modes per phase.
+
+#### When to Choose Hybrid
+
+```
+Does the project have phases with fundamentally different parallelism needs?
+|
+|-- Yes -> Are some phases parallel AND some strictly sequential?
+|          |
+|          |-- Yes -> Do parallel phases have 3+ independent modules?
+|          |          |-- Yes -> Hybrid (team for parallel, sub for sequential)
+|          |          +-- No  -> Sub-agent is sufficient for everything
+|          |
+|          +-- No  -> Single mode (Agent Team or Sub-agent)
+|
++-- No  -> Single mode (Agent Team or Sub-agent)
+```
+
+#### Concrete Conditions for Hybrid
+
+Choose Hybrid when **all three** conditions are met:
+
+| # | Condition | Example |
+|---|-----------|---------|
+| 1 | Project has distinct phases with different parallelism profiles | Analysis (sequential) → Implementation (parallel) → Integration testing (sequential) |
+| 2 | At least one phase benefits from Agent Team (3+ independent work units) | 4 modules can be implemented in parallel |
+| 3 | At least one phase requires strict sequencing (shared state, coordination) | Integration testing must run after all modules complete; DB migration must be sequential |
+
+If only conditions 1+2 are met → Agent Team (team handles sequencing internally).
+If only conditions 1+3 are met → Sub-agent (no parallel phase to justify team overhead).
+
+#### Per-Phase Mode Assignment
+
+| Phase Characteristic | Assign Mode | Reason |
+|---------------------|-------------|--------|
+| Independent module implementation | **Agent Team** | Parallel TDD cycles, real-time cross-module coordination |
+| Sequential dependency chain (A → B → C) | **Sub-agent** | No benefit from team; sub-agent is faster and cheaper |
+| Gathering independent analyses | **Sub-agent** | No inter-agent communication needed; just collect results |
+| Cross-module integration testing | **Agent Team** | QA agent + module owners need real-time communication |
+| Final review / merge | **Sub-agent** | Single reviewer, no coordination needed |
+| Architecture analysis / planning | **Sub-agent** | Single architect, sequential reasoning |
+
+#### Hybrid Orchestrator Template
+
+The orchestrator must declare the mode per phase explicitly:
+
+```markdown
+## Phase Execution Plan
+
+### Phase 1: Architecture Analysis — Mode: Sub-agent
+  Agent(architect): Analyze module boundaries, define interfaces
+
+### Phase 2: Parallel Implementation — Mode: Agent Team
+  TeamCreate(impl-auth, impl-task, impl-notification, reviewer, qa-agent)
+  Each member runs TDD cycle independently
+
+### Phase 3: Integration Testing — Mode: Agent Team
+  TeamCreate(qa-agent, impl-auth, impl-task) for cross-boundary verification
+
+### Phase 4: Final Review — Mode: Sub-agent
+  Agent(reviewer): Final consolidated review
+```
+
+#### Common Hybrid Anti-Patterns
+
+| Anti-Pattern | Problem | Correct Approach |
+|-------------|---------|------------------|
+| Team for everything | Wasted tokens on sequential phases | Use sub-agent for analysis, review, planning |
+| Sub-agent for everything | Missed parallelism opportunities | Use team when 3+ modules are independent |
+| Switching modes within a phase | Coordination overhead, state loss | One mode per phase; switch only at phase boundaries |
+| Team with only 2 members | Team overhead exceeds benefit | Sub-agent with background execution is sufficient |
+
+### Phase Transition Mechanism
+
+In Hybrid mode, the orchestrator switches between Sub-agent and Agent Team at phase boundaries. All transitions use `_workspace/` as the state transfer medium.
+
+#### Sub-agent → Agent Team Transition
+
+```
+1. Sub-agent writes results to _workspace/
+   Agent(architect, prompt="... Write output to _workspace/01_architect_analysis.md")
+   → Wait for completion
+
+2. Orchestrator reads results and plans team
+   Read _workspace/01_architect_analysis.md
+   → Extract module list, dependency map, interface contracts
+
+3. Create team with module-specific members
+   TeamCreate("impl-team", members=["impl-auth", "impl-task", "impl-notification", "reviewer"])
+
+4. Assign tasks referencing previous phase output
+   TaskCreate(assignee="impl-auth", description="Implement auth module. Read _workspace/01_architect_analysis.md for interface contracts.")
+   TaskCreate(assignee="impl-task", description="Implement task module. Read _workspace/01_architect_analysis.md for interface contracts.")
+```
+
+#### Agent Team → Sub-agent Transition
+
+```
+1. Verify all team tasks are complete
+   All TaskUpdate status == "completed"
+   All members have written outputs to _workspace/02_impl_*.md
+
+2. Team auto-dissolves (one active team per session)
+   No explicit TeamDelete needed — creating a new team or calling Agent() after team completes is sufficient
+
+3. Call sub-agent with references to team outputs
+   Agent(reviewer, prompt="Review all module implementations. Read:
+     - _workspace/02_impl_auth_code.md
+     - _workspace/02_impl_task_code.md
+     - _workspace/02_impl_notification_code.md
+   Check cross-module consistency.")
+```
+
+#### Agent Team → Agent Team Transition (Team Reformation)
+
+```
+1. Current team completes all tasks → outputs in _workspace/02_*.md
+2. New TeamCreate replaces current team (auto-dissolution)
+   TeamCreate("verification-team", members=["qa-agent", "impl-auth", "impl-task"])
+3. New team members reference previous outputs:
+   TaskCreate(assignee="qa-agent", description="Verify boundaries. Read _workspace/02_impl_*.md")
+```
+
+#### State Transfer Rules
+
+| Method | When | Format | Size Limit |
+|--------|------|--------|------------|
+| `_workspace/` files | Every phase transition (mandatory) | `{NN}_{agent}_{artifact}.{ext}` (NN = phase number) | No hard limit; keep under 10KB per file |
+| Agent prompt injection | Lightweight context summary | Plain text, < 500 tokens | Summaries only, not full outputs |
+| PROGRESS.md | Session recovery (crash/interrupt) | `current_phase: N, mode: sub-agent\|agent-team` | Updated by orchestrator at each transition |
+
+#### Phase Numbering Convention
+
+Files in `_workspace/` use zero-padded phase numbers to maintain ordering:
+
+```
+_workspace/
+├── 01_architect_analysis.md        # Phase 1 (Sub-agent)
+├── 01_explore_structure.md         # Phase 1 (Sub-agent)
+├── 02_impl_auth_code.md            # Phase 2 (Agent Team)
+├── 02_impl_task_code.md            # Phase 2 (Agent Team)
+├── 02_impl_notification_code.md    # Phase 2 (Agent Team)
+├── 03_qa_boundary_report.md        # Phase 3 (Agent Team)
+└── 04_reviewer_final_review.md     # Phase 4 (Sub-agent)
+```
+
 ---
 
 ## Team Architecture Patterns

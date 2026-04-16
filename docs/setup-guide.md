@@ -147,6 +147,68 @@ When a hook exceeds its timeout, Claude Code kills the process:
 
 To mitigate: keep hook logic fast (grep-based, not AST-based).
 
+### Hook Adaptation by Language / Tech Stack
+
+Hook scripts use language-specific tools for formatting, testing, and coverage. During `/setup` Phase 1, replace the tool commands in each hook based on the selected tech stack.
+
+#### Formatter Hook (post-tool-format.sh)
+
+| Language | Formatter | Install | Command |
+|----------|-----------|---------|---------|
+| **Node.js (TS/JS)** | Prettier | `npm install -D prettier` | `npx prettier --write {file}` |
+| **Python** | Black + isort | `pip install black isort` | `black {file} && isort {file}` |
+| **Go** | gofmt (built-in) | — | `gofmt -w {file}` |
+| **Rust** | rustfmt (built-in) | `rustup component add rustfmt` | `rustfmt {file}` |
+| **Java** | google-java-format | Download JAR | `java -jar google-java-format.jar -i {file}` |
+
+#### Test Runner Hook (post-tool-test-runner.sh)
+
+| Language | Runner | Command | Test File Pattern |
+|----------|--------|---------|-------------------|
+| **Node.js** | Vitest / Jest | `npx vitest run --reporter=verbose` | `*.test.ts`, `*.spec.ts` |
+| **Python** | pytest | `pytest -v` | `test_*.py`, `*_test.py` |
+| **Go** | go test | `go test ./... -v` | `*_test.go` |
+| **Rust** | cargo test | `cargo test -- --nocapture` | `#[cfg(test)]` modules |
+| **Java** | JUnit + Gradle/Maven | `./gradlew test` or `mvn test` | `*Test.java`, `*Spec.java` |
+
+#### Coverage Gate Hook (pre-tool-coverage-gate.sh)
+
+| Language | Tool | Command | Output Format |
+|----------|------|---------|---------------|
+| **Node.js** | istanbul (via Vitest) | `npx vitest run --coverage --reporter=json` | `coverage/coverage-final.json` |
+| **Python** | coverage.py + pytest | `pytest --cov --cov-report=json` | `coverage.json` |
+| **Go** | go cover | `go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out` | Text (parse with grep) |
+| **Rust** | cargo-tarpaulin | `cargo tarpaulin --out json` | `tarpaulin-report.json` |
+| **Java (Gradle)** | JaCoCo | `./gradlew jacocoTestReport` | `build/reports/jacoco/test/jacocoTestReport.xml` |
+
+#### Security Gate Hook (pre-tool-security-gate.sh)
+
+Language-independent. The same patterns apply across all stacks:
+- Block `rm -rf /`, `git push --force`, `curl|sh`
+- Block access to `.env`, credentials, secrets files
+- The only adaptation: add language-specific secret file patterns (e.g., `.pypirc` for Python, `credentials.json` for GCP)
+
+#### Package Manager Detection
+
+| Language | Lock File | Manager | Install Command |
+|----------|-----------|---------|-----------------|
+| Node.js | `package-lock.json` | npm | `npm ci` |
+| Node.js | `pnpm-lock.yaml` | pnpm | `pnpm install --frozen-lockfile` |
+| Node.js | `yarn.lock` | yarn | `yarn install --frozen-lockfile` |
+| Python | `requirements.txt` | pip | `pip install -r requirements.txt` |
+| Python | `pyproject.toml` + `poetry.lock` | Poetry | `poetry install` |
+| Go | `go.sum` | go mod | `go mod download` |
+| Rust | `Cargo.lock` | cargo | `cargo fetch` |
+| Java | `build.gradle` | Gradle | `./gradlew build` |
+| Java | `pom.xml` | Maven | `mvn install` |
+
+#### Generation Rules
+
+1. During `/setup` Step 1, detect the tech stack and determine the language
+2. In Phase 1, use the tables above to fill in the correct commands for each hook
+3. If multiple languages are used (e.g., TypeScript frontend + Go backend), generate hooks that detect the file extension and dispatch to the appropriate tool
+4. If the language is not in these tables, ask the developer: "What formatter/test runner/coverage tool do you use?"
+
 ### State Consistency Check (bootstrap hook)
 
 `session-start-bootstrap.sh` must verify consistency between PROGRESS.md and feature-list.json on every session start:
@@ -1463,10 +1525,413 @@ Proactively suggest harness evolution when:
 
 ---
 
-## 12. Generation Order
+## 12. Error Recovery Playbook
+
+### Purpose
+
+`.claude/error-recovery.md` must contain **actionable recovery procedures**, not generic advice. The 5 scenarios below cover the most common failure modes in harness-driven development. During `/setup` Phase 6, generate error-recovery.md using these templates, adapted to the project's tech stack.
+
+### Scenario Templates
+
+#### Scenario 1: Gate 2 Consecutive Failure (> 5 iterations)
+
+```markdown
+## Gate 2: Consecutive Review Failure
+
+**Trigger**: Reviewer rejects 5+ times on the same feature.
+
+**Symptoms**:
+- Same Critical/Major issues reappearing after fixes
+- Iteration count reaching max (5) without convergence
+- Implementer applying surface-level fixes that don't address root cause
+
+**Recovery**:
+1. STOP the TDD cycle. Do not attempt iteration 6+.
+2. Save current state: `git stash` or commit with `[wip]` prefix
+3. Run debugger agent for root cause analysis:
+   - `Agent(debugger)` with prompt: "Analyze Gate 2 rejection history for FEAT-XXX. Identify the recurring pattern."
+4. If architectural issue detected:
+   - Call architect agent to propose structural fix
+   - May require feature decomposition (split into smaller features)
+5. If unclear: escalate to user with:
+   - Rejection history summary (issue + attempted fix per iteration)
+   - Debugger analysis
+   - Proposed options (A: restructure, B: simplify scope, C: user decision)
+
+**Prevention**: Set iteration_count alerts at 3 (WARN) and 5 (BLOCK) in orchestrator.
+```
+
+#### Scenario 2: Sub-agent Crash / Context Overflow
+
+```markdown
+## Sub-agent Crash or Context Overflow
+
+**Trigger**: TDD sub-agent (test-writer, implementer, refactorer) fails mid-execution.
+
+**Symptoms**:
+- Agent returns error or empty response
+- Partial file writes (incomplete test/implementation)
+- "Context window exceeded" error
+
+**Recovery**:
+1. Check for partial writes:
+   - `git diff` to identify uncommitted changes
+   - If partial: `git checkout -- {partial-files}` to revert incomplete changes
+2. Split the tdd_focus batch:
+   - Current batch has too many functions → split into 2-3 smaller batches
+   - Each batch runs a full Red-Green-Refactor cycle independently
+3. Retry with reduced scope:
+   - Pass fewer acceptance_criteria to the sub-agent
+   - Reduce context by referencing only directly relevant type files
+4. If crash persists after 2 retries:
+   - Log the failure in PROGRESS.md under `## Incidents`
+   - Escalate to user: "Sub-agent {name} failing on FEAT-XXX. Possible cause: {context size / complexity}."
+
+**Prevention**: Monitor sub-agent context usage. If tdd_focus has > 5 functions, pre-split before calling sub-agents.
+```
+
+#### Scenario 3: Doc-Sync Hook Blocks 3+ Consecutive Commits
+
+```markdown
+## Doc-Sync Hook Repeated Block
+
+**Trigger**: pre-tool-doc-sync-check.sh blocks commit 3+ consecutive times.
+
+**Symptoms**:
+- Commit attempt returns exit 2 with "source changed but no .md changes"
+- Developer has updated docs but hook still blocks (mapping mismatch)
+- Generated mapping targets don't match actual project structure
+
+**Recovery**:
+1. List the exact blocking condition:
+   - Run `bash hooks/pre-tool-doc-sync-check.sh` manually with the stdin JSON to see which files trigger
+2. Check mapping table accuracy:
+   - Compare `code-doc-sync.md` mapping paths against actual directory structure
+   - Fix any stale paths (renamed/moved directories)
+3. If mapping is correct but docs genuinely don't need updating:
+   - Use escape hatch: include `[skip-doc-sync]` in commit message
+   - Document the reason in the commit body
+4. If mapping is wrong:
+   - Update `code-doc-sync.md` mapping table
+   - Update `.claude/protocols/code-doc-sync.md` if patterns changed
+   - Include mapping fix in the same commit
+5. Present to user if unclear:
+   - "These source files triggered doc-sync: {list}"
+   - "Mapped doc targets: {list}"
+   - "Options: (A) update docs, (B) fix mapping, (C) commit with [skip-doc-sync]"
+
+**Prevention**: Review mapping table during `/setup` Phase 2. Validate paths exist.
+```
+
+#### Scenario 4: Database Migration Failure
+
+```markdown
+## Database Migration Failure
+
+**Trigger**: Prisma migrate / Alembic / Flyway fails during feature implementation.
+
+**Symptoms**:
+- Migration command exits with error (schema conflict, syntax error, data violation)
+- Database in inconsistent state (partial migration applied)
+- Tests fail due to schema mismatch
+
+**Recovery**:
+1. Check migration status:
+   - {STATUS_COMMAND}  # e.g., npx prisma migrate status, alembic current
+2. If partial migration applied:
+   - Run down-migration: {DOWN_COMMAND}  # e.g., npx prisma migrate reset --force (dev only)
+   - Verify clean state: {STATUS_COMMAND}
+3. Fix the migration file:
+   - Check for syntax errors, type mismatches, constraint violations
+   - Verify against domain-persona.md entity invariants
+4. Re-run migration:
+   - {MIGRATE_COMMAND}  # e.g., npx prisma migrate dev
+5. If migration cannot be fixed:
+   - Delete the failed migration file
+   - Regenerate from schema: {GENERATE_COMMAND}
+   - Review generated SQL before applying
+6. Update docs:
+   - Ensure migration is documented in the commit message
+   - Verify down-migration exists (Gate 4 requirement)
+
+**Prevention**: Always create down-migration alongside up-migration. Test migrations against a fresh database before committing.
+```
+
+#### Scenario 5: Agent Context Window Limit Reached
+
+```markdown
+## Agent Context Window Limit
+
+**Trigger**: Main orchestrator or implementer context fills during a complex feature.
+
+**Symptoms**:
+- Agent responses become truncated or lose earlier context
+- Agent "forgets" earlier TDD phases or acceptance criteria
+- Quality of responses degrades noticeably
+
+**Recovery**:
+1. Save progress immediately:
+   - Commit current passing state with `[wip] FEAT-XXX: partial implementation`
+   - Record current TDD phase in PROGRESS.md: `phase: Green (3/5 tdd_focus complete)`
+2. Start a new session:
+   - The SessionStart bootstrap hook loads PROGRESS.md context
+   - Agent reads the `In Progress` feature and resumes from recorded phase
+3. If the feature is too large for a single session:
+   - Decompose into sub-features (FEAT-XXX-a, FEAT-XXX-b)
+   - Each sub-feature gets its own TDD cycle
+   - Note: feature-list.json items cannot be added, so track sub-features in PROGRESS.md only
+4. For Agent Team mode:
+   - Distribute different tdd_focus functions across team members
+   - Each member handles a smaller context load
+
+**Prevention**: Monitor feature complexity. If tdd_focus has > 8 functions or acceptance_test has > 10 items, decompose before starting TDD.
+```
+
+### Generation Rules
+
+1. Generate `error-recovery.md` during Phase 6 with all 5 scenarios
+2. Replace `{STATUS_COMMAND}`, `{DOWN_COMMAND}`, `{MIGRATE_COMMAND}`, `{GENERATE_COMMAND}` placeholders based on tech stack (Prisma/Alembic/Flyway/Diesel)
+3. Adapt file paths and tool names per project context
+4. Add project-specific scenarios if the plan mentions external APIs, message queues, or other failure-prone integrations
+
+---
+
+## 13. CI/CD Integration (Multi-Platform)
+
+### Purpose
+
+Quality gates (0-4) are enforced locally via hooks, but production projects need CI pipeline verification as a safety net. The CI workflow runs the same checks as hooks, ensuring gates are respected even when hooks are bypassed or misconfigured.
+
+### Platform Detection
+
+During `/setup` Step 1, detect the CI/CD platform:
 
 ```
-Phase 1: Infrastructure ── settings.json, hooks/ (5 scripts), environment.md, security.md, domain-persona.md, scripts/ (init-harness.sh, doc-impact-check.sh, task-decompose.sh)
+git remote get-url origin (if available):
+  - Contains "github.com"    → GitHub Actions
+  - Contains "gitlab" (domain or path) → GitLab CI
+  - Contains "bitbucket.org" → Bitbucket Pipelines (use GitLab-style YAML as starting point)
+  - Other / no remote        → Ask developer:
+      "Select CI/CD platform: (A) GitHub Actions (B) GitLab CI (C) None / configure later"
+      - If "None" → skip CI workflow generation entirely
+```
+
+> **"None" is a valid choice.** Not all projects need CI from day one. Local hooks still enforce quality gates. CI can be added later by re-running `/setup` or manually.
+
+### GitHub Actions Workflow Template
+
+Generated when GitHub is detected or selected. Adapted per tech stack during generation.
+
+```yaml
+# .github/workflows/quality-gates.yml
+name: Quality Gates
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+env:
+  NODE_VERSION: '{NODE_VERSION}'  # Replaced during /setup
+
+jobs:
+  gate-1-build:
+    name: "Gate 1: Build & Lint"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: '{PACKAGE_MANAGER}'  # npm, pnpm, yarn
+      - run: {INSTALL_COMMAND}        # npm ci, pnpm install --frozen-lockfile
+      - run: {LINT_COMMAND}           # npx eslint . --max-warnings 0
+      - run: {BUILD_COMMAND}          # npx tsc --noEmit
+
+  gate-3-test-coverage:
+    name: "Gate 3: Test & Coverage"
+    runs-on: ubuntu-latest
+    needs: gate-1-build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: '{PACKAGE_MANAGER}'
+      - run: {INSTALL_COMMAND}
+      - run: {COVERAGE_COMMAND}       # npx vitest run --coverage --reporter=json
+      - name: Verify tdd_focus coverage
+        run: |
+          node -e "
+            const fs = require('fs');
+            const features = JSON.parse(fs.readFileSync('feature-list.json', 'utf8'));
+            const coverage = JSON.parse(fs.readFileSync('{COVERAGE_JSON_PATH}', 'utf8'));
+            const current = features.find(f => !f.passes);
+            if (!current?.tdd_focus?.length) process.exit(0);
+            const missing = current.tdd_focus.filter(fn => {
+              // Check function coverage in summary data
+              const found = Object.values(coverage).some(file =>
+                file.fnMap && Object.values(file.fnMap).some(f => f.name === fn)
+              );
+              return !found;
+            });
+            if (missing.length) {
+              console.error('Missing coverage for tdd_focus:', missing);
+              process.exit(1);
+            }
+          "
+
+  gate-2-review-checks:
+    name: "Gate 2: Automated Review Checks"
+    runs-on: ubuntu-latest
+    needs: gate-1-build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Architecture compliance
+        run: |
+          # Verify no layer violations (adapt grep patterns per architecture)
+          {ARCH_CHECK_COMMAND}  # e.g., ! grep -r "from.*prisma" src/*/adapters/ src/*/domain/ src/*/usecases/
+      - name: Doc sync check
+        run: |
+          # Verify source changes have corresponding doc changes
+          CHANGED_SRC=$(git diff --name-only origin/main -- 'src/**/*.{ts,js,py,go}' 2>/dev/null || true)
+          if [ -n "$CHANGED_SRC" ]; then
+            CHANGED_DOCS=$(git diff --name-only origin/main -- '**/*.md' 2>/dev/null || true)
+            if [ -z "$CHANGED_DOCS" ]; then
+              echo "WARNING: Source files changed without doc updates"
+              echo "Changed source files: $CHANGED_SRC"
+            fi
+          fi
+
+  gate-4-commit-hygiene:
+    name: "Gate 4: Commit Hygiene"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify single-feature commits
+        run: |
+          # Each commit should reference at most one FEAT-XXX
+          git log origin/main..HEAD --format="%s" | while read msg; do
+            FEAT_COUNT=$(echo "$msg" | grep -oP 'FEAT-\d+' | sort -u | wc -l)
+            if [ "$FEAT_COUNT" -gt 1 ]; then
+              echo "FAIL: Commit bundles multiple features: $msg"
+              exit 1
+            fi
+          done
+```
+
+### Tech Stack Adaptation
+
+During `/setup` Phase 1, replace placeholders based on the selected tech stack:
+
+| Placeholder | Node.js (npm) | Node.js (pnpm) | Python | Go | Rust |
+|-------------|---------------|-----------------|--------|----|------|
+| `{INSTALL_COMMAND}` | `npm ci` | `pnpm install --frozen-lockfile` | `pip install -r requirements.txt` | `go mod download` | `cargo fetch` |
+| `{LINT_COMMAND}` | `npx eslint . --max-warnings 0` | `pnpm eslint . --max-warnings 0` | `ruff check .` | `golangci-lint run` | `cargo clippy -- -D warnings` |
+| `{BUILD_COMMAND}` | `npx tsc --noEmit` | `pnpm tsc --noEmit` | `python -m py_compile` (or skip) | `go build ./...` | `cargo build` |
+| `{COVERAGE_COMMAND}` | `npx vitest run --coverage` | `pnpm vitest run --coverage` | `pytest --cov --cov-report=json` | `go test -coverprofile=coverage.out ./...` | `cargo tarpaulin --out json` |
+| `{PACKAGE_MANAGER}` | `npm` | `pnpm` | N/A (use `pip`) | N/A | N/A |
+| `{ARCH_CHECK_COMMAND}` | Grep-based layer check | Same | Same | Same | Same |
+
+### GitLab CI Workflow Template
+
+Generated when GitLab is detected or selected.
+
+```yaml
+# .gitlab-ci.yml
+stages:
+  - build
+  - test
+  - review
+  - hygiene
+
+gate-1-build:
+  stage: build
+  image: {RUNTIME_IMAGE}  # e.g., node:20, python:3.12, golang:1.22
+  script:
+    - {INSTALL_COMMAND}
+    - {LINT_COMMAND}
+    - {BUILD_COMMAND}
+
+gate-3-test-coverage:
+  stage: test
+  image: {RUNTIME_IMAGE}
+  needs: ["gate-1-build"]
+  script:
+    - {INSTALL_COMMAND}
+    - {COVERAGE_COMMAND}
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: '{COVERAGE_ARTIFACT_PATH}'  # e.g., coverage/cobertura-coverage.xml
+    paths:
+      - '{COVERAGE_DIR}'  # e.g., coverage/
+    expire_in: 7 days
+
+gate-2-review-checks:
+  stage: review
+  needs: ["gate-1-build"]
+  script:
+    - |
+      # Architecture compliance
+      {ARCH_CHECK_COMMAND}
+    - |
+      # Doc sync check
+      CHANGED_SRC=$(git diff --name-only origin/main -- 'src/**' 2>/dev/null || true)
+      if [ -n "$CHANGED_SRC" ]; then
+        CHANGED_DOCS=$(git diff --name-only origin/main -- '**/*.md' 2>/dev/null || true)
+        if [ -z "$CHANGED_DOCS" ]; then
+          echo "WARNING: Source files changed without doc updates"
+        fi
+      fi
+
+gate-4-commit-hygiene:
+  stage: hygiene
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  script:
+    - |
+      git log origin/main..HEAD --format="%s" | while read msg; do
+        FEAT_COUNT=$(echo "$msg" | grep -oP 'FEAT-\d+' | sort -u | wc -l)
+        if [ "$FEAT_COUNT" -gt 1 ]; then
+          echo "FAIL: Commit bundles multiple features: $msg"
+          exit 1
+        fi
+      done
+```
+
+### Platform-Specific Placeholders
+
+| Placeholder | GitHub Actions | GitLab CI |
+|-------------|---------------|-----------|
+| Runtime setup | `actions/setup-node@v4` | `image: node:20` |
+| Trigger | `on: pull_request` | `rules: - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'` |
+| PR context | `github.event_name == 'pull_request'` | `$CI_PIPELINE_SOURCE` |
+| Artifacts | Upload action | `artifacts:` block |
+| Caching | `cache: '{PACKAGE_MANAGER}'` | `cache:` block (add per project) |
+
+### Generation Rules
+
+1. **Detect CI platform** during `/setup` Step 1 (see Platform Detection above)
+2. If **GitHub** → generate `.github/workflows/quality-gates.yml`
+3. If **GitLab** → generate `.gitlab-ci.yml` at project root
+4. If **None** → skip CI file generation; log in PROGRESS.md: "CI/CD: deferred (no platform selected)"
+5. If the project already has CI config files, merge — do not overwrite existing workflows
+6. Replace all `{PLACEHOLDER}` values based on tech stack selected in Step 1
+7. If architecture pattern is Simple Flat or not selected, omit the architecture compliance step
+8. Add the workflow file to the Phase 1 completion report and verification checklist
+
+---
+
+## 14. Generation Order
+
+```
+Phase 1: Infrastructure ── settings.json, hooks/ (6 scripts), environment.md, security.md, domain-persona.md, scripts/ (init-harness.sh, doc-impact-check.sh, task-decompose.sh, update-feature-status.sh), CI/CD workflow (optional: GitHub Actions or GitLab CI, per platform detection)
 Phase 2: Protocols ── protocols/ (5 protocols), CLAUDE.md, quality-gates.md
 Phase 3: Agents ── agents/ (9+ agents, with model: field; execution mode selection; team communication protocols if Agent Team mode; optional qa-agent)
 Phase 4: Skills ── skills/ (8 skills, Anthropic Agent Skills format, 7-section anatomy), examples/, context-map.md
@@ -1476,7 +1941,7 @@ Phase 6: State ── feature-list.json, PROGRESS.md, CHANGELOG.md, error-recove
 
 ---
 
-## 13. Plan-to-Harness Conversion Rules
+## 15. Plan-to-Harness Conversion Rules
 
 | Plan Content | Conversion Target |
 |-------------|-------------------|
@@ -1504,7 +1969,7 @@ Phase 6: State ── feature-list.json, PROGRESS.md, CHANGELOG.md, error-recove
 
 ---
 
-## 14. Token Budget
+## 16. Token Budget
 
 | Deliverable | File Count | Tokens per File | Subtotal |
 |-------------|-----------|-----------------|----------|
@@ -1513,9 +1978,9 @@ Phase 6: State ── feature-list.json, PROGRESS.md, CHANGELOG.md, error-recove
 | Agent MD | 9-10 | ~800 | 7,200-8,000 |
 | Skills (7-section, Anthropic format) | 8 | ~800 | 6,400 |
 | Protocols | 5 | ~500 | 2,500 |
-| Hook scripts | 5 | ~150 | 750 |
-| Other (incl. domain-persona.md) | 9 | ~400 | 3,600 |
-| **Total** | **~53** | | **~24,950** |
+| Hook scripts | 6 | ~150 | 900 |
+| Other (incl. domain-persona.md, error-recovery.md, CI workflow) | 11 | ~400 | 4,400 |
+| **Total** | **~56** | | **~26,300** |
 
 **Per-task actual consumption**: CLAUDE.md + sub CLAUDE.md + agent + skill + tdd-loop + domain context = **~3,900-4,000 tokens**
 TDD sub-agents run in independent context windows → no additional token consumption in the main context.
