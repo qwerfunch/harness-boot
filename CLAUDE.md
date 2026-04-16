@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-harness-boot is a Claude Code plugin that converts detailed plan MDs into executable multi-agent harnesses. It generates ~50 files (9 agents, 8 skills, 5 hooks, 5 protocols) with TDD sub-agent isolation, code-doc sync enforcement, anti-rationalization skills, and Opus/Sonnet model routing.
+harness-boot is a Claude Code plugin that converts detailed plan MDs into executable multi-agent harnesses. It generates ~50 files (9+ agents, 8 skills, 5 hooks, 5 protocols) with TDD sub-agent isolation, code-doc sync enforcement, anti-rationalization skills, Opus/Sonnet model routing, and execution mode selection (Agent Team / Sub-agent / Hybrid) for module-parallel development.
 
 ## Commands
 
@@ -30,6 +30,7 @@ The plugin is structured as Claude Code native commands + hooks:
 - `commands/` — Slash command definitions (`setup.md`, `start.md`) with YAML frontmatter
 - `docs/setup-guide.md` — Full harness engineering spec referenced by `/setup` at runtime via `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md`
 - `docs/start-prompts.md` — Development start and situational prompts for `/start`
+- `docs/references/` — Agent design patterns, orchestrator templates, QA agent guide (adapted from [revfactory/harness](https://github.com/revfactory/harness))
 - `hooks/hooks.json` — Plugin's own hook config (empty; actual project hooks are generated into target project's `.claude/settings.json`)
 
 ## Key Design: `/setup` Flow
@@ -38,7 +39,7 @@ Phase 1-6 sequential generation with user confirmation and checkpoint (`last_com
 
 1. Infrastructure (settings.json, hooks/, environment.md, security.md, domain-persona.md)
 2. Protocols (tdd-loop, iteration-cycle, code-doc-sync, session-management, message-format) + CLAUDE.md
-3. Agents (9 agents with `model:` frontmatter — opus for judgment, sonnet for execution)
+3. Agents (9+ agents with `model:` frontmatter — opus for judgment, sonnet for execution) + Execution mode selection + optional QA agent
 4. Skills (8 skills in [Anthropic Agent Skills format](https://github.com/anthropics/skills): `skill-name/SKILL.md` with 7-section anatomy, YAML frontmatter with name/description/metadata/allowed-tools, Rationalizations >= 3 rows)
 5. Sub CLAUDE.md per directory (with architecture layer context if pattern selected)
 6. State files (feature-list.json, PROGRESS.md, CHANGELOG.md)
@@ -47,9 +48,11 @@ Phase 1-6 sequential generation with user confirmation and checkpoint (`last_com
 
 1. Load orchestrator agent + session context (bootstrap hook verifies PROGRESS.md ↔ feature-list.json consistency) + domain-persona.md
 2. Detect mode (Initializer vs Coding) from PROGRESS.md
-3. Select next `passes: false` feature from feature-list.json (array order = priority)
-4. Run TDD cycle via Claude Code `Agent` tool: Red (tdd-test-writer) -> Green (tdd-implementer) -> Refactor (tdd-refactorer). Max 5 iterations, then escalate.
-5. Quality gates 0-4 (Gate 0 enforced by implementer + reviewer), code-doc sync, single commit
+3. Check execution mode (Agent Team / Sub-agent / Hybrid)
+4. Select feature(s): Sub-agent → one at a time; Agent Team → parallel independent modules
+5. Run TDD cycle: Sub-agent via `Agent` tool, Agent Team via `TeamCreate`+`SendMessage`+`TaskCreate`. Red -> Green -> Refactor in isolated sub-agent contexts regardless of mode. Max 5 iterations, then escalate.
+6. QA agent verifies cross-boundary consistency (if included, Agent Team mode)
+7. Quality gates 0-4 (Gate 0 enforced by implementer + reviewer), code-doc sync, single commit per feature
 
 ## Four Core Principles
 
@@ -68,9 +71,20 @@ Phase 1-6 sequential generation with user confirmation and checkpoint (`last_com
 - Quality gates require evidence; Gate 3 coverage: tdd_focus functions 100% line coverage, overall no regression
 - Gate 4 rollback: single commit enables `git revert`; DB migrations require down-migration
 
+## Execution Mode (New)
+
+Setup analyzes module independence to recommend the best mode:
+- **Agent Team**: 3+ independent modules → parallel development with `TeamCreate`/`SendMessage`/`TaskCreate`
+- **Sub-agent**: Sequential features → baseline default with `Agent` tool
+- **Hybrid**: Per-phase mode switching
+
+Team architecture patterns: Fan-out/Fan-in, Pipeline, Supervisor, Producer-Reviewer, Expert Pool, Hierarchical.
+
+Reference: `docs/references/agent-design-patterns.md` (adapted from [revfactory/harness](https://github.com/revfactory/harness))
+
 ## Model Routing
 
 ```
-Opus (judgment): orchestrator, architect, reviewer, debugger
+Opus (judgment): orchestrator, architect, reviewer, debugger, qa-agent
 Sonnet (execution): implementer, tdd-test-writer, tdd-implementer, tdd-refactorer, tester
 ```

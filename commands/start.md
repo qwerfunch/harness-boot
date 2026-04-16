@@ -24,26 +24,43 @@ Starts actual development work with the harness in place.
   - Continue from that phase
 - **PROGRESS.md has no In Progress tasks** → Proceed with new feature
 
-### Step 3: Select Feature
+### Step 3: Select Feature(s)
+
+**Check execution mode** from orchestrator's `metadata.execution-mode` (in `.claude/agents/orchestrator.md`).
+
+#### Sub-agent mode (default):
 Select the highest-priority feature with `passes: false` from `feature-list.json`.
+
+#### Agent Team mode:
+Analyze module independence among top-priority `passes: false` features. If features are in different modules with no dependencies, select multiple features for parallel development.
+
+**Pre-flight dependency check** before confirming parallel features:
+- No shared `tdd_focus` targets between selected features
+- No shared `doc_sync` targets that would cause merge conflicts
+- No feature dependency chains (feature B depends on feature A's output)
+If any dependency detected, fall back to sequential for the dependent pair.
 
 Consider dependencies:
 - Start with the most foundational features (auth > profile > order > payment)
 - Fix any broken features first
+- In Agent Team mode, only parallelize features with no shared dependencies
 
-Report the selected feature to the user:
+Report the selected feature(s) to the user:
 ```
-Next feature to work on:
+Next feature(s) to work on:
   ID: FEAT-XXX
   Category: {category}
   Description: {description}
   TDD Focus: {tdd_focus}
   Doc Sync: {doc_sync}
+  Execution: {Sub-agent | Agent Team (parallel with FEAT-YYY)}
 
 Proceed? (y/n)
 ```
 
 ### Step 4: Execute TDD Cycle
+
+#### Sub-agent mode (default):
 Call sub-agents using the Claude Code `Agent` tool with isolated contexts:
 - `Agent(implementer)` — orchestrates the TDD cycle
 - Within implementer: `Agent(tdd-test-writer)` for Red, `Agent(tdd-implementer)` for Green, `Agent(tdd-refactorer)` for Refactor
@@ -74,10 +91,41 @@ Verify: full test suite + feature verification
   - After 5 iterations, escalate
 ```
 
+#### Agent Team mode:
+Create a team for parallel module development. Each team member runs its own TDD sub-agent cycle.
+
+```
+TeamCreate(members: [implementer-a, implementer-b, reviewer, qa-agent?])
+  ↓
+TaskCreate(FEAT-XXX -> implementer-a, FEAT-YYY -> implementer-b)
+  ↓
+Each implementer independently:
+  Red(tdd-test-writer) → Green(tdd-implementer) → Refactor(tdd-refactorer)
+  ↓
+Members coordinate via SendMessage (integration points, shared contracts)
+  ↓
+QA agent verifies cross-boundary consistency after each module TDD completes (if included)
+  ↓
+Reviewer reviews each module (QA report included in Gate 2 review material)
+  ↓
+Leader merges results, verifies cross-module consistency
+```
+
+**TDD isolation preserved in team mode**: Team communication is for module-level coordination only. `tdd-test-writer` still MUST NOT read implementation code, even via `SendMessage`. The implementer agent remains the information firewall.
+
+**TDD sub-agents are NOT team members**: `tdd-test-writer`, `tdd-implementer`, `tdd-refactorer` are called via `Agent` tool within each implementer's context. They never receive `SendMessage` and are not part of `TeamCreate`. Team members are: implementers (one per module), reviewer, and optionally qa-agent. TDD sub-agents are nested inside each implementer's execution.
+
+**Intermediate outputs**: Written to `_workspace/` with naming convention `{phase}_{agent}_{artifact}.{ext}`.
+
+#### Hybrid mode:
+Follow the orchestrator's per-phase mode specification. Switch between sub-agent and team calls as defined.
+
 ### Step 5: Confirm Quality Gate Passage
 - Gate 0: TDD compliance (evidence: test files, Red → Green call order)
 - Gate 1: Implementation complete (evidence: compile/lint/test output)
 - Gate 2: Code review (call reviewer agent → 0 Critical/Major issues)
+  - If QA agent is included: QA boundary verification report feeds into Gate 2
+  - Boundary mismatches are Critical severity (block commit)
 - Gate 3: Tests pass (coverage report)
 - Gate 4: Deploy approval (feature passes: true ready)
 
@@ -107,7 +155,7 @@ Continue with the next feature? (y/n)
 - n → End session with report
 
 ## Principles
-- **Work on only one feature at a time** (key Anthropic lesson)
+- **One feature per agent at a time** (key Anthropic lesson). Sub-agent mode: one feature total. Agent Team mode: one feature per team member, multiple in parallel across the team.
 - Do not auto-proceed without phase-level user confirmation
 - On convergence failure (> 5 iterations), suggest switching to debugger
 - Only modify the `passes` field in feature-list.json; never add/delete/modify items

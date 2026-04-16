@@ -42,3 +42,27 @@ Check last 10 commits in git log → identify commits with code changes but no d
 ```
 Based on feature-list.json: total/complete/incomplete counts, completion rate by category, top 3 next priority recommendations.
 ```
+
+**Start with Agent Team mode (parallel modules)**:
+```
+Harness ready. Start development with Agent Team mode.
+
+1. Load orchestrator.md + domain-persona.md
+2. Check PROGRESS.md → determine mode
+3. Analyze module independence among top-priority passes: false features
+4. Select features that can be parallelized (different modules, no shared dependencies)
+5. TeamCreate with module-specific implementers + reviewer + QA agent (if included)
+6. TaskCreate with feature assignments per implementer
+7. Each implementer runs TDD sub-agent cycle independently
+8. Members coordinate integration points via SendMessage
+9. QA agent verifies cross-boundary consistency after each module completes
+10. Reviewer reviews each module, leader verifies cross-module consistency
+11. Single commit per feature (code + tests + docs)
+
+Begin.
+```
+
+**QA boundary verification**:
+```
+Run QA agent boundary check on completed module {module_name}. Read both sides of each integration boundary simultaneously. Compare: shape → type → semantics → error paths. Report mismatches with file:line references for both producer and consumer sides.
+```

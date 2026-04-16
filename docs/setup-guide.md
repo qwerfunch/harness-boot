@@ -30,7 +30,7 @@ project-root/
 │
 ├── .claude/
 │   ├── settings.json                      # Hook configuration (runtime guardrails)
-│   ├── agents/                            # 9 sub-agents
+│   ├── agents/                            # 9+ agents (+ optional qa-agent, module-specific agents)
 │   │   ├── orchestrator.md                #   Orchestrator (model: opus)
 │   │   ├── implementer.md                 #   TDD orchestration (model: sonnet)
 │   │   ├── tdd-test-writer.md             #   Red phase only (model: sonnet)
@@ -39,7 +39,8 @@ project-root/
 │   │   ├── reviewer.md                    #   Code review (model: opus)
 │   │   ├── tester.md                      #   Integration/E2E testing (model: sonnet)
 │   │   ├── architect.md                   #   Design decisions (model: opus)
-│   │   └── debugger.md                    #   Debugging specialist (model: opus)
+│   │   ├── debugger.md                    #   Debugging specialist (model: opus)
+│   │   └── qa-agent.md                    #   Integration coherence (model: opus, optional)
 │   ├── skills/                            # 8 skills (Anthropic Agent Skills format)
 │   │   ├── new-feature/                   #   Each skill directory contains:
 │   │   │   ├── SKILL.md                   #     YAML frontmatter + 7-section body
@@ -77,6 +78,9 @@ project-root/
 │   ├── init-harness.sh
 │   ├── doc-impact-check.sh
 │   └── task-decompose.sh
+│
+├── _workspace/                            # Intermediate outputs (Agent Team file-based transfer)
+│   └── {phase}_{agent}_{artifact}.{ext}   #   Convention: 01_architect_dependencies.md
 │
 └── src/
     ├── CLAUDE.md                          # Sub CLAUDE.md (per directory)
@@ -1068,6 +1072,113 @@ During `/setup` Phase 4, validate each generated skill against:
 
 ## 8. Agent Definitions
 
+### 8.0 Execution Mode & Team Architecture
+
+> Patterns adapted from [revfactory/harness](https://github.com/revfactory/harness) (Apache-2.0). Full reference: `docs/references/agent-design-patterns.md`.
+
+#### Execution Mode Selection
+
+During `/setup` Step 1, analyze the plan to determine the best execution mode for the generated harness:
+
+| Mode | When to Use | Tools |
+|------|-------------|-------|
+| **Agent Team** (recommended for multi-module) | 3+ independent modules, parallel development, real-time coordination needed | `TeamCreate`, `SendMessage`, `TaskCreate` |
+| **Sub-agent** (baseline default) | Sequential feature development, results-only communication sufficient | `Agent` tool |
+| **Hybrid** | Phase-by-phase mode switching (e.g., parallel collection -> sequential integration) | Both tool sets per phase |
+
+**Decision criteria from the plan:**
+
+| Factor | Agent Team | Sub-agent |
+|--------|-----------|-----------|
+| Module count | 3+ independent modules | < 3 or tightly coupled |
+| Feature parallelism | Features can be worked on simultaneously | Features must be sequential |
+| Integration complexity | Multiple cross-module boundaries | Few or no integration points |
+| Domain categories | 3+ distinct categories | 1-2 categories |
+
+**Decision rules:**
+1. If plan has 3+ independent modules with distinct domain categories -> **recommend Agent Team**
+2. If features are tightly sequential with shared state -> **recommend Sub-agent** (current default)
+3. If mix of parallel and sequential phases -> **recommend Hybrid**
+4. Always present the recommendation to the developer for confirmation (never auto-select)
+
+#### Team Architecture Patterns
+
+When Agent Team or Hybrid mode is selected, choose an architecture pattern:
+
+| Pattern | Use When | Example |
+|---------|----------|---------|
+| **Fan-out/Fan-in** | Independent modules, parallel work | Frontend + Backend + Infra teams |
+| **Pipeline** | Sequential dependencies | Analysis -> Design -> Implement -> Test |
+| **Supervisor** | Dynamic work assignment needed | Feature supervisor distributes to workers |
+| **Producer-Reviewer** | Quality assurance critical | Implementer -> Reviewer feedback loops |
+
+> Full pattern descriptions with composite patterns: `docs/references/agent-design-patterns.md`
+
+#### Data Transfer Protocols
+
+Specify in the orchestrator how agents share work products:
+
+| Strategy | Method | Mode | Best When |
+|----------|--------|------|-----------|
+| **Message** | `SendMessage` | Team | Real-time coordination, lightweight state |
+| **Task** | `TaskCreate`/`TaskUpdate` | Team | Progress tracking, dependency management |
+| **File** | Write/Read to `_workspace/` | Both | Large data, structured outputs, audit trail |
+| **Return** | `Agent` tool return | Sub | Results collected by main agent |
+
+File-based transfer rules:
+- `_workspace/` folder for intermediate outputs
+- Convention: `{phase}_{agent}_{artifact}.{ext}`
+- Final outputs only to user-specified paths; preserve `_workspace/` for audit trail
+
+#### QA Agent Integration
+
+> Full guide: `docs/references/qa-agent-guide.md`
+
+When the plan has 3+ modules with integration points, generate a QA agent:
+- **Model**: opus (boundary verification requires judgment)
+- **Type**: `general-purpose` (needs to run verification scripts, not read-only)
+- **Core method**: "Read Both Sides Simultaneously" — cross-compare producer output with consumer input at every boundary
+- **Timing**: Incremental after each module completion, not just at the end
+- **Team mode**: QA agent as permanent team member receiving completion notifications
+
+Add to the generated harness:
+- `.claude/agents/qa-agent.md`
+- QA step in orchestrator workflow (after module TDD completes, before Gate 2 review)
+- Boundary mismatches classified as Critical severity in Gate 2
+
+#### Team Communication Protocol for Agents
+
+When Agent Team mode is selected, each agent definition (Phase 3) adds a `## Team Communication Protocol` section specifying:
+- **Receive from**: Who sends what messages
+- **Send to**: Who receives what messages
+- **Task requests**: What task types from shared task list
+
+> Orchestrator templates per mode: `docs/references/orchestrator-template.md`
+
+#### Execution Mode Storage
+
+Once selected, the execution mode is recorded:
+- `CLAUDE.md`: appended to stack summary (e.g., "Execution: Agent Team (Fan-out/Fan-in)")
+- `.claude/environment.md`: dedicated section with mode, team architecture pattern, data transfer protocol, team size
+- Orchestrator agent: `metadata.execution-mode` field in `.claude/agents/orchestrator.md` YAML frontmatter
+
+#### Orchestrator Agent Frontmatter
+
+```yaml
+---
+name: orchestrator
+description: >
+  Orchestrates the development workflow. Mode switching, task decomposition,
+  TDD enforcement, quality gate coordination.
+tools: Read, Glob, Grep, Write, Edit, Bash, Agent
+model: opus
+metadata:
+  execution-mode: sub-agent  # or agent-team, hybrid
+---
+```
+
+When Agent Team mode: add `TeamCreate, SendMessage, TaskCreate, TaskUpdate` to tools; set `execution-mode: agent-team`.
+
 ### 8.1 Common Input/Output
 
 ```jsonc
@@ -1178,6 +1289,8 @@ all changes         → PROGRESS.md
 
 ## 11. Learning / Evolution
 
+> Harness evolution patterns adapted from [revfactory/harness](https://github.com/revfactory/harness) (Apache-2.0).
+
 ### Collected Metrics
 Per-task iteration_count, per-sub-agent duration, top 10 test failure frequency, doc-missing frequency, escalation frequency.
 
@@ -1194,6 +1307,45 @@ Metrics are appended to `PROGRESS.md` under a `## Metrics` section:
 - Specific sub-agent failing frequently → improve prompt
 - Frequent escalations → make skill procedures more specific
 
+### Harness Evolution
+
+The harness is not a static artifact — it evolves with user feedback.
+
+#### Post-Execution Feedback
+
+After each harness execution, offer the user a feedback opportunity (do not force):
+- "Any improvements needed in the results?"
+- "Want to change the agent team structure or workflow?"
+
+#### Feedback Routing
+
+| Feedback Type | Modify | Example |
+|--------------|--------|---------|
+| Output quality | Agent's skill | "Analysis too shallow" → add depth criteria to skill |
+| Agent role | Agent definition `.md` | "Need security review too" → add agent |
+| Workflow order | Orchestrator agent | "Verification should come first" → reorder phases |
+| Team composition | Orchestrator + agents | "Merge these two agents" → consolidate |
+| Trigger miss | Skill description | "Doesn't activate on this phrase" → expand description |
+
+#### Change History
+
+All harness modifications are tracked in CHANGELOG.md:
+
+```markdown
+| Date | Change | Target | Reason |
+|------|--------|--------|--------|
+| YYYY-MM-DD | Initial setup | All | - |
+| YYYY-MM-DD | Added QA agent | agents/qa-agent.md | Boundary bugs in module integration |
+| YYYY-MM-DD | Switched to Agent Team mode | orchestrator | Sequential mode too slow for parallel modules |
+```
+
+#### Evolution Triggers
+
+Proactively suggest harness evolution when:
+- Same feedback type repeats 2+ times
+- An agent fails repeatedly with the same pattern
+- User manually bypasses the orchestrator to work directly
+
 ---
 
 ## 12. Generation Order
@@ -1201,7 +1353,7 @@ Metrics are appended to `PROGRESS.md` under a `## Metrics` section:
 ```
 Phase 1: Infrastructure ── settings.json, hooks/ (5 scripts), environment.md, security.md, domain-persona.md, scripts/ (init-harness.sh, doc-impact-check.sh, task-decompose.sh)
 Phase 2: Protocols ── protocols/ (5 protocols), CLAUDE.md, quality-gates.md
-Phase 3: Agents ── agents/ (9 agents, with model: field)
+Phase 3: Agents ── agents/ (9+ agents, with model: field; execution mode selection; team communication protocols if Agent Team mode; optional qa-agent)
 Phase 4: Skills ── skills/ (8 skills, Anthropic Agent Skills format, 7-section anatomy), examples/, context-map.md
 Phase 5: Sub CLAUDE.md ── per directory
 Phase 6: State ── feature-list.json, PROGRESS.md, CHANGELOG.md, error-recovery.md, observability.md
@@ -1232,6 +1384,7 @@ Phase 6: State ── feature-list.json, PROGRESS.md, CHANGELOG.md, error-recove
 | Entity definitions / data model | domain-persona.md Key Entities |
 | Non-functional requirements | domain-persona.md Stakeholder Concerns |
 | Success metrics / KPIs | domain-persona.md Success Criteria |
+| Module structure (independence, parallelism) | Orchestrator `metadata.execution-mode` + team architecture pattern in environment.md |
 | Schedule | PROGRESS.md Backlog |
 
 ---
@@ -1242,7 +1395,7 @@ Phase 6: State ── feature-list.json, PROGRESS.md, CHANGELOG.md, error-recove
 |-------------|-----------|-----------------|----------|
 | Main CLAUDE.md | 1 | ~1,200 | 1,200 |
 | Sub CLAUDE.md | 5-8 | ~550 | 3,300 |
-| Agent MD | 9 | ~800 | 7,200 |
+| Agent MD | 9-10 | ~800 | 7,200-8,000 |
 | Skills (7-section, Anthropic format) | 8 | ~800 | 6,400 |
 | Protocols | 5 | ~500 | 2,500 |
 | Hook scripts | 5 | ~150 | 750 |

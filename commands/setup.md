@@ -41,6 +41,14 @@ Read the plan and report the following to the user:
     - If scale warrants (>= 2 of: 8+ features, 3+ domain categories, cross-cutting concerns present) → present 2-3 recommendations with plain-language explanations, pros/cons, and tech stack fit → wait for user selection
     - If scale does not warrant → "Simple Layered recommended" → ask user to confirm or override
 11. **Domain persona draft** (project purpose, key entities with invariants, domain rules, vocabulary, stakeholder concerns, success criteria — extracted from plan MD per setup-guide.md Section 3)
+12. **Execution mode recommendation** (per setup-guide.md Section 8.0)
+    - Analyze module independence, feature parallelism, integration complexity, domain categories
+    - If 3+ independent modules with distinct domains → recommend **Agent Team** (with architecture pattern: Fan-out/Fan-in, Supervisor, etc.)
+    - If features are tightly sequential → recommend **Sub-agent** (current default)
+    - If mix → recommend **Hybrid** with per-phase mode specification
+    - Reference: `${CLAUDE_PLUGIN_ROOT}/docs/references/agent-design-patterns.md`
+    - Wait for developer confirmation (never auto-select)
+13. **QA agent inclusion** — If 3+ modules with integration points, recommend adding a QA agent for cross-boundary verification (per `${CLAUDE_PLUGIN_ROOT}/docs/references/qa-agent-guide.md`)
 
 **Proceed to Step 2 only after user confirmation.**
 
@@ -53,6 +61,7 @@ Read the plan and report the following to the user:
 - `scripts/init-harness.sh`
 - `scripts/doc-impact-check.sh`
 - `scripts/task-decompose.sh`
+- `_workspace/.gitkeep` (intermediate outputs directory for Agent Team file-based transfer)
 
 **Phase 1 completion report → record `last_completed_phase: 1` in PROGRESS.md → user confirmation → Phase 2**
 
@@ -63,8 +72,10 @@ Read the plan and report the following to the user:
 
 **Phase 2 completion report → record `last_completed_phase: 2` in PROGRESS.md → user confirmation → Phase 3**
 
-### Step 4: Phase 3 — 9 Agents
-Each agent YAML frontmatter includes a `model:` field:
+### Step 4: Phase 3 — Agents + Execution Mode
+Each agent YAML frontmatter includes a `model:` field.
+
+**Default 9 agents:**
 - `orchestrator.md` (model: opus)
 - `architect.md` (model: opus)
 - `reviewer.md` (model: opus)
@@ -74,6 +85,17 @@ Each agent YAML frontmatter includes a `model:` field:
 - `tdd-implementer.md` (model: sonnet)
 - `tdd-refactorer.md` (model: sonnet, effort: low)
 - `tester.md` (model: sonnet)
+
+**Conditional agents (from Step 1):**
+- `qa-agent.md` (model: opus) — if QA agent inclusion was confirmed
+- Module-specific implementer agents — if Agent Team mode with module specialization
+
+**Execution mode integration:**
+- If **Agent Team** mode: Add `## Team Communication Protocol` section to each agent definition (receive/send/task requests). Generate orchestrator agent definition with `TeamCreate`/`SendMessage`/`TaskCreate` workflow per `${CLAUDE_PLUGIN_ROOT}/docs/references/orchestrator-template.md` Template A.
+- If **Sub-agent** mode: Current default. Orchestrator uses `Agent` tool calls only. Template B.
+- If **Hybrid** mode: Orchestrator specifies execution mode per phase. Template C.
+
+Record execution mode in orchestrator agent's `metadata.execution-mode` frontmatter field (in `.claude/agents/orchestrator.md`).
 
 **Phase 3 completion report → record `last_completed_phase: 3` in PROGRESS.md → user confirmation → Phase 4**
 
@@ -121,7 +143,7 @@ Generate sub CLAUDE.md for each target directory identified in Step 1.
 
 ### Step 8: Verification
 Verify the entire generated harness:
-1. File completeness: settings.json + 5 hooks + 9 agents + 8 skills + 5 protocols + feature-list.json
+1. File completeness: settings.json + 5 hooks + 9+ agents + 8 skills + 5 protocols + feature-list.json
 2. Runtime guardrails: hook stdin JSON parsing, security-gate exit 2, doc-sync-check commit blocking
 3. Skill anatomy (per setup-guide.md Section 7.8):
    - Directory name matches `name` field (lowercase a-z/numbers/hyphens)
@@ -136,12 +158,14 @@ Verify the entire generated harness:
    - File references use relative paths, referenced files exist
 4. Quality gates: Gates 0-4, all checks with evidence types, rationalization defense
 5. TDD: 3 sub-agent frontmatters, Red → Green call order
-6. Model routing: opus for 4 agents / sonnet for 5 agents via frontmatter model: field
+6. Model routing: opus for 4+ agents (orchestrator, architect, reviewer, debugger; +qa-agent if included) / sonnet for 5 agents (implementer, tdd-test-writer, tdd-implementer, tdd-refactorer, tester) via frontmatter model: field
 7. Cross-session: bootstrap hook → reads PROGRESS.md + feature-list.json
 8. Code-doc sync: triple defense operational, mapping table matches project structure
 9. Tokens: CLAUDE.md <= 1,500 tokens, per-task ~3,900-4,000 tokens
 10. Architecture: If pattern was selected, verify environment.md contains pattern rules, sub CLAUDE.md files reference their layer/boundary, and architect agent includes pattern constraints
 11. Domain persona: domain-persona.md exists, contains all 6 sections (Purpose, Key Entities, Domain Rules, Vocabulary, Stakeholder Concerns, Success Criteria), entities table has >= 2 rows, domain rules has >= 2 items
+12. Execution mode: orchestrator has `metadata.execution-mode` field; if Agent Team mode, agents have `## Team Communication Protocol` section; if QA agent included, qa-agent.md exists with `model: opus`
+13. Data transfer: if Agent Team or Hybrid mode, orchestrator specifies data transfer protocols (message/task/file-based); `_workspace/` directory convention documented
 
 Report each item as PASS/FAIL. For each FAIL:
 1. Identify the specific gap (missing file, missing section, wrong model routing, etc.)
@@ -152,7 +176,7 @@ Report each item as PASS/FAIL. For each FAIL:
 ### Step 9: Initial Commit
 Stage only the generated harness files explicitly — never use `git add .` to avoid accidentally staging sensitive files.
 ```bash
-git add CLAUDE.md PROGRESS.md CHANGELOG.md feature-list.json .claude/ hooks/ scripts/ src/**/CLAUDE.md
+git add CLAUDE.md PROGRESS.md CHANGELOG.md feature-list.json .claude/ hooks/ scripts/ _workspace/.gitkeep src/**/CLAUDE.md
 git commit -m "harness: initial setup via harness-boot"
 ```
 
@@ -164,4 +188,5 @@ Guide the user to the next step: start development with the `/start` command.
 - User confirmation required between each phase (no autonomous progression)
 - If tech stack is unspecified, wait for developer selection (no autonomous selection)
 - If architecture pattern is unspecified and project scale warrants it, wait for developer selection (no autonomous selection)
+- If execution mode is recommended, wait for developer confirmation (no autonomous selection)
 - Mark anything not in the plan as `{TODO: needs confirmation}`
