@@ -9,9 +9,15 @@ Thumbs.db
 .idea/
 .vscode/
 
+# Claude Code local settings
+.claude/settings.local.json
+
 # Environment
 .env
 .env.*
+
+# Backup
+*.bak
 
 # Logs
 *.log
