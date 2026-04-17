@@ -28,8 +28,17 @@ Starts actual development work with the harness in place.
 
 **Check execution mode** from orchestrator's `metadata.execution-mode` (in `.claude/agents/orchestrator.md`).
 
+#### Dependency gate (all modes):
+Before selecting a feature, validate its `depends_on` array:
+1. Read the candidate feature's `depends_on` from `feature-list.json`
+2. For each dependency ID, check if that feature has `passes: true`
+3. If any dependency has `passes: false`:
+   - Report: "Feature {selected} depends on {dep_id} which is not yet complete."
+   - Auto-select the earliest unmet dependency instead
+   - Inform user of the substitution
+
 #### Sub-agent mode (default):
-Select the highest-priority feature with `passes: false` from `feature-list.json`.
+Select the highest-priority feature with `passes: false` from `feature-list.json` (after dependency gate).
 
 #### Agent Team mode:
 Analyze module independence among top-priority `passes: false` features. If features are in different modules with no dependencies, select multiple features for parallel development.
@@ -37,7 +46,8 @@ Analyze module independence among top-priority `passes: false` features. If feat
 **Pre-flight dependency check** before confirming parallel features:
 - No shared `tdd_focus` targets between selected features
 - No shared `doc_sync` targets that would cause merge conflicts
-- No feature dependency chains (feature B depends on feature A's output)
+- Neither feature appears in the other's `depends_on` (direct or transitive)
+- Transitive check: if A depends on C and B depends on C, both can run in parallel only if C has `passes: true`
 If any dependency detected, fall back to sequential for the dependent pair.
 
 Consider dependencies:
@@ -45,30 +55,35 @@ Consider dependencies:
 - Fix any broken features first
 - In Agent Team mode, only parallelize features with no shared dependencies
 
-Report the selected feature(s) to the user:
+Report the selected feature and ask with numbered choices:
 ```
-Next feature(s) to work on:
-  ID: FEAT-XXX
-  Category: {category}
-  Description: {description}
+Next: {FEAT-XXX} — {description}
+  Category: {category} | Strategy: {test_strategy} | Deps: {depends_on or "none"}
   TDD Focus: {tdd_focus}
-  Doc Sync: {doc_sync}
-  Execution: {Sub-agent | Agent Team (parallel with FEAT-YYY)}
 
-Proceed? (y/n)
+(1) ★ Start this feature
+(2) Skip — pick a different feature
+(3) Show details (acceptance tests, doc sync targets)
 ```
 
-### Step 4: Execute TDD Cycle
+### Step 4: Execute Development Cycle
+
+**Read the feature's `test_strategy`** from `feature-list.json` (default: `"tdd"`). The cycle varies by strategy.
+
+**Iteration tracking** (mandatory, all strategies):
+1. Before each cycle iteration, read PROGRESS.md `## Current TDD State` → `iteration` value
+2. Increment `iteration` by 1 and write to PROGRESS.md BEFORE starting the cycle
+3. If `iteration > 5`: Do NOT proceed. Log to PROGRESS.md `## Incidents` table (date, feature ID, type="convergence-failure"). Escalate to user.
+4. On feature completion (Step 7), reset `iteration: 0`
 
 #### Sub-agent mode (default):
 Call sub-agents using the Claude Code `Agent` tool with isolated contexts:
-- `Agent(implementer)` — orchestrates the TDD cycle
-- Within implementer: `Agent(tdd-test-writer)` for Red, `Agent(tdd-implementer)` for Green, `Agent(tdd-refactorer)` for Refactor
+- `Agent(implementer)` — orchestrates the cycle
 - `Agent(reviewer)` for Gate 2
 
-Pass task input (feature ID, tdd_focus, acceptance_test, doc_sync targets) as the agent's prompt argument.
+Pass task input (feature ID, test_strategy, tdd_focus, acceptance_test, doc_sync targets) as the agent's prompt argument.
 
-Execution flow:
+#### test_strategy = "tdd" (default):
 
 ```
 Plan (analyze acceptance_test)
@@ -80,15 +95,64 @@ Red: call tdd-test-writer sub-agent
   ↓
 Green: call tdd-implementer sub-agent
   - Write minimal implementation to pass tests
+  - Apply Comment Rules (Section 7.2): file headers, JSDoc, why-comments
   - Verify: run tests → all PASS
   ↓
 Refactor: call tdd-refactorer sub-agent
   - No behavior changes allowed
+  - Verify comment quality and supplement missing JSDoc/headers
   - Verify: tests still PASS
   ↓
 Verify: full test suite + feature verification
   - On failure, return to Green/Red (max 5 iterations)
   - After 5 iterations, escalate
+```
+
+#### test_strategy = "state-verification":
+
+For features with rendering, canvas, DOM, or visual output where strict TDD is impractical.
+
+```
+Plan (analyze acceptance_test, identify testable state vs visual output)
+  ↓
+Implement: call tdd-implementer sub-agent
+  - Build the full feature implementation
+  - Apply Comment Rules (Section 7.2): file headers, JSDoc, why-comments
+  - Verify: compile/lint pass
+  ↓
+State-Test: call tdd-test-writer sub-agent
+  - Write state verification tests (NOT pixel-level rendering checks)
+  - Test: calculated positions, sizes, colors, call counts, state transitions
+  - Example: "after renderFrame(), verify drawFruit called once per body"
+  - Verify: run tests → all PASS
+  ↓
+Refactor: call tdd-refactorer sub-agent
+  - No behavior changes allowed
+  - Verify comment quality and supplement missing JSDoc/headers
+  - Verify: tests still PASS
+  ↓
+Verify: full test suite + feature verification
+  - On failure, fix implementation or tests (max 5 iterations)
+```
+
+#### test_strategy = "integration":
+
+For wiring/entry-point features that connect multiple modules.
+
+```
+Plan (analyze acceptance_test, identify integration points)
+  ↓
+Implement: call tdd-implementer sub-agent
+  - Build the feature implementation
+  - Apply Comment Rules (Section 7.2): file headers, JSDoc, why-comments
+  - Verify: compile/lint pass
+  ↓
+Integration-Test: call tester sub-agent
+  - Write integration tests covering cross-module interactions
+  - Verify: run tests → all PASS
+  ↓
+Verify: full test suite + feature verification
+  - On failure, fix (max 5 iterations)
 ```
 
 #### Agent Team mode:
@@ -154,15 +218,17 @@ The PreToolUse hooks automatically verify:
 **This step is mandatory per feature.** Do not batch multiple features — commit each feature individually before proceeding to the next.
 
 ### Step 8: Ask About Next Feature
-Ask the user whether to continue with the next feature:
 ```
-FEAT-XXX complete and committed. Marked as passes: true in feature-list.json.
-Progress: {completed}/{total} features ({percentage}%).
-Continue with the next feature? (y/n)
+✓ {FEAT-XXX} complete — {completed}/{total} features ({percentage}%)
+
+(1) ★ Continue — next feature: {FEAT-YYY} ({description})
+(2) End session — show progress report
+(3) Pick a specific feature
 ```
 
-- y → Return to Step 3 (select next incomplete feature)
-- n → End session with report
+- 1 → Return to Step 3 (with pre-selected next feature)
+- 2 → End session with report
+- 3 → Show remaining features list, let user choose
 
 ## Principles
 - **One feature per agent at a time** (key Anthropic lesson). Sub-agent mode: one feature total. Agent Team mode: one feature per team member, multiple in parallel across the team.
