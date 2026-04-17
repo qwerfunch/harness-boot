@@ -49,8 +49,8 @@ Phase 1-6 sequential generation with user confirmation and checkpoint (`last_com
 1. Load orchestrator agent + session context (bootstrap hook verifies PROGRESS.md ↔ feature-list.json consistency) + domain-persona.md
 2. Detect mode (Initializer vs Coding) from PROGRESS.md
 3. Check execution mode (Agent Team / Sub-agent / Hybrid)
-4. Select feature(s): Sub-agent → one at a time; Agent Team → parallel independent modules
-5. Run development cycle per `test_strategy`: `tdd` → Red/Green/Refactor; `state-verification` → Implement/State-Test/Refactor; `integration` → Implement/Integration-Test. Sub-agent via `Agent` tool, Agent Team via `TeamCreate`+`SendMessage`+`TaskCreate`. Max 5 iterations (tracked in PROGRESS.md), then escalate.
+4. Select feature(s) with numbered choices: Sub-agent → one at a time; Agent Team → parallel independent modules. **Auto-pilot option** runs all remaining features, pausing only on errors.
+5. Run development cycle per `test_strategy`: `tdd` → Red/Green/Refactor; `state-verification` → Implement/State-Test/Refactor; `integration` → Implement/Integration-Test. Steps 4-7 auto-proceed on success — no mid-feature pauses. Max 5 iterations (tracked in PROGRESS.md), then escalate.
 6. QA agent verifies cross-boundary consistency (if included per QA criteria)
 7. Quality gates 0-4 (Gate 0 enforced by implementer + reviewer), coverage gate hook, code-doc sync, auto-update feature-list.json, single commit per feature (never batch)
 
