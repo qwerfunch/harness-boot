@@ -10,8 +10,8 @@ Harness ready. Start development.
 1. Load orchestrator.md + domain-persona.md
 2. Check PROGRESS.md → determine Initializer/Coding mode
 3. Select highest-priority feature with passes: false → present numbered choices (include auto-pilot option)
-4. On feature start: auto-proceed through TDD cycle → quality gates → doc-sync → commit without mid-feature pauses
-5. Max 5 TDD iterations per feature. After 5, escalate to user.
+4. On feature start: auto-proceed through the cycle matching the feature's `test_strategy` (`tdd` → Red/Green/Refactor, `bundled-tdd` → BundledRedGreen(tdd-bundler) with 2-commit red→green evidence, `state-verification` → Implement/State-Test/Refactor, `integration` → Implement/Integration-Test) → quality gates → doc-sync → commit without mid-feature pauses
+5. Max 5 cycle iterations per feature. After 5, escalate to user.
 6. On completion: run scripts/update-feature-status.sh → single commit (code + tests + docs + feature-list.json)
 7. CRITICAL: One feature per commit. Even if user requests "implement everything", execute sequentially: TDD → gates → commit → next feature.
 8. Step 8: ask about next feature (or auto-proceed if auto-pilot mode)

@@ -9,7 +9,7 @@
 
 Two execution modes exist for multi-agent collaboration. The choice impacts how agents communicate, share work products, and coordinate.
 
-### Agent Team — Recommended for 3+ Independent Modules
+### Agent Team — Baseline Default (Recommended for 2+ Independent Modules)
 
 Team leader creates a team with `TeamCreate`. Members are independent Claude Code instances that communicate directly via `SendMessage` and coordinate through shared task lists (`TaskCreate`/`TaskUpdate`).
 
@@ -40,7 +40,7 @@ Team leader creates a team with `TeamCreate`. Members are independent Claude Cod
 **Team Reformation Pattern:**
 When different phases need different specialist combinations: save current team's outputs to files -> disband team -> create new team. Previous outputs persist in `_workspace/` for the new team to read.
 
-### Sub-agent — Lightweight Alternative
+### Sub-agent — Sequential Fallback (Single-Module or Tightly-Coupled Plans)
 
 Main agent creates sub-agents via `Agent` tool. Sub-agents return results only to the main agent and cannot communicate with each other.
 
@@ -66,19 +66,17 @@ Main agent creates sub-agents via `Agent` tool. Sub-agents return results only t
 ### Mode Selection Decision Tree
 
 ```
-Are there 3+ independent modules to develop?
-|-- Yes -> Do agents need inter-communication?
-|          |-- Yes -> Agent Team (recommended)
-|          |         Cross-verification, discovery sharing, real-time feedback.
-|          |
-|          +-- No  -> Sub-agent is viable
-|                     Result delivery only (e.g., produce-review, expert pool).
+Are there 2+ independent modules to develop?
+|-- Yes -> Agent Team (default)
+|          Parallel development, real-time cross-module coordination.
+|          Downgrade to Sub-agent only if modules share so much state that
+|          team communication cost would outweigh parallelism benefit.
 |
-+-- No (single agent) -> Sub-agent
-                         No team overhead needed.
++-- No (single module / tightly coupled / prototype / spike) -> Sub-agent
+                         Sequential fallback, no team overhead.
 ```
 
-> **Core principle:** Agent Team is recommended when 3+ independent modules with distinct domain categories are detected (see setup-guide.md Section 9.0 decision criteria table for full factors). Sub-agent is the baseline default. When choosing Sub-agent over Agent Team, ask: "Is inter-agent communication truly unnecessary?"
+> **Core principle:** **Agent Team is the baseline default** for multi-module plans; downgrade to Sub-agent when communication overhead outweighs parallelism benefit (single module, tightly-coupled feature set, prototype/spike with 1-2 features). When choosing Sub-agent over Agent Team, document the reason in the orchestrator's `metadata.execution-mode-rationale` frontmatter field so future maintainers understand the downgrade. See setup-guide.md Section 9.0 for the full decision criteria table.
 
 ### Hybrid Mode
 
@@ -160,7 +158,7 @@ The orchestrator must declare the mode per phase explicitly:
 | Anti-Pattern | Problem | Correct Approach |
 |-------------|---------|------------------|
 | Team for everything | Wasted tokens on sequential phases | Use sub-agent for analysis, review, planning |
-| Sub-agent for everything | Missed parallelism opportunities | Use team when 3+ modules are independent |
+| Sub-agent for everything | Missed parallelism opportunities | Use team when 2+ modules are independent (harness-boot's baseline default) |
 | Switching modes within a phase | Coordination overhead, state loss | One mode per phase; switch only at phase boundaries |
 | Team with only 2 members | Team overhead exceeds benefit | Sub-agent with background execution is sufficient |
 

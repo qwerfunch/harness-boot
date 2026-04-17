@@ -20,7 +20,7 @@ Starts actual development work with the harness in place.
 
 ### Step 2: Determine Session State
 
-> "Session state" = where we are in the overall flow (first run / resume / new feature). This is distinct from "execution mode" in Step 3 (Sub-agent / Agent Team / Hybrid).
+> "Session state" = where we are in the overall flow (first run / resume / new feature). This is distinct from "execution mode" in Step 3 (Agent Team / Sub-agent / Hybrid).
 
 - **PROGRESS.md is empty or has no tasks** → First start after Initializer
 - **PROGRESS.md has an In Progress task** → Resume interrupted session
@@ -30,7 +30,7 @@ Starts actual development work with the harness in place.
 
 ### Step 3: Select Feature(s)
 
-**Check execution mode** (Sub-agent / Agent Team / Hybrid) from orchestrator's `metadata.execution-mode` (in `.claude/agents/orchestrator.md`). Do not confuse with session state from Step 2.
+**Check execution mode** (Agent Team / Sub-agent / Hybrid) from orchestrator's `metadata.execution-mode` (in `.claude/agents/orchestrator.md`). Do not confuse with session state from Step 2.
 
 #### Dependency gate (all modes):
 Before selecting a feature, validate its `depends_on` array:
@@ -41,8 +41,8 @@ Before selecting a feature, validate its `depends_on` array:
    - Auto-select the earliest unmet dependency instead
    - Inform user of the substitution
 
-#### Sub-agent mode (default):
-Select the highest-priority feature with `passes: false` from `feature-list.json` (after dependency gate).
+#### Sub-agent mode (sequential fallback):
+Select the highest-priority feature with `passes: false` from `feature-list.json` (after dependency gate). Used when the project was generated with Sub-agent execution mode (single module or tightly-coupled feature set).
 
 #### Agent Team mode:
 Analyze module independence among top-priority `passes: false` features. If features are in different modules with no dependencies, select multiple features for parallel development.
@@ -86,14 +86,16 @@ Next: {FEAT-XXX} — {description}
 3. If `iteration > 5`: Do NOT proceed. Log to PROGRESS.md `## Incidents` table (date, feature ID, type="convergence-failure"). Escalate to user.
 4. On feature completion (Step 7), reset `iteration: 0`
 
-#### Sub-agent mode (default):
+#### Sub-agent mode (sequential fallback):
 Call sub-agents using the Claude Code `Agent` tool with isolated contexts:
 - `Agent(implementer)` — orchestrates the cycle
 - `Agent(reviewer)` for Gate 2
 
 Pass task input (feature ID, test_strategy, tdd_focus, acceptance_test, doc_sync targets) as the agent's prompt argument.
 
-#### test_strategy = "tdd" (default):
+Sub-agent mode supports all four `test_strategy` values; the cycle blocks below branch on `test_strategy` from `feature-list.json`.
+
+#### test_strategy = "tdd" (default, strict):
 
 ```
 Plan (analyze acceptance_test)
@@ -117,6 +119,38 @@ Verify: full test suite + feature verification
   - On failure, return to Green/Red (max 5 iterations)
   - After 5 iterations, escalate
 ```
+
+#### test_strategy = "bundled-tdd" (speed-oriented, single sub-agent):
+
+```
+Plan (analyze acceptance_test)
+  ↓
+Bundled Red→Green: call tdd-bundler sub-agent
+  - Write failing tests (happy/boundary/error)
+  - Run tests → capture red output
+  - Commit tests only with subject starting [bundled-tdd:red]
+    (body includes the captured failing output)
+  - Write minimal implementation (MUST NOT edit tests from here on)
+  - Run tests → all PASS, capture green output
+  - Commit implementation with subject starting [bundled-tdd:green]
+    (body includes the captured passing output)
+  ↓
+Refactor: call tdd-refactorer sub-agent  (optional — skip if impl is clean)
+  - No behavior changes allowed
+  - Verify comment quality and supplement missing JSDoc/headers
+  - Verify: tests still PASS
+  ↓
+Verify: full test suite + feature verification
+  - Gate 0 check: git diff <red-sha> <green-sha> -- <test-files> must be empty
+  - On failure, restart the bundled cycle (max 5 iterations)
+  - After 5 iterations, escalate
+  ↓
+Pre-Gate 4 fold: rebase --interactive or reset --soft to combine the two
+  internal commits into one feat(FEAT-XXX) commit. Keep red-sha/green-sha
+  as trailers in the commit message body so Gate 0 evidence survives.
+```
+
+> `bundled-tdd` trades strict test/impl isolation for fewer sub-agent hops (3 → 1-2). Use only for features with clear specs and low co-drift risk. When in doubt, stay with `"tdd"`.
 
 #### test_strategy = "state-verification":
 
@@ -173,8 +207,11 @@ TeamCreate(members: [implementer-a, implementer-b, reviewer, qa-agent?])
   ↓
 TaskCreate(FEAT-XXX -> implementer-a, FEAT-YYY -> implementer-b)
   ↓
-Each implementer independently:
-  Red(tdd-test-writer) → Green(tdd-implementer) → Refactor(tdd-refactorer)
+Each implementer independently runs the cycle matching its feature's test_strategy:
+  - "tdd":              Red(tdd-test-writer) → Green(tdd-implementer) → Refactor(tdd-refactorer)
+  - "bundled-tdd":      BundledRedGreen(tdd-bundler) → [optional] Refactor(tdd-refactorer)
+  - "state-verification": Implement(tdd-implementer) → StateTest(tdd-test-writer) → Refactor
+  - "integration":      Implement(tdd-implementer) → IntegrationTest(tester)
   ↓
 Members coordinate via SendMessage (integration points, shared contracts)
   ↓
@@ -271,7 +308,7 @@ If all features complete:
 - 3 → Show remaining features list, let user choose
 
 ## Principles
-- **One feature per agent at a time** (key Anthropic lesson). Sub-agent mode: one feature total. Agent Team mode: one feature per team member, multiple in parallel across the team.
+- **One feature per agent at a time** (key Anthropic lesson). Agent Team mode (default): one feature per team member, multiple in parallel across the team. Sub-agent mode (fallback): one feature total, sequential.
 - **One feature per commit** (non-negotiable). Each feature must be committed individually with its tests and docs before proceeding to the next. Never batch multiple features into a single commit — this enables `git revert` per feature and satisfies Gate 4. If the user requests "implement all features at once", still execute them sequentially: TDD cycle → quality gates → commit → next feature. Parallel Agent Team mode commits each module's feature independently.
 - **Auto-proceed on success**: Steps 4-7 run without mid-feature pauses when all gates pass. Pause only at decision points (Steps 3, 8) and on escalation conditions. Auto-pilot mode also auto-proceeds through Steps 3 and 8.
 - On convergence failure (> 5 iterations), suggest switching to debugger
