@@ -68,7 +68,7 @@ When a session ends, work resumes from the last checkpoint. On every session sta
 
 ```bash
 # 1. Clone and load as a Claude Code plugin
-git clone <this-repo>
+git clone https://github.com/qwerfunch/harness-boot.git
 cd harness-boot
 claude --plugin-dir .
 
@@ -118,7 +118,7 @@ That's where harness-boot comes from.
 
 ---
 
-**Docs:** [Harness Engineering Guide](docs/setup-guide.md) | [Kickoff Prompts](docs/start-prompts.md)
+**Docs:** [Harness Engineering Guide](docs/setup-guide.md) | [Start Prompts](docs/start-prompts.md)
 
 **References:** [Anthropic Skills](https://github.com/anthropics/skills) | [Agent Skills Collection](https://github.com/addyosmani/agent-skills) | [Everything Claude Code](https://github.com/affaan-m/everything-claude-code)
 

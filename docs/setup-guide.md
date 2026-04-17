@@ -848,29 +848,92 @@ Only the `passes` field may be changed during `/start`. Never add/delete/reorder
 
 ### PROGRESS.md Structure
 
+#### Field Schema
+
+All fields below are **required**. The Phase 6 generator MUST emit every field with the initial value shown; orchestrator and hooks rely on their presence.
+
+| Section | Field | Type | Initial value (Phase 6) | Updated by | Valid values |
+|---------|-------|------|-------------------------|------------|--------------|
+| `## Status` | `last_completed_phase` | int or string | `setup_complete` | `/setup` Phase 1-6 checkpoints, then frozen | `1`..`6`, `setup_complete` |
+| `## Status` | `current_feature` | string | `""` (empty) | orchestrator on feature start/complete | `FEAT-XXX` or `""` |
+| `## Status` | `mode` | enum | `initializer` | orchestrator (→ `coding` after first feature) | `initializer`, `coding` |
+| `## Status` | `execution_mode` | enum | value chosen in `/setup` Step 1.5 | frozen (re-`/setup` to change) | `sub-agent`, `agent-team`, `hybrid` |
+| `## Current TDD State` | `phase` | enum or empty | `""` | implementer sub-agent per cycle | `Red`, `Green`, `Refactor`, `Verify`, `""` |
+| `## Current TDD State` | `iteration` | int | `0` | implementer — increment before cycle, reset to `0` on feature complete | `0`..`5` (>5 escalates) |
+| `## Current TDD State` | `tdd_focus_progress` | string | `0/0 complete` | implementer on each tdd_focus pass | `{done}/{total} complete` |
+| `## Current TDD State` | `auto_pilot` | bool | `false` | `/start` Step 3 option (4) toggles on; "stop" command toggles off | `true`, `false` |
+| `## Completed Features` | table | table | empty (header row only) | orchestrator on feature commit | rows: Feature ID, Completed Date (YYYY-MM-DD), Commit Hash (7-char short sha) |
+| `## Session Metrics` | `session_start` | ISO-8601 | Phase 6 write time | orchestrator on session start (`/start` or `/setup`) | UTC ISO-8601 |
+| `## Session Metrics` | `cumulative_tokens` | int | `0` | orchestrator after each feature or phase | ≥ 0 |
+| `## Metrics` | `total_iterations` | int | `0` | implementer on feature complete | ≥ 0 |
+| `## Metrics` | `avg_iterations_per_feature` | float | `0.0` | orchestrator on feature complete | ≥ 0.0 |
+| `## Metrics` | `gate_failures` | int | `0` | reviewer/implementer on gate failure | ≥ 0 |
+| `## Metrics` | `coverage_trend` | list<string> | `[]` | orchestrator on feature complete, append latest % | percentages (last 10) |
+| `## Incidents` | table | table | empty (header row only) | orchestrator on escalation | rows: Date, Feature, Type, Resolution |
+
+#### Initial Template (emitted by Phase 6)
+
 ```markdown
 # PROGRESS.md
 
 ## Status
-- last_completed_phase: 6          # /setup checkpoint (1-6), or "setup_complete"
-- current_feature: FEAT-003        # Feature ID currently in progress (empty if none)
-- mode: coding                     # "initializer" or "coding"
-- execution_mode: sub-agent        # "sub-agent", "agent-team", or "hybrid"
+- last_completed_phase: setup_complete
+- current_feature: ""
+- mode: initializer
+- execution_mode: sub-agent       # or "agent-team" / "hybrid" per /setup Step 1.5
 
 ## Current TDD State
-- phase: Green                     # "Red", "Green", "Refactor", or empty
-- iteration: 2                     # Current iteration (1-5)
-- tdd_focus_progress: 3/5 complete # How many tdd_focus functions are done
+- phase: ""
+- iteration: 0
+- tdd_focus_progress: 0/0 complete
+- auto_pilot: false
 
 ## Completed Features
 | Feature ID | Completed Date | Commit Hash |
-|------------|---------------|-------------|
-| FEAT-001   | 2026-04-15    | a1b2c3d     |
-| FEAT-002   | 2026-04-16    | e4f5g6h     |
+|------------|----------------|-------------|
 
 ## Session Metrics
-- session_start: 2026-04-16T09:30:00Z   # ISO timestamp, set on /setup or /start begin
-- cumulative_tokens: 48200               # Total tokens used in this session (input+output)
+- session_start: {ISO-8601 UTC timestamp at Phase 6 write}
+- cumulative_tokens: 0
+
+## Metrics
+- total_iterations: 0
+- avg_iterations_per_feature: 0.0
+- gate_failures: 0
+- coverage_trend: []
+
+## Incidents
+<!-- Logged when escalation occurs (5 iteration limit, crashes, repeated hook blocks) -->
+| Date | Feature | Type | Resolution |
+|------|---------|------|------------|
+```
+
+#### Example (mid-development)
+
+```markdown
+# PROGRESS.md
+
+## Status
+- last_completed_phase: setup_complete
+- current_feature: FEAT-003
+- mode: coding
+- execution_mode: sub-agent
+
+## Current TDD State
+- phase: Green
+- iteration: 2
+- tdd_focus_progress: 3/5 complete
+- auto_pilot: false
+
+## Completed Features
+| Feature ID | Completed Date | Commit Hash |
+|------------|----------------|-------------|
+| FEAT-001   | 2026-04-15     | a1b2c3d     |
+| FEAT-002   | 2026-04-16     | e4f5g6h     |
+
+## Session Metrics
+- session_start: 2026-04-16T09:30:00Z
+- cumulative_tokens: 48200
 
 ## Metrics
 - total_iterations: 12
@@ -879,13 +942,12 @@ Only the `passes` field may be changed during `/start`. Never add/delete/reorder
 - coverage_trend: [85%, 87%, 89%]
 
 ## Incidents
-<!-- Logged when escalation occurs (5 iteration limit, crashes, repeated hook blocks) -->
-| Date       | Feature  | Type              | Resolution          |
-|------------|----------|-------------------|---------------------|
+| Date       | Feature  | Type              | Resolution           |
+|------------|----------|-------------------|----------------------|
 | 2026-04-15 | FEAT-002 | Gate 2 failure x2 | Reduced scope, retry |
 ```
 
-> The bootstrap hook reads `## Status`, `## Session Metrics`, and `## Metrics` sections at session start to provide context. `## Incidents` is appended by the orchestrator when escalation occurs. `## Session Metrics` is updated by the orchestrator after each feature completion or phase completion.
+> The bootstrap hook reads `## Status`, `## Session Metrics`, and `## Metrics` sections at session start to provide context. `## Incidents` is appended by the orchestrator when escalation occurs. `## Session Metrics` is updated by the orchestrator after each feature completion or phase completion. Field types are contract: hooks parse by exact field name and section heading.
 
 ---
 
@@ -1653,7 +1715,7 @@ When Agent Team mode: add `TeamCreate, SendMessage, TaskCreate, TaskUpdate` to t
 
 ### 9.3 Agent Rationalization Defense
 
-Each generated agent MD must include a "Common Rationalizations" section (minimum 2 rows). Examples:
+Each generated agent MD must include a "Common Rationalizations" section (minimum 3 rows, matching the Skill requirement in Section 8). Examples:
 
 | Agent | Excuse | Rebuttal |
 |-------|--------|----------|

@@ -68,7 +68,7 @@ harness-boot은 여기서 출발합니다 — 규칙을 알려주는 대신, 구
 
 ```bash
 # 1. 클론 후 Claude Code 플러그인으로 로드
-git clone <this-repo>
+git clone https://github.com/qwerfunch/harness-boot.git
 cd harness-boot
 claude --plugin-dir .
 
@@ -116,7 +116,7 @@ project-root/
 
 ---
 
-**문서:** [하네스 엔지니어링 가이드](docs/setup-guide.md) | [킥오프 프롬프트](docs/start-prompts.md)
+**문서:** [하네스 엔지니어링 가이드](docs/setup-guide.md) | [개발 시작 프롬프트](docs/start-prompts.md)
 
 **참고 자료:** [Anthropic Skills](https://github.com/anthropics/skills) | [Agent Skills Collection](https://github.com/addyosmani/agent-skills) | [Everything Claude Code](https://github.com/affaan-m/everything-claude-code)
 
