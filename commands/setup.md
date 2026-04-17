@@ -249,6 +249,11 @@ git commit -m "harness: initial setup via harness-boot"
 ```
 
 ### Step 10: Complete
+Show final summary with cumulative metrics:
+```
+Setup complete — {total_files} files generated across 6 phases
+  Tokens: {cumulative_tokens} | Total time: {elapsed}
+```
 Guide the user to the next step: start development with the `/start` command.
 
 ## Principles

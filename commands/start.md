@@ -231,6 +231,7 @@ Do not show choices. Emit a status report and auto-proceed to the next feature:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✓ {FEAT-XXX} complete ({description})     [{completed}/{total} — {percentage}%]
   TDD: {iterations} iterations | Tests: {test_count} pass | Gates: all clear
+  Tokens: {cumulative_tokens} | Elapsed: {session_elapsed}
   → Next: {FEAT-YYY} ({next_description})
   Type "stop" to pause auto-pilot
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -240,6 +241,7 @@ If all features complete:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ★ AUTO-PILOT COMPLETE                    [{total}/{total} — 100%]
   Session: {total} features, {total_iterations} iterations, {escalation_count} escalations
+  Tokens: {cumulative_tokens} | Elapsed: {session_elapsed}
   See PROGRESS.md for details.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
@@ -247,6 +249,7 @@ If all features complete:
 #### Manual mode (default):
 ```
 ✓ {FEAT-XXX} complete — {completed}/{total} features ({percentage}%)
+  Tokens: {cumulative_tokens} | Elapsed: {session_elapsed}
 
 (1) ★ Continue — next feature: {FEAT-YYY} ({description})
 (2) End session — show progress report
@@ -276,6 +279,7 @@ In auto-pilot mode, escalation pauses with a choice menu:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⚠ {FEAT-XXX} — AUTO-PILOT PAUSED         [{completed}/{total} — {percentage}%]
   Reason: {escalation reason}
+  Tokens: {cumulative_tokens} | Elapsed: {session_elapsed}
 
 (1) Fix and retry
 (2) Skip this feature, continue auto-pilot

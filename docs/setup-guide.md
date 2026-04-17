@@ -802,6 +802,10 @@ Only the `passes` field may be changed during `/start`. Never add/delete/reorder
 | FEAT-001   | 2026-04-15    | a1b2c3d     |
 | FEAT-002   | 2026-04-16    | e4f5g6h     |
 
+## Session Metrics
+- session_start: 2026-04-16T09:30:00Z   # ISO timestamp, set on /setup or /start begin
+- cumulative_tokens: 48200               # Total tokens used in this session (input+output)
+
 ## Metrics
 - total_iterations: 12
 - avg_iterations_per_feature: 2.4
@@ -815,7 +819,7 @@ Only the `passes` field may be changed during `/start`. Never add/delete/reorder
 | 2026-04-15 | FEAT-002 | Gate 2 failure x2 | Reduced scope, retry |
 ```
 
-> The bootstrap hook reads `## Status` and `## Metrics` sections at session start to provide context. `## Incidents` is appended by the orchestrator when escalation occurs.
+> The bootstrap hook reads `## Status`, `## Session Metrics`, and `## Metrics` sections at session start to provide context. `## Incidents` is appended by the orchestrator when escalation occurs. `## Session Metrics` is updated by the orchestrator after each feature completion or phase completion.
 
 ---
 
