@@ -16,6 +16,7 @@ Starts actual development work with the harness in place.
 1. Load `.claude/agents/orchestrator.md`
 2. Receive context provided by SessionStart hook (PROGRESS.md summary, incomplete feature count, last 5 git log entries)
 3. Load `.claude/domain-persona.md` for domain context
+4. Read `comment_language` from `.claude/environment.md` — use this language for all code comments (file headers, JSDoc, why-comments) throughout the session. Output text follows the system locale.
 
 ### Step 2: Determine Mode
 - **PROGRESS.md is empty or has no tasks** → First start after Initializer

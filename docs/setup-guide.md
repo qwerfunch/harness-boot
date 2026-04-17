@@ -576,11 +576,18 @@ Project requirements analysis:
 
 > **Never auto-select without developer confirmation.** Tech stack decisions affect the entire project and must be made by the developer.
 
+### Language Settings
+
+Two language settings are configured during setup:
+
+- **Output language**: Auto-detected from the system locale (`$LANG` or equivalent). All `/setup` and `/start` output text uses this language. No question asked — recorded automatically in `environment.md`.
+- **Code comment language**: Explicitly chosen by the user during Step 1.2. Stored in `environment.md` as `comment_language`. Referenced by tdd-implementer, tdd-refactorer, and reviewer agents when enforcing Comment Rules (Section 7.2). All file headers, JSDoc, section dividers, and inline why-comments must be written in this language.
+
 ### Tech Stack Storage
 
 Once selected, the tech stack is recorded in exactly two places:
 - `CLAUDE.md`: one-line summary (e.g., "Stack: Next.js 14 + TypeScript + Prisma + PostgreSQL")
-- `.claude/environment.md`: full detail (versions, package manager, runtime requirements, dev dependencies)
+- `.claude/environment.md`: full detail (versions, package manager, runtime requirements, dev dependencies, output_language, comment_language)
 
 ### Architecture Pattern Decision Rules
 

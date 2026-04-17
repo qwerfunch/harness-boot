@@ -38,7 +38,17 @@ Show a brief summary of the analyzed plan:
    {N} modules, {M} features, {K} integration points
 ```
 
-#### Step 1.2: Tech Stack
+#### Step 1.2: Code Comment Language
+Output text language auto-detects from the system locale (no question needed). Code comment language requires explicit choice:
+```
+Code comment language:
+(1) ★ {system locale language} — match your environment
+(2) English
+(3) Custom — type your own
+```
+Store the selection in `environment.md` as `comment_language`. This setting is referenced by tdd-implementer, tdd-refactorer, and reviewer agents when enforcing Comment Rules (Section 7.2).
+
+#### Step 1.3: Tech Stack
 - If plan specifies tech stack → show what was detected, ask to confirm:
   ```
   Detected tech stack: {stack}
@@ -54,7 +64,7 @@ Show a brief summary of the analyzed plan:
   (4) Custom — type your own
   ```
 
-#### Step 1.3: Architecture Pattern
+#### Step 1.4: Architecture Pattern
 - If plan states prototype/PoC/MVP/spike → auto-select Simple Flat, inform user (no question)
 - If plan specifies architecture → confirm (same pattern as tech stack)
 - If scale assessment triggers (>= 2 of: 8+ features, 3+ categories, cross-cutting concerns):
@@ -72,7 +82,7 @@ Show a brief summary of the analyzed plan:
   (2) Choose a pattern anyway
   ```
 
-#### Step 1.4: Execution Mode
+#### Step 1.5: Execution Mode
 ```
 Execution mode determines how agents work together.
 (1) ★ {Recommended based on module analysis} — {reason}
@@ -82,7 +92,7 @@ Analysis: {N} modules, {independence assessment}
 ```
 Reference: `${CLAUDE_PLUGIN_ROOT}/docs/references/agent-design-patterns.md`
 
-#### Step 1.5: QA Agent
+#### Step 1.6: QA Agent
 Only ask if 3+ modules with integration points (per `${CLAUDE_PLUGIN_ROOT}/docs/references/qa-agent-guide.md`). Otherwise auto-skip with note.
 ```
 3+ modules with integration points detected.
@@ -90,14 +100,16 @@ Only ask if 3+ modules with integration points (per `${CLAUDE_PLUGIN_ROOT}/docs/
 (2) Skip — rely on reviewer agent only
 ```
 
-#### Step 1.6: Review & Confirm
+#### Step 1.7: Review & Confirm
 After all questions answered, show a compact summary of all decisions and auto-derived items:
 ```
 Setup Summary:
-  Tech stack:      {selected}
-  Architecture:    {selected}
-  Execution mode:  {selected}
-  QA agent:        {yes/no}
+  Output language:   {auto-detected locale}
+  Comment language:  {selected}
+  Tech stack:        {selected}
+  Architecture:      {selected}
+  Execution mode:    {selected}
+  QA agent:          {yes/no}
   Features:        {N} features ({M} tdd, {K} state-verification, {L} integration)
   Agents:          {count} ({additions/removals from default 9})
   Skills:          8 (adapted for {project type})
