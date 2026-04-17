@@ -85,11 +85,15 @@ Store the selection in `environment.md` as `comment_language`. This setting is r
 #### Step 1.5: Execution Mode
 ```
 Execution mode determines how agents work together.
-(1) ★ {Recommended based on module analysis} — {reason}
-(2) {Alternative} — {reason}
+(1) ★ Agent Team (parallel, default) — {reason based on module analysis}
+(2) Sub-agent (sequential fallback) — {reason; typically "single module" or "tightly-coupled feature set"}
+(3) Hybrid (phase-switching) — {reason; typically "mix of parallel and sequential phases"}
 
 Analysis: {N} modules, {independence assessment}
 ```
+- **Default direction**: Agent Team is the baseline recommendation (see `docs/setup-guide.md` Section 9.0). Downgrade to Sub-agent only when the plan has 1 module or tightly-coupled features where team communication overhead would exceed the parallelism benefit.
+- Labels in the prompt MUST use the exact strings shown above (`Agent Team (parallel, default)`, `Sub-agent (sequential fallback)`, `Hybrid (phase-switching)`) so users understand the trade-off rather than seeing an opaque "Sub-agent" label.
+
 Reference: `${CLAUDE_PLUGIN_ROOT}/docs/references/agent-design-patterns.md`
 
 #### Step 1.6: QA Agent
@@ -110,7 +114,7 @@ Setup Summary:
   Architecture:      {selected}
   Execution mode:    {selected}
   QA agent:          {yes/no}
-  Features:        {N} features ({M} tdd, {K} state-verification, {L} integration)
+  Features:        {N} features ({M} tdd, {B} bundled-tdd, {K} state-verification, {L} integration)
   Agents:          {count} ({additions/removals from default 9})
   Skills:          8 (adapted for {project type})
   Expected files:  ~{N} across 6 phases
@@ -168,11 +172,12 @@ Each agent YAML frontmatter includes a `model:` field.
 
 **Conditional agents (from Step 1):**
 - `qa-agent.md` (model: opus) — if QA agent inclusion was confirmed
+- `tdd-bundler.md` (model: sonnet) — if at least one feature in `feature-list.json` uses `"test_strategy": "bundled-tdd"` (see `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md` Section 5 for the full agent definition)
 - Module-specific implementer agents — if Agent Team mode with module specialization
 
 **Execution mode integration:**
-- If **Agent Team** mode: Add `## Team Communication Protocol` section to each agent definition (receive/send/task requests). Generate orchestrator agent definition with `TeamCreate`/`SendMessage`/`TaskCreate` workflow per `${CLAUDE_PLUGIN_ROOT}/docs/references/orchestrator-template.md` Template A.
-- If **Sub-agent** mode: Current default. Orchestrator uses `Agent` tool calls only. Template B.
+- If **Agent Team** mode (default): Add `## Team Communication Protocol` section to each agent definition (receive/send/task requests). Generate orchestrator agent definition with `TeamCreate`/`SendMessage`/`TaskCreate` workflow per `${CLAUDE_PLUGIN_ROOT}/docs/references/orchestrator-template.md` Template A.
+- If **Sub-agent** mode (sequential fallback): Orchestrator uses `Agent` tool calls only. Template B.
 - If **Hybrid** mode: Orchestrator specifies execution mode per phase. Template C.
 
 Record execution mode in orchestrator agent's `metadata.execution-mode` frontmatter field (in `.claude/agents/orchestrator.md`).
@@ -217,7 +222,7 @@ Generate sub CLAUDE.md for each target directory identified in Step 1.
 ### Step 7: Phase 6 — State Tracking
 - `feature-list.json` (extracted as JSON from the plan, all `passes: false`). Include:
   - `depends_on` arrays based on analysis of feature descriptions, shared modules, and tdd_focus overlaps. Validate: no circular dependencies (topological sort), array order respects dependencies. Present dependency graph to user for confirmation.
-  - `test_strategy` per feature: classify as `"tdd"` (pure logic), `"state-verification"` (rendering/UI/DOM), or `"integration"` (wiring/entry points). Default to `"tdd"` when ambiguous. Present classification to user for confirmation.
+  - `test_strategy` per feature: classify as `"tdd"` (pure logic, strict isolation), `"bundled-tdd"` (pure logic, speed-oriented, 2-commit red→green evidence), `"state-verification"` (rendering/UI/DOM), or `"integration"` (wiring/entry points). Default to `"tdd"` when ambiguous. Offer `"bundled-tdd"` only for pure-logic features with clear specs and low co-drift risk. Present classification to user for confirmation.
 - `PROGRESS.md`
 - `CHANGELOG.md` ([Keep a Changelog](https://keepachangelog.com) format with `## [Unreleased]` section. Initial entry: "Added — Initial project setup via harness-boot, {N} features defined")
 - `.claude/error-recovery.md`
@@ -239,8 +244,8 @@ Verify the entire generated harness:
    - SKILL.md <= 500 lines
    - File references use relative paths, referenced files exist
 4. Quality gates: Gates 0-4, all checks with evidence types, rationalization defense
-5. TDD: 3 sub-agent frontmatters, Red → Green call order
-6. Model routing: opus for 4+ agents (orchestrator, architect, reviewer, debugger; +qa-agent if included) / sonnet for 5 agents (implementer, tdd-test-writer, tdd-implementer, tdd-refactorer, tester) via frontmatter model: field
+5. TDD: 3 sub-agent frontmatters (tdd-test-writer, tdd-implementer, tdd-refactorer), Red → Green call order; plus tdd-bundler frontmatter and `[bundled-tdd:red]` → `[bundled-tdd:green]` evidence if any feature uses `bundled-tdd`
+6. Model routing: opus for 4+ agents (orchestrator, architect, reviewer, debugger; +qa-agent if included) / sonnet for 5+ agents (implementer, tdd-test-writer, tdd-implementer, tdd-refactorer, tester; +tdd-bundler if any feature uses `bundled-tdd`) via frontmatter model: field
 7. Cross-session: bootstrap hook → reads PROGRESS.md + feature-list.json
 8. Code-doc sync: triple defense operational, mapping table matches project structure
 9. Tokens: CLAUDE.md <= 1,500 tokens, per-task ~3,900-4,000 tokens

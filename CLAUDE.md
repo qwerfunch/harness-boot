@@ -49,14 +49,14 @@ Phase 1-6 sequential generation with user confirmation and checkpoint (`last_com
 1. Load orchestrator agent + session context (bootstrap hook verifies PROGRESS.md ↔ feature-list.json consistency) + domain-persona.md
 2. Detect mode (Initializer vs Coding) from PROGRESS.md
 3. Check execution mode (Agent Team / Sub-agent / Hybrid)
-4. Select feature(s) with numbered choices: Sub-agent → one at a time; Agent Team → parallel independent modules. **Auto-pilot option** runs all remaining features, pausing only on errors.
-5. Run development cycle per `test_strategy`: `tdd` → Red/Green/Refactor; `state-verification` → Implement/State-Test/Refactor; `integration` → Implement/Integration-Test. Steps 4-7 auto-proceed on success — no mid-feature pauses. Max 5 iterations (tracked in PROGRESS.md), then escalate.
+4. Select feature(s) with numbered choices: Agent Team (default) → parallel independent modules; Sub-agent (fallback) → one at a time. **Auto-pilot option** runs all remaining features, pausing only on errors.
+5. Run development cycle per `test_strategy`: `tdd` → Red/Green/Refactor (3 isolated sub-agents); `bundled-tdd` → Bundled Red→Green (single `tdd-bundler`, 2-commit evidence) + optional Refactor; `state-verification` → Implement/State-Test/Refactor; `integration` → Implement/Integration-Test. Steps 4-7 auto-proceed on success — no mid-feature pauses. Max 5 iterations (tracked in PROGRESS.md), then escalate.
 6. QA agent verifies cross-boundary consistency (if included per QA criteria)
 7. Quality gates 0-4 (Gate 0 enforced by implementer + reviewer), coverage gate hook, code-doc sync, auto-update feature-list.json, single commit per feature (never batch)
 
 ## Five Core Principles
 
-1. **TDD-First** — Red/Green/Refactor in isolated sub-agent contexts (prevents test-implementation knowledge leakage). Per-feature `test_strategy` allows state-verification or integration alternatives.
+1. **TDD-First** — Red/Green/Refactor in isolated sub-agent contexts (prevents test-implementation knowledge leakage). Per-feature `test_strategy` allows alternatives: `bundled-tdd` (speed-oriented, single sub-agent with 2-commit red→green evidence), `state-verification` (UI/rendering), or `integration` (wiring).
 2. **Iteration Convergence** — Max 5 loops (tracked in PROGRESS.md), then escalate to user
 3. **Code-Doc Sync** — Triple defense: prompt protocol + PreToolUse hook (blocks commit on export changes) + reviewer check
 4. **Anti-Rationalization** — Every skill embeds a rationalization-rebuttal table (>= 3 rows)
@@ -66,21 +66,21 @@ Phase 1-6 sequential generation with user confirmation and checkpoint (`last_com
 
 - CLAUDE.md <= 1,500 tokens; SKILL.md <= 500 lines
 - Hook scripts: shebang + stdin JSON parsing; exit 0 = proceed, exit 1 = hook error (proceeds), exit 2 = block action
-- feature-list.json: array order = priority; `depends_on` for dependency tracking; `test_strategy` per feature (`tdd`/`state-verification`/`integration`); only `passes` field may be changed during `/start`
+- feature-list.json: array order = priority; `depends_on` for dependency tracking; `test_strategy` per feature (`tdd`/`bundled-tdd`/`state-verification`/`integration`); only `passes` field may be changed during `/start`
 - Tech stack not specified in plan -> present 2-3 recommendations, wait for developer choice (never auto-select). Stored in CLAUDE.md (summary) + environment.md (detail).
 - Architecture pattern: prototype/PoC/MVP -> skip (Simple Flat). Otherwise assessed by project scale (8+ features, 3+ domain categories, cross-cutting concerns). If warranted and unspecified -> present 2-3 recommendations with plain-language explanations, wait for developer choice (never auto-select). Stored alongside tech stack in CLAUDE.md (summary) + environment.md (detail section).
-- Quality gates require evidence; Gate 3 coverage varies by `test_strategy`: tdd=100% line on tdd_focus, state-verification=test files exist, integration=60% file coverage; Gate 2 includes Comment Rules (Section 7.2) compliance
+- Quality gates require evidence; Gate 3 coverage varies by `test_strategy`: tdd=100% line on tdd_focus, bundled-tdd=100% line on tdd_focus (same as tdd) + 2-commit red→green sequence required at Gate 0, state-verification=test files exist, integration=60% file coverage; Gate 2 includes Comment Rules (Section 7.2) compliance
 - Gate 4 rollback: single commit per feature enables `git revert`; DB migrations require down-migration
 - Coverage gate hook: blocks `git commit` when tdd_focus functions have 0 calls (confirmed uncovered). Functions not found in fnMap produce warnings only, not blocks. ([skip-coverage] bypass)
 - Doc-sync hook: blocks `git commit` only when export changes detected without feature's doc_sync targets updated (internal refactors pass through). ([skip-doc-sync] bypass)
 - Feature status auto-update: `scripts/update-feature-status.sh` marks `passes: true` after Gate 4 passes — prevents tracking drift
 - Per-feature commit discipline: even "implement all features" requests execute sequentially (TDD → gates → commit → next)
 
-## Execution Mode (New)
+## Execution Mode
 
 Setup analyzes module independence to recommend the best mode:
-- **Agent Team**: 3+ independent modules → parallel development with `TeamCreate`/`SendMessage`/`TaskCreate`
-- **Sub-agent**: Sequential features → baseline default with `Agent` tool
+- **Agent Team** (baseline default): 2+ independent modules → parallel development with `TeamCreate`/`SendMessage`/`TaskCreate`. Aligns with the plugin's "multi-agent harness" intent.
+- **Sub-agent** (sequential fallback): 1 module or tightly-coupled feature set → `Agent` tool. Use only when team communication overhead would exceed parallelism benefit.
 - **Hybrid**: Per-phase mode switching (concrete decision criteria: 3 conditions + per-phase assignment table)
 
 Team architecture patterns: Fan-out/Fan-in, Pipeline, Supervisor, Producer-Reviewer, Expert Pool, Hierarchical.
@@ -91,5 +91,6 @@ Reference: `docs/references/agent-design-patterns.md` (adapted from [revfactory/
 
 ```
 Opus (judgment): orchestrator, architect, reviewer, debugger, qa-agent
-Sonnet (execution): implementer, tdd-test-writer, tdd-implementer, tdd-refactorer, tester
+Sonnet (execution): implementer, tdd-test-writer, tdd-implementer, tdd-refactorer, tdd-bundler, tester
 ```
+`tdd-bundler` is generated conditionally — only when `feature-list.json` contains at least one feature with `"test_strategy": "bundled-tdd"`.

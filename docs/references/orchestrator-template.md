@@ -6,9 +6,9 @@ Three orchestrator templates based on execution mode. The orchestrator is genera
 
 ---
 
-## Template A: Agent Team Mode (Recommended for Multi-Module)
+## Template A: Agent Team Mode (Baseline Default)
 
-Use when 3+ independent modules exist with real-time coordination needs. Most common for multi-module projects.
+Use when 2+ independent modules exist, or whenever parallel development with real-time coordination is beneficial. This is the baseline default for harness-boot projects; most plans should use this template unless there is a specific reason to downgrade (single module, tightly-coupled feature set, prototype/spike).
 
 ```yaml
 ---
@@ -90,9 +90,9 @@ Phase 5: Commit & Cleanup
 
 ---
 
-## Template B: Sub-agent Mode (Baseline Default)
+## Template B: Sub-agent Mode (Sequential Fallback)
 
-Use when team communication overhead exceeds benefit, or for simple sequential workflows.
+Use when team communication overhead exceeds benefit, or for simple sequential workflows. Typical triggers: single module, tightly-coupled feature set, prototype/spike with 1-2 features. Record the rationale in the orchestrator's `metadata.execution-mode-rationale` field.
 
 ```yaml
 ---
@@ -131,7 +131,7 @@ Phase 4: Commit
   |-- Code-doc sync, single commit, update state files
 ```
 
-This is the existing harness-boot default behavior. No team communication, sequential feature development.
+Sub-agent mode provides no inter-member communication and runs features sequentially. It is now an explicit fallback rather than the default — harness-boot's default direction is Agent Team, and Sub-agent is reserved for plans where team overhead would exceed parallelism benefit.
 
 ---
 
