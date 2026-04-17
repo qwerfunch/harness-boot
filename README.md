@@ -68,25 +68,25 @@ When a session ends, work resumes from the last checkpoint. On every session sta
 
 ```bash
 # 1. Clone and load as a Claude Code plugin
-git clone <this-repo>
+git clone https://github.com/qwerfunch/harness-boot.git
 cd harness-boot
 claude --plugin-dir .
 
 # 2. Feed it your plan
-/setup path/to/plan.md
+/harness-boot:setup path/to/plan.md
 
 # 3. Confirm each generation phase (1-6) as prompted
 
 # 4. Start development — picks the next feature, runs TDD cycle
-/start
+/harness-boot:start
 ```
 
 ## Commands
 
 | Command | Purpose | When to Use |
 |---------|---------|-------------|
-| `/setup <plan.md>` | Read a plan and generate the harness structure | Once at project start |
-| `/start` | Pick the next feature and run a TDD cycle | After harness is ready, use repeatedly |
+| `/harness-boot:setup <plan.md>` | Read a plan and generate the harness structure | Once at project start |
+| `/harness-boot:start` | Pick the next feature and run a TDD cycle | After harness is ready, use repeatedly |
 
 ## Generated Harness Structure
 
@@ -118,7 +118,7 @@ That's where harness-boot comes from.
 
 ---
 
-**Docs:** [Harness Engineering Guide](docs/setup-guide.md) | [Kickoff Prompts](docs/start-prompts.md)
+**Docs:** [Harness Engineering Guide](docs/setup-guide.md) | [Start Prompts](docs/start-prompts.md)
 
 **References:** [Anthropic Skills](https://github.com/anthropics/skills) | [Agent Skills Collection](https://github.com/addyosmani/agent-skills) | [Everything Claude Code](https://github.com/affaan-m/everything-claude-code)
 

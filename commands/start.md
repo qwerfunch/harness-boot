@@ -18,7 +18,10 @@ Starts actual development work with the harness in place.
 3. Load `.claude/domain-persona.md` for domain context
 4. Read `comment_language` from `.claude/environment.md` — use this language for all code comments (file headers, JSDoc, why-comments) throughout the session. Output text follows the system locale.
 
-### Step 2: Determine Mode
+### Step 2: Determine Session State
+
+> "Session state" = where we are in the overall flow (first run / resume / new feature). This is distinct from "execution mode" in Step 3 (Sub-agent / Agent Team / Hybrid).
+
 - **PROGRESS.md is empty or has no tasks** → First start after Initializer
 - **PROGRESS.md has an In Progress task** → Resume interrupted session
   - Check the TDD phase of the In Progress task (Red / Green / Refactor / Verify)
@@ -27,7 +30,7 @@ Starts actual development work with the harness in place.
 
 ### Step 3: Select Feature(s)
 
-**Check execution mode** from orchestrator's `metadata.execution-mode` (in `.claude/agents/orchestrator.md`).
+**Check execution mode** (Sub-agent / Agent Team / Hybrid) from orchestrator's `metadata.execution-mode` (in `.claude/agents/orchestrator.md`). Do not confuse with session state from Step 2.
 
 #### Dependency gate (all modes):
 Before selecting a feature, validate its `depends_on` array:
