@@ -73,20 +73,20 @@ cd harness-boot
 claude --plugin-dir .
 
 # 2. Feed it your plan
-/setup path/to/plan.md
+/harness-boot:setup path/to/plan.md
 
 # 3. Confirm each generation phase (1-6) as prompted
 
 # 4. Start development — picks the next feature, runs TDD cycle
-/start
+/harness-boot:start
 ```
 
 ## Commands
 
 | Command | Purpose | When to Use |
 |---------|---------|-------------|
-| `/setup <plan.md>` | Read a plan and generate the harness structure | Once at project start |
-| `/start` | Pick the next feature and run a TDD cycle | After harness is ready, use repeatedly |
+| `/harness-boot:setup <plan.md>` | Read a plan and generate the harness structure | Once at project start |
+| `/harness-boot:start` | Pick the next feature and run a TDD cycle | After harness is ready, use repeatedly |
 
 ## Generated Harness Structure
 

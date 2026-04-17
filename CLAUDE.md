@@ -10,8 +10,8 @@ harness-boot is a Claude Code plugin that converts detailed plan MDs into execut
 
 | Command | Purpose |
 |---------|---------|
-| `/setup <plan.md>` | Read a plan MD and generate the full harness (Phase 1-6). One-time per project. |
-| `/start` | Begin development. Picks the next incomplete feature from feature-list.json and runs TDD cycle. |
+| `/harness-boot:setup <plan.md>` | Read a plan MD and generate the full harness (Phase 1-6). One-time per project. |
+| `/harness-boot:start` | Begin development. Picks the next incomplete feature from feature-list.json and runs TDD cycle. |
 
 ## Local Development
 
