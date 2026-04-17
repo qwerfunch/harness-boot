@@ -21,40 +21,113 @@ Reads a detailed plan MD and generates a Claude Code native multi-agent harness.
    - If exists without `last_completed_phase`: ask "A harness already exists. Overwrite?"
    - If not: proceed with Initializer Mode
 
-### Step 1: Analyze Plan and Report
-Read the plan and report the following to the user:
+### Step 1: Analyze Plan — Sequential Interactive Setup
 
-1. **Tech stack**
-   - If specified → adopt as-is
-   - If unspecified → present 2-3 recommendations (with pros/cons and fit assessment) → wait for user selection
-2. **Sub CLAUDE.md target directories** (e.g., src/api, src/components)
-3. **Agent additions/removals needed** (beyond the default 9)
-4. **Skill additions/removals needed** (beyond the default 8)
-5. **feature-list.json draft** (feature ID + description + tdd_focus; validate no circular dependencies)
-6. **Code-doc sync mapping draft**
-7. **Hook script project-specific customizations**
-8. **Rationalization candidates per skill**
-9. **Expected file count per phase**
-10. **Architecture pattern**
-    - If plan states prototype/PoC/MVP/spike → skip architecture (Simple Flat), inform user
-    - If plan specifies architecture → adopt as-is
-    - If scale warrants (>= 2 of: 8+ features, 3+ domain categories, cross-cutting concerns present) → present 2-3 recommendations with plain-language explanations, pros/cons, and tech stack fit → wait for user selection
-    - If scale does not warrant → "Simple Layered recommended" → ask user to confirm or override
-11. **Domain persona draft** (project purpose, key entities with invariants, domain rules, vocabulary, stakeholder concerns, success criteria — extracted from plan MD per setup-guide.md Section 3)
-12. **Execution mode recommendation** (per setup-guide.md Section 9.0)
-    - Analyze module independence, feature parallelism, integration complexity, domain categories
-    - If 3+ independent modules with distinct domains → recommend **Agent Team** (with architecture pattern: Fan-out/Fan-in, Supervisor, etc.)
-    - If features are tightly sequential → recommend **Sub-agent** (current default)
-    - If mix → recommend **Hybrid** with per-phase mode specification
-    - Reference: `${CLAUDE_PLUGIN_ROOT}/docs/references/agent-design-patterns.md`
-    - Wait for developer confirmation (never auto-select)
-13. **QA agent inclusion** — If 3+ modules with integration points, recommend adding a QA agent for cross-boundary verification (per `${CLAUDE_PLUGIN_ROOT}/docs/references/qa-agent-guide.md`)
-14. **CI/CD platform detection** (per setup-guide.md Section 14)
-    - Check `git remote get-url origin` → detect GitHub/GitLab/Bitbucket
-    - If no remote or unrecognized → ask developer: "GitHub Actions / GitLab CI / None"
-    - If "None" → skip CI workflow generation (local hooks still enforce gates)
+Read the plan, then guide the user through decisions **one question at a time**. Each question must:
+- Present **numbered choices** the user can select by number
+- Include a **recommended option** (marked with ★)
+- Allow free-text input for custom answers
+- Wait for the user's response before proceeding to the next question
 
-**Proceed to Step 2 only after user confirmation.**
+Do NOT batch multiple questions. Do NOT dump all analysis results at once.
+
+#### Step 1.1: Plan Summary (no question — informational)
+Show a brief summary of the analyzed plan:
+```
+📋 Plan analyzed: {plan title}
+   {N} modules, {M} features, {K} integration points
+```
+
+#### Step 1.2: Code Comment Language
+Output text language auto-detects from the system locale (no question needed). Code comment language requires explicit choice:
+```
+Code comment language:
+(1) ★ {system locale language} — match your environment
+(2) English
+(3) Custom — type your own
+```
+Store the selection in `environment.md` as `comment_language`. This setting is referenced by tdd-implementer, tdd-refactorer, and reviewer agents when enforcing Comment Rules (Section 7.2).
+
+#### Step 1.3: Tech Stack
+- If plan specifies tech stack → show what was detected, ask to confirm:
+  ```
+  Detected tech stack: {stack}
+  (1) ★ Confirm
+  (2) Override — specify different stack
+  ```
+- If not specified → present 2-3 recommendations:
+  ```
+  Tech stack not specified. Recommendations:
+  (1) ★ {Option A} — {one-line reason}
+  (2) {Option B} — {one-line reason}
+  (3) {Option C} — {one-line reason}
+  (4) Custom — type your own
+  ```
+
+#### Step 1.4: Architecture Pattern
+- If plan states prototype/PoC/MVP/spike → auto-select Simple Flat, inform user (no question)
+- If plan specifies architecture → confirm (same pattern as tech stack)
+- If scale assessment triggers (>= 2 of: 8+ features, 3+ categories, cross-cutting concerns):
+  ```
+  Project scale warrants an architecture pattern.
+  (1) ★ {Recommended} — {plain-language, 1 sentence}
+  (2) {Alternative} — {plain-language, 1 sentence}
+  (3) Simple Layered — traditional layers, simplest option
+  (4) Custom — describe your preference
+  ```
+- If scale does not warrant:
+  ```
+  Project is small/medium scale.
+  (1) ★ Simple Layered (Recommended)
+  (2) Choose a pattern anyway
+  ```
+
+#### Step 1.5: Execution Mode
+```
+Execution mode determines how agents work together.
+(1) ★ {Recommended based on module analysis} — {reason}
+(2) {Alternative} — {reason}
+
+Analysis: {N} modules, {independence assessment}
+```
+Reference: `${CLAUDE_PLUGIN_ROOT}/docs/references/agent-design-patterns.md`
+
+#### Step 1.6: QA Agent
+Only ask if 3+ modules with integration points (per `${CLAUDE_PLUGIN_ROOT}/docs/references/qa-agent-guide.md`). Otherwise auto-skip with note.
+```
+3+ modules with integration points detected.
+(1) ★ Include QA Agent — cross-boundary verification after each module
+(2) Skip — rely on reviewer agent only
+```
+
+#### Step 1.7: Review & Confirm
+After all questions answered, show a compact summary of all decisions and auto-derived items:
+```
+Setup Summary:
+  Output language:   {auto-detected locale}
+  Comment language:  {selected}
+  Tech stack:        {selected}
+  Architecture:      {selected}
+  Execution mode:    {selected}
+  QA agent:          {yes/no}
+  Features:        {N} features ({M} tdd, {K} state-verification, {L} integration)
+  Agents:          {count} ({additions/removals from default 9})
+  Skills:          8 (adapted for {project type})
+  Expected files:  ~{N} across 6 phases
+
+(1) ★ Approve — proceed to Phase 1
+(2) Change a decision — which one?
+```
+
+#### Auto-derived items (computed silently, shown in summary)
+These are derived from the plan and user decisions without additional questions:
+- Sub CLAUDE.md target directories
+- feature-list.json draft (with `depends_on` and `test_strategy` classification)
+- Code-doc sync mapping draft
+- Hook script customizations per tech stack
+- Rationalization candidates per skill
+- Domain persona draft
+- Expected file count per phase
 
 ### Step 2: Phase 1 — Infrastructure
 - `.claude/settings.json` (hook configuration)
@@ -67,13 +140,14 @@ Read the plan and report the following to the user:
 - `scripts/task-decompose.sh`
 - `scripts/update-feature-status.sh` (auto-update feature-list.json passes field after Gate 4)
 - `_workspace/.gitkeep` (intermediate outputs directory for Agent Team file-based transfer)
-- CI/CD workflow (if platform selected: `.github/workflows/quality-gates.yml` for GitHub, `.gitlab-ci.yml` for GitLab; skipped if "None")
+- `.gitignore` (generated from Tech Stack selection — includes .env, IDE files, build outputs, language-specific patterns)
 
 **Phase 1 completion report → record `last_completed_phase: 1` in PROGRESS.md → user confirmation → Phase 2**
 
 ### Step 3: Phase 2 — Core Protocols
 - `.claude/protocols/` 5 protocols (tdd-loop, iteration-cycle, code-doc-sync, session-management, message-format)
 - `CLAUDE.md` (main, <= 1,500 tokens)
+- `README.md` (in output_language from environment.md — project name, description, tech stack, getting started, project structure, dev guide, license placeholder)
 - `.claude/quality-gates.md`
 
 **Phase 2 completion report → record `last_completed_phase: 2` in PROGRESS.md → user confirmation → Phase 3**
@@ -141,15 +215,17 @@ Generate sub CLAUDE.md for each target directory identified in Step 1.
 **Phase 5 completion report → record `last_completed_phase: 5` in PROGRESS.md → user confirmation → Phase 6**
 
 ### Step 7: Phase 6 — State Tracking
-- `feature-list.json` (extracted as JSON from the plan, passes: false)
+- `feature-list.json` (extracted as JSON from the plan, all `passes: false`). Include:
+  - `depends_on` arrays based on analysis of feature descriptions, shared modules, and tdd_focus overlaps. Validate: no circular dependencies (topological sort), array order respects dependencies. Present dependency graph to user for confirmation.
+  - `test_strategy` per feature: classify as `"tdd"` (pure logic), `"state-verification"` (rendering/UI/DOM), or `"integration"` (wiring/entry points). Default to `"tdd"` when ambiguous. Present classification to user for confirmation.
 - `PROGRESS.md`
-- `CHANGELOG.md`
+- `CHANGELOG.md` ([Keep a Changelog](https://keepachangelog.com) format with `## [Unreleased]` section. Initial entry: "Added — Initial project setup via harness-boot, {N} features defined")
 - `.claude/error-recovery.md`
 - `.claude/observability.md`
 
 ### Step 8: Verification
 Verify the entire generated harness:
-1. File completeness: settings.json + 6 hooks + 9+ agents + 8 skills + 5 protocols + feature-list.json + scripts/update-feature-status.sh + CI/CD workflow (if platform selected)
+1. File completeness: settings.json + 6 hooks + 9+ agents + 8 skills + 5 protocols + feature-list.json + scripts/update-feature-status.sh
 2. Runtime guardrails: hook stdin JSON parsing, security-gate exit 2, doc-sync-check commit blocking, coverage-gate commit blocking
 3. Skill anatomy (per setup-guide.md Section 8.8):
    - Directory name matches `name` field (lowercase a-z/numbers/hyphens)
@@ -172,7 +248,6 @@ Verify the entire generated harness:
 11. Domain persona: domain-persona.md exists, contains all 6 sections (Purpose, Key Entities, Domain Rules, Vocabulary, Stakeholder Concerns, Success Criteria), entities table has >= 2 rows, domain rules has >= 2 items
 12. Execution mode: orchestrator has `metadata.execution-mode` field; if Agent Team mode, agents have `## Team Communication Protocol` section; if QA agent included, qa-agent.md exists with `model: opus`
 13. Data transfer: if Agent Team or Hybrid mode, orchestrator specifies data transfer protocols (message/task/file-based); `_workspace/` directory convention documented
-14. CI/CD (if platform selected): workflow file exists at correct path (`.github/workflows/` or `.gitlab-ci.yml`), placeholders replaced with tech-stack-specific commands, gates 1-4 jobs present. If "None" selected, verify PROGRESS.md notes "CI/CD: deferred"
 
 Report each item as PASS/FAIL. For each FAIL:
 1. Identify the specific gap (missing file, missing section, wrong model routing, etc.)
@@ -183,20 +258,21 @@ Report each item as PASS/FAIL. For each FAIL:
 ### Step 9: Initial Commit
 Stage only the generated harness files explicitly — never use `git add .` to avoid accidentally staging sensitive files.
 ```bash
-git add CLAUDE.md PROGRESS.md CHANGELOG.md feature-list.json .claude/ hooks/ scripts/ _workspace/.gitkeep src/**/CLAUDE.md
-# If CI workflow was generated:
-# git add .github/workflows/quality-gates.yml  (GitHub)
-# git add .gitlab-ci.yml                       (GitLab)
+git add CLAUDE.md README.md PROGRESS.md CHANGELOG.md feature-list.json .gitignore .claude/ hooks/ scripts/ _workspace/.gitkeep src/**/CLAUDE.md
 git commit -m "harness: initial setup via harness-boot"
 ```
 
 ### Step 10: Complete
+Show final summary with cumulative metrics:
+```
+Setup complete — {total_files} files generated across 6 phases
+  Tokens: {cumulative_tokens} | Total time: {elapsed}
+```
 Guide the user to the next step: start development with the `/start` command.
 
 ## Principles
-- Follow the 4 principles: TDD-First / Iteration Convergence / Code-Doc Sync / Anti-Rationalization
+- Follow the 5 principles: TDD-First / Iteration Convergence / Code-Doc Sync / Anti-Rationalization / One Question at a Time
+- **One question at a time**: Never batch multiple decisions. Present numbered choices with a recommended option (★). Wait for response before next question.
 - User confirmation required between each phase (no autonomous progression)
-- If tech stack is unspecified, wait for developer selection (no autonomous selection)
-- If architecture pattern is unspecified and project scale warrants it, wait for developer selection (no autonomous selection)
-- If execution mode is recommended, wait for developer confirmation (no autonomous selection)
+- Never auto-select tech stack, architecture, or execution mode without developer confirmation
 - Mark anything not in the plan as `{TODO: needs confirmation}`
