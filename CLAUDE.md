@@ -37,7 +37,7 @@ The plugin is structured as Claude Code native commands + hooks:
 
 Phase 1-6 sequential generation with user confirmation and checkpoint (`last_completed_phase` in PROGRESS.md) between each phase. Interrupted sessions can resume from the last completed phase.
 
-1. Infrastructure (settings.json, hooks/, environment.md, security.md, domain-persona.md, scripts/update-feature-status.sh, CI/CD workflow (optional, GitHub Actions or GitLab CI))
+1. Infrastructure (settings.json, hooks/, environment.md, security.md, domain-persona.md, scripts/update-feature-status.sh)
 2. Protocols (tdd-loop, iteration-cycle, code-doc-sync, session-management, message-format) + CLAUDE.md
 3. Agents (9+ agents with `model:` frontmatter — opus for judgment, sonnet for execution) + Execution mode selection + optional QA agent
 4. Skills (8 skills in [Anthropic Agent Skills format](https://github.com/anthropics/skills): `skill-name/SKILL.md` with 7-section anatomy, YAML frontmatter with name/description/metadata/allowed-tools, Rationalizations >= 3 rows)
@@ -50,27 +50,29 @@ Phase 1-6 sequential generation with user confirmation and checkpoint (`last_com
 2. Detect mode (Initializer vs Coding) from PROGRESS.md
 3. Check execution mode (Agent Team / Sub-agent / Hybrid)
 4. Select feature(s): Sub-agent → one at a time; Agent Team → parallel independent modules
-5. Run TDD cycle: Sub-agent via `Agent` tool, Agent Team via `TeamCreate`+`SendMessage`+`TaskCreate`. Red -> Green -> Refactor in isolated sub-agent contexts regardless of mode. Max 5 iterations, then escalate.
+5. Run development cycle per `test_strategy`: `tdd` → Red/Green/Refactor; `state-verification` → Implement/State-Test/Refactor; `integration` → Implement/Integration-Test. Sub-agent via `Agent` tool, Agent Team via `TeamCreate`+`SendMessage`+`TaskCreate`. Max 5 iterations (tracked in PROGRESS.md), then escalate.
 6. QA agent verifies cross-boundary consistency (if included per QA criteria)
 7. Quality gates 0-4 (Gate 0 enforced by implementer + reviewer), coverage gate hook, code-doc sync, auto-update feature-list.json, single commit per feature (never batch)
 
-## Four Core Principles
+## Five Core Principles
 
-1. **TDD-First** — Red/Green/Refactor in isolated sub-agent contexts (prevents test-implementation knowledge leakage)
-2. **Iteration Convergence** — Max 5 loops, then escalate to user
-3. **Code-Doc Sync** — Triple defense: prompt protocol + PreToolUse hook (blocks commit) + reviewer check
+1. **TDD-First** — Red/Green/Refactor in isolated sub-agent contexts (prevents test-implementation knowledge leakage). Per-feature `test_strategy` allows state-verification or integration alternatives.
+2. **Iteration Convergence** — Max 5 loops (tracked in PROGRESS.md), then escalate to user
+3. **Code-Doc Sync** — Triple defense: prompt protocol + PreToolUse hook (blocks commit on export changes) + reviewer check
 4. **Anti-Rationalization** — Every skill embeds a rationalization-rebuttal table (>= 3 rows)
+5. **One Question at a Time** — All user-facing decisions use numbered choices with ★ recommended option. Never batch questions.
 
 ## Constraints for Generated Harnesses
 
 - CLAUDE.md <= 1,500 tokens; SKILL.md <= 500 lines
 - Hook scripts: shebang + stdin JSON parsing; exit 0 = proceed, exit 1 = hook error (proceeds), exit 2 = block action
-- feature-list.json: array order = priority; only `passes` field may be changed; no add/delete/reorder/modify items
+- feature-list.json: array order = priority; `depends_on` for dependency tracking; `test_strategy` per feature (`tdd`/`state-verification`/`integration`); only `passes` field may be changed during `/start`
 - Tech stack not specified in plan -> present 2-3 recommendations, wait for developer choice (never auto-select). Stored in CLAUDE.md (summary) + environment.md (detail).
 - Architecture pattern: prototype/PoC/MVP -> skip (Simple Flat). Otherwise assessed by project scale (8+ features, 3+ domain categories, cross-cutting concerns). If warranted and unspecified -> present 2-3 recommendations with plain-language explanations, wait for developer choice (never auto-select). Stored alongside tech stack in CLAUDE.md (summary) + environment.md (detail section).
-- Quality gates require evidence; Gate 3 coverage: tdd_focus functions 100% line coverage, overall no regression
+- Quality gates require evidence; Gate 3 coverage varies by `test_strategy`: tdd=100% line on tdd_focus, state-verification=test files exist, integration=60% file coverage; Gate 2 includes Comment Rules (Section 7.2) compliance
 - Gate 4 rollback: single commit per feature enables `git revert`; DB migrations require down-migration
-- Coverage gate hook: blocks `git commit` when tdd_focus functions lack test coverage ([skip-coverage] bypass)
+- Coverage gate hook: blocks `git commit` when tdd_focus functions have 0 calls (confirmed uncovered). Functions not found in fnMap produce warnings only, not blocks. ([skip-coverage] bypass)
+- Doc-sync hook: blocks `git commit` only when export changes detected without feature's doc_sync targets updated (internal refactors pass through). ([skip-doc-sync] bypass)
 - Feature status auto-update: `scripts/update-feature-status.sh` marks `passes: true` after Gate 4 passes — prevents tracking drift
 - Per-feature commit discipline: even "implement all features" requests execute sequentially (TDD → gates → commit → next)
 
