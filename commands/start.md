@@ -64,9 +64,15 @@ Next: {FEAT-XXX} — {description}
 (1) ★ Start this feature
 (2) Skip — pick a different feature
 (3) Show details (acceptance tests, doc sync targets)
+(4) Auto-pilot — run all remaining features, pause only on errors
 ```
 
+- Options (1)-(3): Manual mode. Steps 4-7 auto-proceed on success; Step 8 shows choices.
+- Option (4): Auto-pilot mode. Set `auto_pilot: true` in PROGRESS.md. Steps 4-8 all auto-proceed. Only escalation conditions cause a pause.
+
 ### Step 4: Execute Development Cycle
+
+**Auto-proceed**: Steps 4 through 7 run without pausing for user confirmation when all checks succeed. Only stop on escalation conditions (convergence failure, Gate 2 Critical, doc-sync 3+ blocks, test environment error).
 
 **Read the feature's `test_strategy`** from `feature-list.json` (default: `"tdd"`). The cycle varies by strategy.
 
@@ -218,8 +224,32 @@ The PreToolUse hooks automatically verify:
 **This step is mandatory per feature.** Do not batch multiple features — commit each feature individually before proceeding to the next.
 
 ### Step 8: Ask About Next Feature
+
+#### Auto-pilot mode (`auto_pilot: true`):
+Do not show choices. Emit a status report and auto-proceed to the next feature:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✓ {FEAT-XXX} complete ({description})     [{completed}/{total} — {percentage}%]
+  TDD: {iterations} iterations | Tests: {test_count} pass | Gates: all clear
+  Tokens: {cumulative_tokens} | Elapsed: {session_elapsed}
+  → Next: {FEAT-YYY} ({next_description})
+  Type "stop" to pause auto-pilot
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+If all features complete:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+★ AUTO-PILOT COMPLETE                    [{total}/{total} — 100%]
+  Session: {total} features, {total_iterations} iterations, {escalation_count} escalations
+  Tokens: {cumulative_tokens} | Elapsed: {session_elapsed}
+  See PROGRESS.md for details.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+#### Manual mode (default):
 ```
 ✓ {FEAT-XXX} complete — {completed}/{total} features ({percentage}%)
+  Tokens: {cumulative_tokens} | Elapsed: {session_elapsed}
 
 (1) ★ Continue — next feature: {FEAT-YYY} ({description})
 (2) End session — show progress report
@@ -233,7 +263,7 @@ The PreToolUse hooks automatically verify:
 ## Principles
 - **One feature per agent at a time** (key Anthropic lesson). Sub-agent mode: one feature total. Agent Team mode: one feature per team member, multiple in parallel across the team.
 - **One feature per commit** (non-negotiable). Each feature must be committed individually with its tests and docs before proceeding to the next. Never batch multiple features into a single commit — this enables `git revert` per feature and satisfies Gate 4. If the user requests "implement all features at once", still execute them sequentially: TDD cycle → quality gates → commit → next feature. Parallel Agent Team mode commits each module's feature independently.
-- Do not auto-proceed without phase-level user confirmation
+- **Auto-proceed on success**: Steps 4-7 run without mid-feature pauses when all gates pass. Pause only at decision points (Steps 3, 8) and on escalation conditions. Auto-pilot mode also auto-proceeds through Steps 3 and 8.
 - On convergence failure (> 5 iterations), suggest switching to debugger
 - Only modify the `passes` field in feature-list.json; never add/delete/modify items
 
@@ -244,6 +274,19 @@ Stop auto-progression and report to the user when:
 - Doc sync hook keeps blocking (see resolution below)
 - Test environment setup fails
 
+In auto-pilot mode, escalation pauses with a choice menu:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠ {FEAT-XXX} — AUTO-PILOT PAUSED         [{completed}/{total} — {percentage}%]
+  Reason: {escalation reason}
+  Tokens: {cumulative_tokens} | Elapsed: {session_elapsed}
+
+(1) Fix and retry
+(2) Skip this feature, continue auto-pilot
+(3) Exit auto-pilot — return to manual mode
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
 ### Doc Sync Block Resolution
 If the doc-sync hook blocks 3+ consecutive commit attempts:
 1. List all source files changed and their mapped doc targets
@@ -251,3 +294,26 @@ If the doc-sync hook blocks 3+ consecutive commit attempts:
 3. Ask: "Update these docs, or commit with `[skip-doc-sync]` in the message?"
 
 The `[skip-doc-sync]` escape hatch is supported by `pre-tool-doc-sync-check.sh`.
+
+## Auto-Pilot Mode
+
+Auto-pilot runs all remaining features end-to-end, pausing only on escalation conditions.
+
+### Activation
+- User selects option (4) at Step 3
+- `auto_pilot: true` is written to PROGRESS.md `## Current TDD State`
+
+### Behavior
+- **Steps 4-7**: Auto-proceed on success (same as manual mode)
+- **Step 8**: Skip choices, emit status report, auto-select next highest-priority feature
+- **Step 3 (subsequent)**: Skip choices, auto-select next feature after dependency gate
+
+### Exiting Auto-Pilot
+- **User types "stop" or "pause"**: Finish the current feature's commit (never leave half-committed), then return to manual mode at Step 8. Set `auto_pilot: false` in PROGRESS.md.
+- **Escalation pause**: Option (3) in the escalation menu exits auto-pilot permanently.
+- **Session resume**: If `auto_pilot: true` persists from an interrupted session, ask:
+  ```
+  Auto-pilot was active. Resume?
+  (1) ★ Resume auto-pilot
+  (2) Continue in manual mode
+  ```

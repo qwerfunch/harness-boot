@@ -7,15 +7,14 @@
 ```
 Harness ready. Start development.
 
-1. Load orchestrator.md
-1b. Load domain-persona.md for domain context
+1. Load orchestrator.md + domain-persona.md
 2. Check PROGRESS.md → determine Initializer/Coding mode
-3. Select highest-priority feature with passes: false from feature-list.json
-4. Work on only one feature at a time
-5. Implement via 3-way TDD sub-agent split
-5a. Max 5 TDD iterations per feature. After 5, escalate to user: stop TDD cycle, log in PROGRESS.md ## Incidents (date, feature, failure type), report failure summary with attempted approaches and suggested next steps. Do not commit partial work.
+3. Select highest-priority feature with passes: false → present numbered choices (include auto-pilot option)
+4. On feature start: auto-proceed through TDD cycle → quality gates → doc-sync → commit without mid-feature pauses
+5. Max 5 TDD iterations per feature. After 5, escalate to user.
 6. On completion: run scripts/update-feature-status.sh → single commit (code + tests + docs + feature-list.json)
 7. CRITICAL: One feature per commit. Even if user requests "implement everything", execute sequentially: TDD → gates → commit → next feature.
+8. Step 8: ask about next feature (or auto-proceed if auto-pilot mode)
 
 Begin.
 ```
@@ -42,6 +41,11 @@ Check last 10 commits in git log → identify commits with code changes but no d
 **Progress check**:
 ```
 Based on feature-list.json: total/complete/incomplete counts, completion rate by category, top 3 next priority recommendations.
+```
+
+**Resume with auto-pilot**:
+```
+Previous session had auto-pilot active. Check PROGRESS.md auto_pilot flag → resume auto-pilot from next incomplete feature. Auto-proceed through all steps, pause only on escalation.
 ```
 
 **Start with Agent Team mode (parallel modules)**:
