@@ -205,6 +205,12 @@ Update related documents per the mapping table:
 - Source changes → related docs/*.md, sub CLAUDE.md
 - Feature complete → feature-list.json (passes: true)
 - All changes → PROGRESS.md
+- Feature complete → CHANGELOG.md: append entry under `## [Unreleased]` with appropriate category:
+  - `### Added` — new feature
+  - `### Changed` — modification to existing feature
+  - `### Fixed` — bug fix
+  - `### Removed` — removed functionality
+  - Format: `- {FEAT-XXX}: {one-line description}`
 
 ### Step 7: Update Feature Status + Single Commit
 After all quality gates pass, update feature status and commit:
@@ -214,7 +220,7 @@ After all quality gates pass, update feature status and commit:
 3. Stage only changed code, tests, and docs explicitly — never use `git add .`
 ```bash
 bash scripts/update-feature-status.sh FEAT-XXX
-git add {changed source files} {test files} {doc files} feature-list.json PROGRESS.md
+git add {changed source files} {test files} {doc files} feature-list.json PROGRESS.md CHANGELOG.md
 git commit -m "feat(FEAT-XXX): {description}"
 ```
 
