@@ -140,12 +140,14 @@ These are derived from the plan and user decisions without additional questions:
 - `scripts/task-decompose.sh`
 - `scripts/update-feature-status.sh` (auto-update feature-list.json passes field after Gate 4)
 - `_workspace/.gitkeep` (intermediate outputs directory for Agent Team file-based transfer)
+- `.gitignore` (generated from Tech Stack selection — includes .env, IDE files, build outputs, language-specific patterns)
 
 **Phase 1 completion report → record `last_completed_phase: 1` in PROGRESS.md → user confirmation → Phase 2**
 
 ### Step 3: Phase 2 — Core Protocols
 - `.claude/protocols/` 5 protocols (tdd-loop, iteration-cycle, code-doc-sync, session-management, message-format)
 - `CLAUDE.md` (main, <= 1,500 tokens)
+- `README.md` (in output_language from environment.md — project name, description, tech stack, getting started, project structure, dev guide, license placeholder)
 - `.claude/quality-gates.md`
 
 **Phase 2 completion report → record `last_completed_phase: 2` in PROGRESS.md → user confirmation → Phase 3**
@@ -217,7 +219,7 @@ Generate sub CLAUDE.md for each target directory identified in Step 1.
   - `depends_on` arrays based on analysis of feature descriptions, shared modules, and tdd_focus overlaps. Validate: no circular dependencies (topological sort), array order respects dependencies. Present dependency graph to user for confirmation.
   - `test_strategy` per feature: classify as `"tdd"` (pure logic), `"state-verification"` (rendering/UI/DOM), or `"integration"` (wiring/entry points). Default to `"tdd"` when ambiguous. Present classification to user for confirmation.
 - `PROGRESS.md`
-- `CHANGELOG.md`
+- `CHANGELOG.md` ([Keep a Changelog](https://keepachangelog.com) format with `## [Unreleased]` section. Initial entry: "Added — Initial project setup via harness-boot, {N} features defined")
 - `.claude/error-recovery.md`
 - `.claude/observability.md`
 
@@ -256,7 +258,7 @@ Report each item as PASS/FAIL. For each FAIL:
 ### Step 9: Initial Commit
 Stage only the generated harness files explicitly — never use `git add .` to avoid accidentally staging sensitive files.
 ```bash
-git add CLAUDE.md PROGRESS.md CHANGELOG.md feature-list.json .claude/ hooks/ scripts/ _workspace/.gitkeep src/**/CLAUDE.md
+git add CLAUDE.md README.md PROGRESS.md CHANGELOG.md feature-list.json .gitignore .claude/ hooks/ scripts/ _workspace/.gitkeep src/**/CLAUDE.md
 git commit -m "harness: initial setup via harness-boot"
 ```
 

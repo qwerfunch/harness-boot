@@ -24,9 +24,11 @@
 ```
 project-root/
 ├── CLAUDE.md                              # Main summary (<1,500 tokens)
+├── README.md                              # Project documentation (in output_language)
 ├── PROGRESS.md                            # State tracking
 ├── feature-list.json                      # Feature list + pass status (JSON)
-├── CHANGELOG.md                           # Harness change history
+├── CHANGELOG.md                           # Change history (Keep a Changelog format)
+├── .gitignore                             # Tech stack-specific ignore patterns
 │
 ├── .claude/
 │   ├── settings.json                      # Hook configuration (runtime guardrails)
@@ -588,6 +590,63 @@ Two language settings are configured during setup:
 Once selected, the tech stack is recorded in exactly two places:
 - `CLAUDE.md`: one-line summary (e.g., "Stack: Next.js 14 + TypeScript + Prisma + PostgreSQL")
 - `.claude/environment.md`: full detail (versions, package manager, runtime requirements, dev dependencies, output_language, comment_language)
+
+### .gitignore Generation (Phase 1)
+
+Generate `.gitignore` based on the selected tech stack. Always include common patterns, then add language/framework-specific patterns.
+
+**Common (all projects)**:
+```gitignore
+# Security
+.env
+.env.*
+*.pem
+*.key
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/settings.json
+.vscode/launch.json
+*.swp
+*.swo
+*~
+
+# Harness intermediates
+_workspace/*.md
+_workspace/*.json
+```
+
+**Language/framework-specific patterns**:
+
+| Stack | Additional patterns |
+|-------|-------------------|
+| Node/TypeScript | `node_modules/`, `dist/`, `build/`, `coverage/`, `*.tsbuildinfo`, `.turbo/` |
+| Python | `__pycache__/`, `*.pyc`, `*.pyo`, `.venv/`, `venv/`, `.pytest_cache/`, `htmlcov/`, `*.egg-info/` |
+| Go | `bin/`, `*.exe`, `vendor/` (if not vendoring) |
+| Rust | `target/`, `Cargo.lock` (libraries only) |
+| Java/Kotlin | `*.class`, `target/`, `.gradle/`, `build/`, `*.jar` (non-release) |
+| Ruby | `.bundle/`, `vendor/bundle/`, `*.gem` |
+| C/C++ | `*.o`, `*.so`, `*.dylib`, `build/`, `cmake-build-*/` |
+
+Select patterns matching the tech stack chosen in Step 1.3. If the stack spans multiple categories (e.g., Node + Python), combine both.
+
+### README.md Generation (Phase 2)
+
+Generate `README.md` in the `output_language` (system locale from environment.md). Structure:
+
+1. **Project title** — from plan MD title
+2. **Description** — 2-3 sentences summarizing the project purpose (from plan)
+3. **Tech Stack** — badges or list of technologies selected in Step 1.3
+4. **Getting Started** — prerequisites, installation commands, run commands (derived from tech stack)
+5. **Project Structure** — directory tree overview (condensed, key directories only)
+6. **Development** — brief TDD workflow explanation, how to use `/start`
+7. **License** — placeholder (`TODO: Add license`)
+
+The README should be professional and specific to the project — not generic boilerplate. Extract real project details from the plan MD.
 
 ### Architecture Pattern Decision Rules
 
@@ -1746,15 +1805,36 @@ After each harness execution, offer the user a feedback opportunity (do not forc
 
 #### Change History
 
-All harness modifications are tracked in CHANGELOG.md:
+All project changes are tracked in CHANGELOG.md using [Keep a Changelog](https://keepachangelog.com/) format:
 
 ```markdown
-| Date | Change | Target | Reason |
-|------|--------|--------|--------|
-| YYYY-MM-DD | Initial setup | All | - |
-| YYYY-MM-DD | Added QA agent | agents/qa-agent.md | Boundary bugs in module integration |
-| YYYY-MM-DD | Switched to Agent Team mode | orchestrator | Sequential mode too slow for parallel modules |
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/),
+and this project adheres to [Semantic Versioning](https://semver.org/).
+
+## [Unreleased]
+
+### Added
+- Initial project setup via harness-boot
+- {N} features defined in feature-list.json
+
+## [0.1.0] - YYYY-MM-DD
+
+### Added
+- FEAT-001: {description}
+- FEAT-002: {description}
+
+### Changed
+- FEAT-003: {description}
+
+### Fixed
+- FEAT-004: {description}
 ```
+
+During `/start`, each feature completion appends an entry under `## [Unreleased]` with the appropriate category (Added/Changed/Fixed/Removed). Category is determined from the feature's description and the nature of the work performed.
 
 #### Evolution Triggers
 
@@ -1942,8 +2022,8 @@ Proactively suggest harness evolution when:
 ## 14. Generation Order
 
 ```
-Phase 1: Infrastructure ── settings.json, hooks/ (6 scripts), environment.md, security.md, domain-persona.md, scripts/ (init-harness.sh, doc-impact-check.sh, task-decompose.sh, update-feature-status.sh)
-Phase 2: Protocols ── protocols/ (5 protocols), CLAUDE.md, quality-gates.md
+Phase 1: Infrastructure ── settings.json, hooks/ (6 scripts), environment.md, security.md, domain-persona.md, scripts/ (init-harness.sh, doc-impact-check.sh, task-decompose.sh, update-feature-status.sh), .gitignore
+Phase 2: Protocols ── protocols/ (5 protocols), CLAUDE.md, README.md, quality-gates.md
 Phase 3: Agents ── agents/ (9+ agents, with model: field; execution mode selection; team communication protocols if Agent Team mode; optional qa-agent)
 Phase 4: Skills ── skills/ (8 skills, Anthropic Agent Skills format, 7-section anatomy), examples/, context-map.md
 Phase 5: Sub CLAUDE.md ── per directory
