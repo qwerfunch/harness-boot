@@ -355,7 +355,7 @@ Real projects often combine patterns:
 
 ## Agent Definition Structure (Team Mode Extension)
 
-When Agent Team mode is selected, each agent definition adds a `## Team Communication Protocol` section:
+When Agent Team mode is selected, the `## Team Communication Protocol` section is added **only to agents that exchange team messages** (orchestrator, module implementers, reviewer, qa-agent). Non-communicating agents (architect, debugger, tester, tdd-*) omit the section — they are invoked via `Agent` tool, not team messaging, so a placeholder would be empty ceremony. The template below shows the section for communicating agents:
 
 ```markdown
 ---

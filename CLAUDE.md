@@ -35,12 +35,12 @@ The plugin is structured as Claude Code native commands + hooks:
 
 ## Key Design: `/setup` Flow
 
-Phase 1-6 sequential generation with user confirmation and checkpoint (`last_completed_phase` in PROGRESS.md) between each phase. Interrupted sessions can resume from the last completed phase.
+Phase 1-6 sequential generation. After Step 1.7 approval of the decision review, phases 1-6 auto-progress without per-phase prompts. `last_completed_phase` is still checkpointed in PROGRESS.md at every phase boundary so an interrupted session auto-resumes from Phase N+1 on re-run. The flow pauses for the user only on errors, or at Phase 6 when the dependency graph / test-strategy classification is surfaced for confirmation. QA agent inclusion is auto-decided from the 3+ modules-with-integration-points criterion (shown in the Step 1.7 summary; overridable via "Change a decision").
 
 1. Infrastructure (settings.json, hooks/, environment.md, security.md, domain-persona.md, scripts/update-feature-status.sh)
 2. Protocols (tdd-loop, iteration-cycle, code-doc-sync, session-management, message-format) + CLAUDE.md
 3. Agents (9+ agents with `model:` frontmatter — opus for judgment, sonnet for execution) + Execution mode selection + optional QA agent
-4. Skills (8 skills in [Anthropic Agent Skills format](https://github.com/anthropics/skills): `skill-name/SKILL.md` with 7-section anatomy, YAML frontmatter with name/description/metadata/allowed-tools, Rationalizations >= 3 rows)
+4. Skills (8 skills in [Anthropic Agent Skills format](https://github.com/anthropics/skills): `skill-name/SKILL.md` with 7-section anatomy, YAML frontmatter with name/description/metadata/allowed-tools, Rationalizations >= 2 rows)
 5. Sub CLAUDE.md per directory (with architecture layer context if pattern selected)
 6. State files (feature-list.json, PROGRESS.md, CHANGELOG.md, error-recovery.md with 5 scenario playbooks)
 
@@ -59,7 +59,7 @@ Phase 1-6 sequential generation with user confirmation and checkpoint (`last_com
 1. **TDD-First** — Red/Green/Refactor in isolated sub-agent contexts (prevents test-implementation knowledge leakage). Per-feature `test_strategy` allows alternatives: `bundled-tdd` (speed-oriented, single sub-agent with 2-commit red→green evidence), `state-verification` (UI/rendering), or `integration` (wiring).
 2. **Iteration Convergence** — Max 5 loops (tracked in PROGRESS.md), then escalate to user
 3. **Code-Doc Sync** — Triple defense: prompt protocol + PreToolUse hook (blocks commit on export changes) + reviewer check
-4. **Anti-Rationalization** — Every skill embeds a rationalization-rebuttal table (>= 3 rows)
+4. **Anti-Rationalization** — Every skill embeds a rationalization-rebuttal table (>= 2 rows, domain-specific; add more when genuine excuses exist, but do not pad)
 5. **One Question at a Time** — All user-facing decisions use numbered choices with ★ recommended option. Never batch questions.
 
 ## Constraints for Generated Harnesses
