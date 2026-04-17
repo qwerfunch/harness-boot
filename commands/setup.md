@@ -17,8 +17,9 @@ Reads a detailed plan MD and generates a Claude Code native multi-agent harness.
 2. If not found, ask the user to confirm the path
 3. Load harness guide: `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md`
 4. Check if PROGRESS.md exists
-   - If exists and contains a `last_completed_phase` field: ask "Resume from Phase {N+1}?" or "Overwrite entirely?"
-   - If exists without `last_completed_phase`: ask "A harness already exists. Overwrite?"
+   - If exists with `last_completed_phase: N` where N ∈ {1..5} (unambiguous in-progress): **auto-resume from Phase {N+1}**, inform user: "Resuming from Phase {N+1}. (To start over, delete PROGRESS.md and re-run.)" No question.
+   - If exists with `last_completed_phase: setup_complete`: ask "Harness is already set up. (1) ★ Exit  (2) Overwrite and regenerate"
+   - If exists but `last_completed_phase` is missing/corrupt: ask "A harness exists but its state is unclear. (1) ★ Overwrite  (2) Exit"
    - If not: proceed with Initializer Mode
 
 ### Step 1: Analyze Plan — Sequential Interactive Setup
@@ -96,13 +97,8 @@ Analysis: {N} modules, {independence assessment}
 
 Reference: `${CLAUDE_PLUGIN_ROOT}/docs/references/agent-design-patterns.md`
 
-#### Step 1.6: QA Agent
-Only ask if 3+ modules with integration points (per `${CLAUDE_PLUGIN_ROOT}/docs/references/qa-agent-guide.md`). Otherwise auto-skip with note.
-```
-3+ modules with integration points detected.
-(1) ★ Include QA Agent — cross-boundary verification after each module
-(2) Skip — rely on reviewer agent only
-```
+#### Step 1.6: QA Agent (auto-decided, no question)
+Automatically **include** the QA agent when the plan has 3+ modules with integration points (per `${CLAUDE_PLUGIN_ROOT}/docs/references/qa-agent-guide.md`); otherwise **skip**. The decision is surfaced in the Step 1.7 summary (`QA agent: yes/no`) so the user can override it via "Change a decision" if needed.
 
 #### Step 1.7: Review & Confirm
 After all questions answered, show a compact summary of all decisions and auto-derived items:
@@ -146,7 +142,7 @@ These are derived from the plan and user decisions without additional questions:
 - `_workspace/.gitkeep` (intermediate outputs directory for Agent Team file-based transfer)
 - `.gitignore` (generated from Tech Stack selection — includes .env, IDE files, build outputs, language-specific patterns)
 
-**Phase 1 completion report → record `last_completed_phase: 1` in PROGRESS.md → user confirmation → Phase 2**
+**Phase 1 complete → record `last_completed_phase: 1` in PROGRESS.md → auto-proceed to Phase 2.** Pause only if a step errors.
 
 ### Step 3: Phase 2 — Core Protocols
 - `.claude/protocols/` 5 protocols (tdd-loop, iteration-cycle, code-doc-sync, session-management, message-format)
@@ -154,7 +150,7 @@ These are derived from the plan and user decisions without additional questions:
 - `README.md` (in output_language from environment.md — project name, description, tech stack, getting started, project structure, dev guide, license placeholder)
 - `.claude/quality-gates.md`
 
-**Phase 2 completion report → record `last_completed_phase: 2` in PROGRESS.md → user confirmation → Phase 3**
+**Phase 2 complete → record `last_completed_phase: 2` in PROGRESS.md → auto-proceed to Phase 3.** Pause only if a step errors.
 
 ### Step 4: Phase 3 — Agents + Execution Mode
 Each agent YAML frontmatter includes a `model:` field.
@@ -176,13 +172,13 @@ Each agent YAML frontmatter includes a `model:` field.
 - Module-specific implementer agents — if Agent Team mode with module specialization
 
 **Execution mode integration:**
-- If **Agent Team** mode (default): Add `## Team Communication Protocol` section to each agent definition (receive/send/task requests). Generate orchestrator agent definition with `TeamCreate`/`SendMessage`/`TaskCreate` workflow per `${CLAUDE_PLUGIN_ROOT}/docs/references/orchestrator-template.md` Template A.
+- If **Agent Team** mode (default): Add `## Team Communication Protocol` section **only to agents that actually exchange team messages** — orchestrator, module-specific implementers, reviewer, and qa-agent (if included). Non-communicating agents (`architect`, `debugger`, `tester`, and all `tdd-*` sub-agents) **omit the section** to avoid empty-ceremony placeholders. Generate orchestrator agent definition with `TeamCreate`/`SendMessage`/`TaskCreate` workflow per `${CLAUDE_PLUGIN_ROOT}/docs/references/orchestrator-template.md` Template A.
 - If **Sub-agent** mode (sequential fallback): Orchestrator uses `Agent` tool calls only. Template B.
 - If **Hybrid** mode: Orchestrator specifies execution mode per phase. Template C.
 
 Record execution mode in orchestrator agent's `metadata.execution-mode` frontmatter field (in `.claude/agents/orchestrator.md`).
 
-**Phase 3 completion report → record `last_completed_phase: 3` in PROGRESS.md → user confirmation → Phase 4**
+**Phase 3 complete → record `last_completed_phase: 3` in PROGRESS.md → auto-proceed to Phase 4.** Pause only if a step errors.
 
 ### Step 5: Phase 4 — 8 Skills (Anthropic Agent Skills Format)
 Each skill follows the [Anthropic Agent Skills Specification](https://github.com/anthropics/skills).
@@ -197,7 +193,7 @@ Refer to `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md` Section 8 for complete gene
 - 8.7: Complete skill example (new-feature)
 - 8.8: Validation checklist (10 items)
 
-Must follow 7-section anatomy (Overview / When to Use / TDD Focus / Process / Common Rationalizations (>= 3 rows) / Red Flags (>= 2 items) / Verification (with evidence)).
+Must follow 7-section anatomy (Overview / When to Use / TDD Focus / Process / Common Rationalizations (>= 2 rows, domain-specific) / Red Flags (>= 2 items) / Verification (with evidence)).
 
 YAML frontmatter must include:
 - `name` (1-64 chars, lowercase a-z/numbers/hyphens, matches directory name)
@@ -211,13 +207,13 @@ Skills to generate:
 
 Additional: `.claude/examples/`, `.claude/context-map.md`
 
-**Phase 4 completion report → record `last_completed_phase: 4` in PROGRESS.md → user confirmation → Phase 5**
+**Phase 4 complete → record `last_completed_phase: 4` in PROGRESS.md → auto-proceed to Phase 5.** Pause only if a step errors.
 
 ### Step 6: Phase 5 — Sub CLAUDE.md
 Generate sub CLAUDE.md for each target directory identified in Step 1.
 - If an architecture pattern was selected in Step 1, each sub CLAUDE.md must include an "Architecture Context" section specifying which layer/boundary the directory belongs to and its dependency rules.
 
-**Phase 5 completion report → record `last_completed_phase: 5` in PROGRESS.md → user confirmation → Phase 6**
+**Phase 5 complete → record `last_completed_phase: 5` in PROGRESS.md → auto-proceed to Phase 6.** Pause only if a step errors.
 
 ### Step 7: Phase 6 — State Tracking
 - `feature-list.json` (extracted as JSON from the plan, all `passes: false`). Include:
@@ -232,17 +228,11 @@ Generate sub CLAUDE.md for each target directory identified in Step 1.
 Verify the entire generated harness:
 1. File completeness: settings.json + 6 hooks + 9+ agents + 8 skills + 5 protocols + feature-list.json + scripts/update-feature-status.sh
 2. Runtime guardrails: hook stdin JSON parsing, security-gate exit 2, doc-sync-check commit blocking, coverage-gate commit blocking
-3. Skill anatomy (per setup-guide.md Section 8.8):
-   - Directory name matches `name` field (lowercase a-z/numbers/hyphens)
-   - File named `SKILL.md` (uppercase)
-   - `name` field: 1-64 chars, valid chars, no leading/trailing/consecutive hyphens
-   - `description` field: 1-1024 chars, includes WHAT + WHEN + TRIGGER + DO NOT TRIGGER
-   - All 7 sections present (Overview/When to Use/TDD Focus/Process/Rationalizations/Red Flags/Verification)
-   - Rationalizations >= 3 rows, each rebuttal domain-specific
-   - Red Flags >= 2 items
-   - Verification includes evidence types (logs/diff/reports/coverage)
-   - SKILL.md <= 500 lines
-   - File references use relative paths, referenced files exist
+3. Skill anatomy (4 gates — full rules in setup-guide.md Section 8.8):
+   - **Structural**: `SKILL.md` exists, directory name matches frontmatter `name` field, all 4 required frontmatter fields present (`name`, `description`, `metadata`, `allowed-tools`)
+   - **Anatomy**: All 7 body sections present (Overview / When to Use / TDD Focus / Process / Rationalizations / Red Flags / Verification), SKILL.md ≤ 500 lines
+   - **Content floor**: Rationalizations ≥ 2 rows (domain-specific), Red Flags ≥ 2 items, Verification section names evidence types (logs / diff / reports / coverage)
+   - **References**: File references use relative paths and the referenced files exist
 4. Quality gates: Gates 0-4, all checks with evidence types, rationalization defense
 5. TDD: 3 sub-agent frontmatters (tdd-test-writer, tdd-implementer, tdd-refactorer), Red → Green call order; plus tdd-bundler frontmatter and `[bundled-tdd:red]` → `[bundled-tdd:green]` evidence if any feature uses `bundled-tdd`
 6. Model routing: opus for 4+ agents (orchestrator, architect, reviewer, debugger; +qa-agent if included) / sonnet for 5+ agents (implementer, tdd-test-writer, tdd-implementer, tdd-refactorer, tester; +tdd-bundler if any feature uses `bundled-tdd`) via frontmatter model: field
@@ -251,7 +241,7 @@ Verify the entire generated harness:
 9. Tokens: CLAUDE.md <= 1,500 tokens, per-task ~3,900-4,000 tokens
 10. Architecture: If pattern was selected, verify environment.md contains pattern rules, sub CLAUDE.md files reference their layer/boundary, and architect agent includes pattern constraints
 11. Domain persona: domain-persona.md exists, contains all 6 sections (Purpose, Key Entities, Domain Rules, Vocabulary, Stakeholder Concerns, Success Criteria), entities table has >= 2 rows, domain rules has >= 2 items
-12. Execution mode: orchestrator has `metadata.execution-mode` field; if Agent Team mode, agents have `## Team Communication Protocol` section; if QA agent included, qa-agent.md exists with `model: opus`
+12. Execution mode: orchestrator has `metadata.execution-mode` field; if Agent Team mode, communicating agents (orchestrator, module implementers, reviewer, qa-agent) have `## Team Communication Protocol` section — non-communicating agents (architect, debugger, tester, tdd-*) do NOT; if QA agent included, qa-agent.md exists with `model: opus`
 13. Data transfer: if Agent Team or Hybrid mode, orchestrator specifies data transfer protocols (message/task/file-based); `_workspace/` directory convention documented
 
 Report each item as PASS/FAIL. For each FAIL:
@@ -278,6 +268,6 @@ Guide the user to the next step: start development with the `/start` command.
 ## Principles
 - Follow the 5 principles: TDD-First / Iteration Convergence / Code-Doc Sync / Anti-Rationalization / One Question at a Time
 - **One question at a time**: Never batch multiple decisions. Present numbered choices with a recommended option (★). Wait for response before next question.
-- User confirmation required between each phase (no autonomous progression)
+- **Auto-progress after Step 1.7 approval**: Phases 1-6 run without per-phase confirmations. `last_completed_phase` is still recorded in PROGRESS.md at every phase boundary so an interrupted session can auto-resume. Pause for the user only on errors, or when Phase 6 surfaces the dependency graph / test-strategy classification for confirmation.
 - Never auto-select tech stack, architecture, or execution mode without developer confirmation
 - Mark anything not in the plan as `{TODO: needs confirmation}`

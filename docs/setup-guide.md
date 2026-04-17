@@ -543,7 +543,7 @@ With domain-persona.md handling *semantic* context (why), context-map.md handles
 Auto-detected when PROGRESS.md doesn't exist or is empty:
 
 #### Checkpoint / Resume
-If `/setup` is interrupted mid-phase, PROGRESS.md records `last_completed_phase: N`. On re-running `/setup`, the system detects this and offers to resume from Phase N+1 instead of starting over.
+If `/setup` is interrupted mid-phase, PROGRESS.md records `last_completed_phase: N`. On re-running `/setup`, the system **auto-resumes from Phase N+1** without prompting (when `N ∈ {1..5}`). A prompt is shown only when the existing state is ambiguous — `setup_complete` (ask Exit vs Overwrite) or a missing/corrupt `last_completed_phase` value.
 
 1. Load detailed plan MD → **confirm tech stack** (see rules below) → **assess architecture pattern** (see rules below)
 2. Generate feature-list.json (all features `passes: false`)
@@ -1611,7 +1611,7 @@ During `/setup` Phase 4, validate each generated skill against:
 | 3 | **name field** | 1-64 chars, valid characters, no leading/trailing/consecutive hyphens |
 | 4 | **description field** | 1-1024 chars, includes WHAT + WHEN + TRIGGER + DO NOT TRIGGER |
 | 5 | **Body sections** | All 7 sections present: Overview, When to Use, TDD Focus, Process, Common Rationalizations, Red Flags, Verification |
-| 6 | **Rationalizations** | >= 3 rows, each rebuttal is specific to the skill's domain |
+| 6 | **Rationalizations** | >= 2 rows, each rebuttal is specific to the skill's domain. No upper limit — add more when genuine excuses exist. |
 | 7 | **Red Flags** | >= 2 items |
 | 8 | **Verification** | Includes evidence types (logs/diff/reports/coverage) |
 | 9 | **Line count** | SKILL.md <= 500 lines |
@@ -1702,7 +1702,9 @@ Add to the generated harness:
 
 #### Team Communication Protocol for Agents
 
-When Agent Team mode is selected, each agent definition (Phase 3) adds a `## Team Communication Protocol` section specifying:
+When Agent Team mode is selected, **only agents that actually exchange team messages** add a `## Team Communication Protocol` section: `orchestrator`, module-specific implementers, `reviewer`, and `qa-agent` (when included). `architect`, `debugger`, `tester`, and the `tdd-*` sub-agents (test-writer / implementer / refactorer / bundler) **omit the section** — they are invoked via the `Agent` tool inside an implementer cycle or on escalation, not through team messaging, so a placeholder section would be empty ceremony.
+
+For agents that include the section, it must specify:
 - **Receive from**: Who sends what messages
 - **Send to**: Who receives what messages
 - **Task requests**: What task types from shared task list
@@ -1766,7 +1768,7 @@ When Sub-agent mode: drop `TeamCreate, SendMessage, TaskCreate, TaskUpdate` from
 
 ### 9.3 Agent Rationalization Defense
 
-Each generated agent MD must include a "Common Rationalizations" section (minimum 3 rows, matching the Skill requirement in Section 8). Examples:
+Each generated agent MD must include a "Common Rationalizations" section (minimum 2 rows, matching the Skill requirement in Section 8). Domain-specific rebuttals only — do not pad with generic filler. Examples:
 
 | Agent | Excuse | Rebuttal |
 |-------|--------|----------|
