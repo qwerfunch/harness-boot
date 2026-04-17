@@ -73,20 +73,20 @@ cd harness-boot
 claude --plugin-dir .
 
 # 2. plan 투입
-/setup path/to/plan.md
+/harness-boot:setup path/to/plan.md
 
 # 3. 각 생성 단계(1-6)를 확인하며 진행
 
 # 4. 개발 시작 — 다음 피처를 골라 TDD 사이클을 돌립니다
-/start
+/harness-boot:start
 ```
 
 ## 명령어
 
 | 명령어 | 용도 | 사용 시점 |
 |--------|------|-----------|
-| `/setup <plan.md>` | plan을 읽고 하네스 구조 생성 | 프로젝트 시작 시 1회 |
-| `/start` | 다음 피처를 골라 TDD 사이클 실행 | 하네스 생성 이후 반복 사용 |
+| `/harness-boot:setup <plan.md>` | plan을 읽고 하네스 구조 생성 | 프로젝트 시작 시 1회 |
+| `/harness-boot:start` | 다음 피처를 골라 TDD 사이클 실행 | 하네스 생성 이후 반복 사용 |
 
 ## 생성되는 하네스 구조
 
