@@ -4,7 +4,7 @@ Defines how the TDD iteration counter is incremented, reset, and escalated. One 
 
 ## Canonical schema
 
-The authoritative schema for iteration state lives in `setup-guide.md` §11 ("PROGRESS.md File Structure Spec") in the `## Current TDD State` table. Do not duplicate it here — always read from there. This file describes **flow**, not storage.
+The authoritative schema for iteration state lives in the plugin spec at `docs/setup/cross-session-state.md` under "PROGRESS.md Structure → Field Schema" (`## Current TDD State` table). Do not duplicate it here — always read from there. This file describes **flow**, not storage.
 
 ## Ownership
 

@@ -28,7 +28,8 @@ claude --plugin-dir .
 The plugin is structured as Claude Code native commands + hooks:
 
 - `commands/` — Slash command definitions (`setup.md`, `start.md`) with YAML frontmatter
-- `docs/setup-guide.md` — Full harness engineering spec referenced by `/setup` at runtime via `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md`
+- `docs/setup/` — Modular harness engineering spec (11 topic files + INDEX). `/setup` loads `${CLAUDE_PLUGIN_ROOT}/docs/setup/INDEX.md` at Step 0 and pulls topic files on-demand per the Phase→Files map.
+- `docs/protocols/` — Plugin-internal runtime protocols (e.g., `tdd-cycles.md` — the canonical per-`test_strategy` cycle + Gate 0 evidence reference cited from `commands/start.md`). Distinct from `docs/templates/protocols/`, which is copied into the generated harness.
 - `docs/start-prompts.md` — Development start and situational prompts for `/start`
 - `docs/references/` — Agent design patterns, orchestrator templates, QA agent guide (adapted from [revfactory/harness](https://github.com/revfactory/harness))
 - `hooks/hooks.json` — Plugin's own hook config (empty; actual project hooks are generated into target project's `.claude/settings.json`)
@@ -68,7 +69,7 @@ Phase 1-6 sequential generation. After Step 1.7 approval of the decision review,
 - feature-list.json: array order = priority; `depends_on` for dependency tracking; `test_strategy` per feature (`tdd`/`bundled-tdd`/`state-verification`/`integration`); only `passes` field may be changed during `/start`
 - Tech stack not specified in plan -> present 2-3 recommendations, wait for developer choice (never auto-select). Stored in CLAUDE.md (summary) + environment.md (detail).
 - Architecture pattern: prototype/PoC/MVP -> skip (Simple Flat). Otherwise assessed by project scale (8+ features, 3+ domain categories, cross-cutting concerns). If warranted and unspecified -> present 2-3 recommendations with plain-language explanations, wait for developer choice (never auto-select). Stored alongside tech stack in CLAUDE.md (summary) + environment.md (detail section).
-- Quality gates require evidence; Gate 3 coverage varies by `test_strategy`: tdd=>= 70% line on tdd_focus, bundled-tdd=>= 70% line on tdd_focus (same as tdd) + 2-commit red→green sequence required at Gate 0, state-verification=test files exist, integration=60% file coverage; Gate 2 includes Comment Rules (Section 7.2) compliance
+- Quality gates require evidence; Gate 3 coverage varies by `test_strategy`: tdd=>= 70% line on tdd_focus, bundled-tdd=>= 70% line on tdd_focus (same as tdd) + 2-commit red→green sequence required at Gate 0, state-verification=test files exist, integration=60% file coverage; Gate 2 includes Comment Rules (`docs/setup/code-style.md#comment-rules`) compliance
 - Gate 4 rollback: single commit per feature enables `git revert`; DB migrations require down-migration
 - Coverage gate hook: blocks `git commit` when any tdd_focus function falls below 70% line coverage (computed by intersecting fnMap.loc with statementMap entries). Functions not found in fnMap produce warnings only, not blocks. ([skip-coverage] bypass)
 - Doc-sync hook: blocks `git commit` only when export changes detected without feature's doc_sync targets updated (internal refactors pass through). ([skip-doc-sync] bypass)
