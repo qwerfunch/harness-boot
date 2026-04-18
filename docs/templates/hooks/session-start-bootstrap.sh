@@ -13,6 +13,18 @@ if [[ -f "$PROGRESS_FILE" ]]; then
   echo "### PROGRESS.md Status"
   awk '/^## Status/,/^## / { if (!/^## [^S]/) print }' "$PROGRESS_FILE" | head -20
   echo ""
+
+  # Surface the active TDD cycle (feature id, iteration, phase) so a resumed
+  # session sees where the previous orchestrator left off — prevents silent
+  # iteration drift after an interrupted run.
+  TDD_STATE=$(awk '/^## Current TDD State/{flag=1; next} flag && /^## /{flag=0} flag' "$PROGRESS_FILE")
+  echo "### Current TDD State"
+  if [[ -n "$TDD_STATE" ]]; then
+    echo "$TDD_STATE" | head -10
+  else
+    echo "(no active TDD cycle)"
+  fi
+  echo ""
 fi
 
 if [[ -f "$FEATURE_LIST" ]]; then
