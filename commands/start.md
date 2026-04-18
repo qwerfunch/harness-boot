@@ -103,122 +103,20 @@ The TDD-First principle relies on `tdd-test-writer` never seeing implementation 
 
 If the implementer cannot determine whether a line is safe, it removes the line and adds a brief note to `_workspace/red_implementer_feat-XXX-input.md` documenting what was stripped. This artifact stays in the implementer's context; it is not passed to the test writer.
 
-Tool-level isolation is already enforced: `tdd-test-writer`'s `allowed-tools` list excludes `Edit` (it can only write new files), and read globs are scoped to interface declarations and test files per `docs/setup-guide.md` §5 "File Classification for tdd-test-writer". Sanitization is the second defender; Phase 3 in `commands/setup.md` writes the sanitization clause into `tdd-test-writer.md`'s generated prompt body so the sub-agent also self-checks on receipt.
+Tool-level isolation is already enforced: `tdd-test-writer`'s `allowed-tools` list excludes `Edit` (it can only write new files), and read globs are scoped to interface declarations and test files per `${CLAUDE_PLUGIN_ROOT}/docs/setup/tdd-isolation.md#file-classification-for-tdd-test-writer`. Sanitization is the second defender; Phase 3 in `commands/setup.md` writes the sanitization clause into `tdd-test-writer.md`'s generated prompt body so the sub-agent also self-checks on receipt.
 
 #### Per-feature cycle by `test_strategy`
 
-Each team member runs the cycle matching its assigned feature's `test_strategy`. The cycle blocks below are invoked inside each `implementer-<slug>`'s execution, not at the orchestrator level.
+Each team member runs the cycle matching its assigned feature's `test_strategy`. Cycles execute inside each `implementer-<slug>`'s context, not at the orchestrator level. The canonical cycle definitions live in `${CLAUDE_PLUGIN_ROOT}/docs/protocols/tdd-cycles.md`; follow the anchor for the feature's strategy:
 
-##### test_strategy = "tdd" (default, strict):
+| `test_strategy` | Cycle reference |
+|-----------------|-----------------|
+| `tdd` (default, strict 3-agent isolation) | `docs/protocols/tdd-cycles.md#cycle-tdd` |
+| `bundled-tdd` (single sub-agent, 2-commit red→green evidence) | `docs/protocols/tdd-cycles.md#cycle-bundled-tdd` |
+| `state-verification` (rendering / canvas / DOM) | `docs/protocols/tdd-cycles.md#cycle-state-verification` |
+| `integration` (wiring / entry points) | `docs/protocols/tdd-cycles.md#cycle-integration` |
 
-```
-Plan (analyze acceptance_test)
-  ↓
-Red: call tdd-test-writer sub-agent
-  - Write failing tests (happy/boundary/error)
-  - Do not read implementation code
-  - Verify: run tests → all FAIL
-  ↓
-Green: call tdd-implementer sub-agent
-  - Write minimal implementation to pass tests
-  - Apply Comment Rules (Section 7.2): file headers, JSDoc, why-comments
-  - Verify: run tests → all PASS
-  ↓
-Refactor: call tdd-refactorer sub-agent
-  - No behavior changes allowed
-  - Verify comment quality and supplement missing JSDoc/headers
-  - Verify: tests still PASS
-  ↓
-Verify: full test suite + feature verification
-  - On failure, return to Green/Red (max 5 iterations)
-  - After 5 iterations, escalate
-```
-
-##### test_strategy = "bundled-tdd" (speed-oriented, single sub-agent):
-
-```
-Plan (analyze acceptance_test)
-  ↓
-Bundled Red→Green: call tdd-bundler sub-agent
-  - Write failing tests (happy/boundary/error)
-  - Run tests → capture red output
-  - Commit tests only with subject starting [bundled-tdd:red]
-    (body includes the captured failing output)
-  - Record frozen test paths: git diff --name-only HEAD~1 HEAD
-    → store as <frozen-tests> list (e.g., *.test.*, *.spec.*, tests/**)
-  - Self-check before green: for the entire green phase, exclude every
-    path in <frozen-tests> from Write/Edit targets
-  - Write minimal implementation (MUST NOT edit tests from here on)
-  - Run tests → all PASS, capture green output
-  - Self-check before commit: re-run git diff --name-only against the
-    staged set; if any path in <frozen-tests> reappears, abort and
-    restart the cycle (do NOT commit)
-  - Commit implementation with subject starting [bundled-tdd:green]
-    (body includes the captured passing output)
-  ↓
-Refactor: call tdd-refactorer sub-agent  (optional — skip if impl is clean)
-  - No behavior changes allowed
-  - Verify comment quality and supplement missing JSDoc/headers
-  - Verify: tests still PASS
-  ↓
-Verify: full test suite + feature verification
-  - Gate 0 check: git diff <red-sha> <green-sha> -- <test-files> must be empty
-  - On failure, restart the bundled cycle (max 5 iterations)
-  - After 5 iterations, escalate
-  ↓
-Pre-Gate 4 fold: rebase --interactive or reset --soft to combine the two
-  internal commits into one feat(FEAT-XXX) commit. Keep red-sha/green-sha
-  as trailers in the commit message body so Gate 0 evidence survives.
-```
-
-> `bundled-tdd` trades strict test/impl isolation for fewer sub-agent hops (3 → 1-2). Use only for features with clear specs and low co-drift risk. When in doubt, stay with `"tdd"`.
-
-##### test_strategy = "state-verification":
-
-For features with rendering, canvas, DOM, or visual output where strict TDD is impractical.
-
-```
-Plan (analyze acceptance_test, identify testable state vs visual output)
-  ↓
-Implement: call tdd-implementer sub-agent
-  - Build the full feature implementation
-  - Apply Comment Rules (Section 7.2): file headers, JSDoc, why-comments
-  - Verify: compile/lint pass
-  ↓
-State-Test: call tdd-test-writer sub-agent
-  - Write state verification tests (NOT pixel-level rendering checks)
-  - Test: calculated positions, sizes, colors, call counts, state transitions
-  - Example: "after renderFrame(), verify drawFruit called once per body"
-  - Verify: run tests → all PASS
-  ↓
-Refactor: call tdd-refactorer sub-agent
-  - No behavior changes allowed
-  - Verify comment quality and supplement missing JSDoc/headers
-  - Verify: tests still PASS
-  ↓
-Verify: full test suite + feature verification
-  - On failure, fix implementation or tests (max 5 iterations)
-```
-
-##### test_strategy = "integration":
-
-For wiring/entry-point features that connect multiple modules.
-
-```
-Plan (analyze acceptance_test, identify integration points)
-  ↓
-Implement: call tdd-implementer sub-agent
-  - Build the feature implementation
-  - Apply Comment Rules (Section 7.2): file headers, JSDoc, why-comments
-  - Verify: compile/lint pass
-  ↓
-Integration-Test: call tester sub-agent
-  - Write integration tests covering cross-module interactions
-  - Verify: run tests → all PASS
-  ↓
-Verify: full test suite + feature verification
-  - On failure, fix (max 5 iterations)
-```
+All cycles apply Comment Rules in the Green / Implement phase (`${CLAUDE_PLUGIN_ROOT}/docs/setup/code-style.md#comment-rules`) and enforce the 5-iteration convergence limit. `bundled-tdd` trades strict test/impl isolation for fewer sub-agent hops (3 → 1-2) — use only for features with clear specs and low co-drift risk; when in doubt, stay with `tdd`.
 
 #### Team formation and dispatch
 Create a team for parallel module development. Each team member runs its own TDD sub-agent cycle (per `test_strategy` above).
@@ -271,40 +169,16 @@ If qa-agent is NOT included, these invocation points are omitted and boundary ve
 
 #### Gate 0 verification by `test_strategy`
 
-Orchestrator runs this check BEFORE Gate 1 using the feature's `tdd_focus` and `doc_sync` from feature-list.json.
+Orchestrator runs this check BEFORE Gate 1 using the feature's `tdd_focus` and `doc_sync` from `feature-list.json`. The per-strategy evidence rules (SHA returns, `git log` / `git diff` assertions, structured contracts) are canonical in `${CLAUDE_PLUGIN_ROOT}/docs/protocols/tdd-cycles.md#gate-0` — follow the matching sub-anchor:
 
-- **`tdd`** — three-sub-agent isolation. Each sub-agent returns its working SHA:
-  ```
-  red_sha   ← Agent(tdd-test-writer)   # returns SHA after test commit (test files only)
-  green_sha ← Agent(tdd-implementer)   # returns SHA after impl commit (impl files only)
-  refactor_sha ← Agent(tdd-refactorer) # returns SHA after refactor (no behavior change)
+| `test_strategy` | Gate 0 reference |
+|-----------------|------------------|
+| `tdd` | `docs/protocols/tdd-cycles.md#gate-0-tdd` |
+| `bundled-tdd` | `docs/protocols/tdd-cycles.md#gate-0-bundled-tdd` |
+| `state-verification` | `docs/protocols/tdd-cycles.md#gate-0-state-verification` |
+| `integration` | `docs/protocols/tdd-cycles.md#gate-0-integration` |
 
-  # Evidence checks:
-  (1) `git log --format=%H red_sha..green_sha` → contains green_sha exactly (order: red → green)
-  (2) `git diff red_sha green_sha -- <test-files>` → empty (test files did NOT change between Red and Green)
-  (3) `git diff green_sha refactor_sha -- <test-files>` → empty (refactor did not touch tests)
-  ```
-  If any check fails, Gate 0 blocks and the cycle restarts (iteration++).
-
-- **`bundled-tdd`** — single `tdd-bundler` sub-agent. Must return the structured contract:
-  ```
-  {
-    "red_sha":   "<sha after [bundled-tdd:red] commit>",
-    "green_sha": "<sha after [bundled-tdd:green] commit>",
-    "test_files": ["path/to/test1", "path/to/test2", ...]
-  }
-
-  # Evidence checks:
-  (1) `git log red_sha^..green_sha --format=%s` → subjects start with [bundled-tdd:red] then [bundled-tdd:green]
-  (2) `git diff red_sha green_sha -- <test_files>` → empty (tests unchanged between red and green commits)
-  (3) `git log -1 red_sha --format=%b`  → contains the captured failing output
-  (4) `git log -1 green_sha --format=%b` → contains the captured passing output
-  ```
-  Pre-Gate 4 fold preserves `red_sha` / `green_sha` as commit-message trailers so the evidence survives the rebase.
-
-- **`state-verification`** — no Red→Green ordering. Gate 0 = "test file exists under the feature's category path" (enforced by `pre-tool-coverage-gate.sh` state-verification branch). The orchestrator additionally confirms at least one assertion file lives alongside the implementation.
-
-- **`integration`** — no Red→Green ordering. Gate 0 = "integration test file exists and exercises at least one cross-module boundary named in the feature's `tdd_focus`".
+If any check fails, Gate 0 blocks and the cycle restarts (iteration++).
 
 ### Step 6: Code-Doc Sync
 Update related documents per the mapping table:
