@@ -207,7 +207,7 @@ Each agent YAML frontmatter includes a `model:` field.
   - Count: one per module (minimum 1 for single-module projects — team of one implementer + reviewer).
 
 **TDD sub-agent input contract**:
-- When generating `tdd-test-writer.md`, inject the "Sub-agent input sanitization" clause from `commands/start.md` §5 into the agent prompt body under a `## Inputs` section. The clause lists what fields the writer may read and what implementation hints must be absent; the writer self-checks on receipt and aborts with a note to `_workspace/` if the inputs look contaminated.
+- When generating `tdd-test-writer.md`, inject the "TDD sub-agent input sanitization" clause from `commands/start.md` Step 4 into the agent prompt body under a `## Inputs` section. The clause lists what fields the writer may read and what implementation hints must be absent; the writer self-checks on receipt and aborts with a note to `_workspace/` if the inputs look contaminated.
 - The same injection happens for `tdd-bundler.md` when the agent is generated (bundled-tdd features).
 
 **Team Communication Protocol integration:**

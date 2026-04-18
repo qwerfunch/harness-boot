@@ -43,6 +43,15 @@ Stable anchors cited by `commands/setup.md`, `commands/start.md`, and cross-file
 | `#file-classification-for-tdd-test-writer` | `tdd-isolation.md` | `/setup` Phase 3 (implementer prompts) |
 | `#comment-rules` | `code-style.md` | Phases 3, 4; Gate 2 review; tdd-implementer, tdd-refactorer, reviewer agents |
 | `#validation-checklist` | `skills-anatomy.md` | `/setup` Phase 4 (skill pack validation) |
+| `#cycle-tdd` | `../protocols/tdd-cycles.md` | `/start` Step 4 (strict 3-agent TDD cycle) |
+| `#cycle-bundled-tdd` | `../protocols/tdd-cycles.md` | `/start` Step 4 (single sub-agent, 2-commit red→green) |
+| `#cycle-state-verification` | `../protocols/tdd-cycles.md` | `/start` Step 4 (UI / rendering strategy) |
+| `#cycle-integration` | `../protocols/tdd-cycles.md` | `/start` Step 4 (wiring / entry points) |
+| `#gate-0` | `../protocols/tdd-cycles.md` | `/start` Step 5 (Gate 0 parent; routes to per-strategy sub-anchor) |
+| `#gate-0-tdd` | `../protocols/tdd-cycles.md` | `/start` Step 5 (Gate 0 evidence for `tdd`) |
+| `#gate-0-bundled-tdd` | `../protocols/tdd-cycles.md` | `/start` Step 5 (Gate 0 evidence for `bundled-tdd`) |
+| `#gate-0-state-verification` | `../protocols/tdd-cycles.md` | `/start` Step 5 (Gate 0 evidence for `state-verification`) |
+| `#gate-0-integration` | `../protocols/tdd-cycles.md` | `/start` Step 5 (Gate 0 evidence for `integration`) |
 
 When adding a new cross-reference, add an `<!-- anchor: slug -->` HTML comment on the target heading first, then register the slug here.
 
