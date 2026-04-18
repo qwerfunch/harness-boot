@@ -119,6 +119,15 @@ Setup Summary:
 (2) Change a decision — which one?
 ```
 
+If the user picks (2), ask a single follow-up question (one question at a time, numbered choices):
+```
+Which decision to revise?
+(1) Conversation language     (2) Comment language
+(3) Tech stack                (4) Architecture pattern
+(5) Execution mode            (6) QA agent inclusion
+```
+Re-ask only the selected question, then return to the Step 1.7 summary for re-approval. Do not cascade edits to unrelated decisions.
+
 #### Auto-derived items (computed silently, shown in summary)
 These are derived from the plan and user decisions without additional questions:
 - Module → layer mapping (for `.claude/context-map.md` in Phase 5)
@@ -244,7 +253,7 @@ Orchestrator and module-scoped sub-agents read context-map.md at session start; 
     - **Auto-approve path** (no prompt): both (a) and (b) pass → log one-line summary (`Dependency graph: {N} features, acyclic, order-valid`) and continue.
     - **Prompt path**: if (a) fails (cycle) or (b) fails (out-of-order) → surface the specific violation and the proposed fix, wait for user confirmation before proceeding.
     - To revise an auto-approved graph later, delete `PROGRESS.md` and re-run `/setup` (error-recovery rebootstraps from Step 1). Step 1.7 runs before Phase 1 and cannot override a Phase 6 decision.
-  - `test_strategy` per feature: classify as `"tdd"` (pure logic, strict isolation), `"bundled-tdd"` (pure logic, speed-oriented, 2-commit red→green evidence), `"state-verification"` (rendering/UI/DOM), or `"integration"` (wiring/entry points). Default to `"tdd"` when ambiguous. Offer `"bundled-tdd"` only for pure-logic features with clear specs and low co-drift risk. Present classification to user for confirmation.
+  - `test_strategy` per feature: classify as `"tdd"` (pure logic, strict isolation), `"bundled-tdd"` (pure logic, speed-oriented, 2-commit red→green evidence), `"state-verification"` (rendering/UI/DOM), or `"integration"` (wiring/entry points). Default to `"tdd"` when ambiguous. Offer `"bundled-tdd"` only for pure-logic features with clear specs and low co-drift risk. Present the full classification as a single batch summary (all N features at once — this is an intentional exception to the "one question at a time" rule, since per-feature prompting would exceed the Phase 6 confirmation budget) with two numbered choices: `(1) ★ Approve all` or `(2) Revise specific features`. If (2), then ask one follow-up question listing the feature ids and accept a comma-separated list; for each listed feature, ask one question at a time to pick the new strategy.
 - `PROGRESS.md`
 - `CHANGELOG.md` ([Keep a Changelog](https://keepachangelog.com) format with `## [Unreleased]` section. Initial entry: "Added — Initial project setup via harness-boot, {N} features defined")
 - `.claude/error-recovery.md`
@@ -261,7 +270,7 @@ Verify the entire generated harness:
    - **References**: File references use relative paths and the referenced files exist
 4. Quality gates: Gates 0-4, all checks with evidence types, rationalization defense
 5. TDD: 3 sub-agent frontmatters (tdd-test-writer, tdd-implementer, tdd-refactorer), Red → Green call order; plus tdd-bundler frontmatter and `[bundled-tdd:red]` → `[bundled-tdd:green]` evidence if any feature uses `bundled-tdd`
-6. Model routing: opus for 4+ agents (orchestrator, architect, reviewer, debugger; +qa-agent if included) / sonnet for 5+ agents (implementer, tdd-test-writer, tdd-implementer, tdd-refactorer, tester; +tdd-bundler if any feature uses `bundled-tdd`) via frontmatter model: field
+6. Model routing: opus for the 4 core judgment agents (orchestrator, architect, reviewer, debugger) +qa-agent if included (total 4 or 5) / sonnet for the 5 core execution agents (implementer, tdd-test-writer, tdd-implementer, tdd-refactorer, tester) +tdd-bundler if any feature uses `bundled-tdd` +one module-implementer per module in Agent Team mode, via frontmatter `model:` field
 7. Cross-session: bootstrap hook → reads PROGRESS.md + feature-list.json
 8. Code-doc sync: triple defense operational, mapping table matches project structure
 9. Tokens: CLAUDE.md <= 1,500 tokens, per-task ~3,900-4,000 tokens
