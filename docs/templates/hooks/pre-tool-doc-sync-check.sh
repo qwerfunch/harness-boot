@@ -28,13 +28,23 @@ CURRENT=$(jq -c '[.[] | select(.passes == false)][0] // empty' "$FEATURE_LIST")
 STAGED_FILES=$(git -C "$PROJECT_ROOT" diff --cached --name-only 2>/dev/null || true)
 [[ -z "$STAGED_FILES" ]] && exit 0
 
-# Detect export changes in any staged src file
+# Detect export changes in any staged src file.
+# Per-language patterns (anchored at diff-line column 0 after the +/- marker):
+#   JS/TS/Rust/Java/C#/Kotlin:   `export` keyword, `pub fn/struct/enum`, `public <Ident>`
+#   Python (no export keyword):  top-level `def`/`class` — leading identifier [A-Za-z]
+#                                 excludes `_private` helpers by omitting `_`
+#   Go (export-by-capitalization): top-level `func`/`type`/`var`/`const` + uppercase ident
 EXPORT_CHANGED=0
 while IFS= read -r SRC_FILE; do
   [[ -z "$SRC_FILE" ]] && continue
   case "$SRC_FILE" in
-    src/*|lib/*|app/*|packages/*|internal/*)
-      if git -C "$PROJECT_ROOT" diff --cached -U0 -- "$SRC_FILE" 2>/dev/null | grep -qE '^[+-].*(export|pub fn|pub struct|pub enum|public [a-zA-Z])' ; then
+    src/*|lib/*|app/*|packages/*|internal/*|pkg/*|cmd/*)
+      case "$SRC_FILE" in
+        *.py)     PAT='^[+-](export|pub fn|pub struct|pub enum|public [a-zA-Z]|(def|class)[[:space:]]+[A-Za-z])' ;;
+        *.go)     PAT='^[+-](export|pub fn|pub struct|pub enum|public [a-zA-Z]|(func|type|var|const)[[:space:]]+[A-Z])' ;;
+        *)        PAT='^[+-].*(export|pub fn|pub struct|pub enum|public [a-zA-Z])' ;;
+      esac
+      if git -C "$PROJECT_ROOT" diff --cached -U0 -- "$SRC_FILE" 2>/dev/null | grep -qE "$PAT" ; then
         EXPORT_CHANGED=1
         break
       fi
