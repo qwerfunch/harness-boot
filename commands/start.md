@@ -404,3 +404,16 @@ Auto-pilot runs all remaining features end-to-end, pausing only on escalation co
   (1) ★ Resume auto-pilot
   (2) Continue in manual mode
   ```
+
+#### Stop propagation in Agent Team mode
+Auto-pilot in Agent Team mode has multiple team members running concurrently under the orchestrator. A `stop`/`pause` input from the user must not abort mid-commit or leave orphaned sub-agent work. The orchestrator enforces the following protocol:
+
+1. On `stop`/`pause` detection, orchestrator calls `TaskUpdate(<child_task>, status: 'cancel-pending')` for every in-flight member task.
+2. Each team member checks the cancel flag at every **phase boundary**: end of Red (test-writer done), end of Green (implementer done), end of Refactor (refactorer done), end of Verify. Mid-phase work is never interrupted — phases are atomic.
+3. A member that sees `cancel-pending` at a phase boundary:
+   - If the member is **before its feature's commit**: finish the current phase, emit a partial-progress report to `_workspace/`, set `status: 'cancelled'`, exit without committing.
+   - If the member is **at or after its feature's commit**: complete the commit (single-commit discipline), set `status: 'completed'`, exit.
+4. Orchestrator waits for all members to reach a terminal state (`cancelled` or `completed`), then sets `auto_pilot: false` in PROGRESS.md and returns to manual mode at Step 8.
+5. Any feature that exited as `cancelled` stays `passes: false`; next `/start` re-selects it per the normal Step 3 dependency gate.
+
+This guarantees: no half-commits, no lost partial work (`_workspace/` artifacts survive), no inconsistent PROGRESS.md / feature-list.json state.
