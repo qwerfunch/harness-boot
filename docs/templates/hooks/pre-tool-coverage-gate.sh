@@ -40,7 +40,9 @@ fi
 
 # integration: check overall file coverage >= 60%
 if [[ "$TEST_STRATEGY" == "integration" ]]; then
-  {COVERAGE_COMMAND} >/dev/null 2>&1 || true
+  if ! {COVERAGE_COMMAND} >/dev/null 2>&1; then
+    echo "WARNING: coverage command failed — gate cannot verify. Fix before committing." >&2
+  fi
   COVERAGE_FILE="$PROJECT_ROOT/{COVERAGE_FILE}"
   if [[ -f "$COVERAGE_FILE" ]]; then
     OVERALL=$(jq '[.[] | .s | to_entries | .[] | .value] | if length == 0 then 100 else (([.[] | select(. > 0)] | length) / length * 100) end' "$COVERAGE_FILE" 2>/dev/null || echo "100")
@@ -53,7 +55,9 @@ if [[ "$TEST_STRATEGY" == "integration" ]]; then
 fi
 
 # tdd / bundled-tdd: per-function coverage check
-{COVERAGE_COMMAND} >/dev/null 2>&1 || true
+if ! {COVERAGE_COMMAND} >/dev/null 2>&1; then
+  echo "WARNING: coverage command failed — gate cannot verify. Fix before committing." >&2
+fi
 COVERAGE_FILE="$PROJECT_ROOT/{COVERAGE_FILE}"
 [[ ! -f "$COVERAGE_FILE" ]] && { echo "WARNING: Coverage report not generated, skipping gate." >&2; exit 0; }
 
