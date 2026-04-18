@@ -33,16 +33,17 @@ project-root/
 ├── .claude/
 │   ├── settings.json                      # Hook configuration (runtime guardrails)
 │   ├── agents/                            # 9+ agents (+ optional qa-agent, module-specific agents)
-│   │   ├── orchestrator.md                #   Orchestrator (model: opus)
-│   │   ├── implementer.md                 #   TDD orchestration (model: sonnet)
-│   │   ├── tdd-test-writer.md             #   Red phase only (model: sonnet)
-│   │   ├── tdd-implementer.md             #   Green phase only (model: sonnet)
-│   │   ├── tdd-refactorer.md              #   Refactor phase only (model: sonnet)
-│   │   ├── reviewer.md                    #   Code review (model: opus)
-│   │   ├── tester.md                      #   Integration/E2E testing (model: sonnet)
-│   │   ├── architect.md                   #   Design decisions (model: opus)
-│   │   ├── debugger.md                    #   Debugging specialist (model: opus)
-│   │   └── qa-agent.md                    #   Integration coherence (model: opus, optional)
+│   │   ├── orchestrator.md                #   Orchestrator
+│   │   ├── implementer.md                 #   TDD orchestration
+│   │   ├── tdd-test-writer.md             #   Red phase only
+│   │   ├── tdd-implementer.md             #   Green phase only
+│   │   ├── tdd-refactorer.md              #   Refactor phase only
+│   │   ├── reviewer.md                    #   Code review
+│   │   ├── tester.md                      #   Integration/E2E testing
+│   │   ├── architect.md                   #   Design decisions
+│   │   ├── debugger.md                    #   Debugging specialist
+│   │   └── qa-agent.md                    #   Integration coherence (optional)
+│   │                                      #   Model routing: see §6
 │   ├── skills/                            # 8 skills (Anthropic Agent Skills format)
 │   │   ├── new-feature/                   #   Each skill directory contains:
 │   │   │   ├── SKILL.md                   #     YAML frontmatter + 7-section body
@@ -1102,12 +1103,20 @@ Sub-agents have independent context windows. If a sub-agent's context fills (lar
 
 ## 6. Model Routing
 
+**Canonical routing spec.** All other references (Phase 3 agent list in `commands/setup.md`, Phase 8 verification item, §9.2 agent table, directory tree comments) should point back here instead of duplicating the rule.
+
 Agents where reasoning is critical use Opus; agents where code generation is critical use Sonnet.
 Specified via the frontmatter `model:` field.
 
 ```
-Opus (judgment) ── orchestrator, architect, reviewer, debugger
-Sonnet (execution) ── implementer, tdd-×3 (test-writer / implementer / refactorer), tdd-bundler, tester
+Opus (judgment, 4 core + 1 optional)
+  ── orchestrator, architect, reviewer, debugger
+  ── qa-agent          (only if QA agent is included per Step 1.6 criteria)
+
+Sonnet (execution, 5 core + 1 conditional + N conditional)
+  ── implementer, tdd-test-writer, tdd-implementer, tdd-refactorer, tester
+  ── tdd-bundler       (only if feature-list.json has any "test_strategy": "bundled-tdd")
+  ── implementer-<slug> (Agent Team mode: one per module, slug from domain-persona.md)
 ```
 
 ```markdown
@@ -1772,18 +1781,20 @@ When Sub-agent mode: drop `TeamCreate, SendMessage, TaskCreate, TaskUpdate` from
 
 ### 9.2 Agent Roles
 
-| Agent | Model | Core Role | Domain View |
-|-------|-------|-----------|-------------|
-| **orchestrator** | opus | Initializer/Coding mode switching, task decomposition, tdd_focus/doc_sync assignment, one-at-a-time | Full persona (reads domain-persona.md) |
-| **implementer** | sonnet | Sequential TDD sub-agent calls, convergence loop management (max 5), single commit | Feature-scoped entities + rules (from orchestrator prompt) |
-| **reviewer** | opus | 3-stage review: (1) TDD compliance (2) Code quality (3) Doc sync. REJECT if docs missing | Entities + Rules + Vocabulary (inlined in agent MD) |
-| **tester** | sonnet | Core function selection, feedback with expected vs actual values | Success criteria + rules (agent MD section) |
-| **architect** | opus | ADR writing, impact doc listing, schema changes require migration + docs together | Full persona (reads domain-persona.md) |
-| **debugger** | opus | Root cause analysis, minimal fix, mandatory regression test | Full persona (reads domain-persona.md) |
-| **tdd-test-writer** | sonnet | Red phase only (for `tdd` / `state-verification`). Does not read implementation code | Feature-scoped entities + invariants (from implementer prompt) |
-| **tdd-implementer** | sonnet | Green phase only (for `tdd` / `state-verification`). Minimal implementation | Feature-scoped entities + rules (from implementer prompt) |
-| **tdd-refactorer** | sonnet | Refactor phase (all TDD strategies). No behavior changes | Vocabulary only (from implementer prompt) |
-| **tdd-bundler** (conditional) | sonnet | Bundled Red→Green for `bundled-tdd` features. Single-agent, 2-commit sequence (`[bundled-tdd:red]` → `[bundled-tdd:green]`). Included only when feature-list.json contains at least one `"test_strategy": "bundled-tdd"` entry | Feature-scoped entities + rules (from implementer prompt) |
+Model assignment per agent is defined once in §6 (Model Routing). This table covers role and domain-view only.
+
+| Agent | Core Role | Domain View |
+|-------|-----------|-------------|
+| **orchestrator** | Initializer/Coding mode switching, task decomposition, tdd_focus/doc_sync assignment, one-at-a-time | Full persona (reads domain-persona.md) |
+| **implementer** | Sequential TDD sub-agent calls, convergence loop management (max 5), single commit | Feature-scoped entities + rules (from orchestrator prompt) |
+| **reviewer** | 3-stage review: (1) TDD compliance (2) Code quality (3) Doc sync. REJECT if docs missing | Entities + Rules + Vocabulary (inlined in agent MD) |
+| **tester** | Core function selection, feedback with expected vs actual values | Success criteria + rules (agent MD section) |
+| **architect** | ADR writing, impact doc listing, schema changes require migration + docs together | Full persona (reads domain-persona.md) |
+| **debugger** | Root cause analysis, minimal fix, mandatory regression test | Full persona (reads domain-persona.md) |
+| **tdd-test-writer** | Red phase only (for `tdd` / `state-verification`). Does not read implementation code | Feature-scoped entities + invariants (from implementer prompt) |
+| **tdd-implementer** | Green phase only (for `tdd` / `state-verification`). Minimal implementation | Feature-scoped entities + rules (from implementer prompt) |
+| **tdd-refactorer** | Refactor phase (all TDD strategies). No behavior changes | Vocabulary only (from implementer prompt) |
+| **tdd-bundler** (conditional) | Bundled Red→Green for `bundled-tdd` features. Single-agent, 2-commit sequence (`[bundled-tdd:red]` → `[bundled-tdd:green]`). Included only when feature-list.json contains at least one `"test_strategy": "bundled-tdd"` entry | Feature-scoped entities + rules (from implementer prompt) |
 
 ### 9.3 Agent Rationalization Defense
 

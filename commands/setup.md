@@ -270,7 +270,7 @@ Verify the entire generated harness:
    - **References**: File references use relative paths and the referenced files exist
 4. Quality gates: Gates 0-4, all checks with evidence types, rationalization defense
 5. TDD: 3 sub-agent frontmatters (tdd-test-writer, tdd-implementer, tdd-refactorer), Red → Green call order; plus tdd-bundler frontmatter and `[bundled-tdd:red]` → `[bundled-tdd:green]` evidence if any feature uses `bundled-tdd`
-6. Model routing: opus for the 4 core judgment agents (orchestrator, architect, reviewer, debugger) +qa-agent if included (total 4 or 5) / sonnet for the 5 core execution agents (implementer, tdd-test-writer, tdd-implementer, tdd-refactorer, tester) +tdd-bundler if any feature uses `bundled-tdd` +one module-implementer per module in Agent Team mode, via frontmatter `model:` field
+6. Model routing: each agent's frontmatter `model:` field matches the canonical assignment in `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md` §6 (Opus for the 4 judgment agents + qa-agent if included; Sonnet for the 5 execution agents + tdd-bundler and module-implementers if present).
 7. Cross-session: bootstrap hook → reads PROGRESS.md + feature-list.json
 8. Code-doc sync: triple defense operational, mapping table matches project structure
 9. Tokens: CLAUDE.md <= 1,500 tokens, per-task ~3,900-4,000 tokens
