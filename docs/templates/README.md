@@ -36,3 +36,12 @@ That's it — no LLM generation for hook bodies.
 - Placeholders MUST use `{UPPER_SNAKE_CASE}` braces so substitution is grep-safe.
 - All templates MUST pass `shellcheck` and run under `set -euo pipefail`.
 - Any behavior change to these templates requires updating `docs/setup/runtime-guardrails.md` (the spec) AND a regression check against the sample plans in `tests/fixtures/`.
+
+## Docs Size Policy
+
+Applies to every `.md` file under `docs/` in this repository.
+
+- **Hard limit: 500 lines (≈ 1,600 tokens)**. Claude Code slash commands have no include / glob / anchor mechanism — every referenced file is loaded whole, so oversized docs force unnecessary context on every `/setup` invocation.
+- A file exceeding 500 lines MUST declare a size exception at the top, e.g. `<!-- size-exception: <reason> -->`. Reviewers reject uncommented over-limit files.
+- Preferred remedy is to split by topic under `docs/setup/` (or `docs/protocols/` for runtime references) and register the new file in `docs/setup/INDEX.md`.
+- Soft-enforced by `scripts/check-doc-sizes.sh` (non-blocking — prints over-limit files without exempt comments).
