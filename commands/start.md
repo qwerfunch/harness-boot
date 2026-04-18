@@ -151,8 +151,15 @@ Bundled Red→Green: call tdd-bundler sub-agent
   - Run tests → capture red output
   - Commit tests only with subject starting [bundled-tdd:red]
     (body includes the captured failing output)
+  - Record frozen test paths: git diff --name-only HEAD~1 HEAD
+    → store as <frozen-tests> list (e.g., *.test.*, *.spec.*, tests/**)
+  - Self-check before green: for the entire green phase, exclude every
+    path in <frozen-tests> from Write/Edit targets
   - Write minimal implementation (MUST NOT edit tests from here on)
   - Run tests → all PASS, capture green output
+  - Self-check before commit: re-run git diff --name-only against the
+    staged set; if any path in <frozen-tests> reappears, abort and
+    restart the cycle (do NOT commit)
   - Commit implementation with subject starting [bundled-tdd:green]
     (body includes the captured passing output)
   ↓
