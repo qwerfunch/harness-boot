@@ -1333,12 +1333,14 @@ Each skill is a self-contained directory. The directory name **must match** the 
 ```
 skill-name/
 ├── SKILL.md                  # Required: YAML frontmatter + Markdown instructions
-├── references/               # Optional: supplementary documentation (overflow content)
-│   └── REFERENCE.md         #   Detailed technical reference, examples, edge cases
+├── references/               # Optional: create ONLY if SKILL.md exceeds ~500 lines
+│   └── <name>.md            #   Name freely (e.g., examples.md, edge-cases.md)
 ├── scripts/                  # Optional: executable code (Python, Bash, JavaScript)
 │   └── validate.sh          #   Helper scripts referenced from SKILL.md
 └── assets/                   # Optional: static resources (templates, data files)
 ```
+
+> Only create a subdirectory when it holds actual content. An empty `references/` that SKILL.md links to (e.g., `[details](references/foo.md)`) becomes a broken link — omit the link instead.
 
 ### 8.2 YAML Frontmatter Schema
 
@@ -1425,8 +1427,9 @@ allowed-tools: "{tool list}"          # Required for harness skills
 {Specific instructions at "run npm test" level of detail.}
 
 ### Step 2: {Verb phrase}
-{Instructions. Reference supplementary files:}
-See [detailed examples](references/REFERENCE.md) for edge cases.
+{Instructions. If — and only if — this skill ships a `references/<file>.md`, link it here:}
+{e.g., "See [detailed examples](references/examples.md) for edge cases."}
+{Otherwise delete this line rather than emit a broken link.}
 
 ### Step N: {Verb phrase}
 {Final step — typically verification and commit.}
@@ -1467,7 +1470,7 @@ Skills follow a progressive disclosure model to minimize context consumption:
 **Rules**:
 - SKILL.md body must stay under 500 lines. Move detailed content to `references/` subdirectory.
 - Inline code blocks within SKILL.md: 50 lines max. Move longer code to `scripts/`.
-- Reference supplementary files with relative paths: `See [details](references/REFERENCE.md)`
+- Reference supplementary files with relative paths **only when the file actually exists**: `See [details](references/<file>.md)`. Do not emit the link for a non-existent file.
 - Delete any section that doesn't change agent behavior — no padding.
 
 ### 8.5 Description Writing Guide
