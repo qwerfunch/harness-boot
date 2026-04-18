@@ -78,9 +78,6 @@ project-root/
 │   └── post-tool-test-runner.sh
 │
 ├── scripts/
-│   ├── init-harness.sh
-│   ├── doc-impact-check.sh
-│   ├── task-decompose.sh
 │   └── update-feature-status.sh
 │
 ├── _workspace/                            # Intermediate outputs (Agent Team file-based transfer)
@@ -556,7 +553,7 @@ If `/setup` is interrupted mid-phase, PROGRESS.md records `last_completed_phase:
 1. Load detailed plan MD → **confirm tech stack** (see rules below) → **assess architecture pattern** (see rules below)
 2. Generate feature-list.json (all features `passes: false`)
 3. Create initial PROGRESS.md
-4. Run init-harness.sh (environment validation, dependency installation)
+4. Environment validation + dependency installation run inline as part of Phase 1 infrastructure generation (no separate bootstrap script)
 5. First commit → switch to Coding Mode
 
 ### Tech Stack Decision Rules
@@ -1586,7 +1583,8 @@ corresponding passing test.
 
 ### Step 5: Code-doc sync
 Update all files listed in the feature's `doc_sync` array.
-Verify via doc-impact-check.sh before commit.
+Reviewer agent verifies doc-sync at Gate 2; the pre-commit doc-sync hook
+blocks the commit when exports changed without the mapped docs staged.
 
 ### Step 6: Single commit
 Stage code + tests + docs together. Commit message references feature ID.
@@ -2160,7 +2158,7 @@ Proactively suggest harness evolution when:
 ## 14. Generation Order
 
 ```
-Phase 1: Infrastructure ── settings.json, hooks/ (6 scripts), environment.md, security.md, domain-persona.md, scripts/ (init-harness.sh, doc-impact-check.sh, task-decompose.sh, update-feature-status.sh), .gitignore
+Phase 1: Infrastructure ── settings.json, hooks/ (6 scripts), environment.md, security.md, domain-persona.md, scripts/update-feature-status.sh, .gitignore
 Phase 2: Protocols ── protocols/ (5 protocols), CLAUDE.md, README.md, quality-gates.md
 Phase 3: Agents ── agents/ (9+ agents, with model: field; execution mode selection; team communication protocols if Agent Team mode; optional qa-agent)
 Phase 4: Skills ── skills/ (8 skills, Anthropic Agent Skills format, 7-section anatomy), examples/

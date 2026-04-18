@@ -139,9 +139,6 @@ These are derived from the plan and user decisions without additional questions:
 - `.claude/environment.md`
 - `.claude/security.md`
 - `.claude/domain-persona.md` (domain context for agents, from Step 1 draft)
-- `scripts/init-harness.sh`
-- `scripts/doc-impact-check.sh`
-- `scripts/task-decompose.sh`
 - `scripts/update-feature-status.sh` (auto-update feature-list.json passes field after Gate 4)
 - `_workspace/.gitkeep` (intermediate outputs directory for Agent Team file-based transfer)
 - `.gitignore` (generated from Tech Stack selection — includes .env, IDE files, build outputs, language-specific patterns)
