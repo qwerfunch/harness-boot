@@ -17,7 +17,7 @@ Defines the Red → Green → Refactor cycle for the `tdd` test strategy, and th
 |-------|-----------|-----------------|----------------|
 | Red   | `tdd-test-writer` | tdd_focus + acceptance_test (sanitized, see start.md "Sub-agent input sanitization") | All written tests FAIL for the expected reasons |
 | Green | `tdd-implementer` | Red exit OK | All feature tests PASS; full suite still PASSES |
-| Refactor | `tdd-refactorer` | Green exit OK | No behavior change; suite still PASSES; Comment Rules (plugin spec: `docs/setup/code-style.md#comment-rules`) verified |
+| Refactor | `tdd-refactorer` | Green exit OK | No behavior change; suite still PASSES; Comment Rules (from the agent's embedded `## Comment Rules` section) verified |
 | Verify | implementer (self) | Refactor exit OK | Quality Gates 0-3 cleared |
 
 Red failure after Green → return to Red with an incremented iteration (see `iteration-cycle.md`).
@@ -61,7 +61,7 @@ The implementer never edits sub-agent artifacts directly. If a test is wrong, it
 
 ## Sub-agent isolation invariants
 
-- `tdd-test-writer` MUST NOT read implementation code. Tool list excludes `Edit`; file globs restrict reads to `*.d.ts`, `*.types.*`, test files, and interface headers (see the plugin spec at `docs/setup/tdd-isolation.md#file-classification-for-tdd-test-writer`).
+- `tdd-test-writer` MUST NOT read implementation code. Tool list excludes `Edit`; file globs restrict reads to `*.d.ts`, `*.types.*`, test files, and interface headers — the full allowed/forbidden matrix is embedded in `tdd-test-writer.md`'s own `## File Classification` section.
 - `tdd-implementer` MUST NOT read test-writing rationale; only the test file contents and acceptance criteria.
 - `tdd-refactorer` MUST NOT change behavior; verified by running the suite before and after.
 - `tdd-bundler` replaces the 3-sub-agent split with a single controlled flow — isolation is structural (2 commits), not contextual.

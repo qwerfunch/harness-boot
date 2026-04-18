@@ -210,6 +210,29 @@ Each agent YAML frontmatter includes a `model:` field.
 - When generating `tdd-test-writer.md`, inject the "TDD sub-agent input sanitization" clause from `commands/start.md` Step 4 into the agent prompt body under a `## Inputs` section. The clause lists what fields the writer may read and what implementation hints must be absent; the writer self-checks on receipt and aborts with a note to `_workspace/` if the inputs look contaminated.
 - The same injection happens for `tdd-bundler.md` when the agent is generated (bundled-tdd features).
 
+**Rule text injection (inline-embed, MANDATORY)**:
+
+Subagents invoked via the `Agent` tool cannot resolve `${CLAUDE_PLUGIN_ROOT}` paths — their system prompt is the literal body of their agent file. Any rule referenced only as `see ${CLAUDE_PLUGIN_ROOT}/...` is unreadable at runtime. Phase 3 MUST embed the following rule texts verbatim into generated agent files by reading the source and copying the section body (not a link).
+
+1. **Language Settings block** — embed into every generated agent (`orchestrator.md`, all `implementer-*.md`, `reviewer.md`, `qa-agent.md` if included, `architect.md`, `debugger.md`, `tester.md`, `tdd-test-writer.md`, `tdd-implementer.md`, `tdd-refactorer.md`, `tdd-bundler.md` if generated). Read `conversation_language` (from the locale detected in Step 1.2) and `comment_language` (from `.claude/environment.md`) and write a `## Language Settings` section at the top of the agent body:
+   ```markdown
+   ## Language Settings
+   - conversation_language: <value>   # user-facing messages, spinner, prompts, summaries
+   - comment_language: <value>         # file headers, JSDoc, inline why-comments in source code
+   Respond to the user in conversation_language. Write all source-code comments in comment_language. Machine-facing files (CLAUDE.md, .claude/**/*.md, feature-list.json, PROGRESS.md, hooks/*.sh, scripts/*.sh) stay English regardless.
+   ```
+
+2. **Comment Rules** — embed into `tdd-implementer.md`, `tdd-refactorer.md`, `tdd-bundler.md` (if generated), and `reviewer.md`. Read `${CLAUDE_PLUGIN_ROOT}/docs/setup/code-style.md` and copy the section body starting at the `## Comment Rules <!-- anchor: comment-rules -->` heading through (but not including) the next `## ` heading. Paste it verbatim into the agent body under a `## Comment Rules` section. Do not paraphrase; do not replace with a link.
+
+3. **TDD Cycles + Gate 0 Evidence** — embed into `orchestrator.md`, every `implementer-<slug>.md`, and `reviewer.md`. Read `${CLAUDE_PLUGIN_ROOT}/docs/protocols/tdd-cycles.md` and copy:
+   - All four `## Cycle: <strategy>` sections (from each `## Cycle:` heading through the next `## ` heading)
+   - The full `## Gate 0 Evidence Verification` section including its four `### <strategy>` sub-blocks
+   Paste verbatim under `## TDD Cycles` and `## Gate 0 Evidence` sections in the agent body. This lets the agent route by `test_strategy` at runtime without needing to read the plugin.
+
+4. **File Classification for tdd-test-writer** — embed into `tdd-test-writer.md`. Read `${CLAUDE_PLUGIN_ROOT}/docs/setup/tdd-isolation.md` and copy the section body under `## File Classification for tdd-test-writer <!-- anchor: file-classification-for-tdd-test-writer -->` verbatim into the agent body under `## File Classification`.
+
+Embedding is done inside the `/setup` slash-command context (top-level), which CAN resolve `${CLAUDE_PLUGIN_ROOT}`. Subagents only ever see the post-embed files.
+
 **Team Communication Protocol integration:**
 Add `## Team Communication Protocol` section **only to agents that actually exchange team messages** — orchestrator, module-specific implementers, reviewer, and qa-agent (if included). Non-communicating agents (`architect`, `debugger`, `tester`, and all `tdd-*` sub-agents) **omit the section** to avoid empty-ceremony placeholders. Generate the orchestrator agent definition with `TeamCreate`/`SendMessage`/`TaskCreate` workflow per `${CLAUDE_PLUGIN_ROOT}/docs/references/orchestrator-template.md`.
 
@@ -287,6 +310,11 @@ Verify the entire generated harness:
 12. Team communication: communicating agents (orchestrator, module implementers, reviewer, qa-agent) have `## Team Communication Protocol` section — non-communicating agents (architect, debugger, tester, tdd-*) do NOT; if QA agent included, qa-agent.md exists with `model: opus`
 13. Data transfer: orchestrator specifies data transfer protocols (message/task/file-based); `_workspace/` directory convention documented
 14. **Placeholder sweep**: `grep -rEn '\{(COVERAGE_COMMAND|COVERAGE_FILE)\}' .claude/ hooks/ scripts/ 2>/dev/null` → must return zero matches. Any hit means Phase 1 Step 2 substitution was skipped — regenerate the affected hook from `${CLAUDE_PLUGIN_ROOT}/docs/templates/hooks/` with the correct `stacks.md` row, then re-run this check.
+15. **Rule embed verification**: every generated agent file under `.claude/agents/` must contain a `## Language Settings` section. In addition:
+    - `tdd-implementer.md`, `tdd-refactorer.md`, `tdd-bundler.md` (if generated), and `reviewer.md` must contain a `## Comment Rules` section whose body includes the phrase `Let the code say "what," and comments say only` (anchor line from code-style.md).
+    - `orchestrator.md`, every `implementer-*.md`, and `reviewer.md` must contain `## TDD Cycles` and `## Gate 0 Evidence` sections.
+    - `tdd-test-writer.md` must contain a `## File Classification` section.
+    Any missing section means Phase 3 Step 4 rule injection was skipped — regenerate the affected agent from the source in `${CLAUDE_PLUGIN_ROOT}/docs/setup/` or `docs/protocols/` and re-verify.
 
 Report each item as PASS/FAIL. For each FAIL:
 1. Identify the specific gap (missing file, missing section, wrong model routing, etc.)

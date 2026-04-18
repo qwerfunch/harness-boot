@@ -16,7 +16,16 @@ Starts actual development work with the harness in place.
 1. Load `.claude/agents/orchestrator.md`
 2. Receive context provided by SessionStart hook (PROGRESS.md summary, incomplete feature count, last 5 git log entries)
 3. Load `.claude/domain-persona.md` for domain context
-4. Read `comment_language` from `.claude/environment.md` — use this language for all code comments (file headers, JSDoc, why-comments) throughout the session. Conversation output (spinner, prompts, summaries) uses `conversation_language` (system locale). **Language policy**: machine-facing files (`CLAUDE.md`, `PROGRESS.md`, `feature-list.json`, `.claude/**/*.md`, `hooks/*.sh`, `scripts/*.sh`) are always English regardless of locale. User-facing docs (`README.md`, `CHANGELOG.md`) follow `conversation_language` — when appending a feature-completion entry to CHANGELOG.md under `## [Unreleased]`, write the human description text in `conversation_language` (Keep a Changelog structural headings like `### Added` stay English).
+4. Read `conversation_language` and `comment_language` from `.claude/environment.md`. From this point forward the orchestrator MUST:
+   - Respond to the user in `conversation_language` (all spinner messages, numbered-choice prompts, status reports, summaries, and CHANGELOG human-description text under `## [Unreleased]`). Keep a Changelog structural headings (`### Added`, etc.) stay English.
+   - Include a `Language Settings` prefix in every subagent dispatch — both `Agent` tool task prompts and `SendMessage` / `TaskCreate` payloads — using this block verbatim:
+     ```
+     Language Settings:
+     - conversation_language: <value>
+     - comment_language: <value>
+     Respond in conversation_language. Write source-code comments in comment_language.
+     ```
+     This overrides any default English output even when the agent body (generated at Phase 3) already contains its own embedded `## Language Settings` section — the runtime values take precedence. Machine-facing files (`CLAUDE.md`, `PROGRESS.md`, `feature-list.json`, `.claude/**/*.md`, `hooks/*.sh`, `scripts/*.sh`) stay English regardless. User-facing docs (`README.md`, `CHANGELOG.md`) follow `conversation_language`.
 
 ### Step 2: Determine Session State
 
@@ -107,19 +116,27 @@ Tool-level isolation is already enforced: `tdd-test-writer`'s `allowed-tools` li
 
 #### Per-feature cycle by `test_strategy`
 
-Each team member runs the cycle matching its assigned feature's `test_strategy`. Cycles execute inside each `implementer-<slug>`'s context, not at the orchestrator level. The canonical cycle definitions live in `${CLAUDE_PLUGIN_ROOT}/docs/protocols/tdd-cycles.md`; follow the anchor for the feature's strategy:
+Each team member runs the cycle matching its assigned feature's `test_strategy`. Cycles execute inside each `implementer-<slug>`'s context, not at the orchestrator level. Full cycle bodies are embedded in each implementer's agent file at Phase 3 generation (see `commands/setup.md` Phase 3 "Rule text injection"), so the implementer resolves its cycle from its own `## TDD Cycles` section at runtime. Plugin-internal citation (`docs/protocols/tdd-cycles.md`) is the canonical source but is NOT read by subagents at runtime.
 
-| `test_strategy` | Cycle reference |
-|-----------------|-----------------|
-| `tdd` (default, strict 3-agent isolation) | `docs/protocols/tdd-cycles.md#cycle-tdd` |
-| `bundled-tdd` (single sub-agent, 2-commit red→green evidence) | `docs/protocols/tdd-cycles.md#cycle-bundled-tdd` |
-| `state-verification` (rendering / canvas / DOM) | `docs/protocols/tdd-cycles.md#cycle-state-verification` |
-| `integration` (wiring / entry points) | `docs/protocols/tdd-cycles.md#cycle-integration` |
+| `test_strategy` | Embedded anchor in agent body |
+|-----------------|-------------------------------|
+| `tdd` (default, strict 3-agent isolation) | `## Cycle: tdd` |
+| `bundled-tdd` (single sub-agent, 2-commit red→green evidence) | `## Cycle: bundled-tdd` |
+| `state-verification` (rendering / canvas / DOM) | `## Cycle: state-verification` |
+| `integration` (wiring / entry points) | `## Cycle: integration` |
 
-All cycles apply Comment Rules in the Green / Implement phase (`${CLAUDE_PLUGIN_ROOT}/docs/setup/code-style.md#comment-rules`) and enforce the 5-iteration convergence limit. `bundled-tdd` trades strict test/impl isolation for fewer sub-agent hops (3 → 1-2) — use only for features with clear specs and low co-drift risk; when in doubt, stay with `tdd`.
+All cycles apply Comment Rules in the Green / Implement phase (from the agent's own embedded `## Comment Rules` section) and enforce the 5-iteration convergence limit. `bundled-tdd` trades strict test/impl isolation for fewer sub-agent hops (3 → 1-2) — use only for features with clear specs and low co-drift risk; when in doubt, stay with `tdd`.
 
 #### Team formation and dispatch
 Create a team for parallel module development. Each team member runs its own TDD sub-agent cycle (per `test_strategy` above).
+
+**Task prompt contract** — every `TaskCreate` / `SendMessage` call to an implementer MUST include, at minimum:
+- `feature_id`
+- `test_strategy` (one of `tdd` / `bundled-tdd` / `state-verification` / `integration`) — the implementer selects the matching cycle from the `## TDD Cycles` section embedded in its own agent body (no external file read needed)
+- The Language Settings block from Step 1
+- `tdd_focus`, `acceptance_test`, `doc_sync` (sanitized per the Step 4 sub-agent input sanitization rules before any further pass-through to `tdd-test-writer`)
+
+The implementer uses `test_strategy` to look up the correct cycle inside its embedded `## TDD Cycles` section — the cycle body travels with the agent, not with the task.
 
 ```
 # Member names come from .claude/agents/ — one implementer-<slug>.md per
@@ -128,6 +145,7 @@ TeamCreate(members: [implementer-<module-a>, implementer-<module-b>, ..., review
   ↓
 TaskCreate(FEAT-XXX -> implementer-<module-of-feat-xxx>,
            FEAT-YYY -> implementer-<module-of-feat-yyy>)
+  # Task prompt carries feature_id, test_strategy, Language Settings, and sanitized focus/acceptance/doc_sync
   ↓
 Each implementer independently runs the cycle matching its feature's test_strategy:
   - "tdd":              Red(tdd-test-writer) → Green(tdd-implementer) → Refactor(tdd-refactorer)
@@ -169,14 +187,14 @@ If qa-agent is NOT included, these invocation points are omitted and boundary ve
 
 #### Gate 0 verification by `test_strategy`
 
-Orchestrator runs this check BEFORE Gate 1 using the feature's `tdd_focus` and `doc_sync` from `feature-list.json`. The per-strategy evidence rules (SHA returns, `git log` / `git diff` assertions, structured contracts) are canonical in `${CLAUDE_PLUGIN_ROOT}/docs/protocols/tdd-cycles.md#gate-0` — follow the matching sub-anchor:
+Orchestrator runs this check BEFORE Gate 1 using the feature's `tdd_focus` and `doc_sync` from `feature-list.json`. The per-strategy evidence rules (SHA returns, `git log` / `git diff` assertions, structured contracts) are embedded verbatim in the orchestrator's and reviewer's agent bodies under `## Gate 0 Evidence` at Phase 3 generation. The orchestrator / reviewer reads its own embedded section — no external file load.
 
-| `test_strategy` | Gate 0 reference |
-|-----------------|------------------|
-| `tdd` | `docs/protocols/tdd-cycles.md#gate-0-tdd` |
-| `bundled-tdd` | `docs/protocols/tdd-cycles.md#gate-0-bundled-tdd` |
-| `state-verification` | `docs/protocols/tdd-cycles.md#gate-0-state-verification` |
-| `integration` | `docs/protocols/tdd-cycles.md#gate-0-integration` |
+| `test_strategy` | Embedded sub-anchor in agent body |
+|-----------------|-----------------------------------|
+| `tdd` | `### tdd` under `## Gate 0 Evidence` |
+| `bundled-tdd` | `### bundled-tdd` under `## Gate 0 Evidence` |
+| `state-verification` | `### state-verification` under `## Gate 0 Evidence` |
+| `integration` | `### integration` under `## Gate 0 Evidence` |
 
 If any check fails, Gate 0 blocks and the cycle restarts (iteration++).
 
