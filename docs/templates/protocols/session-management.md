@@ -50,11 +50,17 @@ When bootstrap detects `PROGRESS.md.passes != feature-list.json.passes` for any 
 
 ## Session end
 
-A session ends when:
+A session ends when **all** of the following hold simultaneously (fixed-point termination):
 
-- Auto-pilot exhausts the queue (all features `passes: true`)
+- Every feature in `feature-list.json` has `passes: true`
+- The **session-terminal verification sweep** (session-end QA per `commands/start.md` anchor `qa-invocation-timing`, then Gate 5 Runtime Smoke per `docs/setup/agents-and-gates.md` anchor `runtime-smoke-gate`) produces no Critical findings and appends no new `FEAT-FIX-*` entries and resurrects no existing features
+
+The verification sweep may append `FEAT-FIX-*` entries or flip existing features' `passes` back to `false` (via the `debugger` agent's resurrect-or-create decision). When that happens, auto-pilot re-enters naturally and the termination check reruns after the next queue drain. Convergence is guaranteed only by the per-feature 5-iteration cap in the `iteration-tracking` anchor — a feature that keeps re-failing escalates to the user through the normal channel. No session-level wave counter exists.
+
+Other terminators (unchanged):
+
 - User sends `stop` / `pause` / `end`
-- Convergence failure escalates and the user picks "end session"
+- Convergence failure on any feature (5-iteration cap) → orchestrator escalates to user
 - Unrecoverable error (hook returns exit 1 repeatedly, unknown tool error)
 
 Actions on session end:

@@ -157,7 +157,7 @@ These are derived from the plan and user decisions without additional questions:
   - 1 script (`pre-tool-coverage-gate.sh`) requires substituting `{COVERAGE_COMMAND}` and `{COVERAGE_FILE}` using the row in `${CLAUDE_PLUGIN_ROOT}/docs/templates/stacks.md` matching the selected tech stack.
   - `chmod +x hooks/*.sh` after copying.
   - If the stack is not in `stacks.md`, ask the developer: "What coverage command and output file path do you use?" and record the answer in `.claude/environment.md`.
-- `.claude/environment.md`
+- `.claude/environment.md` — MUST include a `## Runtime Smoke Configuration` section with `build_command`, `run_command`, and `ready_signal` fields (schema and skip rules in `${CLAUDE_PLUGIN_ROOT}/docs/setup/cross-session-state.md#runtime-smoke-configuration`). If the tech stack is not runnable (library-only), set `build_command: null` / `run_command: null` so Gate 5 skips automatically.
 - `.claude/security.md`
 - `.claude/domain-persona.md` (domain context for agents, from Step 1 draft)
 - `scripts/update-feature-status.sh` (auto-update feature-list.json passes field after Gate 4)
@@ -304,6 +304,39 @@ Orchestrator and module-scoped sub-agents read context-map.md at session start; 
     - Wiring / entry-point / multi-module glue feature → `"integration"`.
     - Everything else → `"lean-tdd"`.
     Present the full classification as a single batch summary (all N features at once — this is an intentional exception to the "one question at a time" rule, since per-feature prompting would exceed the Phase 6 confirmation budget) with two numbered choices: `(1) ★ Approve all` or `(2) Revise specific features`. If (2), then ask one follow-up question listing the feature ids and accept a comma-separated list; for each listed feature, ask one question at a time to pick the new strategy.
+  - **Wiring-feature guardrail** (applies when `module_count >= 2` from Step 1.5): after the test_strategy classification resolves, scan the draft `feature-list.json`. If NO feature has `test_strategy: "integration"` AND no feature `description` (case-insensitive) contains any of (`main`, `entry point`, `entry-point`, `bootstrap`, `wiring`, `glue`, `boot`, `launch`, `app init`), synthesize a candidate feature:
+    ```jsonc
+    {
+      "id": "FEAT-MAIN",
+      "category": "integration",
+      "description": "Application entry-point — wire all modules into a runnable app and verify end-to-end startup",
+      "depends_on": [<every other feature id>],
+      "test_strategy": "integration",
+      "acceptance_test": [<auto-drafted Given/When/Then — see below>],
+      "tdd_focus": [<inferred entry file(s) per tech stack — see below>],
+      "doc_sync": [],
+      "passes": false
+    }
+    ```
+    Present it as a numbered choice (one question at a time, aligning with the Setup "One question at a time" principle):
+    ```
+    Plan omits a main/wiring feature. Without this, modules will not compose into a runnable app.
+    (1) ★ Accept — append FEAT-MAIN with the inferred tdd_focus and auto-drafted acceptance_test
+    (2) Edit — tweak tdd_focus / acceptance_test before appending
+    (3) Remove — skip; the plan intentionally omits a wiring feature
+    ```
+    If the user picks (1) or (2), append the feature at the END of the feature-list array (dependency ordering naturally places it last since it depends on every prior feature) and run the acceptance_test contract validation below on it. If (3), leave feature-list.json unchanged.
+
+    **Inferred `tdd_focus` by tech stack** (from Step 1.3):
+    - Node / TypeScript / JavaScript: read `package.json` `main` or `module` field if present; fallback `src/main.ts` or `src/index.ts`
+    - Go: `cmd/<project>/main.go` or `main.go`
+    - Rust: `src/main.rs`
+    - Python: `<pkg>/__main__.py` or `__main__.py`
+    - Unknown stack: `[]` with an Edit-me marker — the user MUST pick (2) Edit before proceeding.
+
+    **Auto-drafted `acceptance_test`**: at least three Given/When/Then entries derived from the modules list in Step 1.5. Example template for a 3-module project: `"Given all modules are initialized, When the app boots, Then the entry point returns without throwing"`, `"Given a module raises an initialization error, When the app boots, Then the entry point surfaces the error and exits with a non-zero code"`, `"Given the app is running, When the primary interaction loop runs one cycle, Then no unhandled rejection or panic occurs"`.
+
+    **Skip condition** (no prompt, silent): any existing feature already has `test_strategy: "integration"`, OR any feature's description matches the wiring keyword list above. This prevents duplicating wiring the user already specified in the plan MD.
   - **`acceptance_test` contract validation**: for every feature, verify `acceptance_test.length >= 3` and every entry contains `Given`/`When`/`Then` (case-insensitive). If any feature fails the check, ask the user per-feature (one question at a time, numbered choices): `(1) ★ Auto-draft the missing scenarios from description + tdd_focus` or `(2) Pause — I will rewrite the plan entry`.
 - `PROGRESS.md`
 - `CHANGELOG.md` ([Keep a Changelog](https://keepachangelog.com) format with `## [Unreleased]` section. Initial entry: "Added — Initial project setup via harness-boot, {N} features defined")

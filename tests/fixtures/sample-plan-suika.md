@@ -258,6 +258,23 @@ Each fruit is rendered as a circle with:
 - Font renders crisply at all sizes (no sub-pixel blur)
 **Core Functions**: `calculateLayout`, `applyResponsiveLayout`, `renderHUD`, `renderNextFruitPreview`, `toggleFruitGuide`
 
+### FEAT-013: Application Entry-Point Wiring
+**Category**: integration
+**Description**: Wire every module (Physics, Game, Renderer, Input, Audio, UI) into a single runnable application. The entry point (`src/main.ts`) constructs module instances in the correct dependency order, injects cross-module references, registers the render loop via `requestAnimationFrame`, and surfaces runtime errors. Booting `npm run dev` must produce a playable Title screen within 2 seconds on a cold load with the Vite HMR banner visible in stdout.
+**Acceptance Criteria**:
+- `src/main.ts` exports a `bootstrap()` function that returns a handle for teardown (used by HMR)
+- Module construction order respects dependency graph: Physics -> Game -> Renderer -> Input -> Audio -> UI
+- Module wiring failures throw a descriptive `BootstrapError` naming the failing module (not a generic stack trace)
+- `index.html` mounts to `#app` and imports `src/main.ts` as an ES module
+- `npm run build` produces a bundle under 150KB gzipped (per NFRs) with zero unresolved imports
+- `npm run dev` starts the Vite dev server and logs `Local: http://localhost:5173` to stdout within 3 seconds
+- Opening the dev server in a browser displays the Title screen and responds to "Tap to Start"
+- Hot-module reload preserves game state when a non-entry module is edited
+**Core Functions**: `bootstrap`, `wireModules`, `registerRenderLoop`, `handleBootstrapError`, `teardown`
+**Business Rules**:
+- Wiring is the ONLY integration-strategy feature; it depends on every other feature
+- The entry point must NOT contain game logic — it only wires pre-built modules
+
 ## Integration Points
 
 ### Physics -> Game
@@ -317,7 +334,7 @@ Each fruit is rendered as a circle with:
 
 ## Success Criteria
 
-1. All 12 features pass acceptance criteria with automated tests (physics simulation tests use deterministic seeding)
+1. All 13 features pass acceptance criteria with automated tests (physics simulation tests use deterministic seeding); FEAT-013 verifies end-to-end boot via Gate 5 Runtime Smoke
 2. Fruit merge chain reactions work correctly up to 5+ cascading merges in a single frame
 3. 60fps maintained with 30 fruits on screen on iPhone 12 / Pixel 5 equivalent
 4. Game is fully playable on mobile Safari with touch controls — no scroll interference, no zoom
