@@ -15,7 +15,7 @@ Reads a detailed plan MD and generates a Claude Code native multi-agent harness.
 ### Step 0: Pre-check
 1. Verify the plan MD file at `$ARGUMENTS` exists
 2. If not found, ask the user to confirm the path
-3. Load harness guide: `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md`
+3. Load harness spec index: `${CLAUDE_PLUGIN_ROOT}/docs/setup/INDEX.md`. Always-on topic files at session start: `${CLAUDE_PLUGIN_ROOT}/docs/setup/philosophy-and-layout.md` and `${CLAUDE_PLUGIN_ROOT}/docs/setup/generation-rules.md`. Pull additional files per the INDEX Phase→Files map as each phase runs — never load the legacy `docs/setup-guide.md` (deprecated).
 4. Check if PROGRESS.md exists
    - If exists with `last_completed_phase: N` where N ∈ {1..5} (unambiguous in-progress): **auto-resume from Phase {N+1}**, inform user: "Resuming from Phase {N+1}. (To start over, delete PROGRESS.md and re-run.)" No question.
    - If exists with `last_completed_phase: setup_complete`: ask "Harness is already set up. (1) ★ Exit  (2) Overwrite and regenerate"
@@ -47,7 +47,7 @@ Code comment language (applies to source code comments only — machine-facing h
 (2) English
 (3) Custom — type your own
 ```
-Store the selection in `environment.md` as `comment_language`. This setting is referenced by tdd-implementer, tdd-refactorer, and reviewer agents when enforcing Comment Rules (Section 7.2).
+Store the selection in `environment.md` as `comment_language`. This setting is referenced by tdd-implementer, tdd-refactorer, and reviewer agents when enforcing Comment Rules (see `${CLAUDE_PLUGIN_ROOT}/docs/setup/code-style.md#comment-rules`).
 
 #### Step 1.3: Tech Stack
 - If plan specifies tech stack → show what was detected, ask to confirm:
@@ -85,7 +85,7 @@ Store the selection in `environment.md` as `comment_language`. This setting is r
 
 #### Step 1.5: Module Extraction (no question — informational)
 
-Run the **Module Extraction algorithm** (see `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md` §3 "Module Extraction" — seed from Key Entities, merge by Bounded Context and `tdd_focus` overlap, output `module_count` + `modules` slug list). The output feeds Step 1.6 (QA agent decision) and Phase 3 (`implementer-<slug>.md` generation); do not re-derive modules elsewhere.
+Run the **Module Extraction algorithm** (see `${CLAUDE_PLUGIN_ROOT}/docs/setup/domain-persona.md#module-extraction` — seed from Key Entities, merge by Bounded Context and `tdd_focus` overlap, output `module_count` + `modules` slug list). The output feeds Step 1.6 (QA agent decision) and Phase 3 (`implementer-<slug>.md` generation); do not re-derive modules elsewhere.
 
 Report to the user:
 ```
@@ -151,7 +151,7 @@ These are derived from the plan and user decisions without additional questions:
 - Expected file count per phase
 
 ### Step 2: Phase 1 — Infrastructure
-- `.claude/settings.json` (hook configuration — see setup-guide.md §2)
+- `.claude/settings.json` (hook configuration — see `${CLAUDE_PLUGIN_ROOT}/docs/setup/runtime-guardrails.md`)
 - `hooks/` 6 scripts — **copy from `${CLAUDE_PLUGIN_ROOT}/docs/templates/hooks/`** (not LLM-generated):
   - 5 scripts (`session-start-bootstrap.sh`, `pre-tool-security-gate.sh`, `pre-tool-doc-sync-check.sh`, `post-tool-format.sh`, `post-tool-test-runner.sh`) are copied verbatim — they are stack-agnostic (extension-dispatched or language-independent).
   - 1 script (`pre-tool-coverage-gate.sh`) requires substituting `{COVERAGE_COMMAND}` and `{COVERAGE_FILE}` using the row in `${CLAUDE_PLUGIN_ROOT}/docs/templates/stacks.md` matching the selected tech stack.
@@ -199,9 +199,9 @@ Each agent YAML frontmatter includes a `model:` field.
 
 **Conditional agents (from Step 1):**
 - `qa-agent.md` (model: opus) — if QA agent inclusion was confirmed
-- `tdd-bundler.md` (model: sonnet) — if at least one feature in `feature-list.json` uses `"test_strategy": "bundled-tdd"` (see `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md` Section 5 for the full agent definition)
+- `tdd-bundler.md` (model: sonnet) — if at least one feature in `feature-list.json` uses `"test_strategy": "bundled-tdd"` (see `${CLAUDE_PLUGIN_ROOT}/docs/setup/tdd-isolation.md` for the full agent definition)
 - **Module-specific implementer agents**:
-  - For each slug produced by the **Module Extraction algorithm** (`${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md` §3) at Step 1.5, generate `implementer-<module-slug>.md` (model: sonnet). Do not re-derive modules here — use the frozen slug set from Step 1.5.
+  - For each slug produced by the **Module Extraction algorithm** (`${CLAUDE_PLUGIN_ROOT}/docs/setup/domain-persona.md#module-extraction`) at Step 1.5, generate `implementer-<module-slug>.md` (model: sonnet). Do not re-derive modules here — use the frozen slug set from Step 1.5.
   - All module implementers are instantiated from the same `implementer.md` body; per-instance overrides live in the YAML frontmatter (`metadata.module: <slug>`, `metadata.allowed-paths: [...]`) and in one inlined "Module scope" block referencing the matching row from `.claude/context-map.md`.
   - The generic `implementer.md` is the template of record; it is not registered as a team member.
   - Count: one per module (minimum 1 for single-module projects — team of one implementer + reviewer).
@@ -221,14 +221,7 @@ Add `## Team Communication Protocol` section **only to agents that actually exch
 Each skill follows the [Anthropic Agent Skills Specification](https://github.com/anthropics/skills).
 Generate as `skill-name/SKILL.md` (uppercase) with optional `references/`, `scripts/`, `assets/` subdirectories.
 
-Refer to `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md` Section 8 for complete generation rules:
-- 8.2: YAML frontmatter schema (field validation rules)
-- 8.3: 7-section anatomy template with full example
-- 8.4: Progressive disclosure (3-tier token budget)
-- 8.5: Description writing guide (TRIGGER/DO NOT TRIGGER pattern)
-- 8.6: Skill list with specific triggers per skill
-- 8.7: Complete skill example (new-feature)
-- 8.8: Validation checklist (10 items)
+Refer to `${CLAUDE_PLUGIN_ROOT}/docs/setup/skills-anatomy.md` for complete generation rules — YAML frontmatter schema, 7-section anatomy template, progressive disclosure token budget, description writing guide (TRIGGER/DO NOT TRIGGER pattern), the 8-skill list with triggers, a full `new-feature` example, and the validation checklist at `#validation-checklist`.
 
 Must follow 7-section anatomy (Overview / When to Use / TDD Focus / Process / Common Rationalizations (>= 2 rows, domain-specific) / Red Flags (>= 2 items) / Verification (with evidence)).
 
@@ -278,14 +271,14 @@ Orchestrator and module-scoped sub-agents read context-map.md at session start; 
 Verify the entire generated harness:
 1. File completeness: settings.json + 6 hooks + agents (9 base + conditional: qa-agent if included, tdd-bundler if any bundled-tdd feature, one `implementer-<slug>.md` per module) + 8 skills + 5 protocols + feature-list.json + scripts/update-feature-status.sh
 2. Runtime guardrails: hook stdin JSON parsing, security-gate exit 2, doc-sync-check commit blocking, coverage-gate commit blocking
-3. Skill anatomy (4 gates — full rules in setup-guide.md Section 8.8):
+3. Skill anatomy (4 gates — full rules in `${CLAUDE_PLUGIN_ROOT}/docs/setup/skills-anatomy.md#validation-checklist`):
    - **Structural**: `SKILL.md` exists, directory name matches frontmatter `name` field, all 4 required frontmatter fields present (`name`, `description`, `metadata`, `allowed-tools`)
    - **Anatomy**: All 7 body sections present (Overview / When to Use / TDD Focus / Process / Rationalizations / Red Flags / Verification), SKILL.md ≤ 500 lines
    - **Content floor**: Rationalizations ≥ 2 rows (domain-specific), Red Flags ≥ 2 items, Verification section names evidence types (logs / diff / reports / coverage)
    - **References**: File references use relative paths and the referenced files exist
 4. Quality gates: Gates 0-4, all checks with evidence types, rationalization defense
 5. TDD: 3 sub-agent frontmatters (tdd-test-writer, tdd-implementer, tdd-refactorer), Red → Green call order; plus tdd-bundler frontmatter and `[bundled-tdd:red]` → `[bundled-tdd:green]` evidence if any feature uses `bundled-tdd`
-6. Model routing: each agent's frontmatter `model:` field matches the canonical assignment in `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md` §6 (Opus for the 4 judgment agents + qa-agent if included; Sonnet for the 5 execution agents + tdd-bundler and module-implementers if present).
+6. Model routing: each agent's frontmatter `model:` field matches the canonical assignment in `${CLAUDE_PLUGIN_ROOT}/docs/setup/model-routing.md` (Opus for the 4 judgment agents + qa-agent if included; Sonnet for the 5 execution agents + tdd-bundler and module-implementers if present).
 7. Cross-session: bootstrap hook → reads PROGRESS.md + feature-list.json
 8. Code-doc sync: triple defense operational, mapping table matches project structure
 9. Tokens: CLAUDE.md <= 1,500 tokens, per-task ~3,900-4,000 tokens
@@ -326,4 +319,4 @@ Guide the user to the next step: start development with the `/start` command.
   1. **Machine-facing files — always English**: `CLAUDE.md`, `.claude/**/*.md` (agents, skills, protocols, domain-persona, context-map, environment, security, quality-gates, error-recovery, observability), `PROGRESS.md`, `feature-list.json`, `hooks/*.sh`, `scripts/*.sh`. These are parsed by hooks, loaded into LLM context at session start, or are executable code — locale variance breaks them.
   2. **User-facing docs — follow `conversation_language`**: `README.md` and `CHANGELOG.md`. Humans only; no hook parses them, no agent loads them for logic. Orchestrator writes CHANGELOG feature-completion entries in `conversation_language`. Keep a Changelog structural headings (`## [Unreleased]`, `### Added`, etc.) remain English as standard format markers.
   3. **Source code comments — follow `comment_language`**: Explicit Step 1.2 choice. Applies inside source files (`.ts`, `.py`, `.go`, etc.), never to `.md` files.
-  See setup-guide.md §4 "Language Settings" for the full rule.
+  See `${CLAUDE_PLUGIN_ROOT}/docs/setup/cross-session-state.md#language-settings` for the full rule.
