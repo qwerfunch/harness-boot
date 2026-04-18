@@ -238,6 +238,7 @@ Follow the orchestrator's per-phase mode specification. Switch between sub-agent
 - **Gate 0**: TDD compliance — evidence: test files + Red→Green call order (verification per `test_strategy` below)
 - **Gate 1**: Implementation complete (evidence: compile/lint/test output)
 - **Gate 2**: Code review (call reviewer agent → 0 Critical/Major issues)
+  - Reviewer MUST verify code-doc sync: if staged diff includes export changes (per the feature's `doc_sync` mapping), every listed doc target must also be staged. Missing targets are **Critical** (block). This is the third defender alongside the prompt protocol (this checklist) and the pre-tool-doc-sync-check hook.
   - If QA agent is included: QA boundary verification report feeds into Gate 2
   - Boundary mismatches are Critical severity (block commit)
 - **Gate 3**: Tests pass (coverage report)
