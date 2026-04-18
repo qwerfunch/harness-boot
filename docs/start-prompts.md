@@ -48,14 +48,14 @@ Based on feature-list.json: total/complete/incomplete counts, completion rate by
 Previous session had auto-pilot active. Check PROGRESS.md auto_pilot flag → resume auto-pilot from next incomplete feature. Auto-proceed through all steps, pause only on escalation.
 ```
 
-**Start with Agent Team mode (parallel modules)**:
+**Start development**:
 ```
-Harness ready. Start development with Agent Team mode.
+Harness ready. Start development.
 
 1. Load orchestrator.md + domain-persona.md
-2. Check PROGRESS.md → determine mode
+2. Check PROGRESS.md → determine session state
 3. Analyze module independence among top-priority passes: false features
-4. Select features that can be parallelized (different modules, no shared dependencies)
+4. Select features that can be parallelized (different modules, no shared dependencies); single-module projects run one feature at a time
 5. TeamCreate with module-specific implementers + reviewer + QA agent (if included)
 6. TaskCreate with feature assignments per implementer
 7. Each implementer runs TDD sub-agent cycle independently

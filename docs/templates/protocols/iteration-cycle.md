@@ -8,8 +8,8 @@ The authoritative schema for iteration state lives in `setup-guide.md` §11 ("PR
 
 ## Ownership
 
-- The feature's `implementer` agent (or `implementer-<slug>` in Agent Team mode) is the **sole writer** of its own feature's iteration counter. Other agents MUST NOT mutate `iteration`.
-- Each feature has its own counter. In Agent Team mode, parallel features each track their own counter in the same PROGRESS.md `## Current TDD State` section — the `feature_id` field disambiguates.
+- The feature's `implementer-<slug>` agent is the **sole writer** of its own feature's iteration counter. Other agents MUST NOT mutate `iteration`.
+- Each feature has its own counter. Parallel features each track their own counter in the same PROGRESS.md `## Current TDD State` section — the `feature_id` field disambiguates.
 
 ## Counter lifecycle
 
@@ -55,7 +55,7 @@ When iteration ≥ 5:
 
 ## Concurrency
 
-Agent Team mode runs parallel features. Because each feature's counter lives under its own `feature_id` scope in `## Current TDD State`, there is no shared mutable field — the only shared resource is the PROGRESS.md file itself.
+Parallel features run concurrently across module implementers. Because each feature's counter lives under its own `feature_id` scope in `## Current TDD State`, there is no shared mutable field — the only shared resource is the PROGRESS.md file itself.
 
 - Writers append/update their own feature_id's row; the orchestrator serializes PROGRESS.md writes when multiple implementers finish a phase at the same tick.
 - If two implementers attempt to write simultaneously, the orchestrator's `TaskUpdate` dispatch queue is the single serialization point. Members MUST NOT bypass the orchestrator to write PROGRESS.md directly.

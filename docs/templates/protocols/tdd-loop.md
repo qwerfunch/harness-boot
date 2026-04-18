@@ -1,12 +1,12 @@
 # TDD Loop Protocol
 
-Defines the Red → Green → Refactor cycle for the `tdd` test strategy, and the variant cycles for `bundled-tdd`, `state-verification`, and `integration`. The protocol is executed by the `implementer` agent (or `implementer-<slug>` in Agent Team mode) for each feature.
+Defines the Red → Green → Refactor cycle for the `tdd` test strategy, and the variant cycles for `bundled-tdd`, `state-verification`, and `integration`. The protocol is executed by the per-module `implementer-<slug>` agent for each feature.
 
 > Single source of authority for per-feature cycle behavior. When `commands/start.md` §5 and this file disagree, start.md wins and this file is the one that gets updated.
 
 ## Ownership
 
-- The feature's `implementer` agent owns the cycle. Sub-agents (`tdd-test-writer`, `tdd-implementer`, `tdd-refactorer`, `tdd-bundler`) are called by the implementer and do not own cycle state.
+- The feature's `implementer-<slug>` agent owns the cycle. Sub-agents (`tdd-test-writer`, `tdd-implementer`, `tdd-refactorer`, `tdd-bundler`) are called by the implementer and do not own cycle state.
 - Iteration counter semantics are defined in `iteration-cycle.md` — this file only describes phase content and transitions.
 
 ## Phases by `test_strategy`

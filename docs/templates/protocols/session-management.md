@@ -18,7 +18,7 @@ No other file is authoritative session state. Do not invent new state files with
 Triggered by the `SessionStart` hook: `hooks/session-start-bootstrap.sh`.
 
 1. **Bootstrap hook output** (stdout, shown to Claude at load):
-   - `PROGRESS.md` Status section (last_completed_phase, current_feature, mode, execution_mode)
+   - `PROGRESS.md` Status section (last_completed_phase, current_feature, mode)
    - `## Current TDD State` block (feature_id, iteration, phase, auto_pilot)
    - `feature-list.json` counts (total, passing)
    - **Drift detection**: rows where PROGRESS.md and feature-list.json disagree about `passes`
@@ -59,7 +59,7 @@ A session ends when:
 
 Actions on session end:
 
-1. Any in-flight phase is allowed to reach its phase boundary before termination (see start.md "Stop propagation in Agent Team mode")
+1. Any in-flight phase is allowed to reach its phase boundary before termination (see start.md "Stop propagation across the team")
 2. Open PROGRESS.md `## Current TDD State` entries for cancelled features are set to `phase: "", auto_pilot: false` (iteration retained)
 3. `## Session Metrics.cumulative_tokens` is updated
 4. `_workspace/` is preserved (not cleaned) — next session can use it as context

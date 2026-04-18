@@ -83,22 +83,16 @@ Store the selection in `environment.md` as `comment_language`. This setting is r
   (2) Choose a pattern anyway
   ```
 
-#### Step 1.5: Execution Mode
+#### Step 1.5: Module Extraction (no question — informational)
 
-Run **Module Extraction** first (see `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md` §3 "Module Extraction" — seed from Key Entities, merge by Bounded Context and `tdd_focus` overlap, output `module_count` + `modules` slug list). The output feeds both the mode recommendation below and Phase 3 `implementer-<slug>.md` generation; do not re-derive modules elsewhere.
+Run the **Module Extraction algorithm** (see `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md` §3 "Module Extraction" — seed from Key Entities, merge by Bounded Context and `tdd_focus` overlap, output `module_count` + `modules` slug list). The output feeds Step 1.6 (QA agent decision) and Phase 3 (`implementer-<slug>.md` generation); do not re-derive modules elsewhere.
 
+Report to the user:
 ```
-Execution mode determines how agents work together.
-(1) ★ Agent Team (parallel, default) — {module_count} modules detected ({modules}); {M} features span ≥ 2 modules
-(2) Sub-agent (sequential fallback) — {reason; typically "single module" or "tightly-coupled feature set"}
-(3) Hybrid (phase-switching) — {reason; typically "mix of parallel and sequential phases"}
-
-Analysis: {module_count} modules [{modules}], {cross-module feature count}
+Module Extraction: {module_count} module(s) detected [{modules}]
 ```
-- **Default direction**: per §3 decision table — Agent Team when `module_count ≥ 2` and at least 2 features live in different modules; Sub-agent otherwise. Agent Team is never recommended for a single-module plan. Hybrid is offered only when the plan explicitly mixes parallel-eligible and sequential-only phases.
-- Labels in the prompt MUST use the exact strings shown above (`Agent Team (parallel, default)`, `Sub-agent (sequential fallback)`, `Hybrid (phase-switching)`) so users understand the trade-off rather than seeing an opaque "Sub-agent" label.
 
-Reference: `${CLAUDE_PLUGIN_ROOT}/docs/references/agent-design-patterns.md`
+Execution is always **Agent Team**. Single-module projects (`module_count == 1`) use a team of one implementer + reviewer. Reference: `${CLAUDE_PLUGIN_ROOT}/docs/references/agent-design-patterns.md`.
 
 #### Step 1.6: QA Agent (auto-decided, no question)
 
@@ -127,7 +121,6 @@ Setup Summary:
   Comment language:  {selected}
   Tech stack:        {selected}
   Architecture:      {selected}
-  Execution mode:    {selected}
   QA agent:          {yes/no}
   Features:        {N} features ({M} tdd, {B} bundled-tdd, {K} state-verification, {L} integration)
   Agents:          {count} ({additions/removals from default 9})
@@ -207,24 +200,20 @@ Each agent YAML frontmatter includes a `model:` field.
 **Conditional agents (from Step 1):**
 - `qa-agent.md` (model: opus) — if QA agent inclusion was confirmed
 - `tdd-bundler.md` (model: sonnet) — if at least one feature in `feature-list.json` uses `"test_strategy": "bundled-tdd"` (see `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md` Section 5 for the full agent definition)
-- **Module-specific implementer agents** — Agent Team mode only:
+- **Module-specific implementer agents**:
   - For each slug produced by the **Module Extraction algorithm** (`${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md` §3) at Step 1.5, generate `implementer-<module-slug>.md` (model: sonnet). Do not re-derive modules here — use the frozen slug set from Step 1.5.
   - All module implementers are instantiated from the same `implementer.md` body; per-instance overrides live in the YAML frontmatter (`metadata.module: <slug>`, `metadata.allowed-paths: [...]`) and in one inlined "Module scope" block referencing the matching row from `.claude/context-map.md`.
-  - The generic `implementer.md` is still written as the template of record and used by Sub-agent / Hybrid modes.
-  - Count: one per module, minimum 2 (Agent Team requires ≥ 2 independent modules per Step 1.5).
+  - The generic `implementer.md` is the template of record; it is not registered as a team member.
+  - Count: one per module (minimum 1 for single-module projects — team of one implementer + reviewer).
 
-**TDD sub-agent input contract (applies to all execution modes)**:
+**TDD sub-agent input contract**:
 - When generating `tdd-test-writer.md`, inject the "Sub-agent input sanitization" clause from `commands/start.md` §5 into the agent prompt body under a `## Inputs` section. The clause lists what fields the writer may read and what implementation hints must be absent; the writer self-checks on receipt and aborts with a note to `_workspace/` if the inputs look contaminated.
 - The same injection happens for `tdd-bundler.md` when the agent is generated (bundled-tdd features).
 
-**Execution mode integration:**
-- If **Agent Team** mode (default): Add `## Team Communication Protocol` section **only to agents that actually exchange team messages** — orchestrator, module-specific implementers, reviewer, and qa-agent (if included). Non-communicating agents (`architect`, `debugger`, `tester`, and all `tdd-*` sub-agents) **omit the section** to avoid empty-ceremony placeholders. Generate orchestrator agent definition with `TeamCreate`/`SendMessage`/`TaskCreate` workflow per `${CLAUDE_PLUGIN_ROOT}/docs/references/orchestrator-template.md` Template A.
-- If **Sub-agent** mode (sequential fallback): Orchestrator uses `Agent` tool calls only. Template B.
-- If **Hybrid** mode: Orchestrator specifies execution mode per phase. Template C.
+**Team Communication Protocol integration:**
+Add `## Team Communication Protocol` section **only to agents that actually exchange team messages** — orchestrator, module-specific implementers, reviewer, and qa-agent (if included). Non-communicating agents (`architect`, `debugger`, `tester`, and all `tdd-*` sub-agents) **omit the section** to avoid empty-ceremony placeholders. Generate the orchestrator agent definition with `TeamCreate`/`SendMessage`/`TaskCreate` workflow per `${CLAUDE_PLUGIN_ROOT}/docs/references/orchestrator-template.md`.
 
-Record execution mode in orchestrator agent's `metadata.execution-mode` frontmatter field (in `.claude/agents/orchestrator.md`).
-
-**Generate agents in parallel.** Agents do not read each other's file bodies — cross-references are name-based only. Issue all agent-file `Write` tool calls in a single message (one per agent). The orchestrator's `metadata.execution-mode` and any optional agents must be resolved before dispatching (i.e., decide the agent set first, then write them all concurrently).
+**Generate agents in parallel.** Agents do not read each other's file bodies — cross-references are name-based only. Issue all agent-file `Write` tool calls in a single message (one per agent). The agent set (including optional qa-agent and tdd-bundler) must be resolved before dispatching — decide the set first, then write them all concurrently.
 
 **Phase 3 complete → record `last_completed_phase: 3` in PROGRESS.md → auto-proceed to Phase 4.** Pause only if a step errors.
 
@@ -287,7 +276,7 @@ Orchestrator and module-scoped sub-agents read context-map.md at session start; 
 
 ### Step 8: Verification
 Verify the entire generated harness:
-1. File completeness: settings.json + 6 hooks + agents (9 base + conditional: qa-agent if included, tdd-bundler if any bundled-tdd feature, one `implementer-<slug>.md` per module in Agent Team mode) + 8 skills + 5 protocols + feature-list.json + scripts/update-feature-status.sh
+1. File completeness: settings.json + 6 hooks + agents (9 base + conditional: qa-agent if included, tdd-bundler if any bundled-tdd feature, one `implementer-<slug>.md` per module) + 8 skills + 5 protocols + feature-list.json + scripts/update-feature-status.sh
 2. Runtime guardrails: hook stdin JSON parsing, security-gate exit 2, doc-sync-check commit blocking, coverage-gate commit blocking
 3. Skill anatomy (4 gates — full rules in setup-guide.md Section 8.8):
    - **Structural**: `SKILL.md` exists, directory name matches frontmatter `name` field, all 4 required frontmatter fields present (`name`, `description`, `metadata`, `allowed-tools`)
@@ -302,8 +291,8 @@ Verify the entire generated harness:
 9. Tokens: CLAUDE.md <= 1,500 tokens, per-task ~3,900-4,000 tokens
 10. Architecture: If pattern was selected, verify environment.md contains pattern rules, context-map.md contains the Module → Layer mapping, and architect agent includes pattern constraints
 11. Domain persona: domain-persona.md exists, contains all 6 sections (Purpose, Key Entities, Domain Rules, Vocabulary, Stakeholder Concerns, Success Criteria), entities table has >= 2 rows, domain rules has >= 2 items
-12. Execution mode: orchestrator has `metadata.execution-mode` field; if Agent Team mode, communicating agents (orchestrator, module implementers, reviewer, qa-agent) have `## Team Communication Protocol` section — non-communicating agents (architect, debugger, tester, tdd-*) do NOT; if QA agent included, qa-agent.md exists with `model: opus`
-13. Data transfer: if Agent Team or Hybrid mode, orchestrator specifies data transfer protocols (message/task/file-based); `_workspace/` directory convention documented
+12. Team communication: communicating agents (orchestrator, module implementers, reviewer, qa-agent) have `## Team Communication Protocol` section — non-communicating agents (architect, debugger, tester, tdd-*) do NOT; if QA agent included, qa-agent.md exists with `model: opus`
+13. Data transfer: orchestrator specifies data transfer protocols (message/task/file-based); `_workspace/` directory convention documented
 14. **Placeholder sweep**: `grep -rEn '\{(COVERAGE_COMMAND|COVERAGE_FILE)\}' .claude/ hooks/ scripts/ 2>/dev/null` → must return zero matches. Any hit means Phase 1 Step 2 substitution was skipped — regenerate the affected hook from `${CLAUDE_PLUGIN_ROOT}/docs/templates/hooks/` with the correct `stacks.md` row, then re-run this check.
 
 Report each item as PASS/FAIL. For each FAIL:
@@ -331,7 +320,7 @@ Guide the user to the next step: start development with the `/start` command.
 - Follow the 5 principles: TDD-First / Iteration Convergence / Code-Doc Sync / Anti-Rationalization / One Question at a Time
 - **One question at a time**: Never batch multiple decisions. Present numbered choices with a recommended option (★). Wait for response before next question.
 - **Auto-progress after Step 1.7 approval**: Phases 1-6 run without per-phase confirmations. `last_completed_phase` is still recorded in PROGRESS.md at every phase boundary so an interrupted session can auto-resume. Pause for the user only on errors, or when Phase 6 surfaces the dependency graph / test-strategy classification for confirmation.
-- Never auto-select tech stack, architecture, or execution mode without developer confirmation
+- Never auto-select tech stack or architecture without developer confirmation
 - Mark anything not in the plan as `{TODO: needs confirmation}`
 - **Three-tier language policy**:
   1. **Machine-facing files — always English**: `CLAUDE.md`, `.claude/**/*.md` (agents, skills, protocols, domain-persona, context-map, environment, security, quality-gates, error-recovery, observability), `PROGRESS.md`, `feature-list.json`, `hooks/*.sh`, `scripts/*.sh`. These are parsed by hooks, loaded into LLM context at session start, or are executable code — locale variance breaks them.

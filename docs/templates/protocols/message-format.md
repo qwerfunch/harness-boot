@@ -1,8 +1,6 @@
 # Message Format Protocol
 
-Defines the payload schema for inter-agent communication in Agent Team mode. Applies to `SendMessage`, `TaskCreate`, `TaskUpdate` tool calls and the `_workspace/` file transfer convention.
-
-Used only in Agent Team and Hybrid execution modes. Sub-agent mode uses direct `Agent` tool calls and can ignore this file.
+Defines the payload schema for inter-agent communication. Applies to `SendMessage`, `TaskCreate`, `TaskUpdate` tool calls and the `_workspace/` file transfer convention.
 
 ## Principles
 

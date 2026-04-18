@@ -20,7 +20,7 @@ Starts actual development work with the harness in place.
 
 ### Step 2: Determine Session State
 
-> "Session state" = where we are in the overall flow (first run / resume / new feature). This is distinct from "execution mode" in Step 3 (Agent Team / Sub-agent / Hybrid).
+> "Session state" = where we are in the overall flow (first run / resume / new feature).
 
 - **PROGRESS.md is empty or has no tasks** → First start after Initializer
 - **PROGRESS.md has an In Progress task** → Resume interrupted session
@@ -30,9 +30,7 @@ Starts actual development work with the harness in place.
 
 ### Step 3: Select Feature(s)
 
-**Check execution mode** (Agent Team / Sub-agent / Hybrid) from orchestrator's `metadata.execution-mode` (in `.claude/agents/orchestrator.md`). Do not confuse with session state from Step 2.
-
-#### Dependency gate (all modes):
+#### Dependency gate
 Before selecting a feature, validate its `depends_on` array:
 1. Read the candidate feature's `depends_on` from `feature-list.json`
 2. For each dependency ID, check if that feature has `passes: true`
@@ -41,11 +39,8 @@ Before selecting a feature, validate its `depends_on` array:
    - Auto-select the earliest unmet dependency instead
    - Inform user of the substitution
 
-#### Sub-agent mode (sequential fallback):
-Select the highest-priority feature with `passes: false` from `feature-list.json` (after dependency gate). Used when the project was generated with Sub-agent execution mode (single module or tightly-coupled feature set).
-
-#### Agent Team mode:
-Analyze module independence among top-priority `passes: false` features. If features are in different modules with no dependencies, select multiple features for parallel development.
+#### Feature selection
+Analyze module independence among top-priority `passes: false` features. If features are in different modules with no dependencies, select multiple features for parallel development. Single-module projects (team of one) always run one feature at a time.
 
 **Pre-flight dependency check** before confirming parallel features:
 - No shared `tdd_focus` targets between selected features
@@ -57,7 +52,7 @@ If any dependency detected, fall back to sequential for the dependent pair.
 Consider dependencies:
 - Start with the most foundational features (auth > profile > order > payment)
 - Fix any broken features first
-- In Agent Team mode, only parallelize features with no shared dependencies
+- Only parallelize features with no shared dependencies
 
 Report the selected feature and ask with numbered choices:
 ```
@@ -82,25 +77,16 @@ Next: {FEAT-XXX} — {description}
 
 **Iteration tracking** (mandatory, all strategies):
 
-The implementer agent (or `implementer-<slug>` in Agent Team mode) **owns** iteration counter writes for its own feature. Other agents (reviewer, tdd-test-writer, tdd-implementer, tdd-refactorer, tdd-bundler, qa-agent, debugger) MUST NOT mutate the `iteration` field — they may only read it.
+The `implementer-<slug>` agent **owns** iteration counter writes for its own feature. Other agents (reviewer, tdd-test-writer, tdd-implementer, tdd-refactorer, tdd-bundler, qa-agent, debugger) MUST NOT mutate the `iteration` field — they may only read it.
 
 1. Before each cycle iteration, the implementer reads PROGRESS.md `## Current TDD State` → `iteration` value
 2. The implementer increments `iteration` by 1 and writes to PROGRESS.md BEFORE starting the cycle
 3. If `iteration > 5`: Do NOT proceed. The implementer logs to PROGRESS.md `## Incidents` table (date, feature ID, type="convergence-failure"). Escalate to user.
 4. On feature completion (Step 7), the implementer resets `iteration: 0`
 
-#### Sub-agent mode (sequential fallback):
-Call sub-agents using the Claude Code `Agent` tool with isolated contexts:
-- `Agent(implementer)` — orchestrates the cycle
-- `Agent(reviewer)` for Gate 2
+#### TDD sub-agent input sanitization (TDD isolation invariant)
 
-Pass task input (feature ID, test_strategy, tdd_focus, acceptance_test, doc_sync targets) as the agent's prompt argument.
-
-Sub-agent mode supports all four `test_strategy` values; the cycle blocks below branch on `test_strategy` from `feature-list.json`.
-
-##### Sub-agent input sanitization (TDD isolation invariant)
-
-The TDD-First principle relies on `tdd-test-writer` never seeing implementation intent. The implementer (or `implementer-<slug>` in Agent Team mode) MUST sanitize inputs before forwarding them to `tdd-test-writer`:
+The TDD-First principle relies on `tdd-test-writer` never seeing implementation intent. TDD sub-agents (`tdd-test-writer`, `tdd-implementer`, `tdd-refactorer`, `tdd-bundler`) are invoked via the `Agent` tool inside each implementer's execution context, and the implementer MUST sanitize inputs before forwarding them to `tdd-test-writer`:
 
 **Allowed to pass through**:
 - `feature_id`
@@ -119,7 +105,11 @@ If the implementer cannot determine whether a line is safe, it removes the line 
 
 Tool-level isolation is already enforced: `tdd-test-writer`'s `allowed-tools` list excludes `Edit` (it can only write new files), and read globs are scoped to interface declarations and test files per `docs/setup-guide.md` §5 "File Classification for tdd-test-writer". Sanitization is the second defender; Phase 3 in `commands/setup.md` writes the sanitization clause into `tdd-test-writer.md`'s generated prompt body so the sub-agent also self-checks on receipt.
 
-#### test_strategy = "tdd" (default, strict):
+#### Per-feature cycle by `test_strategy`
+
+Each team member runs the cycle matching its assigned feature's `test_strategy`. The cycle blocks below are invoked inside each `implementer-<slug>`'s execution, not at the orchestrator level.
+
+##### test_strategy = "tdd" (default, strict):
 
 ```
 Plan (analyze acceptance_test)
@@ -144,7 +134,7 @@ Verify: full test suite + feature verification
   - After 5 iterations, escalate
 ```
 
-#### test_strategy = "bundled-tdd" (speed-oriented, single sub-agent):
+##### test_strategy = "bundled-tdd" (speed-oriented, single sub-agent):
 
 ```
 Plan (analyze acceptance_test)
@@ -183,7 +173,7 @@ Pre-Gate 4 fold: rebase --interactive or reset --soft to combine the two
 
 > `bundled-tdd` trades strict test/impl isolation for fewer sub-agent hops (3 → 1-2). Use only for features with clear specs and low co-drift risk. When in doubt, stay with `"tdd"`.
 
-#### test_strategy = "state-verification":
+##### test_strategy = "state-verification":
 
 For features with rendering, canvas, DOM, or visual output where strict TDD is impractical.
 
@@ -210,7 +200,7 @@ Verify: full test suite + feature verification
   - On failure, fix implementation or tests (max 5 iterations)
 ```
 
-#### test_strategy = "integration":
+##### test_strategy = "integration":
 
 For wiring/entry-point features that connect multiple modules.
 
@@ -230,8 +220,8 @@ Verify: full test suite + feature verification
   - On failure, fix (max 5 iterations)
 ```
 
-#### Agent Team mode:
-Create a team for parallel module development. Each team member runs its own TDD sub-agent cycle.
+#### Team formation and dispatch
+Create a team for parallel module development. Each team member runs its own TDD sub-agent cycle (per `test_strategy` above).
 
 ```
 # Member names come from .claude/agents/ — one implementer-<slug>.md per
@@ -268,9 +258,6 @@ Leader merges results, verifies cross-module consistency
 2. **Session-end sweep**: before any session termination path (auto-pilot queue exhausted, user stop, escalation end), the orchestrator runs one final QA pass over all modules that had any feature completed in this session. Auto-pilot does **not** skip this sweep even when time-pressured; the sweep is cheap because QA reads artifacts, not code. Findings feed into PROGRESS.md `## Incidents` if any Critical issue is surfaced.
 
 If qa-agent is NOT included, these invocation points are omitted and boundary verification falls to the reviewer's Gate 2 checklist alone.
-
-#### Hybrid mode:
-Follow the orchestrator's per-phase mode specification. Switch between sub-agent and team calls as defined.
 
 ### Step 5: Confirm Quality Gate Passage
 - **Gate 0**: TDD compliance — evidence: test files + Red→Green call order (verification per `test_strategy` below)
@@ -387,8 +374,8 @@ If all features complete:
 - 3 → Show remaining features list, let user choose
 
 ## Principles
-- **One feature per agent at a time** (key Anthropic lesson). Agent Team mode (default): one feature per team member, multiple in parallel across the team. Sub-agent mode (fallback): one feature total, sequential.
-- **One feature per commit** (non-negotiable). Each feature must be committed individually with its tests and docs before proceeding to the next. Never batch multiple features into a single commit — this enables `git revert` per feature and satisfies Gate 4. If the user requests "implement all features at once", still execute them sequentially: TDD cycle → quality gates → commit → next feature. Parallel Agent Team mode commits each module's feature independently.
+- **One feature per agent at a time** (key Anthropic lesson). One feature per team member; multiple features run in parallel across the team when modules are independent. Single-module projects run one feature at a time (team of one).
+- **One feature per commit** (non-negotiable). Each feature must be committed individually with its tests and docs before proceeding to the next. Never batch multiple features into a single commit — this enables `git revert` per feature and satisfies Gate 4. If the user requests "implement all features at once", still execute them sequentially: TDD cycle → quality gates → commit → next feature. Parallel team execution commits each module's feature independently.
 - **Auto-proceed on success**: Steps 4-7 run without mid-feature pauses when all gates pass. Pause only at decision points (Steps 3, 8) and on escalation conditions. Auto-pilot mode also auto-proceeds through Steps 3 and 8.
 - On convergence failure (> 5 iterations), suggest switching to debugger
 - Only modify the `passes` field in feature-list.json; never add/delete/modify items
@@ -444,8 +431,8 @@ Auto-pilot runs all remaining features end-to-end, pausing only on escalation co
   (2) Continue in manual mode
   ```
 
-#### Stop propagation in Agent Team mode
-Auto-pilot in Agent Team mode has multiple team members running concurrently under the orchestrator. A `stop`/`pause` input from the user must not abort mid-commit or leave orphaned sub-agent work. The orchestrator enforces the following protocol:
+#### Stop propagation across the team
+Auto-pilot with multiple team members running concurrently under the orchestrator requires graceful stop handling. A `stop`/`pause` input from the user must not abort mid-commit or leave orphaned sub-agent work. The orchestrator enforces the following protocol:
 
 1. On `stop`/`pause` detection, orchestrator calls `TaskUpdate(<child_task>, status: 'cancel-pending')` for every in-flight member task.
 2. Each team member checks the cancel flag at every **phase boundary**: end of Red (test-writer done), end of Green (implementer done), end of Refactor (refactorer done), end of Verify. Mid-phase work is never interrupted — phases are atomic.

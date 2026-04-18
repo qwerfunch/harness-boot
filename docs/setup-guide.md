@@ -556,7 +556,7 @@ With domain-persona.md handling *semantic* context (why), context-map.md handles
 
 ### Module Extraction (used by Step 1.5 and Phase 3)
 
-Step 1.5 (Execution Mode) and Phase 3 (Module-specific implementer generation) both need a concrete list of modules. This algorithm produces it from `domain-persona.md` and is the single source of truth — do not infer modules ad-hoc elsewhere.
+Step 1.5 (Module Extraction) and Phase 3 (Module-specific implementer generation) both need a concrete list of modules. This algorithm produces it from `domain-persona.md` and is the single source of truth — do not infer modules ad-hoc elsewhere.
 
 **Algorithm**:
 
@@ -565,13 +565,14 @@ Step 1.5 (Execution Mode) and Phase 3 (Module-specific implementer generation) b
 3. **Merge by tdd_focus overlap.** If two candidate modules share any `tdd_focus` symbol across features in the draft `feature-list.json`, collapse them into one module (named after whichever has more features).
 4. **Output**: `module_count` = number of distinct slugs surviving steps 2–3. `modules` = the slug list.
 
-**Decision rules derived from the output**:
+**Execution direction**: Always Agent Team. `module_count == 1` produces a team of one implementer + reviewer; `module_count ≥ 2` produces a team of one implementer per module + reviewer. The team surface (`TeamCreate`, `SendMessage`, `TaskCreate`) is uniform across project sizes.
 
-| Condition | Execution mode (Step 1.5) | QA agent (Step 1.6) |
-|-----------|---------------------------|---------------------|
-| `module_count` ≥ 2 AND ≥ 2 features live in different modules | Agent Team (default) | Auto-include when the integration-point count across module pairs ≥ 2 (see Step 1.6 definition) |
-| `module_count` == 1 OR all features share one module | Sub-agent (fallback) | Auto-skip |
-| Output ambiguous (e.g., 2 modules but features tightly coupled) | Present both Agent Team and Sub-agent as options; user picks | Auto-skip unless the user picks Agent Team AND integration-point count ≥ 2 |
+**QA agent decision** (derived from the same output, evaluated in Step 1.6):
+
+| Condition | QA agent |
+|-----------|----------|
+| `module_count` ≥ 3 AND integration-point pair count ≥ 2 | Auto-include |
+| Otherwise | Auto-skip |
 
 **Slug stability**: The slug set is frozen at Step 1.5 approval and reused unchanged for Phase 3 `implementer-<slug>.md` files, Phase 5 `context-map.md` rows, and any `domain-persona.md` → feature mapping. Renaming a module after freeze requires `/setup` re-run (error-recovery rebootstrap).
 
@@ -908,7 +909,6 @@ All fields below are **required**. The Phase 6 generator MUST emit every field w
 | `## Status` | `last_completed_phase` | int or string | `setup_complete` | `/setup` Phase 1-6 checkpoints, then frozen | `1`..`6`, `setup_complete` |
 | `## Status` | `current_feature` | string | `""` (empty) | orchestrator on feature start/complete | `FEAT-XXX` or `""` |
 | `## Status` | `mode` | enum | `initializer` | orchestrator (→ `coding` after first feature) | `initializer`, `coding` |
-| `## Status` | `execution_mode` | enum | value chosen in `/setup` Step 1.5 | frozen (re-`/setup` to change) | `sub-agent`, `agent-team`, `hybrid` |
 | `## Current TDD State` | `phase` | enum or empty | `""` | implementer sub-agent per cycle | `Red`, `Green`, `Refactor`, `Verify`, `""` |
 | `## Current TDD State` | `iteration` | int | `0` | implementer — increment before cycle, reset to `0` on feature complete | `0`..`5` (>5 escalates) |
 | `## Current TDD State` | `tdd_focus_progress` | string | `0/0 complete` | implementer on each tdd_focus pass | `{done}/{total} complete` |
@@ -931,7 +931,6 @@ All fields below are **required**. The Phase 6 generator MUST emit every field w
 - last_completed_phase: setup_complete
 - current_feature: ""
 - mode: initializer
-- execution_mode: agent-team      # default. Override to "sub-agent" / "hybrid" per /setup Step 1.5
 
 ## Current TDD State
 - phase: ""
@@ -968,7 +967,6 @@ All fields below are **required**. The Phase 6 generator MUST emit every field w
 - last_completed_phase: setup_complete
 - current_feature: FEAT-003
 - mode: coding
-- execution_mode: agent-team
 
 ## Current TDD State
 - phase: Green
@@ -1143,7 +1141,7 @@ Opus (judgment, 4 core + 1 optional)
 Sonnet (execution, 5 core + 1 conditional + N conditional)
   ── implementer, tdd-test-writer, tdd-implementer, tdd-refactorer, tester
   ── tdd-bundler       (only if feature-list.json has any "test_strategy": "bundled-tdd")
-  ── implementer-<slug> (Agent Team mode: one per module, slug from domain-persona.md)
+  ── implementer-<slug> (one per module, slug from domain-persona.md)
 ```
 
 ```markdown
@@ -1675,43 +1673,17 @@ During `/setup` Phase 4, validate each generated skill against:
 
 ## 9. Agent Definitions
 
-### 9.0 Execution Mode & Team Architecture
+### 9.0 Agent Team Execution & Team Architecture
 
 > Patterns adapted from [revfactory/harness](https://github.com/revfactory/harness) (Apache-2.0). Full reference: `docs/references/agent-design-patterns.md`.
 
-#### Execution Mode Selection
+#### Agent Team Execution
 
-During `/setup` Step 1, analyze the plan to determine the best execution mode for the generated harness:
-
-| Mode | When to Use | Tools |
-|------|-------------|-------|
-| **Agent Team** (baseline default) | 2+ independent modules, parallel development, real-time coordination needed | `TeamCreate`, `SendMessage`, `TaskCreate` |
-| **Sub-agent** (sequential fallback) | 1 module or tightly-coupled feature set where team communication overhead exceeds parallelism benefit | `Agent` tool |
-| **Hybrid** | Phase-by-phase mode switching (e.g., parallel implementation -> sequential integration) | Both tool sets per phase |
-
-> **Why Agent Team is the default**: harness-boot is a multi-agent harness by design. Making Agent Team the default aligns the surfaced behavior with the project's stated intent and reduces the friction of users selecting "Sub-agent" without understanding the trade-off. Sub-agent remains available — and is the right choice — for single-module or tightly-coupled plans, but it is now an explicit downgrade rather than a silent default.
-
-**Decision criteria from the plan:**
-
-| Factor | Agent Team (default direction) | Sub-agent (downgrade direction) |
-|--------|-------------------------------|--------------------------------|
-| Module count | 2+ independent modules | 1 module, or modules that share so much state that parallel work would cause constant merge conflicts |
-| Feature parallelism | Features can be worked on simultaneously | Features must be sequential |
-| Integration complexity | Multiple cross-module boundaries | Few or no integration points |
-| Domain categories | 2+ distinct categories | Single category, homogeneous work |
-
-**Decision rules:**
-1. **Default = Agent Team.** If the plan has 2+ independent modules (or distinct domain categories), recommend Agent Team with no further analysis.
-2. If the plan is a single module, a single tightly-coupled file set, or a prototype/spike with 1-2 features -> **downgrade to Sub-agent** and mark Agent Team as the fallback-to-fallback.
-3. If some phases are parallel and others strictly sequential (see Hybrid decision criteria in `docs/references/agent-design-patterns.md`) -> **recommend Hybrid**.
-4. Always present the recommendation to the developer for confirmation (never auto-select). The selection UI must label choices as:
-   - `Agent Team (parallel, ★ default)`
-   - `Sub-agent (sequential fallback)`
-   - `Hybrid (phase-switching)`
+harness-boot uses a single execution model: **Agent Team**. The orchestrator creates a team via `TeamCreate`, assigns work via `TaskCreate`/`TaskUpdate`, and members coordinate via `SendMessage`. The team surface is uniform regardless of project size — single-module projects simply register a team of one implementer + reviewer.
 
 #### Team Architecture Patterns
 
-When Agent Team or Hybrid mode is selected, choose an architecture pattern:
+Choose an architecture pattern based on module structure:
 
 | Pattern | Use When | Example |
 |---------|----------|---------|
@@ -1726,12 +1698,13 @@ When Agent Team or Hybrid mode is selected, choose an architecture pattern:
 
 Specify in the orchestrator how agents share work products:
 
-| Strategy | Method | Mode | Best When |
-|----------|--------|------|-----------|
-| **Message** | `SendMessage` | Team | Real-time coordination, lightweight state |
-| **Task** | `TaskCreate`/`TaskUpdate` | Team | Progress tracking, dependency management |
-| **File** | Write/Read to `_workspace/` | Both | Large data, structured outputs, audit trail |
-| **Return** | `Agent` tool return | Sub | Results collected by main agent |
+| Strategy | Method | Best When |
+|----------|--------|-----------|
+| **Message** | `SendMessage` | Real-time coordination, lightweight state |
+| **Task** | `TaskCreate`/`TaskUpdate` | Progress tracking, dependency management |
+| **File** | Write/Read to `_workspace/` | Large data, structured outputs, audit trail |
+
+All three strategies are used together. TDD sub-agents (`tdd-test-writer`, `tdd-implementer`, `tdd-refactorer`, `tdd-bundler`) are invoked via the `Agent` tool inside an implementer's execution — they are not team members and return results directly to the caller.
 
 File-based transfer rules:
 - `_workspace/` folder for intermediate outputs
@@ -1747,7 +1720,7 @@ When the plan has 3+ modules with integration points, generate a QA agent:
 - **Type**: `general-purpose` (needs to run verification scripts, not read-only)
 - **Core method**: "Read Both Sides Simultaneously" — cross-compare producer output with consumer input at every boundary
 - **Timing**: Incremental after each module completion, not just at the end
-- **Team mode**: QA agent as permanent team member receiving completion notifications
+- **Team membership**: QA agent as permanent team member receiving completion notifications
 
 Add to the generated harness:
 - `.claude/agents/qa-agent.md`
@@ -1756,21 +1729,14 @@ Add to the generated harness:
 
 #### Team Communication Protocol for Agents
 
-When Agent Team mode is selected, **only agents that actually exchange team messages** add a `## Team Communication Protocol` section: `orchestrator`, module-specific implementers, `reviewer`, and `qa-agent` (when included). `architect`, `debugger`, `tester`, and the `tdd-*` sub-agents (test-writer / implementer / refactorer / bundler) **omit the section** — they are invoked via the `Agent` tool inside an implementer cycle or on escalation, not through team messaging, so a placeholder section would be empty ceremony.
+**Only agents that actually exchange team messages** add a `## Team Communication Protocol` section: `orchestrator`, module-specific implementers, `reviewer`, and `qa-agent` (when included). `architect`, `debugger`, `tester`, and the `tdd-*` sub-agents (test-writer / implementer / refactorer / bundler) **omit the section** — they are invoked via the `Agent` tool inside an implementer cycle or on escalation, not through team messaging, so a placeholder section would be empty ceremony.
 
 For agents that include the section, it must specify:
 - **Receive from**: Who sends what messages
 - **Send to**: Who receives what messages
 - **Task requests**: What task types from shared task list
 
-> Orchestrator templates per mode: `docs/references/orchestrator-template.md`
-
-#### Execution Mode Storage
-
-Once selected, the execution mode is recorded:
-- `CLAUDE.md`: appended to stack summary (e.g., "Execution: Agent Team (Fan-out/Fan-in)")
-- `.claude/environment.md`: dedicated section with mode, team architecture pattern, data transfer protocol, team size
-- Orchestrator agent: `metadata.execution-mode` field in `.claude/agents/orchestrator.md` YAML frontmatter
+> Orchestrator template: `docs/references/orchestrator-template.md`
 
 #### Orchestrator Agent Frontmatter
 
@@ -1778,16 +1744,12 @@ Once selected, the execution mode is recorded:
 ---
 name: orchestrator
 description: >
-  Orchestrates the development workflow. Mode switching, task decomposition,
+  Orchestrates the development workflow. Team formation, task decomposition,
   TDD enforcement, quality gate coordination.
 tools: Read, Glob, Grep, Write, Edit, Bash, Agent, TeamCreate, SendMessage, TaskCreate, TaskUpdate
 model: opus
-metadata:
-  execution-mode: agent-team  # default. Override to sub-agent / hybrid per /setup Step 1.5
 ---
 ```
-
-When Sub-agent mode: drop `TeamCreate, SendMessage, TaskCreate, TaskUpdate` from tools (leave only `Agent`); set `execution-mode: sub-agent` and record rationale in `metadata.execution-mode-rationale` (e.g., "single module", "tightly-coupled feature set").
 
 ### 9.1 Common Input/Output
 
@@ -2183,7 +2145,7 @@ Proactively suggest harness evolution when:
    - Decompose into sub-features (FEAT-XXX-a, FEAT-XXX-b)
    - Each sub-feature gets its own TDD cycle
    - Note: feature-list.json items cannot be added, so track sub-features in PROGRESS.md only
-4. For Agent Team mode:
+4. For multi-module teams:
    - Distribute different tdd_focus functions across team members
    - Each member handles a smaller context load
 
@@ -2258,7 +2220,7 @@ Proactively suggest harness evolution when:
 ```
 Phase 1: Infrastructure ── settings.json, hooks/ (6 scripts), environment.md, security.md, domain-persona.md, scripts/update-feature-status.sh, .gitignore
 Phase 2: Protocols ── protocols/ (5 protocols), CLAUDE.md, README.md, quality-gates.md
-Phase 3: Agents ── agents/ (9+ agents, with model: field; execution mode selection; team communication protocols if Agent Team mode; optional qa-agent)
+Phase 3: Agents ── agents/ (9+ agents, with model: field; team communication protocols on communicating agents; optional qa-agent)
 Phase 4: Skills ── skills/ (8 skills, Anthropic Agent Skills format, 7-section anatomy), examples/
 Phase 5: Context Map ── .claude/context-map.md (module → layer mapping, architecture rules)
 Phase 6: State ── feature-list.json, PROGRESS.md, CHANGELOG.md, error-recovery.md, observability.md
@@ -2289,7 +2251,7 @@ Phase 6: State ── feature-list.json, PROGRESS.md, CHANGELOG.md, error-recove
 | Entity definitions / data model | domain-persona.md Key Entities |
 | Non-functional requirements | domain-persona.md Stakeholder Concerns |
 | Success metrics / KPIs | domain-persona.md Success Criteria |
-| Module structure (independence, parallelism) | Orchestrator `metadata.execution-mode` + team architecture pattern in environment.md |
+| Module structure (independence, parallelism) | Team architecture pattern in environment.md + orchestrator workflow |
 | Schedule | PROGRESS.md Backlog |
 
 ---

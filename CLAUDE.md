@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-harness-boot is a Claude Code plugin that converts detailed plan MDs into executable multi-agent harnesses. It generates ~56 files (9+ agents, 8 skills, 6 hooks, 5 protocols) with TDD sub-agent isolation, code-doc sync enforcement, coverage gate enforcement, anti-rationalization skills, Opus/Sonnet model routing, and execution mode selection (Agent Team / Sub-agent / Hybrid) for module-parallel development.
+harness-boot is a Claude Code plugin that converts detailed plan MDs into executable multi-agent harnesses. It generates ~56 files (9+ agents, 8 skills, 6 hooks, 5 protocols) with TDD sub-agent isolation, code-doc sync enforcement, coverage gate enforcement, anti-rationalization skills, Opus/Sonnet model routing, and Agent Team execution (`TeamCreate`/`SendMessage`/`TaskCreate`) for module-parallel development.
 
 ## Commands
 
@@ -39,7 +39,7 @@ Phase 1-6 sequential generation. After Step 1.7 approval of the decision review,
 
 1. Infrastructure (settings.json, hooks/, environment.md, security.md, domain-persona.md, scripts/update-feature-status.sh)
 2. Protocols (tdd-loop, iteration-cycle, code-doc-sync, session-management, message-format) + CLAUDE.md
-3. Agents (9+ agents with `model:` frontmatter — opus for judgment, sonnet for execution) + Execution mode selection + optional QA agent
+3. Agents (9+ agents with `model:` frontmatter — opus for judgment, sonnet for execution) + module-specific implementers + optional QA agent
 4. Skills (8 skills in [Anthropic Agent Skills format](https://github.com/anthropics/skills): `skill-name/SKILL.md` with 7-section anatomy, YAML frontmatter with name/description/metadata/allowed-tools, Rationalizations >= 2 rows)
 5. Context map (`.claude/context-map.md` — module → layer mapping; architecture rules injected into sub-agent prompts at dispatch time, no per-directory CLAUDE.md files)
 6. State files (feature-list.json, PROGRESS.md, CHANGELOG.md, error-recovery.md with 5 scenario playbooks)
@@ -48,11 +48,10 @@ Phase 1-6 sequential generation. After Step 1.7 approval of the decision review,
 
 1. Load orchestrator agent + session context (bootstrap hook verifies PROGRESS.md ↔ feature-list.json consistency) + domain-persona.md
 2. Detect mode (Initializer vs Coding) from PROGRESS.md
-3. Check execution mode (Agent Team / Sub-agent / Hybrid)
-4. Select feature(s) with numbered choices: Agent Team (default) → parallel independent modules; Sub-agent (fallback) → one at a time. **Auto-pilot option** runs all remaining features, pausing only on errors.
-5. Run development cycle per `test_strategy`: `tdd` → Red/Green/Refactor (3 isolated sub-agents); `bundled-tdd` → Bundled Red→Green (single `tdd-bundler`, 2-commit evidence) + optional Refactor; `state-verification` → Implement/State-Test/Refactor; `integration` → Implement/Integration-Test. Steps 4-7 auto-proceed on success — no mid-feature pauses. Max 5 iterations (tracked in PROGRESS.md), then escalate.
-6. QA agent verifies cross-boundary consistency (if included per QA criteria)
-7. Quality gates 0-4 (Gate 0 enforced by implementer + reviewer), coverage gate hook, code-doc sync, auto-update feature-list.json, single commit per feature (never batch)
+3. Select feature(s) with numbered choices: parallel independent modules by default; single-module projects run one feature at a time. **Auto-pilot option** runs all remaining features, pausing only on errors.
+4. Run development cycle per `test_strategy`: `tdd` → Red/Green/Refactor (3 isolated sub-agents); `bundled-tdd` → Bundled Red→Green (single `tdd-bundler`, 2-commit evidence) + optional Refactor; `state-verification` → Implement/State-Test/Refactor; `integration` → Implement/Integration-Test. Steps 3-6 auto-proceed on success — no mid-feature pauses. Max 5 iterations (tracked in PROGRESS.md), then escalate.
+5. QA agent verifies cross-boundary consistency (if included per QA criteria)
+6. Quality gates 0-4 (Gate 0 enforced by implementer + reviewer), coverage gate hook, code-doc sync, auto-update feature-list.json, single commit per feature (never batch)
 
 ## Five Core Principles
 
@@ -76,12 +75,9 @@ Phase 1-6 sequential generation. After Step 1.7 approval of the decision review,
 - Feature status auto-update: `scripts/update-feature-status.sh` marks `passes: true` after Gate 4 passes — prevents tracking drift
 - Per-feature commit discipline: even "implement all features" requests execute sequentially (TDD → gates → commit → next)
 
-## Execution Mode
+## Execution
 
-Setup analyzes module independence to recommend the best mode:
-- **Agent Team** (baseline default): 2+ independent modules → parallel development with `TeamCreate`/`SendMessage`/`TaskCreate`. Aligns with the plugin's "multi-agent harness" intent.
-- **Sub-agent** (sequential fallback): 1 module or tightly-coupled feature set → `Agent` tool. Use only when team communication overhead would exceed parallelism benefit.
-- **Hybrid**: Per-phase mode switching (concrete decision criteria: 3 conditions + per-phase assignment table)
+The harness uses **Agent Team** execution unconditionally. The orchestrator creates a team of module-specific implementers (`implementer-<slug>`), reviewer, and optional qa-agent via `TeamCreate`, coordinates integration points via `SendMessage`, and tracks progress via `TaskCreate`/`TaskUpdate`. Single-module projects use a team of one implementer + reviewer — the team surface is uniform across project sizes.
 
 Team architecture patterns: Fan-out/Fan-in, Pipeline, Supervisor, Producer-Reviewer, Expert Pool, Hierarchical.
 

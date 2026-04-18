@@ -1,25 +1,23 @@
-# Orchestrator Templates
+# Orchestrator Template
 
 > Reference adapted from [revfactory/harness](https://github.com/revfactory/harness) (Apache-2.0).
 
-Three orchestrator templates based on execution mode. The orchestrator is generated as an agent (`.claude/agents/orchestrator.md`) that coordinates the entire agent team.
+The orchestrator is generated as an agent (`.claude/agents/orchestrator.md`) that coordinates the entire agent team.
 
 ---
 
-## Template A: Agent Team Mode (Baseline Default)
+## Orchestrator Template
 
-Use when 2+ independent modules exist, or whenever parallel development with real-time coordination is beneficial. This is the baseline default for harness-boot projects; most plans should use this template unless there is a specific reason to downgrade (single module, tightly-coupled feature set, prototype/spike).
+harness-boot uses Agent Team execution. The orchestrator creates a team of module-specific implementers, reviewer, and optional qa-agent; members coordinate in parallel via `SendMessage` and shared tasks. Single-module projects use a team of one.
 
 ```yaml
 ---
 name: orchestrator
 description: >
-  Orchestrates the development workflow using Agent Team mode. Creates and manages
-  agent teams for parallel module development with TDD enforcement.
+  Orchestrates the development workflow. Creates and manages agent teams
+  for parallel module development with TDD enforcement.
 tools: Read, Glob, Grep, Write, Edit, Bash, Agent, TeamCreate, SendMessage, TaskCreate, TaskUpdate
 model: opus
-metadata:
-  execution-mode: agent-team
 ---
 ```
 
@@ -84,140 +82,21 @@ Phase 5: Commit & Cleanup
 | Error Type | Strategy | Fallback |
 |-----------|----------|----------|
 | Member TDD failure (5 iterations) | Escalate to leader -> leader escalates to user | Pause that feature, continue others |
-| Member timeout | Leader reassigns task | If persistent, switch to sub-agent mode for that task |
+| Member timeout | Leader reassigns task | If persistent, escalate to user |
 | Integration conflict | Members discuss via SendMessage | Leader arbitrates if no consensus in 2 rounds |
 | Review rejection | Member fixes, re-submits | After 2 rejections, escalate to user |
 
 ---
 
-## Template B: Sub-agent Mode (Sequential Fallback)
-
-Use when team communication overhead exceeds benefit, or for simple sequential workflows. Typical triggers: single module, tightly-coupled feature set, prototype/spike with 1-2 features. Record the rationale in the orchestrator's `metadata.execution-mode-rationale` field.
-
-```yaml
----
-name: orchestrator
-description: >
-  Orchestrates the development workflow using sub-agent mode. Sequential feature
-  implementation with TDD enforcement.
-tools: Read, Glob, Grep, Write, Edit, Bash, Agent
-model: opus
-metadata:
-  execution-mode: sub-agent
----
-```
-
-### Workflow
-
-```
-Phase 0: Context Check
-  |-- Load PROGRESS.md, feature-list.json, domain-persona.md
-  |
-Phase 1: Feature Selection
-  |-- Select highest-priority passes: false feature
-  |-- Report to user, wait for confirmation
-  |
-Phase 2: TDD Execution
-  |-- Agent(implementer) -- orchestrates TDD cycle
-  |     |-- Agent(tdd-test-writer) -- Red
-  |     |-- Agent(tdd-implementer) -- Green
-  |     |-- Agent(tdd-refactorer) -- Refactor
-  |
-Phase 3: Quality Gates
-  |-- Agent(reviewer) -- Gate 2
-  |-- Verify Gates 0-4
-  |
-Phase 4: Commit
-  |-- Code-doc sync, single commit, update state files
-```
-
-Sub-agent mode provides no inter-member communication and runs features sequentially. It is now an explicit fallback rather than the default — harness-boot's default direction is Agent Team, and Sub-agent is reserved for plans where team overhead would exceed parallelism benefit.
-
----
-
-## Template C: Hybrid Mode
-
-Use when phases have different collaboration needs. Specify execution mode per phase.
-
-```yaml
----
-name: orchestrator
-description: >
-  Orchestrates development with hybrid execution mode. Uses sub-agents for
-  independent analysis and Agent Teams for collaborative implementation.
-tools: Read, Glob, Grep, Write, Edit, Bash, Agent, TeamCreate, SendMessage, TaskCreate, TaskUpdate
-model: opus
-metadata:
-  execution-mode: hybrid
----
-```
-
-### Workflow
-
-```
-Phase 1: Analysis (Sub-agent mode)
-  |-- Agent(architect, prompt="Analyze module boundaries and interfaces.
-  |     Write dependency map to _workspace/01_architect_dependencies.md
-  |     Write interface contracts to _workspace/01_architect_contracts.md")
-  |-- Agent(Explore, prompt="Scan codebase structure.
-  |     Write module inventory to _workspace/01_explore_modules.md")
-  |-- Read _workspace/01_*.md → extract independent modules + dependency map
-  |-- Decide: which modules can be parallelized?
-  |
-  ← TRANSITION: Sub-agent → Agent Team
-  |   Orchestrator reads _workspace/01_* outputs, identifies independent modules
-  |
-Phase 2: Implementation (Agent Team mode)
-  |-- TeamCreate("impl-team", members=["impl-{module}" for each independent module] + ["reviewer"])
-  |-- For each module:
-  |     TaskCreate(assignee="impl-{module}",
-  |       description="Implement {module}. Interface contracts: _workspace/01_architect_contracts.md.
-  |       Write results to _workspace/02_impl_{module}_code.md")
-  |-- Team members run TDD cycles independently (sub-agents for Red/Green/Refactor)
-  |-- SendMessage for integration point coordination between modules
-  |-- Leader monitors TaskUpdate events → all tasks completed?
-  |-- Verify: _workspace/02_impl_*.md files exist for all modules
-  |
-  ← TRANSITION: Agent Team → Sub-agent
-  |   All team tasks completed, outputs in _workspace/02_*
-  |
-Phase 3: Verification (Sub-agent mode)
-  |-- Agent(reviewer, prompt="Review all modules independently.
-  |     Read _workspace/02_impl_*.md for each module.
-  |     Write review to _workspace/03_reviewer_report.md")
-  |-- Agent(tester, prompt="Run integration tests across module boundaries.
-  |     Read _workspace/01_architect_contracts.md for expected interfaces.
-  |     Read _workspace/02_impl_*.md for implementations.
-  |     Write results to _workspace/03_tester_integration.md")
-  |
-Phase 4: Commit
-  |-- Read _workspace/03_*.md → verify all gates pass
-  |-- Single commit per feature (code + tests + docs)
-  |-- Update feature-list.json, PROGRESS.md
-```
-
-### Phase Transition Details
-
-Each `← TRANSITION` step follows the rules in `agent-design-patterns.md` > "Phase Transition Mechanism":
-- **All outputs persisted to `_workspace/`** before transition (mandatory)
-- **Next phase references `_workspace/` paths** in agent prompts (not in-memory state)
-- **PROGRESS.md updated** with `current_phase: N, mode: {mode}` at each transition (enables session recovery)
-
----
-
 ## Data Transfer Protocols
 
-| Strategy | Method | Applicable Mode | Best When |
-|----------|--------|----------------|-----------|
-| **Message-based** | `SendMessage` between members | Team | Real-time coordination, lightweight state |
-| **Task-based** | `TaskCreate`/`TaskUpdate` | Team | Progress tracking, dependency management |
-| **File-based** | Write/Read to agreed paths | Team + Sub | Large data, structured outputs, audit trail |
-| **Return-value** | `Agent` tool return message | Sub | Sub-agent results collected by main |
+| Strategy | Method | Best When |
+|----------|--------|-----------|
+| **Message-based** | `SendMessage` between members | Real-time coordination, lightweight state |
+| **Task-based** | `TaskCreate`/`TaskUpdate` | Progress tracking, dependency management |
+| **File-based** | Write/Read to agreed paths | Large data, structured outputs, audit trail |
 
-**Recommended combinations:**
-- **Team mode:** Task-based (coordination) + File-based (outputs) + Message-based (real-time)
-- **Sub-agent mode:** Return-value (results) + File-based (large outputs)
-- **Hybrid:** Match each phase's mode
+**Recommended combination:** Task-based (coordination) + File-based (outputs) + Message-based (real-time). All three are used together; none is optional.
 
 ### File-based Transfer Rules
 
@@ -232,11 +111,12 @@ Each `← TRANSITION` step follows the rules in `agent-design-patterns.md` > "Ph
 
 | Project Scale | Recommended Team Size | Tasks per Member |
 |--------------|----------------------|-----------------|
+| Solo (single module) | 1 implementer + reviewer | all features |
 | Small (5-10 tasks) | 2-3 | 3-5 |
 | Medium (10-20 tasks) | 3-5 | 4-6 |
 | Large (20+ tasks) | 5-7 | 4-5 |
 
-> More members = more coordination overhead. 3 focused members outperform 5 unfocused ones.
+> More members = more coordination overhead. 3 focused members outperform 5 unfocused ones. Single-module projects run with a team of one implementer + reviewer — the team surface is uniform across project sizes.
 
 ---
 
