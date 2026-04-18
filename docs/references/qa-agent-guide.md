@@ -10,7 +10,6 @@
 Add a QA agent to the harness when:
 - Project has 3+ modules with integration points (API <-> frontend, service <-> service)
 - Multiple agents produce outputs that must be consistent with each other
-- Agent Team mode is used (more parallel work = more integration risk)
 
 A QA agent is **not** a replacement for the reviewer agent. The reviewer checks individual code quality; the QA agent checks **cross-boundary consistency**.
 
@@ -203,7 +202,7 @@ Add to Gate 2 (Review):
 
 ### Team Mode Integration
 
-In Agent Team mode, the QA agent can be a permanent team member:
+The QA agent can be a permanent team member:
 - Receives `SendMessage` notifications when modules complete
 - Runs incremental verification automatically
 - Reports findings back to the team via `SendMessage`

@@ -116,7 +116,7 @@ project-root/
 
 ---
 
-**문서:** [하네스 엔지니어링 가이드](docs/setup-guide.md) | [개발 시작 프롬프트](docs/start-prompts.md)
+**문서:** [하네스 엔지니어링 스펙 인덱스](docs/setup/INDEX.md) | [개발 시작 프롬프트](docs/start-prompts.md)
 
 **참고 자료:** [Anthropic Skills](https://github.com/anthropics/skills) | [Agent Skills Collection](https://github.com/addyosmani/agent-skills) | [Everything Claude Code](https://github.com/affaan-m/everything-claude-code)
 
