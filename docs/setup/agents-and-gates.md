@@ -202,3 +202,40 @@ Before marking a feature as `passes: true`, verify:
 3. If config changes exist: previous values are documented in the commit message
 
 The rollback procedure is: `git revert <feature-commit-sha>` + run down-migrations if applicable.
+
+### Gate 5: Runtime Smoke (session-terminal, conditional) <!-- anchor: runtime-smoke-gate -->
+
+Runs at session-terminal time, after the session-end QA sweep (`commands/start.md` anchor `qa-invocation-timing`) passes. **Trigger conditions** (ALL must hold; otherwise Gate 5 skips with a banner):
+1. At least one feature with `test_strategy: "integration"` has `passes: true` (the entry point is built)
+2. `.claude/environment.md` records non-null `build_command` AND non-null `run_command` (see `docs/setup/cross-session-state.md` anchor `runtime-smoke-configuration`)
+3. `feature-list.json` queue is currently fully `passes: true`
+
+**Stages** (each capable of failing into the resurrect-or-create pipeline):
+
+1. **Build stage** — orchestrator runs `build_command` via Bash with a 120-second hard timeout. Capture combined stdout/stderr to `_workspace/gate5_build_{timestamp}.log`.
+   - Exit 0 within 120s → PASS; proceed to Run stage.
+   - Non-zero exit, timeout, or missing command → **FAIL**.
+
+2. **Run stage** — orchestrator launches `run_command` as a background process with a wrapper that enforces `ready_signal.timeout_seconds`. Capture combined stdout/stderr to `_workspace/gate5_run_{timestamp}.log`.
+   - `ready_signal.type: log-match` — pattern matched in captured output before timeout → PASS.
+   - `ready_signal.type: port-listen` — `127.0.0.1:<port>` accepts a connection before timeout → PASS.
+   - `ready_signal.type: process-alive` — process is still running at timeout with exit code null AND no line in stderr matches `/error|panic|fatal|exception/i` → PASS.
+   - `ready_signal.type: timeout-success` — process exits with code 0 before timeout → PASS.
+   - Any other outcome (non-zero exit, panic in logs, log-match/port-listen not seen within timeout) → **FAIL**.
+
+   After the Run stage resolves (PASS or FAIL), the orchestrator MUST terminate the process (SIGTERM then SIGKILL after 5 seconds). No runaway process survives Gate 5.
+
+**FAIL routing** (Build or Run stage): identical to the session-end QA Critical pipeline. The orchestrator invokes the `debugger` agent with the captured log path as the QA artifact substitute. The debugger decides:
+1. **Resurrect** — the entry point (`integration` feature) or one of its `depends_on` owns the failure → flip that feature's `passes` back to `false`, preserve its iteration counter (a recurring Gate 5 failure on the same feature is divergence and the 5-cap must catch it).
+2. **Create** — no existing feature owns the failure (e.g., a dependency-wiring bug that spans multiple modules) → append a `FEAT-FIX-BUILD-<slug>` (for Build-stage failures) or `FEAT-FIX-RUNTIME-<slug>` (for Run-stage failures) entry with `test_strategy: "integration"`, `tdd_focus: [<files cited in the log>]`, `depends_on: [<integration feature id>]`.
+
+After the update, auto-pilot re-enters naturally (the queue is no longer fully `passes: true`) and the session-terminal sweep reruns after the next queue drain. Termination is a fixed point: queue empty AND (QA clean OR no findings) AND (Gate 5 passed OR skipped). Convergence across these sweep-driven loops is guaranteed only by the per-feature 5-iteration cap (`commands/start.md` anchor `iteration-tracking`).
+
+**Skip banner** (when any trigger condition fails):
+```
+Gate 5 skipped — no runnable entry point detected
+  Reason: {missing integration feature | build_command null | run_command null | queue not drained}
+  Proceeding to session termination.
+```
+
+**Explicit non-goals**: Gate 5 is smoke-only. It is NOT an end-to-end test suite, NOT a performance check, NOT a visual regression check. E2E coverage is the responsibility of individual features' `integration` test strategy at Gate 0.

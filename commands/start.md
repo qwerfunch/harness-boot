@@ -92,6 +92,7 @@ The `implementer-<slug>` agent **owns** iteration counter writes for its own fea
 2. The implementer increments `iteration` by 1 and writes to PROGRESS.md BEFORE starting the cycle
 3. If `iteration > 5`: Do NOT proceed. The implementer logs to PROGRESS.md `## Incidents` table (date, feature ID, type="convergence-failure"). Escalate to user.
 4. On feature completion (Step 7), the implementer resets `iteration: 0`
+5. When a feature is **resurrected** by the session-terminal sweep (session-end QA Critical, Gate 5 Build/Run failure — see the `qa-invocation-timing` anchor below and `docs/setup/agents-and-gates.md` anchor `runtime-smoke-gate`), its iteration counter is **preserved**. Do NOT reset to 0 at resurrection time: a recurring failure on the same feature is divergence, and the `> 5` cap must trigger so the normal escalation path runs (Step 3 above). Reset only happens again on successful re-completion in step 4.
 
 #### TDD / BDD sub-agent input sanitization (isolation invariant)
 
@@ -189,7 +190,13 @@ Leader merges results, verifies cross-module consistency
 **QA agent invocation points** (only when qa-agent is included per `commands/setup.md` Step 1.6): <!-- anchor: qa-invocation-timing -->
 
 1. **Per-module**: immediately after a module's feature cycle passes Gate 1 and BEFORE Gate 2. The orchestrator calls `qa-agent` with that module's integration-point list (derived from `feature-list.json` `doc_sync` overlaps and cross-module `tdd_focus` references). The QA report is written to `_workspace/qa_qa-agent_{module}-{feature_id}.md` and attached to the Gate 2 review bundle. A QA Critical finding blocks Gate 2.
-2. **Session-end sweep**: before any session termination path (auto-pilot queue exhausted, user stop, escalation end), the orchestrator runs one final QA pass over all modules that had any feature completed in this session. Auto-pilot does **not** skip this sweep even when time-pressured; the sweep is cheap because QA reads artifacts, not code. Findings feed into PROGRESS.md `## Incidents` if any Critical issue is surfaced.
+2. **Session-end sweep**: before any session termination path (auto-pilot queue exhausted, user stop, escalation end), the orchestrator runs one final QA pass over all modules that had any feature completed in this session. Auto-pilot does **not** skip this sweep even when time-pressured; the sweep is cheap because QA reads artifacts, not code. Findings route by severity:
+   - **Critical**: for each Critical finding, the orchestrator invokes the `debugger` agent with the QA artifact path and the affected boundary. The debugger writes its decision to `_workspace/qa_debugger_{feature_id}.md` and updates `feature-list.json` via one of two actions:
+     1. **Resurrect** — a currently `passes: true` feature owns the boundary (its `tdd_focus` or `doc_sync` covers the affected file) → flip its `passes` back to `false`. The iteration counter in `PROGRESS.md ## Current TDD State` is **preserved** (not reset): a recurring failure on the same feature is divergence and the 5-iteration cap must catch it.
+     2. **Create** — no existing feature owns the boundary → append a new `FEAT-FIX-<slug>` entry with `test_strategy: "integration"`, `depends_on: [<features touching the boundary>]`, `tdd_focus: [<boundary files>]`, `doc_sync: []`, `passes: false`.
+     After the update, auto-pilot re-enters naturally (the queue is no longer empty). No session-level wave counter, no bounded one-off pass — the only convergence guard is the per-feature 5-iteration cap in `## Iteration Tracking` above. A feature that keeps re-failing escalates to the user through the normal channel.
+   - **Major / Minor**: append to `PROGRESS.md ## Incidents` only; do not modify `feature-list.json`.
+   - **No findings**: verification sweep passes; proceed to Gate 5 Runtime Smoke (`docs/setup/agents-and-gates.md` anchor `runtime-smoke-gate`).
 
 If qa-agent is NOT included, these invocation points are omitted and boundary verification falls to the reviewer's Gate 2 checklist alone.
 
@@ -259,7 +266,13 @@ Do not show choices. Emit a status report and auto-proceed to the next feature:
   Type "stop" to pause auto-pilot
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
-If all features complete:
+If all features complete (queue empty), run the **session-terminal verification sweep** BEFORE showing the completion banner. Termination is a fixed point — queue empty AND the sweep produces no new or resurrected features. Order:
+
+1. **Session-end QA sweep** (per the `qa-invocation-timing` anchor above). On Critical: debugger resurrects or creates features, `feature-list.json` is no longer fully `passes: true` → return to Step 3 and let auto-pilot drain the queue again.
+2. **Gate 5 Runtime Smoke** (per `docs/setup/agents-and-gates.md` anchor `runtime-smoke-gate`). Build → Run, each stage capable of failing. Any failure routes through the same debugger pipeline as step 1: resurrect the responsible feature OR append a `FEAT-FIX-BUILD-*` / `FEAT-FIX-RUNTIME-*` entry → return to Step 3.
+
+The banner below prints only when both stages either pass or skip and `feature-list.json` is still fully `passes: true`. Convergence across these sweep-driven loops is guaranteed only by the per-feature 5-iteration cap (`iteration-tracking` anchor): a feature that keeps re-failing escalates to the user through the normal channel. No session-level wave counter exists.
+
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ★ AUTO-PILOT COMPLETE                    [{total}/{total} — 100%]

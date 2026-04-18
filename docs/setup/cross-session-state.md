@@ -59,7 +59,41 @@ Four language scopes, each with an explicit rule:
 
 Once selected, the tech stack is recorded in exactly two places:
 - `CLAUDE.md`: one-line summary (e.g., "Stack: Next.js 14 + TypeScript + Prisma + PostgreSQL")
-- `.claude/environment.md`: full detail (versions, package manager, runtime requirements, dev dependencies, conversation_language, comment_language)
+- `.claude/environment.md`: full detail (versions, package manager, runtime requirements, dev dependencies, conversation_language, comment_language, and Runtime Smoke Configuration — see below)
+
+## Runtime Smoke Configuration <!-- anchor: runtime-smoke-configuration -->
+
+`.claude/environment.md` MUST include this section. It supplies the three inputs Gate 5 Runtime Smoke (`docs/setup/agents-and-gates.md` anchor `runtime-smoke-gate`) needs to trigger at session-terminal time. Fill during Phase 1 using the tech-stack selection from Step 1.3.
+
+```yaml
+## Runtime Smoke Configuration
+build_command: npm run build          # shell command; null to skip Gate 5
+run_command: npm run dev              # shell command; null to skip Gate 5
+ready_signal:
+  type: log-match                     # one of: log-match, port-listen, process-alive, timeout-success
+  pattern: "Local:.*http://localhost" # log-match regex; ignored for other types
+  port: null                          # port-listen only (integer)
+  timeout_seconds: 15                 # Run-stage budget; PASS if clean exit within budget
+```
+
+**`build_command`** — full shell command executed by the orchestrator during Gate 5 Build stage. Budget: 120 seconds (hard timeout). Non-zero exit is FAIL. Set to `null` when no build step applies (interpreted languages without a bundler) — Gate 5 Build stage becomes a no-op but the Run stage still runs.
+
+**`run_command`** — full shell command executed during Gate 5 Run stage. The command is launched as a background process; the orchestrator waits for the ready signal (below) OR a clean exit 0 within `timeout_seconds`. Set to `null` to disable Gate 5 entirely (library projects, non-runnable harnesses) — Gate 5 emits a skip banner and termination proceeds.
+
+**`ready_signal.type`** — how to detect that the app is up:
+- `log-match` — scan combined stdout+stderr for `pattern` (PCRE regex). Match within `timeout_seconds` → PASS.
+- `port-listen` — poll `127.0.0.1:<port>` every 500 ms. Accepting a connection → PASS.
+- `process-alive` — the process stays alive without panic/error for `timeout_seconds` → PASS.
+- `timeout-success` — treat clean exit 0 within `timeout_seconds` as PASS; use for CLI tools that run and exit.
+
+**Detection rules during Phase 1** (setup.md Step 2):
+- Node/TypeScript with `package.json` scripts → `build_command: npm run build` if a `build` script exists, else `null`; `run_command: npm run dev` if `dev` exists else `npm start` if `start` exists else `null`; `ready_signal.type: log-match` with pattern derived from common dev-server output.
+- Go with `main.go` → `build_command: go build ./...`, `run_command: go run .`, `ready_signal.type: process-alive` (most Go apps print little on startup).
+- Rust with `Cargo.toml` → `build_command: cargo build`, `run_command: cargo run`, `ready_signal.type: process-alive`.
+- Python with `__main__.py` → `build_command: null`, `run_command: python -m <pkg>`, `ready_signal.type: timeout-success`.
+- Anything else or ambiguous → Phase 1 prompts the user ONCE (one-question-at-a-time) with a recommended default. If the user declines or the stack is unrunnable, set both commands to `null`.
+
+The `run_command` process is always terminated by the orchestrator after ready-signal match OR timeout, whichever comes first. Gate 5 never leaves a runaway process.
 
 ## .gitignore Generation (Phase 1)
 

@@ -194,6 +194,24 @@ After each module's TDD cycle completes:
 3. Boundary mismatches are Critical severity in Gate 2 (block commit)
 4. Run remaining quality gates (0-1, 3-4) as normal
 
+### Session-end QA sweep → failure-as-feature routing
+
+When QA runs at session-terminal time (auto-pilot queue is empty and all features `passes: true`), findings do NOT merely log to `PROGRESS.md ## Incidents`. They feed back into the harness loop through the `debugger` agent. See `commands/start.md` anchor `qa-invocation-timing` for the authoritative contract.
+
+The pipeline per severity:
+
+- **Critical** — for each Critical finding, the orchestrator invokes the `debugger` agent with the QA artifact path (`_workspace/qa_*.md`) and the affected boundary (file:line). The debugger writes its decision to `_workspace/qa_debugger_{feature_id}.md` and updates `feature-list.json` via ONE of:
+  1. **Resurrect** — an existing feature's `tdd_focus` or `doc_sync` covers the affected file AND its current `passes` is `true` → flip its `passes` back to `false`. The iteration counter in `PROGRESS.md ## Current TDD State` is **preserved** (not reset). A recurring failure on the same feature is divergence, and the per-feature 5-iteration cap must catch it.
+  2. **Create** — no existing feature owns the boundary → append a new `FEAT-FIX-<slug>` entry with `test_strategy: "integration"`, `depends_on` set to every feature touching the boundary, `tdd_focus` set to the affected files, `doc_sync: []`, `passes: false`.
+
+  After the update, auto-pilot re-enters naturally. There is no wave counter, no session-level remediation budget; the per-feature 5-cap is the only convergence guard.
+
+- **Major / Minor** — append to `PROGRESS.md ## Incidents` only (existing behavior, unchanged). These do not block termination.
+
+- **No findings** — proceed to Gate 5 Runtime Smoke (per `docs/setup/agents-and-gates.md` anchor `runtime-smoke-gate`).
+
+Gate 5 Build/Run failures route through the same debugger resurrect-or-create decision; the only Gate-5-specific detail is the FIX slug prefix (`FEAT-FIX-BUILD-*` / `FEAT-FIX-RUNTIME-*`) and the log artifact path.
+
 ### Quality Gate Integration
 
 Add to Gate 2 (Review):
