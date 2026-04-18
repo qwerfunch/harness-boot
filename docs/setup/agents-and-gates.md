@@ -33,7 +33,7 @@ Specify in the orchestrator how agents share work products:
 | **Task** | `TaskCreate`/`TaskUpdate` | Progress tracking, dependency management |
 | **File** | Write/Read to `_workspace/` | Large data, structured outputs, audit trail |
 
-All three strategies are used together. TDD sub-agents (`tdd-test-writer`, `tdd-implementer`, `tdd-refactorer`, `tdd-bundler`) are invoked via the `Agent` tool inside an implementer's execution — they are not team members and return results directly to the caller.
+All three strategies are used together. TDD / BDD sub-agents (`tdd-test-writer`, `tdd-implementer`, `tdd-refactorer`, `bdd-writer`) are invoked via the `Agent` tool inside an implementer's execution — they are not team members and return results directly to the caller.
 
 File-based transfer rules:
 - `_workspace/` folder for intermediate outputs
@@ -58,7 +58,7 @@ Add to the generated harness:
 
 #### Team Communication Protocol for Agents
 
-**Only agents that actually exchange team messages** add a `## Team Communication Protocol` section: `orchestrator`, module-specific implementers, `reviewer`, and `qa-agent` (when included). `architect`, `debugger`, `tester`, and the `tdd-*` sub-agents (test-writer / implementer / refactorer / bundler) **omit the section** — they are invoked via the `Agent` tool inside an implementer cycle or on escalation, not through team messaging, so a placeholder section would be empty ceremony.
+**Only agents that actually exchange team messages** add a `## Team Communication Protocol` section: `orchestrator`, module-specific implementers, `reviewer`, and `qa-agent` (when included). `architect`, `debugger`, `tester`, `bdd-writer`, and the `tdd-*` sub-agents (test-writer / implementer / refactorer) **omit the section** — they are invoked via the `Agent` tool inside an implementer cycle or on escalation, not through team messaging, so a placeholder section would be empty ceremony.
 
 For agents that include the section, it must specify:
 - **Receive from**: Who sends what messages
@@ -108,10 +108,10 @@ Model assignment per agent is defined once in `model-routing.md`. This table cov
 | **tester** | Core function selection, feedback with expected vs actual values | Success criteria + rules (agent MD section) |
 | **architect** | ADR writing, impact doc listing, schema changes require migration + docs together | Full persona (reads domain-persona.md) |
 | **debugger** | Root cause analysis, minimal fix, mandatory regression test | Full persona (reads domain-persona.md) |
-| **tdd-test-writer** | Red phase only (for `tdd` / `state-verification`). Does not read implementation code | Feature-scoped entities + invariants (from implementer prompt) |
-| **tdd-implementer** | Green phase only (for `tdd` / `state-verification`). Minimal implementation | Feature-scoped entities + rules (from implementer prompt) |
-| **tdd-refactorer** | Refactor phase (all TDD strategies). No behavior changes | Vocabulary only (from implementer prompt) |
-| **tdd-bundler** (conditional) | Bundled Red→Green for `bundled-tdd` features. Single-agent, 2-commit sequence (`[bundled-tdd:red]` → `[bundled-tdd:green]`). Included only when feature-list.json contains at least one `"test_strategy": "bundled-tdd"` entry | Feature-scoped entities + rules (from implementer prompt) |
+| **tdd-test-writer** (conditional) | Red phase for `tdd` / State-Test phase for `state-verification`. Does not read implementation code. Generated only when feature-list.json contains at least one `"test_strategy": "tdd"` entry, OR any `"state-verification"` entry | Feature-scoped entities + invariants (from implementer prompt) |
+| **tdd-implementer** | Implement / Green phase (all strategies). Minimal implementation; MUST NOT write tests | Feature-scoped entities + rules (from implementer prompt) |
+| **tdd-refactorer** | Refactor phase (all strategies). No behavior changes | Vocabulary only (from implementer prompt) |
+| **bdd-writer** | BDD-Verify phase for `lean-tdd` features. Reads acceptance_test + type headers only; implementation code is forbidden. Writes one Given/When/Then scenario per acceptance_test item to `{test-dir}/{feature_id}.bdd.{ext}`. Always generated (lean-tdd is the default strategy) | Feature-scoped acceptance_test + vocabulary (from implementer prompt) |
 
 ### Agent Rationalization Defense
 
@@ -123,8 +123,8 @@ Each generated agent MD must include a "Common Rationalizations" section (minimu
 | **reviewer** | "Minor change, quick approval" | All changes get full 3-stage review regardless of size |
 | **implementer** | "Tests are passing, skip refactor phase" | Refactor is mandatory even if no changes result |
 | **debugger** | "I know the fix, skip root cause analysis" | Root cause must be documented; symptom fixes recur |
-| **tdd-bundler** | "I'll tweak the test to match the impl — it's easier" | Editing the test after the red commit destroys the red→green evidence; Gate 0 blocks on test-file byte divergence between red and green commits. Abort and restart the cycle instead. |
-| **tdd-bundler** | "Skip the red commit, just commit everything at once" | Red commit IS the evidence; without it Gate 0 cannot verify the test was ever failing. The two-commit sequence is non-negotiable for `bundled-tdd`. |
+| **bdd-writer** | "Let me peek at the implementation so my scenarios are realistic" | Reading implementation leaks internals into the BDD surface; scenarios must be written from `acceptance_test` alone. Ask the implementer for a type header if the public shape is unclear. |
+| **bdd-writer** | "One Given/When/Then block can cover two scenarios" | Gate 0 (lean-tdd) counts blocks against `acceptance_test` length — one block per scenario, no folding. |
 
 ---
 
@@ -144,25 +144,20 @@ Each generated agent MD must include a "Common Rationalizations" section (minimu
 
 ### Gate Behavior by `test_strategy`
 
-| Gate | `tdd` (default) | `bundled-tdd` | `state-verification` | `integration` |
-|------|-----------------|---------------|---------------------|---------------|
-| **Gate 0** | Full: test files exist, Red → Green order evidence from 3-agent cycle, happy/boundary/error cases | Full tdd_focus coverage + 2-commit red→green sequence (`[bundled-tdd:red]` fails, `[bundled-tdd:green]` passes, test file byte-identical between the two) | Relaxed: test files exist, tests pass, state assertions present | Relaxed: integration test file exists, tests pass |
-| **Gate 3** | tdd_focus functions: >= 70% line coverage | tdd_focus functions: >= 70% line coverage (same as `tdd`) | Test files exist for module (no per-function coverage) | Overall file coverage >= 60% |
+| Gate | `lean-tdd` (default) | `tdd` (safety-critical opt-in) | `state-verification` | `integration` |
+|------|----------------------|--------------------------------|---------------------|---------------|
+| **Gate 0** | BDD file exists at `{test-dir}/{feature_id}.bdd.{ext}`; Given/When/Then block count >= `acceptance_test` length; BDD suite passes | Full: test files exist, Red → Green order evidence from 3-agent cycle, happy/boundary/error cases | Relaxed: test files exist, tests pass, state assertions present | Relaxed: integration test file exists, tests pass |
+| **Gate 3** | BDD scenario count >= `acceptance_test` count (no line-coverage measurement) | tdd_focus functions: >= 70% line coverage | Test files exist for module (no per-function coverage) | Overall file coverage >= 60% |
 
 ### Gate 0 Enforcement
 
 The **implementer agent** checks Gate 0 before proceeding to Gate 1:
-1. Verify test files exist for each `tdd_focus` item
-2. **If `test_strategy` = `"tdd"`**: Verify Red phase produced failing tests (evidence: test runner output with failures), then Green phase made them pass
-3. **If `test_strategy` = `"bundled-tdd"`**: Verify the two-commit sequence via git log:
-   - A commit whose subject starts with `[bundled-tdd:red]` exists on the current feature branch and its body captures failing test output for the feature's `tdd_focus`.
-   - A later commit whose subject starts with `[bundled-tdd:green]` exists and captures passing test output.
-   - `git diff <red-sha> <green-sha> -- <test-files>` is empty (test files unchanged between red and green).
-   - If any of these fail, Gate 0 fails.
-4. **If `test_strategy` = `"state-verification"`**: Verify test files exist and include state assertions (not pixel-level rendering checks)
-5. **If `test_strategy` = `"integration"`**: Verify integration test file exists and passes
+1. **If `test_strategy` = `"lean-tdd"`**: Verify `{test-dir}/{feature_id}.bdd.{ext}` exists, Given/When/Then block count >= `acceptance_test.length`, BDD suite exits 0.
+2. **If `test_strategy` = `"tdd"`**: Verify test files exist for each `tdd_focus` item, then verify Red phase produced failing tests (evidence: test runner output with failures), then Green phase made them pass.
+3. **If `test_strategy` = `"state-verification"`**: Verify test files exist and include state assertions (not pixel-level rendering checks).
+4. **If `test_strategy` = `"integration"`**: Verify integration test file exists and passes.
 
-If Gate 0 fails: return to Red/Implement phase (or restart the bundled cycle). This counts toward the 5-iteration convergence limit.
+If Gate 0 fails: return to the appropriate phase (BDD-Verify / Implement for lean-tdd; Red/Green for tdd). This counts toward the 5-iteration convergence limit.
 The **reviewer agent** independently re-checks Gate 0 compliance during Gate 2.
 
 ### Gate 2: Comment Rules Compliance

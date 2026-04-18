@@ -1,14 +1,50 @@
 # TDD Cycles by `test_strategy`
 
-This file defines the four per-feature development cycles selected by `feature-list.json` `test_strategy` and the Gate 0 evidence rules that verify each cycle's output. `commands/start.md` Step 4 invokes the cycle below matching the feature's strategy; Step 5 runs the Gate 0 checks on the SHAs produced by the cycle.
+This file defines the four per-feature development cycles selected by `feature-list.json` `test_strategy` and the Gate 0 evidence rules that verify each cycle's output. `commands/start.md` Step 4 invokes the cycle below matching the feature's strategy; Step 5 runs the Gate 0 checks on the SHAs / artifacts produced by the cycle.
 
-All cycles execute inside a single `implementer-<slug>`'s context. TDD sub-agents (`tdd-test-writer`, `tdd-implementer`, `tdd-refactorer`, `tdd-bundler`, `tester`) are invoked via the `Agent` tool — they are never team members and never receive `SendMessage`.
+All cycles execute inside a single `implementer-<slug>`'s context. TDD / BDD sub-agents (`tdd-test-writer`, `tdd-implementer`, `tdd-refactorer`, `bdd-writer`, `tester`) are invoked via the `Agent` tool — they are never team members and never receive `SendMessage`.
 
 ---
 
+## Cycle: lean-tdd <!-- anchor: cycle-lean-tdd -->
+
+Default strategy. "TDD mindset, no TDD ceremony." Implementer designs the code for testability (separable functions, pure boundaries, DI points) without writing tests during the build, then a post-hoc BDD pass verifies at the feature boundary.
+
+```
+Design: implementer (self, no sub-agent)
+  - Analyze tdd_focus + acceptance_test
+  - Decompose into separable functions / pure boundaries / DI points
+  - Produce `_workspace/{feature_id}_design.md` with function sketch + testability notes
+  ↓
+Implement: call tdd-implementer sub-agent
+  - Build the full implementation following the design sketch
+  - Apply Comment Rules (see `docs/setup/code-style.md#comment-rules`): file headers, JSDoc, why-comments
+  - MUST NOT write tests (tests arrive in the next phase)
+  - Verify: compile/lint pass
+  ↓
+BDD-Verify: call bdd-writer sub-agent
+  - Read acceptance_test + type headers ONLY (implementation code is forbidden)
+  - Write one Given/When/Then block per acceptance_test scenario
+  - Output file: {test-dir}/{feature_id}.bdd.{ext}
+  - Verify: run BDD suite → all PASS
+  ↓
+Refactor: call tdd-refactorer sub-agent  (optional — skip if impl is clean)
+  - No behavior changes allowed
+  - Verify comment quality and supplement missing JSDoc/headers
+  - Verify: BDD suite still PASS
+  ↓
+Verify: full test suite + feature verification
+  - On BDD failure:
+    (a) scenario itself wrong → re-invoke bdd-writer with corrected input
+    (b) implementation bug → return to Implement (iteration++)
+  - After 5 iterations, escalate (see `iteration-cycle.md`)
+```
+
+> `lean-tdd` trades strict Red→Green isolation for fewer sub-agent hops (3 → 2) and skipped test-writing during build. Use for most features. When spec is ambiguous or the domain is safety-critical (auth / payment / security / crypto / credential), switch to `tdd`.
+
 ## Cycle: tdd <!-- anchor: cycle-tdd -->
 
-Strict three-sub-agent isolation. Default when spec is ambiguous or invariants are security-sensitive.
+Safety-critical opt-in. Strict three-sub-agent isolation. Use when invariants are security-sensitive (auth / payment / security / crypto / credential domains) or when the spec is ambiguous enough that test-first discipline helps pin it down.
 
 ```
 Plan (analyze acceptance_test)
@@ -32,47 +68,6 @@ Verify: full test suite + feature verification
   - On failure, return to Green/Red (max 5 iterations)
   - After 5 iterations, escalate
 ```
-
-## Cycle: bundled-tdd <!-- anchor: cycle-bundled-tdd -->
-
-Speed-oriented, single sub-agent. Use when the spec is unambiguous and speed outweighs the co-drift risk of test/impl in one context.
-
-```
-Plan (analyze acceptance_test)
-  ↓
-Bundled Red→Green: call tdd-bundler sub-agent
-  - Write failing tests (happy/boundary/error)
-  - Run tests → capture red output
-  - Commit tests only with subject starting [bundled-tdd:red]
-    (body includes the captured failing output)
-  - Record frozen test paths: git diff --name-only HEAD~1 HEAD
-    → store as <frozen-tests> list (e.g., *.test.*, *.spec.*, tests/**)
-  - Self-check before green: for the entire green phase, exclude every
-    path in <frozen-tests> from Write/Edit targets
-  - Write minimal implementation (MUST NOT edit tests from here on)
-  - Run tests → all PASS, capture green output
-  - Self-check before commit: re-run git diff --name-only against the
-    staged set; if any path in <frozen-tests> reappears, abort and
-    restart the cycle (do NOT commit)
-  - Commit implementation with subject starting [bundled-tdd:green]
-    (body includes the captured passing output)
-  ↓
-Refactor: call tdd-refactorer sub-agent  (optional — skip if impl is clean)
-  - No behavior changes allowed
-  - Verify comment quality and supplement missing JSDoc/headers
-  - Verify: tests still PASS
-  ↓
-Verify: full test suite + feature verification
-  - Gate 0 check: git diff <red-sha> <green-sha> -- <test-files> must be empty
-  - On failure, restart the bundled cycle (max 5 iterations)
-  - After 5 iterations, escalate
-  ↓
-Pre-Gate 4 fold: rebase --interactive or reset --soft to combine the two
-  internal commits into one feat(FEAT-XXX) commit. Keep red-sha/green-sha
-  as trailers in the commit message body so Gate 0 evidence survives.
-```
-
-> `bundled-tdd` trades strict test/impl isolation for fewer sub-agent hops (3 → 1-2). Use only for features with clear specs and low co-drift risk. When in doubt, stay with `tdd`.
 
 ## Cycle: state-verification <!-- anchor: cycle-state-verification -->
 
@@ -144,25 +139,22 @@ refactor_sha ← Agent(tdd-refactorer) # returns SHA after refactor (no behavior
 
 If any check fails, Gate 0 blocks and the cycle restarts (iteration++).
 
-### `bundled-tdd` <!-- anchor: gate-0-bundled-tdd -->
+### `lean-tdd` <!-- anchor: gate-0-lean-tdd -->
 
-Single `tdd-bundler` sub-agent. Must return the structured contract:
+No Red→Green ordering. Evidence is the post-hoc BDD artifact produced by `bdd-writer`:
 
 ```
-{
-  "red_sha":   "<sha after [bundled-tdd:red] commit>",
-  "green_sha": "<sha after [bundled-tdd:green] commit>",
-  "test_files": ["path/to/test1", "path/to/test2", ...]
-}
+bdd_file     ← {test-dir}/{feature_id}.bdd.{ext}
+scenarios    ← count of Given/When/Then blocks inside bdd_file
+expected     ← length of the feature's acceptance_test array
 
 # Evidence checks:
-(1) `git log red_sha^..green_sha --format=%s` → subjects start with [bundled-tdd:red] then [bundled-tdd:green]
-(2) `git diff red_sha green_sha -- <test_files>` → empty (tests unchanged between red and green commits)
-(3) `git log -1 red_sha --format=%b`  → contains the captured failing output
-(4) `git log -1 green_sha --format=%b` → contains the captured passing output
+(1) `bdd_file` exists
+(2) `scenarios >= expected` (every acceptance_test scenario covered at least once)
+(3) BDD suite execution exits 0 (all scenarios PASS)
 ```
 
-Pre-Gate 4 fold preserves `red_sha` / `green_sha` as commit-message trailers so the evidence survives the rebase.
+If any check fails, Gate 0 blocks. The implementer decides between (a) re-invoking `bdd-writer` with a corrected input when a scenario is malformed, or (b) returning to Implement when the failure is an implementation bug (iteration++). The `pre-tool-coverage-gate.sh` `lean-tdd` branch enforces checks (1) and (2) at commit time.
 
 ### `state-verification` <!-- anchor: gate-0-state-verification -->
 

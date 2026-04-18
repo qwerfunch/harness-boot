@@ -254,7 +254,11 @@ The agent selects the next feature from feature-list.json → **works on only on
   "description": "User can sign up with email and password",
   "depends_on": [],
   "test_strategy": "tdd",
-  "acceptance_test": ["Signup form input", "Account creation confirmation", "Duplicate email error"],
+  "acceptance_test": [
+    "Given a new email and valid password, When the signup form is submitted, Then the account is created and a confirmation is shown",
+    "Given an already-registered email, When signup is submitted, Then a duplicate-email error is returned and no account is created",
+    "Given a password below the minimum length, When signup is submitted, Then a validation error is returned and no account is created"
+  ],
   "tdd_focus": ["validateSignupInput", "createUser", "hashPassword"],
   "doc_sync": ["docs/api.md", "src/api/CLAUDE.md"],
   "passes": false
@@ -269,8 +273,8 @@ The agent selects the next feature from feature-list.json → **works on only on
 | `category` | string | Yes | — | No |
 | `description` | string | Yes | — | No |
 | `depends_on` | string[] | No | `[]` | No |
-| `test_strategy` | `"tdd"` \| `"bundled-tdd"` \| `"state-verification"` \| `"integration"` | No | `"tdd"` | No |
-| `acceptance_test` | string[] | Yes | — | No |
+| `test_strategy` | `"lean-tdd"` \| `"tdd"` \| `"state-verification"` \| `"integration"` | No | `"lean-tdd"` | No |
+| `acceptance_test` | string[] (Given/When/Then scenarios, length ≥ 3) | Yes | — | No |
 | `tdd_focus` | string[] | Yes | — | No |
 | `doc_sync` | string[] | Yes | — | No |
 | `passes` | boolean | Yes | `false` | **Yes** (only field mutable during `/start`) |
@@ -284,22 +288,43 @@ Array of feature IDs that must have `passes: true` before this feature can be st
 { "id": "F-04", "depends_on": ["F-01", "F-02"], ... }
 ```
 
+### `acceptance_test` — Given/When/Then Scenario Contract
+
+Each entry in `acceptance_test` MUST be a Given/When/Then scenario (free-form prose is no longer accepted). The array MUST contain **at least three scenarios** covering a happy path, a failure path, and an edge case:
+
+```jsonc
+"acceptance_test": [
+  "Given <precondition>, When <action>, Then <observable outcome>",   // happy
+  "Given <failure precondition>, When <action>, Then <failure mode>", // failure
+  "Given <boundary precondition>, When <action>, Then <edge outcome>" // edge
+]
+```
+
+The `bdd-writer` sub-agent produces one Given/When/Then test block per entry at `{test-dir}/{feature_id}.bdd.{ext}`. Gate 0 for `lean-tdd` counts generated blocks against `acceptance_test.length` and blocks commit when the count is short.
+
+`/setup` Phase 6 MUST validate `acceptance_test` on each feature as it writes `feature-list.json`:
+1. `acceptance_test.length >= 3`
+2. Every entry contains the tokens `Given` AND `When` AND `Then` (case-insensitive).
+
+If either check fails, `/setup` prompts the user (one question at a time, numbered) to either (1) auto-draft the missing scenarios from `description` + `tdd_focus`, or (2) pause so the user can rewrite the plan entry.
+
 ### `test_strategy` — Per-Feature Test Strategy
 
 Determines the test workflow and quality gate criteria for each feature:
 
 | Value | When to Use | Workflow | Gate 0 | Gate 3 (Coverage) |
 |-------|-------------|----------|--------|-------------------|
-| `"tdd"` (default) | Pure logic functions (validators, calculators, state machines) with high context-leak risk or tight invariants | Red → Green → Refactor (3 isolated sub-agents) | Full TDD evidence | tdd_focus >= 70% line coverage |
-| `"bundled-tdd"` | Pure logic with clear spec and low leak risk; speed over strict isolation | Bundled Red→Green (single `tdd-bundler`, test committed before impl) → optional Refactor | 2-commit red→green sequence: `[bundled-tdd:red]` commit shows failing test output, `[bundled-tdd:green]` commit shows pass | tdd_focus >= 70% line coverage |
+| `"lean-tdd"` (default) | Most features. Agent-authored code with a clear spec; "TDD mindset, no TDD ceremony" | Design → Implement (`tdd-implementer`) → BDD-Verify (`bdd-writer`) → optional Refactor | BDD file exists + Given/When/Then block count >= `acceptance_test.length` + suite passes | BDD scenario count >= `acceptance_test` count (no line-coverage measurement) |
+| `"tdd"` (safety-critical opt-in) | auth / payment / security / crypto / credential domains, or specs tight enough that test-first discipline pins them down | Red → Green → Refactor (3 isolated sub-agents) | Full TDD evidence (Red → Green SHA ordering + test-file byte stability) | tdd_focus >= 70% line coverage |
 | `"state-verification"` | Rendering, canvas, DOM manipulation, UI components | Implement → Write state verification tests → Review | Test files exist + pass | Test files exist for module |
 | `"integration"` | Wiring/entry points, game loops, multi-module features | Implement → Write integration tests → Review | Integration test exists + passes | Overall file coverage >= 60% |
 
 Classification guidance for `/setup`:
-- Features with pure logic functions → `"tdd"` (strict) or `"bundled-tdd"` (fast). Prefer `"tdd"` when the spec is ambiguous or the feature touches security-sensitive invariants; prefer `"bundled-tdd"` when the spec is unambiguous and speed outweighs the risk of test-implementation co-drift.
-- Features with rendering, canvas, DOM, or visual output → `"state-verification"`
-- Features that primarily wire together other features → `"integration"`
-- When ambiguous, default to `"tdd"`. Present classification to user for confirmation.
+- If `category` or `description` mentions any of `auth`, `payment`, `security`, `crypto`, `credential` (case-insensitive) → auto-assign `"tdd"`.
+- Features with rendering, canvas, DOM, or visual output → `"state-verification"`.
+- Features that primarily wire together other features → `"integration"`.
+- All other features → `"lean-tdd"` (default).
+- Classification is surfaced to the user at Step 1.7; overridable via "Change a decision".
 
 **Priority**: Array order determines priority. The first `passes: false` item is the next feature to work on. `/setup` must order features with foundational dependencies first (e.g., auth before profile, profile before order).
 
@@ -329,7 +354,7 @@ All fields below are **required**. The Phase 6 generator MUST emit every field w
 | `## Status` | `last_completed_phase` | int or string | `setup_complete` | `/setup` Phase 1-6 checkpoints, then frozen | `1`..`6`, `setup_complete` |
 | `## Status` | `current_feature` | string | `""` (empty) | orchestrator on feature start/complete | `FEAT-XXX` or `""` |
 | `## Status` | `mode` | enum | `initializer` | orchestrator (→ `coding` after first feature) | `initializer`, `coding` |
-| `## Current TDD State` | `phase` | enum or empty | `""` | implementer sub-agent per cycle | `Red`, `Green`, `Refactor`, `Verify`, `""` |
+| `## Current TDD State` | `phase` | enum or empty | `""` | implementer sub-agent per cycle | `Design`, `Implement`, `BDD-Verify`, `Red`, `Green`, `Refactor`, `Verify`, `""` |
 | `## Current TDD State` | `iteration` | int | `0` | implementer — increment before cycle, reset to `0` on feature complete | `0`..`5` (>5 escalates) |
 | `## Current TDD State` | `tdd_focus_progress` | string | `0/0 complete` | implementer on each tdd_focus pass | `{done}/{total} complete` |
 | `## Current TDD State` | `auto_pilot` | bool | `false` | `/start` Step 3 option (4) toggles on; "stop" command toggles off | `true`, `false` |

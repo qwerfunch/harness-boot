@@ -50,13 +50,13 @@ Phase 1-6 sequential generation. After Step 1.7 approval of the decision review,
 1. Load orchestrator agent + session context (bootstrap hook verifies PROGRESS.md ↔ feature-list.json consistency) + domain-persona.md
 2. Detect mode (Initializer vs Coding) from PROGRESS.md
 3. Select feature(s) with numbered choices: parallel independent modules by default; single-module projects run one feature at a time. **Auto-pilot option** runs all remaining features, pausing only on errors.
-4. Run development cycle per `test_strategy`: `tdd` → Red/Green/Refactor (3 isolated sub-agents); `bundled-tdd` → Bundled Red→Green (single `tdd-bundler`, 2-commit evidence) + optional Refactor; `state-verification` → Implement/State-Test/Refactor; `integration` → Implement/Integration-Test. Steps 3-6 auto-proceed on success — no mid-feature pauses. Max 5 iterations (tracked in PROGRESS.md), then escalate.
+4. Run development cycle per `test_strategy`: `lean-tdd` (default) → Design/Implement/BDD-Verify/Refactor (tests not written during implementation; feature-level BDD is the gate); `tdd` (safety-critical opt-in for auth/payment/security/crypto/credential domains) → Red/Green/Refactor (3 isolated sub-agents); `state-verification` → Implement/State-Test/Refactor; `integration` → Implement/Integration-Test. Steps 3-6 auto-proceed on success — no mid-feature pauses. Max 5 iterations (tracked in PROGRESS.md), then escalate.
 5. QA agent verifies cross-boundary consistency (if included per QA criteria)
 6. Quality gates 0-4 (Gate 0 enforced by implementer + reviewer), coverage gate hook, code-doc sync, auto-update feature-list.json, single commit per feature (never batch)
 
 ## Five Core Principles
 
-1. **TDD-First** — Red/Green/Refactor in isolated sub-agent contexts (prevents test-implementation knowledge leakage). Per-feature `test_strategy` allows alternatives: `bundled-tdd` (speed-oriented, single sub-agent with 2-commit red→green evidence), `state-verification` (UI/rendering), or `integration` (wiring).
+1. **Testable-First** — Code is designed for testability (separable functions, pure boundaries, DI points) regardless of whether tests are written TDD-style. Most features use `lean-tdd` (skip test writing during implementation, verify at feature boundary via BDD — "TDD mindset, no TDD ceremony"). Safety-critical domains (auth/payment/security/crypto/credential) use strict `tdd` with Red/Green/Refactor isolated sub-agents. Per-feature alternatives: `state-verification` (UI/rendering), `integration` (wiring).
 2. **Iteration Convergence** — Max 5 loops (tracked in PROGRESS.md), then escalate to user
 3. **Code-Doc Sync** — Triple defense: prompt protocol + PreToolUse hook (blocks commit on export changes) + reviewer check
 4. **Anti-Rationalization** — Every skill embeds a rationalization-rebuttal table (>= 2 rows, domain-specific; add more when genuine excuses exist, but do not pad)
@@ -66,12 +66,12 @@ Phase 1-6 sequential generation. After Step 1.7 approval of the decision review,
 
 - CLAUDE.md <= 1,500 tokens; SKILL.md <= 500 lines
 - Hook scripts: shebang + stdin JSON parsing; exit 0 = proceed, exit 1 = hook error (proceeds), exit 2 = block action
-- feature-list.json: array order = priority; `depends_on` for dependency tracking; `test_strategy` per feature (`tdd`/`bundled-tdd`/`state-verification`/`integration`); only `passes` field may be changed during `/start`
+- feature-list.json: array order = priority; `depends_on` for dependency tracking; `test_strategy` per feature (`lean-tdd`/`tdd`/`state-verification`/`integration`); only `passes` field may be changed during `/start`
 - Tech stack not specified in plan -> present 2-3 recommendations, wait for developer choice (never auto-select). Stored in CLAUDE.md (summary) + environment.md (detail).
 - Architecture pattern: prototype/PoC/MVP -> skip (Simple Flat). Otherwise assessed by project scale (8+ features, 3+ domain categories, cross-cutting concerns). If warranted and unspecified -> present 2-3 recommendations with plain-language explanations, wait for developer choice (never auto-select). Stored alongside tech stack in CLAUDE.md (summary) + environment.md (detail section).
-- Quality gates require evidence; Gate 3 coverage varies by `test_strategy`: tdd=>= 70% line on tdd_focus, bundled-tdd=>= 70% line on tdd_focus (same as tdd) + 2-commit red→green sequence required at Gate 0, state-verification=test files exist, integration=60% file coverage; Gate 2 includes Comment Rules (`docs/setup/code-style.md#comment-rules`) compliance
+- Quality gates require evidence; Gate 3 coverage varies by `test_strategy`: lean-tdd=BDD scenario count ≥ acceptance_test count (no line-coverage measurement), tdd=>= 70% line on tdd_focus, state-verification=test files exist, integration=60% file coverage; Gate 2 includes Comment Rules (`docs/setup/code-style.md#comment-rules`) compliance and (for `lean-tdd`) a refactorability check — separable functions, pure boundaries, DI points
 - Gate 4 rollback: single commit per feature enables `git revert`; DB migrations require down-migration
-- Coverage gate hook: blocks `git commit` when any tdd_focus function falls below 70% line coverage (computed by intersecting fnMap.loc with statementMap entries). Functions not found in fnMap produce warnings only, not blocks. ([skip-coverage] bypass)
+- Coverage gate hook: for `tdd`, blocks `git commit` when any tdd_focus function falls below 70% line coverage (fnMap.loc ∩ statementMap). For `lean-tdd`, blocks when BDD file is missing or Given/When/Then block count is less than the feature's `acceptance_test` length. `state-verification` warns only on missing test file; `integration` blocks below 60% overall file coverage. ([skip-coverage] bypass)
 - Doc-sync hook: blocks `git commit` only when export changes detected without feature's doc_sync targets updated (internal refactors pass through). ([skip-doc-sync] bypass)
 - Feature status auto-update: `scripts/update-feature-status.sh` marks `passes: true` after Gate 4 passes — prevents tracking drift
 - Per-feature commit discipline: even "implement all features" requests execute sequentially (TDD → gates → commit → next)
@@ -88,6 +88,6 @@ Reference: `docs/references/agent-design-patterns.md` (adapted from [revfactory/
 
 ```
 Opus (judgment): orchestrator, architect, reviewer, debugger, qa-agent
-Sonnet (execution): implementer, tdd-test-writer, tdd-implementer, tdd-refactorer, tdd-bundler, tester
+Sonnet (execution): implementer, tdd-implementer, tdd-refactorer, bdd-writer, tester
 ```
-`tdd-bundler` is generated conditionally — only when `feature-list.json` contains at least one feature with `"test_strategy": "bundled-tdd"`.
+`bdd-writer` is always generated (lean-tdd is the default strategy). `tdd-test-writer` is generated conditionally — only when `feature-list.json` contains at least one feature with `"test_strategy": "tdd"`.

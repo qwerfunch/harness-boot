@@ -69,10 +69,10 @@ The orchestrator acts as the **domain context broker**. When selecting a feature
 | orchestrator, architect, debugger | Full persona | Agent MD: "Read `.claude/domain-persona.md`" |
 | reviewer | Entities + Rules + Vocabulary | Inlined in Agent MD `## Domain Context` section |
 | implementer | Feature-scoped entities + rules | Orchestrator includes in task prompt |
-| tdd-test-writer | Feature-scoped entities + invariants | Implementer includes in sub-agent prompt |
+| tdd-test-writer (conditional) | Feature-scoped entities + invariants | Implementer includes in sub-agent prompt |
 | tdd-implementer | Feature-scoped entities + rules | Implementer includes in sub-agent prompt |
 | tdd-refactorer | Vocabulary only (naming consistency) | Implementer includes in sub-agent prompt |
-| tdd-bundler (conditional) | Feature-scoped entities + rules | Implementer includes in sub-agent prompt |
+| bdd-writer | Feature-scoped acceptance_test + vocabulary | Implementer includes in sub-agent prompt |
 | tester | Success criteria + rules | Agent MD section |
 
 ## Code-Doc Sync Integration

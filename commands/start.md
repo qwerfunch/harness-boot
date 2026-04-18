@@ -82,20 +82,22 @@ Next: {FEAT-XXX} — {description}
 
 **Auto-proceed**: Steps 4 through 7 run without pausing for user confirmation when all checks succeed. Only stop on escalation conditions (convergence failure, Gate 2 Critical, doc-sync 3+ blocks, test environment error).
 
-**Read the feature's `test_strategy`** from `feature-list.json` (default: `"tdd"`). The cycle varies by strategy.
+**Read the feature's `test_strategy`** from `feature-list.json` (default: `"lean-tdd"`). The cycle varies by strategy.
 
 **Iteration tracking** (mandatory, all strategies):
 
-The `implementer-<slug>` agent **owns** iteration counter writes for its own feature. Other agents (reviewer, tdd-test-writer, tdd-implementer, tdd-refactorer, tdd-bundler, qa-agent, debugger) MUST NOT mutate the `iteration` field — they may only read it.
+The `implementer-<slug>` agent **owns** iteration counter writes for its own feature. Other agents (reviewer, tdd-test-writer, tdd-implementer, tdd-refactorer, bdd-writer, qa-agent, debugger) MUST NOT mutate the `iteration` field — they may only read it.
 
 1. Before each cycle iteration, the implementer reads PROGRESS.md `## Current TDD State` → `iteration` value
 2. The implementer increments `iteration` by 1 and writes to PROGRESS.md BEFORE starting the cycle
 3. If `iteration > 5`: Do NOT proceed. The implementer logs to PROGRESS.md `## Incidents` table (date, feature ID, type="convergence-failure"). Escalate to user.
 4. On feature completion (Step 7), the implementer resets `iteration: 0`
 
-#### TDD sub-agent input sanitization (TDD isolation invariant)
+#### TDD / BDD sub-agent input sanitization (isolation invariant)
 
-The TDD-First principle relies on `tdd-test-writer` never seeing implementation intent. TDD sub-agents (`tdd-test-writer`, `tdd-implementer`, `tdd-refactorer`, `tdd-bundler`) are invoked via the `Agent` tool inside each implementer's execution context, and the implementer MUST sanitize inputs before forwarding them to `tdd-test-writer`:
+The Testable-First principle relies on two isolation barriers: `tdd-test-writer` never seeing implementation intent (under `tdd` / `state-verification`), and `bdd-writer` never seeing implementation code (under `lean-tdd`). Both sub-agents are invoked via the `Agent` tool inside each implementer's execution context, and the implementer MUST sanitize inputs before forwarding.
+
+**TDD sub-agent input sanitization** (for `tdd-test-writer`):
 
 **Allowed to pass through**:
 - `feature_id`
@@ -114,27 +116,43 @@ If the implementer cannot determine whether a line is safe, it removes the line 
 
 Tool-level isolation is already enforced: `tdd-test-writer`'s `allowed-tools` list excludes `Edit` (it can only write new files), and read globs are scoped to interface declarations and test files per `${CLAUDE_PLUGIN_ROOT}/docs/setup/tdd-isolation.md#file-classification-for-tdd-test-writer`. Sanitization is the second defender; Phase 3 in `commands/setup.md` writes the sanitization clause into `tdd-test-writer.md`'s generated prompt body so the sub-agent also self-checks on receipt.
 
+**BDD sub-agent input sanitization** (for `bdd-writer`):
+
+**Allowed to pass through**:
+- `feature_id`
+- `acceptance_test` — the full Given/When/Then array from `feature-list.json`; each entry must already be in Given/When/Then form (Phase 6 validates this during `/setup`).
+- Public type-header file paths only (`*.d.ts`, `*.types.*`, exported interface modules). The bdd-writer may Read these; they are the only reads it can make beyond the test directory.
+- `doc_sync` paths — informational, so the BDD suite knows the contracted surfaces.
+
+**Must NOT be forwarded**:
+- Implementation file paths (`src/**/*.{ts,js,py,go,...}`)
+- `tdd_focus` function bodies or private helper names
+- Design notes from `_workspace/{feature_id}_design.md` (these are the implementer's internal sketch)
+- Any sentence phrased as "the implementation uses..." / "internally we..." — if such a sentence appears in `acceptance_test`, it is a Phase 6 contract violation and should be reported rather than forwarded.
+
+The implementer writes the forwarded payload to `_workspace/bdd_implementer_feat-XXX-input.md` before the Agent call, so post-hoc audit can verify isolation. `bdd-writer.md`'s generated body carries the same sanitization self-check.
+
 #### Per-feature cycle by `test_strategy`
 
 Each team member runs the cycle matching its assigned feature's `test_strategy`. Cycles execute inside each `implementer-<slug>`'s context, not at the orchestrator level. Full cycle bodies are embedded in each implementer's agent file at Phase 3 generation (see `commands/setup.md` Phase 3 "Rule text injection"), so the implementer resolves its cycle from its own `## TDD Cycles` section at runtime. Plugin-internal citation (`docs/protocols/tdd-cycles.md`) is the canonical source but is NOT read by subagents at runtime.
 
 | `test_strategy` | Embedded anchor in agent body |
 |-----------------|-------------------------------|
-| `tdd` (default, strict 3-agent isolation) | `## Cycle: tdd` |
-| `bundled-tdd` (single sub-agent, 2-commit red→green evidence) | `## Cycle: bundled-tdd` |
+| `lean-tdd` (default: Design → Implement → BDD-Verify → Refactor) | `## Cycle: lean-tdd` |
+| `tdd` (safety-critical opt-in: strict 3-agent isolation) | `## Cycle: tdd` |
 | `state-verification` (rendering / canvas / DOM) | `## Cycle: state-verification` |
 | `integration` (wiring / entry points) | `## Cycle: integration` |
 
-All cycles apply Comment Rules in the Green / Implement phase (from the agent's own embedded `## Comment Rules` section) and enforce the 5-iteration convergence limit. `bundled-tdd` trades strict test/impl isolation for fewer sub-agent hops (3 → 1-2) — use only for features with clear specs and low co-drift risk; when in doubt, stay with `tdd`.
+All cycles apply Comment Rules in the Implement / Green phase (from the agent's own embedded `## Comment Rules` section) and enforce the 5-iteration convergence limit. `lean-tdd` skips Red-before-Green ordering in favor of post-hoc BDD verification — use for most features. Escalate to `tdd` when invariants are security-sensitive (auth / payment / security / crypto / credential) or when the spec is ambiguous enough that test-first discipline helps pin it down.
 
 #### Team formation and dispatch
 Create a team for parallel module development. Each team member runs its own TDD sub-agent cycle (per `test_strategy` above).
 
 **Task prompt contract** — every `TaskCreate` / `SendMessage` call to an implementer MUST include, at minimum:
 - `feature_id`
-- `test_strategy` (one of `tdd` / `bundled-tdd` / `state-verification` / `integration`) — the implementer selects the matching cycle from the `## TDD Cycles` section embedded in its own agent body (no external file read needed)
+- `test_strategy` (one of `lean-tdd` / `tdd` / `state-verification` / `integration`) — the implementer selects the matching cycle from the `## TDD Cycles` section embedded in its own agent body (no external file read needed)
 - The Language Settings block from Step 1
-- `tdd_focus`, `acceptance_test`, `doc_sync` (sanitized per the Step 4 sub-agent input sanitization rules before any further pass-through to `tdd-test-writer`)
+- `tdd_focus`, `acceptance_test`, `doc_sync` (sanitized per the Step 4 sub-agent input sanitization rules before any further pass-through to `tdd-test-writer` or `bdd-writer`)
 
 The implementer uses `test_strategy` to look up the correct cycle inside its embedded `## TDD Cycles` section — the cycle body travels with the agent, not with the task.
 
@@ -148,8 +166,8 @@ TaskCreate(FEAT-XXX -> implementer-<module-of-feat-xxx>,
   # Task prompt carries feature_id, test_strategy, Language Settings, and sanitized focus/acceptance/doc_sync
   ↓
 Each implementer independently runs the cycle matching its feature's test_strategy:
+  - "lean-tdd":         Design(self) → Implement(tdd-implementer) → BDD-Verify(bdd-writer) → [optional] Refactor(tdd-refactorer)
   - "tdd":              Red(tdd-test-writer) → Green(tdd-implementer) → Refactor(tdd-refactorer)
-  - "bundled-tdd":      BundledRedGreen(tdd-bundler) → [optional] Refactor(tdd-refactorer)
   - "state-verification": Implement(tdd-implementer) → StateTest(tdd-test-writer) → Refactor
   - "integration":      Implement(tdd-implementer) → IntegrationTest(tester)
   ↓
@@ -162,9 +180,9 @@ Reviewer reviews each module (QA report included in Gate 2 review material)
 Leader merges results, verifies cross-module consistency
 ```
 
-**TDD isolation preserved in team mode**: Team communication is for module-level coordination only. `tdd-test-writer` still MUST NOT read implementation code, even via `SendMessage`. The implementer agent remains the information firewall.
+**TDD / BDD isolation preserved in team mode**: Team communication is for module-level coordination only. `tdd-test-writer` still MUST NOT read implementation code, and `bdd-writer` still MUST NOT read implementation code, even via `SendMessage`. The implementer agent remains the information firewall.
 
-**TDD sub-agents are NOT team members**: `tdd-test-writer`, `tdd-implementer`, `tdd-refactorer` are called via `Agent` tool within each implementer's context. They never receive `SendMessage` and are not part of `TeamCreate`. Team members are: implementers (one per module), reviewer, and optionally qa-agent. TDD sub-agents are nested inside each implementer's execution.
+**TDD / BDD sub-agents are NOT team members**: `tdd-implementer`, `tdd-refactorer`, `bdd-writer`, and (when generated) `tdd-test-writer` are called via `Agent` tool within each implementer's context. They never receive `SendMessage` and are not part of `TeamCreate`. Team members are: implementers (one per module), reviewer, and optionally qa-agent. Sub-agents are nested inside each implementer's execution.
 
 **Intermediate outputs**: Written to `_workspace/` with naming convention `{phase}_{agent}_{artifact}.{ext}`.
 
@@ -176,7 +194,7 @@ Leader merges results, verifies cross-module consistency
 If qa-agent is NOT included, these invocation points are omitted and boundary verification falls to the reviewer's Gate 2 checklist alone.
 
 ### Step 5: Confirm Quality Gate Passage
-- **Gate 0**: TDD compliance — evidence: test files + Red→Green call order (verification per `test_strategy` below)
+- **Gate 0**: Test evidence — content varies by `test_strategy`: BDD scenario count (`lean-tdd`), Red→Green SHA ordering (`tdd`), state-test files (`state-verification`), integration test files (`integration`). See per-strategy table below.
 - **Gate 1**: Implementation complete (evidence: compile/lint/test output)
 - **Gate 2**: Code review (call reviewer agent → 0 Critical/Major issues)
   - Reviewer MUST verify code-doc sync: if staged diff includes export changes (per the feature's `doc_sync` mapping), every listed doc target must also be staged. Missing targets are **Critical** (block). This is the third defender alongside the prompt protocol (this checklist) and the pre-tool-doc-sync-check hook.
@@ -191,8 +209,8 @@ Orchestrator runs this check BEFORE Gate 1 using the feature's `tdd_focus` and `
 
 | `test_strategy` | Embedded sub-anchor in agent body |
 |-----------------|-----------------------------------|
+| `lean-tdd` | `### lean-tdd` under `## Gate 0 Evidence` |
 | `tdd` | `### tdd` under `## Gate 0 Evidence` |
-| `bundled-tdd` | `### bundled-tdd` under `## Gate 0 Evidence` |
 | `state-verification` | `### state-verification` under `## Gate 0 Evidence` |
 | `integration` | `### integration` under `## Gate 0 Evidence` |
 
@@ -224,7 +242,7 @@ git commit -m "feat(FEAT-XXX): {description}"
 
 The PreToolUse hooks automatically verify:
 - **doc-sync-check**: blocks commit if docs are missing
-- **coverage-gate**: blocks commit if any tdd_focus function falls below 70% line coverage
+- **coverage-gate**: strategy-dependent — blocks on BDD scenario shortfall (`lean-tdd`), per-function line coverage < 70% (`tdd`), missing state-test files (`state-verification`), or overall file coverage < 60% (`integration`)
 
 **This step is mandatory per feature.** Do not batch multiple features — commit each feature individually before proceeding to the next.
 
@@ -327,7 +345,7 @@ Auto-pilot runs all remaining features end-to-end, pausing only on escalation co
 Auto-pilot with multiple team members running concurrently under the orchestrator requires graceful stop handling. A `stop`/`pause` input from the user must not abort mid-commit or leave orphaned sub-agent work. The orchestrator enforces the following protocol:
 
 1. On `stop`/`pause` detection, orchestrator calls `TaskUpdate(<child_task>, status: 'cancel-pending')` for every in-flight member task.
-2. Each team member checks the cancel flag at every **phase boundary**: end of Red (test-writer done), end of Green (implementer done), end of Refactor (refactorer done), end of Verify. Mid-phase work is never interrupted — phases are atomic.
+2. Each team member checks the cancel flag at every **phase boundary**: end of Design / Implement / BDD-Verify / Refactor / Verify under `lean-tdd`; end of Red / Green / Refactor / Verify under `tdd`; end of Implement / State-Test / Refactor under `state-verification`; end of Implement / Integration-Test under `integration`. Mid-phase work is never interrupted — phases are atomic.
 3. A member that sees `cancel-pending` at a phase boundary:
    - If the member is **before its feature's commit**: finish the current phase, emit a partial-progress report to `_workspace/`, set `status: 'cancelled'`, exit without committing.
    - If the member is **at or after its feature's commit**: complete the commit (single-commit discipline), set `status: 'completed'`, exit.

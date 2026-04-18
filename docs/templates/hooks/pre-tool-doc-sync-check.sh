@@ -14,9 +14,6 @@ echo "$COMMAND" | grep -qE '^git[[:space:]]+commit' || exit 0
 # Emergency bypass
 echo "$COMMAND" | grep -q '\[skip-doc-sync\]' && exit 0
 
-# bundled-tdd red commit is test-only; exports haven't landed yet by design
-echo "$COMMAND" | grep -q '\[bundled-tdd:red\]' && exit 0
-
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 FEATURE_LIST="$PROJECT_ROOT/feature-list.json"
 [[ ! -f "$FEATURE_LIST" ]] && exit 0

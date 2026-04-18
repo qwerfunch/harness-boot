@@ -34,9 +34,9 @@ harness-boot uses a single execution model: **Agent Team**. The team leader crea
 
 **Single-module projects** use a team of one implementer + reviewer. The team surface (TeamCreate, TaskCreate, file-based transfer) is identical regardless of project size; there is no "solo" variant. `SendMessage` is effectively idle when only one implementer exists, but protocols remain uniform.
 
-### TDD Sub-agents are Nested, Not Team Members
+### TDD / BDD Sub-agents are Nested, Not Team Members
 
-`tdd-test-writer`, `tdd-implementer`, `tdd-refactorer`, `tdd-bundler`, and other `Agent`-tool invocations (architect, debugger, tester) are **not team members**. They are called via the `Agent` tool inside an implementer's execution context to preserve TDD isolation (the test-writer must never see implementation code). Team members are: implementers (one per module), reviewer, and optionally qa-agent.
+`tdd-implementer`, `tdd-refactorer`, `bdd-writer`, `tdd-test-writer` (when generated), and other `Agent`-tool invocations (architect, debugger, tester) are **not team members**. They are called via the `Agent` tool inside an implementer's execution context to preserve isolation (the test-writer never sees implementation code; the bdd-writer never sees implementation code either). Team members are: implementers (one per module), reviewer, and optionally qa-agent.
 
 ### Team Reformation Pattern
 

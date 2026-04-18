@@ -122,7 +122,7 @@ Setup Summary:
   Tech stack:        {selected}
   Architecture:      {selected}
   QA agent:          {yes/no}
-  Features:        {N} features ({M} tdd, {B} bundled-tdd, {K} state-verification, {L} integration)
+  Features:        {N} features ({M} lean-tdd, {T} tdd, {K} state-verification, {L} integration)
   Agents:          {count} ({additions/removals from default 9})
   Skills:          8 (adapted for {project type})
   Expected files:  ~{N} across 6 phases
@@ -192,29 +192,29 @@ Each agent YAML frontmatter includes a `model:` field.
 - `reviewer.md` (model: opus)
 - `debugger.md` (model: opus)
 - `implementer.md` (model: sonnet)
-- `tdd-test-writer.md` (model: sonnet)
 - `tdd-implementer.md` (model: sonnet)
 - `tdd-refactorer.md` (model: sonnet, effort: low)
+- `bdd-writer.md` (model: sonnet, effort: low) — always generated (lean-tdd is the default strategy). See `${CLAUDE_PLUGIN_ROOT}/docs/setup/tdd-isolation.md` for the full agent definition.
 - `tester.md` (model: sonnet)
 
-**Conditional agents (from Step 1):**
+**Conditional agents (from Step 1 / feature-list.json):**
 - `qa-agent.md` (model: opus) — if QA agent inclusion was confirmed
-- `tdd-bundler.md` (model: sonnet) — if at least one feature in `feature-list.json` uses `"test_strategy": "bundled-tdd"` (see `${CLAUDE_PLUGIN_ROOT}/docs/setup/tdd-isolation.md` for the full agent definition)
+- `tdd-test-writer.md` (model: sonnet) — if `feature-list.json` contains at least one feature with `"test_strategy": "tdd"` or `"test_strategy": "state-verification"`. Skip otherwise (`lean-tdd` uses `bdd-writer`; `integration` uses `tester`).
 - **Module-specific implementer agents**:
   - For each slug produced by the **Module Extraction algorithm** (`${CLAUDE_PLUGIN_ROOT}/docs/setup/domain-persona.md#module-extraction`) at Step 1.5, generate `implementer-<module-slug>.md` (model: sonnet). Do not re-derive modules here — use the frozen slug set from Step 1.5.
   - All module implementers are instantiated from the same `implementer.md` body; per-instance overrides live in the YAML frontmatter (`metadata.module: <slug>`, `metadata.allowed-paths: [...]`) and in one inlined "Module scope" block referencing the matching row from `.claude/context-map.md`.
   - The generic `implementer.md` is the template of record; it is not registered as a team member.
   - Count: one per module (minimum 1 for single-module projects — team of one implementer + reviewer).
 
-**TDD sub-agent input contract**:
-- When generating `tdd-test-writer.md`, inject the "TDD sub-agent input sanitization" clause from `commands/start.md` Step 4 into the agent prompt body under a `## Inputs` section. The clause lists what fields the writer may read and what implementation hints must be absent; the writer self-checks on receipt and aborts with a note to `_workspace/` if the inputs look contaminated.
-- The same injection happens for `tdd-bundler.md` when the agent is generated (bundled-tdd features).
+**Sub-agent input contract**:
+- When generating `tdd-test-writer.md` (if emitted), inject the "TDD sub-agent input sanitization" clause from `commands/start.md` Step 4 into the agent prompt body under a `## Inputs` section. The clause lists what fields the writer may read and what implementation hints must be absent; the writer self-checks on receipt and aborts with a note to `_workspace/` if the inputs look contaminated.
+- When generating `bdd-writer.md`, inject the parallel "BDD sub-agent input sanitization" clause from `commands/start.md` Step 4 under a `## Inputs` section. The clause lists the allowed input fields (`acceptance_test` array + public type headers only) and explicitly forbids implementation references; the writer self-checks and aborts to `_workspace/` on contamination.
 
 **Rule text injection (inline-embed, MANDATORY)**:
 
 Subagents invoked via the `Agent` tool cannot resolve `${CLAUDE_PLUGIN_ROOT}` paths — their system prompt is the literal body of their agent file. Any rule referenced only as `see ${CLAUDE_PLUGIN_ROOT}/...` is unreadable at runtime. Phase 3 MUST embed the following rule texts verbatim into generated agent files by reading the source and copying the section body (not a link).
 
-1. **Language Settings block** — embed into every generated agent (`orchestrator.md`, all `implementer-*.md`, `reviewer.md`, `qa-agent.md` if included, `architect.md`, `debugger.md`, `tester.md`, `tdd-test-writer.md`, `tdd-implementer.md`, `tdd-refactorer.md`, `tdd-bundler.md` if generated). Read `conversation_language` (from the locale detected in Step 1.2) and `comment_language` (from `.claude/environment.md`) and write a `## Language Settings` section at the top of the agent body:
+1. **Language Settings block** — embed into every generated agent (`orchestrator.md`, all `implementer-*.md`, `reviewer.md`, `qa-agent.md` if included, `architect.md`, `debugger.md`, `tester.md`, `tdd-implementer.md`, `tdd-refactorer.md`, `bdd-writer.md`, `tdd-test-writer.md` if generated). Read `conversation_language` (from the locale detected in Step 1.2) and `comment_language` (from `.claude/environment.md`) and write a `## Language Settings` section at the top of the agent body:
    ```markdown
    ## Language Settings
    - conversation_language: <value>   # user-facing messages, spinner, prompts, summaries
@@ -222,21 +222,21 @@ Subagents invoked via the `Agent` tool cannot resolve `${CLAUDE_PLUGIN_ROOT}` pa
    Respond to the user in conversation_language. Write all source-code comments in comment_language. Machine-facing files (CLAUDE.md, .claude/**/*.md, feature-list.json, PROGRESS.md, hooks/*.sh, scripts/*.sh) stay English regardless.
    ```
 
-2. **Comment Rules** — embed into `tdd-implementer.md`, `tdd-refactorer.md`, `tdd-bundler.md` (if generated), and `reviewer.md`. Read `${CLAUDE_PLUGIN_ROOT}/docs/setup/code-style.md` and copy the section body starting at the `## Comment Rules <!-- anchor: comment-rules -->` heading through (but not including) the next `## ` heading. Paste it verbatim into the agent body under a `## Comment Rules` section. Do not paraphrase; do not replace with a link.
+2. **Comment Rules** — embed into `tdd-implementer.md`, `tdd-refactorer.md`, and `reviewer.md`. Read `${CLAUDE_PLUGIN_ROOT}/docs/setup/code-style.md` and copy the section body starting at the `## Comment Rules <!-- anchor: comment-rules -->` heading through (but not including) the next `## ` heading. Paste it verbatim into the agent body under a `## Comment Rules` section. Do not paraphrase; do not replace with a link.
 
 3. **TDD Cycles + Gate 0 Evidence** — embed into `orchestrator.md`, every `implementer-<slug>.md`, and `reviewer.md`. Read `${CLAUDE_PLUGIN_ROOT}/docs/protocols/tdd-cycles.md` and copy:
    - All four `## Cycle: <strategy>` sections (from each `## Cycle:` heading through the next `## ` heading)
    - The full `## Gate 0 Evidence Verification` section including its four `### <strategy>` sub-blocks
    Paste verbatim under `## TDD Cycles` and `## Gate 0 Evidence` sections in the agent body. This lets the agent route by `test_strategy` at runtime without needing to read the plugin.
 
-4. **File Classification for tdd-test-writer** — embed into `tdd-test-writer.md`. Read `${CLAUDE_PLUGIN_ROOT}/docs/setup/tdd-isolation.md` and copy the section body under `## File Classification for tdd-test-writer <!-- anchor: file-classification-for-tdd-test-writer -->` verbatim into the agent body under `## File Classification`.
+4. **File Classification for tdd-test-writer / bdd-writer** — embed into `bdd-writer.md` (always) and `tdd-test-writer.md` (if generated). Read `${CLAUDE_PLUGIN_ROOT}/docs/setup/tdd-isolation.md` and copy the section body under `## File Classification for tdd-test-writer <!-- anchor: file-classification-for-tdd-test-writer -->` verbatim into each agent body under `## File Classification`. `bdd-writer.md` additionally appends one line: `For bdd-writer, the input is further narrowed to the feature's acceptance_test array plus the above-allowed type headers — no other test files are read.`
 
 Embedding is done inside the `/setup` slash-command context (top-level), which CAN resolve `${CLAUDE_PLUGIN_ROOT}`. Subagents only ever see the post-embed files.
 
 **Team Communication Protocol integration:**
-Add `## Team Communication Protocol` section **only to agents that actually exchange team messages** — orchestrator, module-specific implementers, reviewer, and qa-agent (if included). Non-communicating agents (`architect`, `debugger`, `tester`, and all `tdd-*` sub-agents) **omit the section** to avoid empty-ceremony placeholders. Generate the orchestrator agent definition with `TeamCreate`/`SendMessage`/`TaskCreate` workflow per `${CLAUDE_PLUGIN_ROOT}/docs/references/orchestrator-template.md`.
+Add `## Team Communication Protocol` section **only to agents that actually exchange team messages** — orchestrator, module-specific implementers, reviewer, and qa-agent (if included). Non-communicating agents (`architect`, `debugger`, `tester`, `bdd-writer`, and all `tdd-*` sub-agents) **omit the section** to avoid empty-ceremony placeholders. Generate the orchestrator agent definition with `TeamCreate`/`SendMessage`/`TaskCreate` workflow per `${CLAUDE_PLUGIN_ROOT}/docs/references/orchestrator-template.md`.
 
-**Generate agents in parallel.** Agents do not read each other's file bodies — cross-references are name-based only. Issue all agent-file `Write` tool calls in a single message (one per agent). The agent set (including optional qa-agent and tdd-bundler) must be resolved before dispatching — decide the set first, then write them all concurrently.
+**Generate agents in parallel.** Agents do not read each other's file bodies — cross-references are name-based only. Issue all agent-file `Write` tool calls in a single message (one per agent). The agent set (including optional qa-agent and conditional tdd-test-writer) must be resolved before dispatching — decide the set first, then write them all concurrently.
 
 **Phase 3 complete → record `last_completed_phase: 3` in PROGRESS.md → auto-proceed to Phase 4.** Pause only if a step errors.
 
@@ -284,7 +284,13 @@ Orchestrator and module-scoped sub-agents read context-map.md at session start; 
     - **Auto-approve path** (no prompt): both (a) and (b) pass → log one-line summary (`Dependency graph: {N} features, acyclic, order-valid`) and continue.
     - **Prompt path**: if (a) fails (cycle) or (b) fails (out-of-order) → surface the specific violation and the proposed fix, wait for user confirmation before proceeding.
     - To revise an auto-approved graph later, delete `PROGRESS.md` and re-run `/setup` (error-recovery rebootstraps from Step 1). Step 1.7 runs before Phase 1 and cannot override a Phase 6 decision.
-  - `test_strategy` per feature: classify as `"tdd"` (pure logic, strict isolation), `"bundled-tdd"` (pure logic, speed-oriented, 2-commit red→green evidence), `"state-verification"` (rendering/UI/DOM), or `"integration"` (wiring/entry points). Default to `"tdd"` when ambiguous. Offer `"bundled-tdd"` only for pure-logic features with clear specs and low co-drift risk. Present the full classification as a single batch summary (all N features at once — this is an intentional exception to the "one question at a time" rule, since per-feature prompting would exceed the Phase 6 confirmation budget) with two numbered choices: `(1) ★ Approve all` or `(2) Revise specific features`. If (2), then ask one follow-up question listing the feature ids and accept a comma-separated list; for each listed feature, ask one question at a time to pick the new strategy.
+  - `test_strategy` per feature: classify as `"lean-tdd"` (default: TDD-shaped design, post-hoc BDD verification), `"tdd"` (safety-critical opt-in: strict Red/Green/Refactor isolation), `"state-verification"` (rendering/UI/DOM), or `"integration"` (wiring/entry points). Classification rules:
+    - If `category` or `description` mentions any of `auth`, `payment`, `security`, `crypto`, `credential` (case-insensitive) → auto-assign `"tdd"`.
+    - Rendering / canvas / DOM / UI feature → `"state-verification"`.
+    - Wiring / entry-point / multi-module glue feature → `"integration"`.
+    - Everything else → `"lean-tdd"`.
+    Present the full classification as a single batch summary (all N features at once — this is an intentional exception to the "one question at a time" rule, since per-feature prompting would exceed the Phase 6 confirmation budget) with two numbered choices: `(1) ★ Approve all` or `(2) Revise specific features`. If (2), then ask one follow-up question listing the feature ids and accept a comma-separated list; for each listed feature, ask one question at a time to pick the new strategy.
+  - **`acceptance_test` contract validation**: for every feature, verify `acceptance_test.length >= 3` and every entry contains `Given`/`When`/`Then` (case-insensitive). If any feature fails the check, ask the user per-feature (one question at a time, numbered choices): `(1) ★ Auto-draft the missing scenarios from description + tdd_focus` or `(2) Pause — I will rewrite the plan entry`.
 - `PROGRESS.md`
 - `CHANGELOG.md` ([Keep a Changelog](https://keepachangelog.com) format with `## [Unreleased]` section. Initial entry: "Added — Initial project setup via harness-boot, {N} features defined")
 - `.claude/error-recovery.md`
@@ -292,7 +298,7 @@ Orchestrator and module-scoped sub-agents read context-map.md at session start; 
 
 ### Step 8: Verification
 Verify the entire generated harness:
-1. File completeness: settings.json + 6 hooks + agents (9 base + conditional: qa-agent if included, tdd-bundler if any bundled-tdd feature, one `implementer-<slug>.md` per module) + 8 skills + 5 protocols + feature-list.json + scripts/update-feature-status.sh
+1. File completeness: settings.json + 6 hooks + agents (9 base including `bdd-writer.md`; conditional: qa-agent if included, `tdd-test-writer.md` if any `tdd`/`state-verification` feature, one `implementer-<slug>.md` per module) + 8 skills + 5 protocols + feature-list.json + scripts/update-feature-status.sh
 2. Runtime guardrails: hook stdin JSON parsing, security-gate exit 2, doc-sync-check commit blocking, coverage-gate commit blocking
 3. Skill anatomy (4 gates — full rules in `${CLAUDE_PLUGIN_ROOT}/docs/setup/skills-anatomy.md#validation-checklist`):
    - **Structural**: `SKILL.md` exists, directory name matches frontmatter `name` field, all 4 required frontmatter fields present (`name`, `description`, `metadata`, `allowed-tools`)
@@ -300,8 +306,8 @@ Verify the entire generated harness:
    - **Content floor**: Rationalizations ≥ 2 rows (domain-specific), Red Flags ≥ 2 items, Verification section names evidence types (logs / diff / reports / coverage)
    - **References**: File references use relative paths and the referenced files exist
 4. Quality gates: Gates 0-4, all checks with evidence types, rationalization defense
-5. TDD: 3 sub-agent frontmatters (tdd-test-writer, tdd-implementer, tdd-refactorer), Red → Green call order; plus tdd-bundler frontmatter and `[bundled-tdd:red]` → `[bundled-tdd:green]` evidence if any feature uses `bundled-tdd`
-6. Model routing: each agent's frontmatter `model:` field matches the canonical assignment in `${CLAUDE_PLUGIN_ROOT}/docs/setup/model-routing.md` (Opus for the 4 judgment agents + qa-agent if included; Sonnet for the 5 execution agents + tdd-bundler and module-implementers if present).
+5. TDD / BDD sub-agents: `tdd-implementer`, `tdd-refactorer`, `bdd-writer` frontmatters always present; `bdd-writer` asserts it does not read implementation code; `tdd-test-writer` frontmatter present iff any feature uses `"test_strategy": "tdd"` or `"state-verification"`; when present, Red → Green call order is enforced.
+6. Model routing: each agent's frontmatter `model:` field matches the canonical assignment in `${CLAUDE_PLUGIN_ROOT}/docs/setup/model-routing.md` (Opus for the 4 judgment agents + qa-agent if included; Sonnet for the 5 execution agents including `bdd-writer`, plus `tdd-test-writer` and module-implementers when present).
 7. Cross-session: bootstrap hook → reads PROGRESS.md + feature-list.json
 8. Code-doc sync: triple defense operational, mapping table matches project structure
 9. Tokens: CLAUDE.md <= 1,500 tokens, per-task ~3,900-4,000 tokens
@@ -311,9 +317,10 @@ Verify the entire generated harness:
 13. Data transfer: orchestrator specifies data transfer protocols (message/task/file-based); `_workspace/` directory convention documented
 14. **Placeholder sweep**: `grep -rEn '\{(COVERAGE_COMMAND|COVERAGE_FILE)\}' .claude/ hooks/ scripts/ 2>/dev/null` → must return zero matches. Any hit means Phase 1 Step 2 substitution was skipped — regenerate the affected hook from `${CLAUDE_PLUGIN_ROOT}/docs/templates/hooks/` with the correct `stacks.md` row, then re-run this check.
 15. **Rule embed verification**: every generated agent file under `.claude/agents/` must contain a `## Language Settings` section. In addition:
-    - `tdd-implementer.md`, `tdd-refactorer.md`, `tdd-bundler.md` (if generated), and `reviewer.md` must contain a `## Comment Rules` section whose body includes the phrase `Let the code say "what," and comments say only` (anchor line from code-style.md).
-    - `orchestrator.md`, every `implementer-*.md`, and `reviewer.md` must contain `## TDD Cycles` and `## Gate 0 Evidence` sections.
-    - `tdd-test-writer.md` must contain a `## File Classification` section.
+    - `tdd-implementer.md`, `tdd-refactorer.md`, and `reviewer.md` must contain a `## Comment Rules` section whose body includes the phrase `Let the code say "what," and comments say only` (anchor line from code-style.md).
+    - `orchestrator.md`, every `implementer-*.md`, and `reviewer.md` must contain `## TDD Cycles` and `## Gate 0 Evidence` sections; the embedded content must include the `## Cycle: lean-tdd` block and the `### lean-tdd` Gate 0 sub-block.
+    - `bdd-writer.md` must contain a `## File Classification` section whose body includes the `acceptance_test`-only narrowing line, and an `## Inputs` section with the BDD sub-agent input sanitization clause.
+    - `tdd-test-writer.md` (if generated) must contain a `## File Classification` section.
     Any missing section means Phase 3 Step 4 rule injection was skipped — regenerate the affected agent from the source in `${CLAUDE_PLUGIN_ROOT}/docs/setup/` or `docs/protocols/` and re-verify.
 
 Report each item as PASS/FAIL. For each FAIL:

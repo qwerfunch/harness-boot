@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # harness-boot: PreToolUse(Bash) hook
-# Blocks git commit when tdd_focus functions fall below 70% line coverage
-# (tdd / bundled-tdd strategies). Functions not found in fnMap warn only.
+# Strategy-dependent commit gate:
+#   lean-tdd (default): BDD file + Given/When/Then count >= acceptance_test length
+#   tdd: tdd_focus functions >= 70% line coverage (functions not in fnMap warn only)
+#   state-verification: test files exist under module path
+#   integration: overall file coverage >= 60%
 set -euo pipefail
 
 COVERAGE_THRESHOLD=70
@@ -16,9 +19,6 @@ echo "$COMMAND" | grep -qE '^git[[:space:]]+commit' || exit 0
 # Emergency bypass
 echo "$COMMAND" | grep -q '\[skip-coverage\]' && exit 0
 
-# bundled-tdd red commit: test-only; impl does not exist by design
-echo "$COMMAND" | grep -q '\[bundled-tdd:red\]' && exit 0
-
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 FEATURE_LIST="$PROJECT_ROOT/feature-list.json"
 [[ ! -f "$FEATURE_LIST" ]] && exit 0
@@ -26,8 +26,32 @@ FEATURE_LIST="$PROJECT_ROOT/feature-list.json"
 CURRENT=$(jq -c '[.[] | select(.passes == false)][0] // empty' "$FEATURE_LIST")
 [[ -z "$CURRENT" ]] && exit 0
 
-TEST_STRATEGY=$(echo "$CURRENT" | jq -r '.test_strategy // "tdd"')
+TEST_STRATEGY=$(echo "$CURRENT" | jq -r '.test_strategy // "lean-tdd"')
+FEATURE_ID=$(echo "$CURRENT" | jq -r '.id // empty')
 TDD_FOCUS=$(echo "$CURRENT" | jq -r '.tdd_focus // [] | .[]')
+
+# lean-tdd: BDD scenario count >= acceptance_test length
+if [[ "$TEST_STRATEGY" == "lean-tdd" ]]; then
+  EXPECTED=$(echo "$CURRENT" | jq '.acceptance_test | length')
+  [[ -z "$FEATURE_ID" ]] && exit 0
+  BDD_FILE=$(find "$PROJECT_ROOT" -type f \( -name "${FEATURE_ID}.bdd.*" -o -name "${FEATURE_ID}.bdd" \) 2>/dev/null | head -n 1 || true)
+  if [[ -z "$BDD_FILE" ]]; then
+    echo "BLOCKED: No BDD file found for ${FEATURE_ID} (test_strategy: lean-tdd)." >&2
+    echo "Expected: <test-dir>/${FEATURE_ID}.bdd.<ext> with ${EXPECTED} Given/When/Then block(s)." >&2
+    echo "Bypass: include [skip-coverage] in commit message." >&2
+    exit 2
+  fi
+  # Count Given/When/Then blocks (one block = a line containing all three tokens, or a describe/it name containing all three)
+  SCENARIOS=$(grep -ciE 'given.*when.*then' "$BDD_FILE" || echo 0)
+  if [[ "$SCENARIOS" -lt "$EXPECTED" ]]; then
+    echo "BLOCKED: BDD file ${BDD_FILE} has ${SCENARIOS} Given/When/Then block(s); acceptance_test requires ${EXPECTED}." >&2
+    echo "Add the missing scenarios (bdd-writer) before committing." >&2
+    echo "Bypass: include [skip-coverage] in commit message." >&2
+    exit 2
+  fi
+  exit 0
+fi
+
 [[ -z "$TDD_FOCUS" ]] && exit 0
 
 # state-verification: only verify test files exist
@@ -56,7 +80,7 @@ if [[ "$TEST_STRATEGY" == "integration" ]]; then
   exit 0
 fi
 
-# tdd / bundled-tdd: per-function line coverage check (>= $COVERAGE_THRESHOLD%)
+# tdd: per-function line coverage check (>= $COVERAGE_THRESHOLD%)
 if ! {COVERAGE_COMMAND} >/dev/null 2>&1; then
   echo "WARNING: coverage command failed — gate cannot verify. Fix before committing." >&2
 fi

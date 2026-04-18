@@ -11,10 +11,12 @@ Opus (judgment, 4 core + 1 optional)
   ── qa-agent          (only if QA agent is included per Step 1.6 criteria)
 
 Sonnet (execution, 5 core + 1 conditional + N conditional)
-  ── implementer, tdd-test-writer, tdd-implementer, tdd-refactorer, tester
-  ── tdd-bundler       (only if feature-list.json has any "test_strategy": "bundled-tdd")
+  ── implementer, tdd-implementer, tdd-refactorer, bdd-writer, tester
+  ── tdd-test-writer   (only if feature-list.json has any "test_strategy": "tdd" or "state-verification")
   ── implementer-<slug> (one per module, slug from domain-persona.md)
 ```
+
+`bdd-writer` is always generated — `lean-tdd` is the default strategy. `tdd-test-writer` is conditional because neither `lean-tdd` nor `integration` features use it.
 
 ```markdown
 ---

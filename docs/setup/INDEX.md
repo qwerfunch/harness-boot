@@ -10,7 +10,7 @@ This directory holds the harness-engineering specification consumed by `/harness
 | [runtime-guardrails.md](runtime-guardrails.md) | Security gate, coverage gate, hooks, gate evidence | 1, 2 | ~350 lines |
 | [domain-persona.md](domain-persona.md) | Domain persona template + module extraction | 1 | ~130 lines |
 | [cross-session-state.md](cross-session-state.md) | Tech stack / architecture decisions, language, feature-list.json, PROGRESS.md | 1, 2, 6 | ~420 lines |
-| [tdd-isolation.md](tdd-isolation.md) | TDD 3-agent split + tdd-bundler, file classification | 3 | ~125 lines |
+| [tdd-isolation.md](tdd-isolation.md) | TDD 3-agent split + bdd-writer, file classification | 3 | ~125 lines |
 | [model-routing.md](model-routing.md) | Opus/Sonnet per-agent routing | 3 | ~35 lines |
 | [code-style.md](code-style.md) | Google style, Comment Rules, logging | 3, 4 | ~195 lines |
 | [skills-anatomy.md](skills-anatomy.md) | 7-section skill format + validation checklist | 4 | ~310 lines |
@@ -43,13 +43,13 @@ Stable anchors cited by `commands/setup.md`, `commands/start.md`, and cross-file
 | `#file-classification-for-tdd-test-writer` | `tdd-isolation.md` | `/setup` Phase 3 (implementer prompts) |
 | `#comment-rules` | `code-style.md` | Phases 3, 4; Gate 2 review; tdd-implementer, tdd-refactorer, reviewer agents |
 | `#validation-checklist` | `skills-anatomy.md` | `/setup` Phase 4 (skill pack validation) |
-| `#cycle-tdd` | `../protocols/tdd-cycles.md` | `/start` Step 4 (strict 3-agent TDD cycle) |
-| `#cycle-bundled-tdd` | `../protocols/tdd-cycles.md` | `/start` Step 4 (single sub-agent, 2-commit red→green) |
+| `#cycle-lean-tdd` | `../protocols/tdd-cycles.md` | `/start` Step 4 (default: Design → Implement → BDD-Verify → Refactor) |
+| `#cycle-tdd` | `../protocols/tdd-cycles.md` | `/start` Step 4 (strict 3-agent TDD cycle; safety-critical opt-in) |
 | `#cycle-state-verification` | `../protocols/tdd-cycles.md` | `/start` Step 4 (UI / rendering strategy) |
 | `#cycle-integration` | `../protocols/tdd-cycles.md` | `/start` Step 4 (wiring / entry points) |
 | `#gate-0` | `../protocols/tdd-cycles.md` | `/start` Step 5 (Gate 0 parent; routes to per-strategy sub-anchor) |
+| `#gate-0-lean-tdd` | `../protocols/tdd-cycles.md` | `/start` Step 5 (Gate 0 evidence for `lean-tdd`: BDD scenario count) |
 | `#gate-0-tdd` | `../protocols/tdd-cycles.md` | `/start` Step 5 (Gate 0 evidence for `tdd`) |
-| `#gate-0-bundled-tdd` | `../protocols/tdd-cycles.md` | `/start` Step 5 (Gate 0 evidence for `bundled-tdd`) |
 | `#gate-0-state-verification` | `../protocols/tdd-cycles.md` | `/start` Step 5 (Gate 0 evidence for `state-verification`) |
 | `#gate-0-integration` | `../protocols/tdd-cycles.md` | `/start` Step 5 (Gate 0 evidence for `integration`) |
 

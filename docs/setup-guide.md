@@ -7,7 +7,7 @@ This monolithic guide has been split into topic files under [`docs/setup/`](setu
 ## Where to go now
 
 - **Start here**: [`docs/setup/INDEX.md`](setup/INDEX.md) — file manifest, phase→files map, anchor glossary, loading recipe for `/setup`.
-- **TDD cycles per `test_strategy`**: [`docs/protocols/tdd-cycles.md`](protocols/tdd-cycles.md) — the four cycles (`tdd`, `bundled-tdd`, `state-verification`, `integration`) and Gate 0 evidence rules, cited by `commands/start.md`.
+- **TDD cycles per `test_strategy`**: [`docs/protocols/tdd-cycles.md`](protocols/tdd-cycles.md) — the four cycles (`lean-tdd` (default), `tdd` (safety-critical opt-in), `state-verification`, `integration`) and Gate 0 evidence rules, cited by `commands/start.md`.
 
 ## Section mapping
 
