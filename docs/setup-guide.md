@@ -2155,6 +2155,60 @@ Proactively suggest harness evolution when:
 
 ---
 
+## 13.5 Observability
+
+### Purpose
+
+`.claude/observability.md` documents **what the harness emits, where to find it, and how to read it** — one page that points at every signal a developer or reviewer needs when things go wrong. It is loaded by the orchestrator at session start and surfaced in the escalation flow.
+
+### Required Sections (template skeleton)
+
+```markdown
+# Observability
+
+## Metrics tracked in PROGRESS.md
+- `## Current TDD State` — feature_id, iteration, phase (Red/Green/Refactor/Verify), auto_pilot flag
+- `## Status` — last_completed_phase, in-progress tasks, completed feature count
+- `## Incidents` — date | feature_id | type (convergence-failure / gate-block / tool-error) | resolution
+- `## Iteration History` — rolling log: feature_id, iteration, outcome (pass/retry/escalate)
+
+## Hook logs
+- Pre-tool hooks write block reasons to stderr; the orchestrator captures stderr and appends to `_workspace/hook-stderr.log`
+- `pre-tool-coverage-gate.sh`  — function name, calls count, block/warning level
+- `pre-tool-doc-sync-check.sh` — export-change file list, missing doc_sync targets
+- `pre-tool-security-gate.sh`  — blocked command + matched pattern
+- `session-start-bootstrap.sh` — PROGRESS.md ↔ feature-list.json drift summary
+- `post-tool-test-runner.sh`   — test command invoked, exit code, failing test names
+- `post-tool-format.sh`        — formatter invoked, files touched
+
+## Quality gate evidence
+- Gate 0: `git log` range queries (see start.md §5 Gate 0)
+- Gate 1: compile/lint/test output captured to `_workspace/{feature}_gate1.txt`
+- Gate 2: reviewer report at `_workspace/{feature}_review.md`; QA report at `_workspace/qa-{module}-report.md` when QA agent included
+- Gate 3: coverage report at `{COVERAGE_FILE}` (path resolved from stacks.md)
+- Gate 4: single commit SHA in CHANGELOG.md entry
+
+## Update cadence
+- PROGRESS.md `## Current TDD State` — every phase boundary (orchestrator)
+- PROGRESS.md `## Status` — every phase completion (orchestrator)
+- PROGRESS.md `## Incidents` — on escalation only
+- feature-list.json `passes` field — after Gate 4 via `scripts/update-feature-status.sh`
+- CHANGELOG.md `## [Unreleased]` — after Gate 4, single entry per feature
+
+## Escalation history
+- Full escalation trail lives in PROGRESS.md `## Incidents`
+- Cross-reference: each incident row cites the relevant `_workspace/` artifact for root-cause review
+```
+
+### Generation Rules
+
+1. Generate `.claude/observability.md` during Phase 6 with all five sections above
+2. Resolve `{COVERAGE_FILE}` to the concrete path chosen during Phase 1 Step 2 (from stacks.md)
+3. Add project-specific signals only when the plan mentions external monitoring tools (Sentry, OpenTelemetry, structured log shipping) — otherwise keep the default set
+4. Keep to ≤ 150 lines. Longer observability documentation goes into a referenced runbook, not this file
+
+---
+
 ## 14. Generation Order
 
 ```
