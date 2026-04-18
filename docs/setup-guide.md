@@ -548,6 +548,27 @@ With domain-persona.md handling *semantic* context (why), context-map.md handles
 | src/auth/ | Rules #1, #2 | Password and session rules |
 ```
 
+### Module Extraction (used by Step 1.5 and Phase 3)
+
+Step 1.5 (Execution Mode) and Phase 3 (Module-specific implementer generation) both need a concrete list of modules. This algorithm produces it from `domain-persona.md` and is the single source of truth — do not infer modules ad-hoc elsewhere.
+
+**Algorithm**:
+
+1. **Seed from Key Entities.** Every row of the Key Entities table is a module candidate. The module slug is the lowercase-hyphenated entity name (e.g., `User` → `user`, `OrderFulfillment` → `order-fulfillment`).
+2. **Merge by Bounded Context.** If Bounded Contexts are defined, all entities owned by the same context collapse into one module. The merged slug is the context's lowercase-hyphenated name (e.g., Bounded Context `Authentication` owning `User` + `Credential` → module slug `authentication`, not two separate modules).
+3. **Merge by tdd_focus overlap.** If two candidate modules share any `tdd_focus` symbol across features in the draft `feature-list.json`, collapse them into one module (named after whichever has more features).
+4. **Output**: `module_count` = number of distinct slugs surviving steps 2–3. `modules` = the slug list.
+
+**Decision rules derived from the output**:
+
+| Condition | Execution mode (Step 1.5) | QA agent (Step 1.6) |
+|-----------|---------------------------|---------------------|
+| `module_count` ≥ 2 AND ≥ 2 features live in different modules | Agent Team (default) | Auto-include when the integration-point count across module pairs ≥ 2 (see Step 1.6 definition) |
+| `module_count` == 1 OR all features share one module | Sub-agent (fallback) | Auto-skip |
+| Output ambiguous (e.g., 2 modules but features tightly coupled) | Present both Agent Team and Sub-agent as options; user picks | Auto-skip unless the user picks Agent Team AND integration-point count ≥ 2 |
+
+**Slug stability**: The slug set is frozen at Step 1.5 approval and reused unchanged for Phase 3 `implementer-<slug>.md` files, Phase 5 `context-map.md` rows, and any `domain-persona.md` → feature mapping. Renaming a module after freeze requires `/setup` re-run (error-recovery rebootstrap).
+
 ---
 
 ## 4. Cross-Session State Management

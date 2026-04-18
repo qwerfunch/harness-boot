@@ -84,15 +84,18 @@ Store the selection in `environment.md` as `comment_language`. This setting is r
   ```
 
 #### Step 1.5: Execution Mode
+
+Run **Module Extraction** first (see `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md` §3 "Module Extraction" — seed from Key Entities, merge by Bounded Context and `tdd_focus` overlap, output `module_count` + `modules` slug list). The output feeds both the mode recommendation below and Phase 3 `implementer-<slug>.md` generation; do not re-derive modules elsewhere.
+
 ```
 Execution mode determines how agents work together.
-(1) ★ Agent Team (parallel, default) — {reason based on module analysis}
+(1) ★ Agent Team (parallel, default) — {module_count} modules detected ({modules}); {M} features span ≥ 2 modules
 (2) Sub-agent (sequential fallback) — {reason; typically "single module" or "tightly-coupled feature set"}
 (3) Hybrid (phase-switching) — {reason; typically "mix of parallel and sequential phases"}
 
-Analysis: {N} modules, {independence assessment}
+Analysis: {module_count} modules [{modules}], {cross-module feature count}
 ```
-- **Default direction**: Agent Team is the baseline recommendation (see `docs/setup-guide.md` Section 9.0). Downgrade to Sub-agent only when the plan has 1 module or tightly-coupled features where team communication overhead would exceed the parallelism benefit.
+- **Default direction**: per §3 decision table — Agent Team when `module_count ≥ 2` and at least 2 features live in different modules; Sub-agent otherwise. Agent Team is never recommended for a single-module plan. Hybrid is offered only when the plan explicitly mixes parallel-eligible and sequential-only phases.
 - Labels in the prompt MUST use the exact strings shown above (`Agent Team (parallel, default)`, `Sub-agent (sequential fallback)`, `Hybrid (phase-switching)`) so users understand the trade-off rather than seeing an opaque "Sub-agent" label.
 
 Reference: `${CLAUDE_PLUGIN_ROOT}/docs/references/agent-design-patterns.md`
@@ -189,7 +192,7 @@ Each agent YAML frontmatter includes a `model:` field.
 - `qa-agent.md` (model: opus) — if QA agent inclusion was confirmed
 - `tdd-bundler.md` (model: sonnet) — if at least one feature in `feature-list.json` uses `"test_strategy": "bundled-tdd"` (see `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md` Section 5 for the full agent definition)
 - **Module-specific implementer agents** — Agent Team mode only:
-  - For each top-level module identified in `domain-persona.md` → Key Entities / Bounded Contexts, generate `implementer-<module-slug>.md` (model: sonnet). The slug is lowercase, hyphenated, stable across the session (e.g., `auth`, `billing`, `order-fulfillment`).
+  - For each slug produced by the **Module Extraction algorithm** (`${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md` §3) at Step 1.5, generate `implementer-<module-slug>.md` (model: sonnet). Do not re-derive modules here — use the frozen slug set from Step 1.5.
   - All module implementers are instantiated from the same `implementer.md` body; per-instance overrides live in the YAML frontmatter (`metadata.module: <slug>`, `metadata.allowed-paths: [...]`) and in one inlined "Module scope" block referencing the matching row from `.claude/context-map.md`.
   - The generic `implementer.md` is still written as the template of record and used by Sub-agent / Hybrid modes.
   - Count: one per module, minimum 2 (Agent Team requires ≥ 2 independent modules per Step 1.5).
