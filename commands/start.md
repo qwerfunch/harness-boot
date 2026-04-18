@@ -232,13 +232,50 @@ Leader merges results, verifies cross-module consistency
 Follow the orchestrator's per-phase mode specification. Switch between sub-agent and team calls as defined.
 
 ### Step 5: Confirm Quality Gate Passage
-- Gate 0: TDD compliance (evidence: test files, Red → Green call order)
-- Gate 1: Implementation complete (evidence: compile/lint/test output)
-- Gate 2: Code review (call reviewer agent → 0 Critical/Major issues)
+- **Gate 0**: TDD compliance — evidence: test files + Red→Green call order (verification per `test_strategy` below)
+- **Gate 1**: Implementation complete (evidence: compile/lint/test output)
+- **Gate 2**: Code review (call reviewer agent → 0 Critical/Major issues)
   - If QA agent is included: QA boundary verification report feeds into Gate 2
   - Boundary mismatches are Critical severity (block commit)
-- Gate 3: Tests pass (coverage report)
-- Gate 4: Deploy approval (feature passes: true ready)
+- **Gate 3**: Tests pass (coverage report)
+- **Gate 4**: Deploy approval (feature passes: true ready)
+
+#### Gate 0 verification by `test_strategy`
+
+Orchestrator runs this check BEFORE Gate 1 using the feature's `tdd_focus` and `doc_sync` from feature-list.json.
+
+- **`tdd`** — three-sub-agent isolation. Each sub-agent returns its working SHA:
+  ```
+  red_sha   ← Agent(tdd-test-writer)   # returns SHA after test commit (test files only)
+  green_sha ← Agent(tdd-implementer)   # returns SHA after impl commit (impl files only)
+  refactor_sha ← Agent(tdd-refactorer) # returns SHA after refactor (no behavior change)
+
+  # Evidence checks:
+  (1) `git log --format=%H red_sha..green_sha` → contains green_sha exactly (order: red → green)
+  (2) `git diff red_sha green_sha -- <test-files>` → empty (test files did NOT change between Red and Green)
+  (3) `git diff green_sha refactor_sha -- <test-files>` → empty (refactor did not touch tests)
+  ```
+  If any check fails, Gate 0 blocks and the cycle restarts (iteration++).
+
+- **`bundled-tdd`** — single `tdd-bundler` sub-agent. Must return the structured contract:
+  ```
+  {
+    "red_sha":   "<sha after [bundled-tdd:red] commit>",
+    "green_sha": "<sha after [bundled-tdd:green] commit>",
+    "test_files": ["path/to/test1", "path/to/test2", ...]
+  }
+
+  # Evidence checks:
+  (1) `git log red_sha^..green_sha --format=%s` → subjects start with [bundled-tdd:red] then [bundled-tdd:green]
+  (2) `git diff red_sha green_sha -- <test_files>` → empty (tests unchanged between red and green commits)
+  (3) `git log -1 red_sha --format=%b`  → contains the captured failing output
+  (4) `git log -1 green_sha --format=%b` → contains the captured passing output
+  ```
+  Pre-Gate 4 fold preserves `red_sha` / `green_sha` as commit-message trailers so the evidence survives the rebase.
+
+- **`state-verification`** — no Red→Green ordering. Gate 0 = "test file exists under the feature's category path" (enforced by `pre-tool-coverage-gate.sh` state-verification branch). The orchestrator additionally confirms at least one assertion file lives alongside the implementation.
+
+- **`integration`** — no Red→Green ordering. Gate 0 = "integration test file exists and exercises at least one cross-module boundary named in the feature's `tdd_focus`".
 
 ### Step 6: Code-Doc Sync
 Update related documents per the mapping table:
