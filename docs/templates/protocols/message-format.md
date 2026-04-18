@@ -9,7 +9,7 @@ Defines the payload schema for inter-agent communication. Applies to `SendMessag
 3. **Versioned status enum** — status values are drawn from a fixed set; inventing new values is not allowed without updating this protocol
 4. **No implicit broadcast** — every message has a named recipient; team-wide announcements go through the orchestrator
 
-## Core fields
+## Core fields <!-- anchor: core-fields -->
 
 Every `SendMessage` payload carries these fields (JSON-serializable):
 
@@ -51,7 +51,7 @@ failed       — terminal failure, requires escalation
 
 Transitions are monotonic within a task: `queued → running → (blocked → running)* → (completed | failed | cancel-pending)`. A task cannot go from `completed` back to `running`; start a new task.
 
-## `_workspace/` naming convention
+## `_workspace/` naming convention <!-- anchor: workspace-naming -->
 
 ```
 _workspace/{phase}_{agent}_{artifact}.{ext}
@@ -85,7 +85,7 @@ Each implementer reports back on Gate 2 readiness:
 { "from": "implementer-order", "to": "reviewer", "feature_id": "FEAT-043", "phase": "Gate2", "kind": "review-request", "artifact_path": "_workspace/gate2_implementer-order_feat-043-bundle.md", "status": "completed", "summary": "Red-Green-Refactor done, ready for review" }
 ```
 
-## Coordination across modules
+## Coordination across modules <!-- anchor: coordinate-round-trip -->
 
 When two implementers need to agree on a shared contract (e.g., `auth` exposes a function that `order` consumes):
 

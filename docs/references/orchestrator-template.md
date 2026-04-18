@@ -28,10 +28,13 @@ Phase 0: Context Check
   |-- Check _workspace/ existence -> determine initial/follow-up/partial re-run
   |-- Load PROGRESS.md, feature-list.json, domain-persona.md
   |
-Phase 1: Planning
-  |-- Select features for this session (highest priority passes: false)
-  |-- Analyze module independence -> decide parallel vs sequential
-  |-- Assign features to team members
+Phase 1: Planning (see `commands/start.md` anchor `feature-selection-algorithm` for the authoritative algorithm)
+  |-- Collect all passes:false features whose depends_on is satisfied (every dep has passes:true)
+  |-- Drop any pair that shares tdd_focus target OR doc_sync path (merge-conflict risk)
+  |-- Drop any pair where one appears in the other's depends_on (direct or transitive)
+  |-- What remains is THIS SESSION'S PARALLEL WAVE — not a single feature
+  |-- Exception: single-module project (module_count == 1) → team of one, one feature at a time
+  |-- Assign each wave feature to its owning module's implementer-<slug>
   |
 Phase 2: Team Formation
   |-- TeamCreate(team_name, members=[implementer-a, implementer-b, reviewer])
