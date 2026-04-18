@@ -95,6 +95,27 @@ Pass task input (feature ID, test_strategy, tdd_focus, acceptance_test, doc_sync
 
 Sub-agent mode supports all four `test_strategy` values; the cycle blocks below branch on `test_strategy` from `feature-list.json`.
 
+##### Sub-agent input sanitization (TDD isolation invariant)
+
+The TDD-First principle relies on `tdd-test-writer` never seeing implementation intent. The implementer (or `implementer-<slug>` in Agent Team mode) MUST sanitize inputs before forwarding them to `tdd-test-writer`:
+
+**Allowed to pass through**:
+- `feature_id`
+- `test_strategy`
+- `tdd_focus` — **function signatures only** (name + parameter types + return type). Strip any body comments that hint at algorithm or internal state.
+- `acceptance_test` — only the **observable-result** portion: given/when/then phrasing, input-output pairs, error conditions visible to callers. Strip any "the function works by..." or "internally it uses..." sentences.
+- `doc_sync` paths — listed so the test writer knows which surface-level behaviors are contracted, not as implementation hints.
+
+**Must be removed before forwarding**:
+- Pseudocode or algorithm sketches in `acceptance_test`
+- Internal data-structure names (e.g., "uses a linked list" → drop)
+- References to existing private helpers
+- Implementation-performance hints (complexity targets are OK; "by memoizing X" is not)
+
+If the implementer cannot determine whether a line is safe, it removes the line and adds a brief note to `_workspace/red_implementer_feat-XXX-input.md` documenting what was stripped. This artifact stays in the implementer's context; it is not passed to the test writer.
+
+Tool-level isolation is already enforced: `tdd-test-writer`'s `allowed-tools` list excludes `Edit` (it can only write new files), and read globs are scoped to interface declarations and test files per `docs/setup-guide.md` §5 "File Classification for tdd-test-writer". Sanitization is the second defender; Phase 3 in `commands/setup.md` writes the sanitization clause into `tdd-test-writer.md`'s generated prompt body so the sub-agent also self-checks on receipt.
+
 #### test_strategy = "tdd" (default, strict):
 
 ```

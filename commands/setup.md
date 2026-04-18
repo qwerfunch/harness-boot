@@ -213,6 +213,10 @@ Each agent YAML frontmatter includes a `model:` field.
   - The generic `implementer.md` is still written as the template of record and used by Sub-agent / Hybrid modes.
   - Count: one per module, minimum 2 (Agent Team requires ≥ 2 independent modules per Step 1.5).
 
+**TDD sub-agent input contract (applies to all execution modes)**:
+- When generating `tdd-test-writer.md`, inject the "Sub-agent input sanitization" clause from `commands/start.md` §5 into the agent prompt body under a `## Inputs` section. The clause lists what fields the writer may read and what implementation hints must be absent; the writer self-checks on receipt and aborts with a note to `_workspace/` if the inputs look contaminated.
+- The same injection happens for `tdd-bundler.md` when the agent is generated (bundled-tdd features).
+
 **Execution mode integration:**
 - If **Agent Team** mode (default): Add `## Team Communication Protocol` section **only to agents that actually exchange team messages** — orchestrator, module-specific implementers, reviewer, and qa-agent (if included). Non-communicating agents (`architect`, `debugger`, `tester`, and all `tdd-*` sub-agents) **omit the section** to avoid empty-ceremony placeholders. Generate orchestrator agent definition with `TeamCreate`/`SendMessage`/`TaskCreate` workflow per `${CLAUDE_PLUGIN_ROOT}/docs/references/orchestrator-template.md` Template A.
 - If **Sub-agent** mode (sequential fallback): Orchestrator uses `Agent` tool calls only. Template B.
