@@ -345,7 +345,7 @@ git commit -m "feat(FEAT-XXX): {description}"
 
 The PreToolUse hooks automatically verify:
 - **doc-sync-check**: blocks commit if docs are missing
-- **coverage-gate**: blocks commit if tdd_focus functions lack test coverage
+- **coverage-gate**: blocks commit if any tdd_focus function falls below 70% line coverage
 
 **This step is mandatory per feature.** Do not batch multiple features — commit each feature individually before proceeding to the next.
 

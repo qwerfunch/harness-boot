@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # harness-boot: PreToolUse(Bash) hook
-# Blocks git commit when tdd_focus functions lack 100% line coverage (tdd / bundled-tdd strategies).
-# Two-tier: confirmed-uncovered blocks; not-in-fnMap warns only.
+# Blocks git commit when tdd_focus functions fall below 70% line coverage
+# (tdd / bundled-tdd strategies). Functions not found in fnMap warn only.
 set -euo pipefail
+
+COVERAGE_THRESHOLD=70
 
 INPUT=$(cat)
 TOOL=$(echo "$INPUT" | jq -r '.tool_name // empty')
@@ -54,26 +56,42 @@ if [[ "$TEST_STRATEGY" == "integration" ]]; then
   exit 0
 fi
 
-# tdd / bundled-tdd: per-function coverage check
+# tdd / bundled-tdd: per-function line coverage check (>= $COVERAGE_THRESHOLD%)
 if ! {COVERAGE_COMMAND} >/dev/null 2>&1; then
   echo "WARNING: coverage command failed — gate cannot verify. Fix before committing." >&2
 fi
 COVERAGE_FILE="$PROJECT_ROOT/{COVERAGE_FILE}"
 [[ ! -f "$COVERAGE_FILE" ]] && { echo "WARNING: Coverage report not generated, skipping gate." >&2; exit 0; }
 
-UNCOVERED=()
+UNDER=()
 WARNINGS=()
 
 for FUNC in $TDD_FOCUS; do
   FOUND=$(jq -r --arg fn "$FUNC" '
-    [to_entries[] | .value.fnMap as $m | .value.f as $f |
-     $m | to_entries[] | select(.value.name == $fn) |
-     {count: $f[.key]}] | .[0] // empty
+    [to_entries[] |
+     .value as $file |
+     $file.fnMap as $fnm |
+     $file.statementMap as $sm |
+     $file.s as $s |
+     $fnm | to_entries[] | select(.value.name == $fn) |
+     .value.loc as $floc |
+     [$sm | to_entries[] |
+       select(.value.start.line >= $floc.start.line and .value.start.line <= $floc.end.line) |
+       .key] as $keys |
+     ($keys | length) as $total |
+     ([$keys[] | . as $k | $s[$k] | select(. > 0)] | length) as $covered |
+     {total: $total, covered: $covered,
+      pct: (if $total == 0 then 100 else ($covered / $total * 100) end)}
+    ] | .[0] // empty
   ' "$COVERAGE_FILE" 2>/dev/null || true)
 
   if [[ -n "$FOUND" && "$FOUND" != "null" ]]; then
-    COUNT=$(echo "$FOUND" | jq -r '.count // 0')
-    [[ "$COUNT" == "0" ]] && UNCOVERED+=("$FUNC (0 calls)")
+    PCT=$(echo "$FOUND" | jq -r '.pct')
+    COVERED=$(echo "$FOUND" | jq -r '.covered')
+    TOTAL=$(echo "$FOUND" | jq -r '.total')
+    if awk -v p="$PCT" -v t="$COVERAGE_THRESHOLD" 'BEGIN { exit !(p+0 < t+0) }'; then
+      UNDER+=("$FUNC ($(printf '%.0f' "$PCT")% line — $COVERED/$TOTAL, below ${COVERAGE_THRESHOLD}%)")
+    fi
   else
     WARNINGS+=("$FUNC (not found in fnMap — arrow/re-export/inlined; verify manually)")
   fi
@@ -84,10 +102,10 @@ if [[ ${#WARNINGS[@]} -gt 0 ]]; then
   printf '  ⚠ %s\n' "${WARNINGS[@]}" >&2
 fi
 
-if [[ ${#UNCOVERED[@]} -gt 0 ]]; then
-  echo "BLOCKED: tdd_focus functions missing coverage:" >&2
-  printf '  ✗ %s\n' "${UNCOVERED[@]}" >&2
-  echo "Write tests first (TDD Red phase), then commit." >&2
+if [[ ${#UNDER[@]} -gt 0 ]]; then
+  echo "BLOCKED: tdd_focus functions below ${COVERAGE_THRESHOLD}% line coverage:" >&2
+  printf '  ✗ %s\n' "${UNDER[@]}" >&2
+  echo "Add tests to cover the missing lines, or refine tdd_focus." >&2
   echo "Bypass: include [skip-coverage] in commit message." >&2
   exit 2
 fi
