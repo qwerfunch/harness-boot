@@ -1452,9 +1452,8 @@ allowed-tools: "{tool list}"          # Required for harness skills
 |--------|----------|
 | "{tempting shortcut 1}" | {specific, compelling counter-argument} |
 | "{tempting shortcut 2}" | {specific, compelling counter-argument} |
-| "{tempting shortcut 3}" | {specific, compelling counter-argument} |
 
-> Minimum 3 rows required. Each rebuttal must be specific to THIS skill's domain.
+> Minimum 2 rows required (add more only when genuine excuses exist; do not pad with generic filler). Each rebuttal must be specific to THIS skill's domain.
 > Use the "I know you'll say X. But you're wrong because Y" framing.
 > When generating rebuttals, reference specific domain rules and invariants from
 > `.claude/domain-persona.md` to make rebuttals concrete and project-specific.
