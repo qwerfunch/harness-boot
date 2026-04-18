@@ -81,10 +81,13 @@ Next: {FEAT-XXX} — {description}
 **Read the feature's `test_strategy`** from `feature-list.json` (default: `"tdd"`). The cycle varies by strategy.
 
 **Iteration tracking** (mandatory, all strategies):
-1. Before each cycle iteration, read PROGRESS.md `## Current TDD State` → `iteration` value
-2. Increment `iteration` by 1 and write to PROGRESS.md BEFORE starting the cycle
-3. If `iteration > 5`: Do NOT proceed. Log to PROGRESS.md `## Incidents` table (date, feature ID, type="convergence-failure"). Escalate to user.
-4. On feature completion (Step 7), reset `iteration: 0`
+
+The implementer agent (or `implementer-<slug>` in Agent Team mode) **owns** iteration counter writes for its own feature. Other agents (reviewer, tdd-test-writer, tdd-implementer, tdd-refactorer, tdd-bundler, qa-agent, debugger) MUST NOT mutate the `iteration` field — they may only read it.
+
+1. Before each cycle iteration, the implementer reads PROGRESS.md `## Current TDD State` → `iteration` value
+2. The implementer increments `iteration` by 1 and writes to PROGRESS.md BEFORE starting the cycle
+3. If `iteration > 5`: Do NOT proceed. The implementer logs to PROGRESS.md `## Incidents` table (date, feature ID, type="convergence-failure"). Escalate to user.
+4. On feature completion (Step 7), the implementer resets `iteration: 0`
 
 #### Sub-agent mode (sequential fallback):
 Call sub-agents using the Claude Code `Agent` tool with isolated contexts:
