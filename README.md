@@ -118,7 +118,7 @@ That's where harness-boot comes from.
 
 ---
 
-**Docs:** [Harness Engineering Guide](docs/setup-guide.md) | [Start Prompts](docs/start-prompts.md)
+**Docs:** [Harness Engineering Spec Index](docs/setup/INDEX.md) | [Start Prompts](docs/start-prompts.md)
 
 **References:** [Anthropic Skills](https://github.com/anthropics/skills) | [Agent Skills Collection](https://github.com/addyosmani/agent-skills) | [Everything Claude Code](https://github.com/affaan-m/everything-claude-code)
 

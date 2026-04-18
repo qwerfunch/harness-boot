@@ -10,8 +10,8 @@ Harness ready. Start development.
 1. Load orchestrator.md + domain-persona.md
 2. Check PROGRESS.md → determine Initializer/Coding mode
 3. Select highest-priority feature with passes: false → present numbered choices (include auto-pilot option)
-4. On feature start: auto-proceed through TDD cycle → quality gates → doc-sync → commit without mid-feature pauses
-5. Max 5 TDD iterations per feature. After 5, escalate to user.
+4. On feature start: auto-proceed through the cycle matching the feature's `test_strategy` (`lean-tdd` → Design/Implement/BDD-Verify/Refactor (default), `tdd` → Red/Green/Refactor (safety-critical opt-in), `state-verification` → Implement/State-Test/Refactor, `integration` → Implement/Integration-Test) → quality gates → doc-sync → commit without mid-feature pauses
+5. Max 5 cycle iterations per feature. After 5, escalate to user.
 6. On completion: run scripts/update-feature-status.sh → single commit (code + tests + docs + feature-list.json)
 7. CRITICAL: One feature per commit. Even if user requests "implement everything", execute sequentially: TDD → gates → commit → next feature.
 8. Step 8: ask about next feature (or auto-proceed if auto-pilot mode)
@@ -48,14 +48,14 @@ Based on feature-list.json: total/complete/incomplete counts, completion rate by
 Previous session had auto-pilot active. Check PROGRESS.md auto_pilot flag → resume auto-pilot from next incomplete feature. Auto-proceed through all steps, pause only on escalation.
 ```
 
-**Start with Agent Team mode (parallel modules)**:
+**Start development**:
 ```
-Harness ready. Start development with Agent Team mode.
+Harness ready. Start development.
 
 1. Load orchestrator.md + domain-persona.md
-2. Check PROGRESS.md → determine mode
+2. Check PROGRESS.md → determine session state
 3. Analyze module independence among top-priority passes: false features
-4. Select features that can be parallelized (different modules, no shared dependencies)
+4. Select features that can be parallelized (different modules, no shared dependencies); single-module projects run one feature at a time
 5. TeamCreate with module-specific implementers + reviewer + QA agent (if included)
 6. TaskCreate with feature assignments per implementer
 7. Each implementer runs TDD sub-agent cycle independently
