@@ -203,9 +203,12 @@ Verify: full test suite + feature verification
 Create a team for parallel module development. Each team member runs its own TDD sub-agent cycle.
 
 ```
-TeamCreate(members: [implementer-a, implementer-b, reviewer, qa-agent?])
+# Member names come from .claude/agents/ — one implementer-<slug>.md per
+# module (slug from domain-persona.md), plus reviewer and optionally qa-agent.
+TeamCreate(members: [implementer-<module-a>, implementer-<module-b>, ..., reviewer, qa-agent?])
   ↓
-TaskCreate(FEAT-XXX -> implementer-a, FEAT-YYY -> implementer-b)
+TaskCreate(FEAT-XXX -> implementer-<module-of-feat-xxx>,
+           FEAT-YYY -> implementer-<module-of-feat-yyy>)
   ↓
 Each implementer independently runs the cycle matching its feature's test_strategy:
   - "tdd":              Red(tdd-test-writer) → Green(tdd-implementer) → Refactor(tdd-refactorer)

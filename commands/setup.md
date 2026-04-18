@@ -176,7 +176,11 @@ Each agent YAML frontmatter includes a `model:` field.
 **Conditional agents (from Step 1):**
 - `qa-agent.md` (model: opus) — if QA agent inclusion was confirmed
 - `tdd-bundler.md` (model: sonnet) — if at least one feature in `feature-list.json` uses `"test_strategy": "bundled-tdd"` (see `${CLAUDE_PLUGIN_ROOT}/docs/setup-guide.md` Section 5 for the full agent definition)
-- Module-specific implementer agents — if Agent Team mode with module specialization
+- **Module-specific implementer agents** — Agent Team mode only:
+  - For each top-level module identified in `domain-persona.md` → Key Entities / Bounded Contexts, generate `implementer-<module-slug>.md` (model: sonnet). The slug is lowercase, hyphenated, stable across the session (e.g., `auth`, `billing`, `order-fulfillment`).
+  - All module implementers are instantiated from the same `implementer.md` body; per-instance overrides live in the YAML frontmatter (`metadata.module: <slug>`, `metadata.allowed-paths: [...]`) and in one inlined "Module scope" block referencing the matching row from `.claude/context-map.md`.
+  - The generic `implementer.md` is still written as the template of record and used by Sub-agent / Hybrid modes.
+  - Count: one per module, minimum 2 (Agent Team requires ≥ 2 independent modules per Step 1.5).
 
 **Execution mode integration:**
 - If **Agent Team** mode (default): Add `## Team Communication Protocol` section **only to agents that actually exchange team messages** — orchestrator, module-specific implementers, reviewer, and qa-agent (if included). Non-communicating agents (`architect`, `debugger`, `tester`, and all `tdd-*` sub-agents) **omit the section** to avoid empty-ceremony placeholders. Generate orchestrator agent definition with `TeamCreate`/`SendMessage`/`TaskCreate` workflow per `${CLAUDE_PLUGIN_ROOT}/docs/references/orchestrator-template.md` Template A.
@@ -248,7 +252,7 @@ Orchestrator and module-scoped sub-agents read context-map.md at session start; 
 
 ### Step 8: Verification
 Verify the entire generated harness:
-1. File completeness: settings.json + 6 hooks + 9+ agents + 8 skills + 5 protocols + feature-list.json + scripts/update-feature-status.sh
+1. File completeness: settings.json + 6 hooks + agents (9 base + conditional: qa-agent if included, tdd-bundler if any bundled-tdd feature, one `implementer-<slug>.md` per module in Agent Team mode) + 8 skills + 5 protocols + feature-list.json + scripts/update-feature-status.sh
 2. Runtime guardrails: hook stdin JSON parsing, security-gate exit 2, doc-sync-check commit blocking, coverage-gate commit blocking
 3. Skill anatomy (4 gates — full rules in setup-guide.md Section 8.8):
    - **Structural**: `SKILL.md` exists, directory name matches frontmatter `name` field, all 4 required frontmatter fields present (`name`, `description`, `metadata`, `allowed-tools`)
