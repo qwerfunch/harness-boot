@@ -41,7 +41,7 @@ Phase 1-6 sequential generation. After Step 1.7 approval of the decision review,
 2. Protocols (tdd-loop, iteration-cycle, code-doc-sync, session-management, message-format) + CLAUDE.md
 3. Agents (9+ agents with `model:` frontmatter — opus for judgment, sonnet for execution) + Execution mode selection + optional QA agent
 4. Skills (8 skills in [Anthropic Agent Skills format](https://github.com/anthropics/skills): `skill-name/SKILL.md` with 7-section anatomy, YAML frontmatter with name/description/metadata/allowed-tools, Rationalizations >= 2 rows)
-5. Sub CLAUDE.md per directory (with architecture layer context if pattern selected)
+5. Context map (`.claude/context-map.md` — module → layer mapping; architecture rules injected into sub-agent prompts at dispatch time, no per-directory CLAUDE.md files)
 6. State files (feature-list.json, PROGRESS.md, CHANGELOG.md, error-recovery.md with 5 scenario playbooks)
 
 ## Key Design: `/start` Flow

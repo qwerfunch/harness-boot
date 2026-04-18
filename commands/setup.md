@@ -40,9 +40,9 @@ Show a brief summary of the analyzed plan:
 ```
 
 #### Step 1.2: Code Comment Language
-Output text language auto-detects from the system locale (no question needed). Code comment language requires explicit choice:
+Conversation language (spinner messages and prompts shown to the user) auto-detects from the system locale and is recorded as `conversation_language` — no question needed. Machine-facing harness files (`CLAUDE.md`, `.claude/**`, `feature-list.json`, `PROGRESS.md`, `hooks/*.sh`, `scripts/*.sh`) are **always English** regardless of locale (parsed by hooks or loaded into LLM context). User-facing docs (`README.md`, `CHANGELOG.md`) follow `conversation_language` — humans only. Code comment language requires an explicit choice:
 ```
-Code comment language:
+Code comment language (applies to source code comments only — machine-facing harness files are always English; README/CHANGELOG follow conversation language):
 (1) ★ {system locale language} — match your environment
 (2) English
 (3) Custom — type your own
@@ -104,7 +104,7 @@ Automatically **include** the QA agent when the plan has 3+ modules with integra
 After all questions answered, show a compact summary of all decisions and auto-derived items:
 ```
 Setup Summary:
-  Output language:   {auto-detected locale}
+  Conversation lang: {auto-detected locale} (spinner/prompts/summaries + README.md/CHANGELOG.md; machine-facing files stay English)
   Comment language:  {selected}
   Tech stack:        {selected}
   Architecture:      {selected}
@@ -121,7 +121,7 @@ Setup Summary:
 
 #### Auto-derived items (computed silently, shown in summary)
 These are derived from the plan and user decisions without additional questions:
-- Sub CLAUDE.md target directories
+- Module → layer mapping (for `.claude/context-map.md` in Phase 5)
 - feature-list.json draft (with `depends_on` and `test_strategy` classification)
 - Code-doc sync mapping draft
 - Hook script customizations per tech stack
@@ -130,8 +130,12 @@ These are derived from the plan and user decisions without additional questions:
 - Expected file count per phase
 
 ### Step 2: Phase 1 — Infrastructure
-- `.claude/settings.json` (hook configuration)
-- `hooks/` 6 scripts (executable bash, shebang + stdin JSON parsing)
+- `.claude/settings.json` (hook configuration — see setup-guide.md §2)
+- `hooks/` 6 scripts — **copy from `${CLAUDE_PLUGIN_ROOT}/docs/templates/hooks/`** (not LLM-generated):
+  - 5 scripts (`session-start-bootstrap.sh`, `pre-tool-security-gate.sh`, `pre-tool-doc-sync-check.sh`, `post-tool-format.sh`, `post-tool-test-runner.sh`) are copied verbatim — they are stack-agnostic (extension-dispatched or language-independent).
+  - 1 script (`pre-tool-coverage-gate.sh`) requires substituting `{COVERAGE_COMMAND}` and `{COVERAGE_FILE}` using the row in `${CLAUDE_PLUGIN_ROOT}/docs/templates/stacks.md` matching the selected tech stack.
+  - `chmod +x hooks/*.sh` after copying.
+  - If the stack is not in `stacks.md`, ask the developer: "What coverage command and output file path do you use?" and record the answer in `.claude/environment.md`.
 - `.claude/environment.md`
 - `.claude/security.md`
 - `.claude/domain-persona.md` (domain context for agents, from Step 1 draft)
@@ -142,15 +146,21 @@ These are derived from the plan and user decisions without additional questions:
 - `_workspace/.gitkeep` (intermediate outputs directory for Agent Team file-based transfer)
 - `.gitignore` (generated from Tech Stack selection — includes .env, IDE files, build outputs, language-specific patterns)
 
-**Phase 1 complete → record `last_completed_phase: 1` in PROGRESS.md → auto-proceed to Phase 2.** Pause only if a step errors.
-
 ### Step 3: Phase 2 — Core Protocols
 - `.claude/protocols/` 5 protocols (tdd-loop, iteration-cycle, code-doc-sync, session-management, message-format)
 - `CLAUDE.md` (main, <= 1,500 tokens)
-- `README.md` (in output_language from environment.md — project name, description, tech stack, getting started, project structure, dev guide, license placeholder)
+- `README.md` (in `conversation_language` — same value Phase 1 writes to `environment.md`; Phase 2 uses the locale detected in Step 1.2 directly, no file read required; content: project name, description, tech stack, getting started, project structure, dev guide, license placeholder)
 - `.claude/quality-gates.md`
 
-**Phase 2 complete → record `last_completed_phase: 2` in PROGRESS.md → auto-proceed to Phase 3.** Pause only if a step errors.
+### Phase 1 + Phase 2 Parallel Execution
+
+**Run Phase 1 and Phase 2 concurrently** — they have no dependencies between them. Issue all file-generation tool calls for both phases in a single message with parallel tool calls (one per file). Dependencies are strictly within-phase (none between phases):
+- Phase 1 writes: settings.json, hooks/, environment.md, security.md, domain-persona.md, scripts/*.sh, _workspace/.gitkeep, .gitignore
+- Phase 2 writes: .claude/protocols/*.md, CLAUDE.md, README.md, .claude/quality-gates.md
+
+After **both** phases finish, record `last_completed_phase: 2` in PROGRESS.md → auto-proceed to Phase 3. Pause only if any step errors.
+
+> **Resume semantics**: If an earlier interrupted run recorded `last_completed_phase: 1`, treat Phase 1 as done and run Phase 2 alone. The parallel model only applies when both are pending.
 
 ### Step 4: Phase 3 — Agents + Execution Mode
 Each agent YAML frontmatter includes a `model:` field.
@@ -177,6 +187,8 @@ Each agent YAML frontmatter includes a `model:` field.
 - If **Hybrid** mode: Orchestrator specifies execution mode per phase. Template C.
 
 Record execution mode in orchestrator agent's `metadata.execution-mode` frontmatter field (in `.claude/agents/orchestrator.md`).
+
+**Generate agents in parallel.** Agents do not read each other's file bodies — cross-references are name-based only. Issue all agent-file `Write` tool calls in a single message (one per agent). The orchestrator's `metadata.execution-mode` and any optional agents must be resolved before dispatching (i.e., decide the agent set first, then write them all concurrently).
 
 **Phase 3 complete → record `last_completed_phase: 3` in PROGRESS.md → auto-proceed to Phase 4.** Pause only if a step errors.
 
@@ -205,19 +217,32 @@ Skills to generate:
 - `new-feature`, `bug-fix`, `refactor`, `tdd-workflow`
 - `api-endpoint`, `db-migration`, `deployment`, `context-engineering`
 
-Additional: `.claude/examples/`, `.claude/context-map.md`
+Additional: `.claude/examples/`
+
+**Generate skills in parallel.** Each `SKILL.md` is self-contained (no cross-skill references in bodies). Issue all 8 skill-file `Write` tool calls in a single message. `.claude/examples/` may be written in the same batch. (`.claude/context-map.md` is produced in Phase 5, not here.)
 
 **Phase 4 complete → record `last_completed_phase: 4` in PROGRESS.md → auto-proceed to Phase 5.** Pause only if a step errors.
 
-### Step 6: Phase 5 — Sub CLAUDE.md
-Generate sub CLAUDE.md for each target directory identified in Step 1.
-- If an architecture pattern was selected in Step 1, each sub CLAUDE.md must include an "Architecture Context" section specifying which layer/boundary the directory belongs to and its dependency rules.
+### Step 6: Phase 5 — Context Map (module → layer mapping)
+
+Generate a single `.claude/context-map.md` that maps modules to their architecture layer/boundary and the dependency rules that apply. **Do not** create per-directory sub `CLAUDE.md` files — layer rules are injected into sub-agent task prompts at dispatch time from this file.
+
+The context-map.md content:
+- **Bounded Contexts** table (Context → Owner Module → Key Entities from domain-persona.md)
+- **Module → Layer Mapping** table (Module Path → Layer → Allowed Dependencies → Domain Rules IDs)
+- **Context Relationships** table (Upstream → Downstream → Integration Pattern) — only if 2+ bounded contexts exist
+- If architecture pattern was selected: include the full layer-rule block (dependency direction, disallowed imports, boundary enforcement)
+
+Orchestrator and module-scoped sub-agents read context-map.md at session start; when dispatching a sub-agent for a specific module, the orchestrator inlines the relevant row into the task prompt (no per-directory file lookup required).
 
 **Phase 5 complete → record `last_completed_phase: 5` in PROGRESS.md → auto-proceed to Phase 6.** Pause only if a step errors.
 
 ### Step 7: Phase 6 — State Tracking
 - `feature-list.json` (extracted as JSON from the plan, all `passes: false`). Include:
-  - `depends_on` arrays based on analysis of feature descriptions, shared modules, and tdd_focus overlaps. Validate: no circular dependencies (topological sort), array order respects dependencies. Present dependency graph to user for confirmation.
+  - `depends_on` arrays based on analysis of feature descriptions, shared modules, and tdd_focus overlaps. Validate: (a) no circular dependencies via topological sort, (b) array order respects dependencies.
+    - **Auto-approve path** (no prompt): both (a) and (b) pass → log one-line summary (`Dependency graph: {N} features, acyclic, order-valid`) and continue.
+    - **Prompt path**: if (a) fails (cycle) or (b) fails (out-of-order) → surface the specific violation and the proposed fix, wait for user confirmation before proceeding.
+    - User may still override via Step 1.7 "Change a decision" even when auto-approved.
   - `test_strategy` per feature: classify as `"tdd"` (pure logic, strict isolation), `"bundled-tdd"` (pure logic, speed-oriented, 2-commit red→green evidence), `"state-verification"` (rendering/UI/DOM), or `"integration"` (wiring/entry points). Default to `"tdd"` when ambiguous. Offer `"bundled-tdd"` only for pure-logic features with clear specs and low co-drift risk. Present classification to user for confirmation.
 - `PROGRESS.md`
 - `CHANGELOG.md` ([Keep a Changelog](https://keepachangelog.com) format with `## [Unreleased]` section. Initial entry: "Added — Initial project setup via harness-boot, {N} features defined")
@@ -239,7 +264,7 @@ Verify the entire generated harness:
 7. Cross-session: bootstrap hook → reads PROGRESS.md + feature-list.json
 8. Code-doc sync: triple defense operational, mapping table matches project structure
 9. Tokens: CLAUDE.md <= 1,500 tokens, per-task ~3,900-4,000 tokens
-10. Architecture: If pattern was selected, verify environment.md contains pattern rules, sub CLAUDE.md files reference their layer/boundary, and architect agent includes pattern constraints
+10. Architecture: If pattern was selected, verify environment.md contains pattern rules, context-map.md contains the Module → Layer mapping, and architect agent includes pattern constraints
 11. Domain persona: domain-persona.md exists, contains all 6 sections (Purpose, Key Entities, Domain Rules, Vocabulary, Stakeholder Concerns, Success Criteria), entities table has >= 2 rows, domain rules has >= 2 items
 12. Execution mode: orchestrator has `metadata.execution-mode` field; if Agent Team mode, communicating agents (orchestrator, module implementers, reviewer, qa-agent) have `## Team Communication Protocol` section — non-communicating agents (architect, debugger, tester, tdd-*) do NOT; if QA agent included, qa-agent.md exists with `model: opus`
 13. Data transfer: if Agent Team or Hybrid mode, orchestrator specifies data transfer protocols (message/task/file-based); `_workspace/` directory convention documented
@@ -253,7 +278,7 @@ Report each item as PASS/FAIL. For each FAIL:
 ### Step 9: Initial Commit
 Stage only the generated harness files explicitly — never use `git add .` to avoid accidentally staging sensitive files.
 ```bash
-git add CLAUDE.md README.md PROGRESS.md CHANGELOG.md feature-list.json .gitignore .claude/ hooks/ scripts/ _workspace/.gitkeep src/**/CLAUDE.md
+git add CLAUDE.md README.md PROGRESS.md CHANGELOG.md feature-list.json .gitignore .claude/ hooks/ scripts/ _workspace/.gitkeep
 git commit -m "harness: initial setup via harness-boot"
 ```
 
@@ -271,3 +296,8 @@ Guide the user to the next step: start development with the `/start` command.
 - **Auto-progress after Step 1.7 approval**: Phases 1-6 run without per-phase confirmations. `last_completed_phase` is still recorded in PROGRESS.md at every phase boundary so an interrupted session can auto-resume. Pause for the user only on errors, or when Phase 6 surfaces the dependency graph / test-strategy classification for confirmation.
 - Never auto-select tech stack, architecture, or execution mode without developer confirmation
 - Mark anything not in the plan as `{TODO: needs confirmation}`
+- **Three-tier language policy**:
+  1. **Machine-facing files — always English**: `CLAUDE.md`, `.claude/**/*.md` (agents, skills, protocols, domain-persona, context-map, environment, security, quality-gates, error-recovery, observability), `PROGRESS.md`, `feature-list.json`, `hooks/*.sh`, `scripts/*.sh`. These are parsed by hooks, loaded into LLM context at session start, or are executable code — locale variance breaks them.
+  2. **User-facing docs — follow `conversation_language`**: `README.md` and `CHANGELOG.md`. Humans only; no hook parses them, no agent loads them for logic. Orchestrator writes CHANGELOG feature-completion entries in `conversation_language`. Keep a Changelog structural headings (`## [Unreleased]`, `### Added`, etc.) remain English as standard format markers.
+  3. **Source code comments — follow `comment_language`**: Explicit Step 1.2 choice. Applies inside source files (`.ts`, `.py`, `.go`, etc.), never to `.md` files.
+  See setup-guide.md §4 "Language Settings" for the full rule.

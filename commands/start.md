@@ -16,7 +16,7 @@ Starts actual development work with the harness in place.
 1. Load `.claude/agents/orchestrator.md`
 2. Receive context provided by SessionStart hook (PROGRESS.md summary, incomplete feature count, last 5 git log entries)
 3. Load `.claude/domain-persona.md` for domain context
-4. Read `comment_language` from `.claude/environment.md` — use this language for all code comments (file headers, JSDoc, why-comments) throughout the session. Output text follows the system locale.
+4. Read `comment_language` from `.claude/environment.md` — use this language for all code comments (file headers, JSDoc, why-comments) throughout the session. Conversation output (spinner, prompts, summaries) uses `conversation_language` (system locale). **Language policy**: machine-facing files (`CLAUDE.md`, `PROGRESS.md`, `feature-list.json`, `.claude/**/*.md`, `hooks/*.sh`, `scripts/*.sh`) are always English regardless of locale. User-facing docs (`README.md`, `CHANGELOG.md`) follow `conversation_language` — when appending a feature-completion entry to CHANGELOG.md under `## [Unreleased]`, write the human description text in `conversation_language` (Keep a Changelog structural headings like `### Added` stay English).
 
 ### Step 2: Determine Session State
 
@@ -242,7 +242,7 @@ Follow the orchestrator's per-phase mode specification. Switch between sub-agent
 
 ### Step 6: Code-Doc Sync
 Update related documents per the mapping table:
-- Source changes → related docs/*.md, sub CLAUDE.md
+- Source changes → related docs/*.md, `.claude/context-map.md` (layer rules)
 - Feature complete → feature-list.json (passes: true)
 - All changes → PROGRESS.md
 - Feature complete → CHANGELOG.md: append entry under `## [Unreleased]` with appropriate category:
