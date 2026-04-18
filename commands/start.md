@@ -231,6 +231,13 @@ Leader merges results, verifies cross-module consistency
 
 **Intermediate outputs**: Written to `_workspace/` with naming convention `{phase}_{agent}_{artifact}.{ext}`.
 
+**QA agent invocation points** (only when qa-agent is included per `commands/setup.md` Step 1.6):
+
+1. **Per-module**: immediately after a module's feature cycle passes Gate 1 and BEFORE Gate 2. The orchestrator calls `qa-agent` with that module's integration-point list (derived from `feature-list.json` `doc_sync` overlaps and cross-module `tdd_focus` references). The QA report is written to `_workspace/qa_qa-agent_{module}-{feature_id}.md` and attached to the Gate 2 review bundle. A QA Critical finding blocks Gate 2.
+2. **Session-end sweep**: before any session termination path (auto-pilot queue exhausted, user stop, escalation end), the orchestrator runs one final QA pass over all modules that had any feature completed in this session. Auto-pilot does **not** skip this sweep even when time-pressured; the sweep is cheap because QA reads artifacts, not code. Findings feed into PROGRESS.md `## Incidents` if any Critical issue is surfaced.
+
+If qa-agent is NOT included, these invocation points are omitted and boundary verification falls to the reviewer's Gate 2 checklist alone.
+
 #### Hybrid mode:
 Follow the orchestrator's per-phase mode specification. Switch between sub-agent and team calls as defined.
 

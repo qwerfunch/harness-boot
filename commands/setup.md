@@ -101,7 +101,23 @@ Analysis: {module_count} modules [{modules}], {cross-module feature count}
 Reference: `${CLAUDE_PLUGIN_ROOT}/docs/references/agent-design-patterns.md`
 
 #### Step 1.6: QA Agent (auto-decided, no question)
-Automatically **include** the QA agent when the plan has 3+ modules with integration points (per `${CLAUDE_PLUGIN_ROOT}/docs/references/qa-agent-guide.md`); otherwise **skip**. The decision is surfaced in the Step 1.7 summary (`QA agent: yes/no`) so the user can override it via "Change a decision" if needed.
+
+Automatically **include** the QA agent when both conditions hold; otherwise **skip**. The decision is surfaced in the Step 1.7 summary (`QA agent: yes/no`) so the user can override it via "Change a decision" if needed.
+
+**Inclusion conditions (both must hold)**:
+1. `module_count ≥ 3` (from the Step 1.5 Module Extraction output)
+2. `integration_point_pair_count ≥ 2`, where an **integration point** between module pair `(A, B)` is counted when either:
+   - `A.doc_sync` and `B.doc_sync` share at least one path, OR
+   - Any `tdd_focus` symbol owned by one module is called (by name match in the plan's call graph or feature description) by the other module
+
+   A pair `(A, B)` contributes at most 1 to the count regardless of how many individual integration points it has. The count is the number of module pairs with ≥ 1 integration point.
+
+**Examples**:
+- 4 modules, pairs with integration: `(auth, order)` + `(order, billing)` → count = 2 → **include**.
+- 3 modules, only `(auth, order)` has integration → count = 1 → **skip**.
+- 2 modules (`module_count < 3`) → **skip** regardless of integration density — use in-line reviewer checks instead of a dedicated QA agent.
+
+See `${CLAUDE_PLUGIN_ROOT}/docs/references/qa-agent-guide.md` for the QA agent's review methodology.
 
 #### Step 1.7: Review & Confirm
 After all questions answered, show a compact summary of all decisions and auto-derived items:
