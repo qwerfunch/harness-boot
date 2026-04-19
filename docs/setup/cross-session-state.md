@@ -56,22 +56,9 @@ Four language scopes, each with an explicit rule:
 
 ### Conversation-Language Fallback Chain <!-- anchor: conversation-language-detection -->
 
-Evaluate in order; stop at the first stage that yields a valid two-letter primary subtag after normalization.
+Contract: OS display language wins over shell locale (env vars → `locale` command); an empty result triggers the numbered-choice prompt at `commands/setup.md` Step 1.1.5. Unsupported platforms fall through to shell signals without error.
 
-| Stage | Source | OS scope |
-|-------|--------|----------|
-| 1 | `$LC_ALL` env var | all |
-| 2 | `$LANG` env var | all |
-| 3 | `$LC_CTYPE` env var | all |
-| 4 | `locale` stdout, `LANG=` line | POSIX (macOS / Linux / WSL / Git Bash) |
-| 5a | `defaults read -g AppleLocale` | macOS (`uname` = `Darwin`) |
-| 5b | `/etc/locale.conf` → `/etc/default/locale` → `localectl status` | Linux (`uname` = `Linux*`, no WSL marker) |
-| 5c | `powershell.exe -NoProfile -Command "(Get-Culture).Name"` | Windows / Git Bash (`MINGW*`/`MSYS*`/`CYGWIN*`) / WSL fallback |
-| 6 | All empty → numbered-choice confirmation (see `commands/setup.md` Step 1.1.5) | all |
-
-WSL is detected by `grep -qiE 'microsoft|wsl' /proc/sys/kernel/osrelease`. When detected, try stage 5b first, then 5c. Pure PowerShell environments report `uname` failure → fall directly to 5c.
-
-**Normalization (`pick`)**: any raw value (`ko_KR.UTF-8`, `ko-KR`, `en_US`, `zh_Hans_CN`, `ko`) is reduced to the primary ISO 639-1 subtag. Strip at first `.`, split on `_` / `-`, lowercase the first field, accept only if it matches `^[a-z]{2}$`. Values like `C` and `POSIX` fail the regex and fall through to the next stage.
+**Normalization**: any raw value (`ko_KR.UTF-8`, `ko-KR`, `en_US`, `zh_Hans_CN`, `ko`) is reduced to the primary ISO 639-1 subtag. Strip at first `.`, split on `_` / `-`, lowercase the first field, accept only if it matches `^[a-z]{2}$`. Values like `C` and `POSIX` fail the regex and fall through.
 
 **Execution**: do not inline-embed the detection logic. `/setup` Step 1.1.5 invokes the single source of truth:
 
@@ -79,7 +66,7 @@ WSL is detected by `grep -qiE 'microsoft|wsl' /proc/sys/kernel/osrelease`. When 
 node ${CLAUDE_PLUGIN_ROOT}/scripts/detect-conversation-language.mjs
 ```
 
-Stdout is the detected subtag (`ko`, `en`, ...) or empty when every stage fails. The script is self-testable with `--self-test` (normalization edge cases + a live-env probe). Any edit to the fallback chain is made in the script; this document reflects it.
+Stdout is the detected subtag (`ko`, `en`, ...) or empty. Per-platform stages (macOS `defaults`, Linux `localectl` / config files, Windows PowerShell with timeout & `pwsh.exe` fallback, WSL handling, sudo-drop rule, unknown-platform default branch) are documented in the script header JSDoc and verified by `--self-test`. Any edit to the fallback chain is made in the script; this doc describes the contract, not the implementation.
 
 - **Code comment language**: Explicitly chosen by the user during Step 1.2. Stored in `environment.md` as `comment_language`. Referenced by tdd-implementer, tdd-refactorer, and reviewer agents when enforcing Comment Rules (see `code-style.md#comment-rules`). All file headers, JSDoc, section dividers, and inline why-comments inside source files must be written in this language. Applies to *comments inside source code* only — never to any `.md` file.
 
