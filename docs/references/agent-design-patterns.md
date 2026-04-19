@@ -249,5 +249,5 @@ When modules are independent, the team runs parallel TDD cycles:
 
 ### Code-Doc Sync
 - Each team member is responsible for doc sync of their assigned modules
-- The `pre-tool-doc-sync-check.sh` hook still blocks commits with missing docs
+- The `pre-tool-doc-sync-check.mjs` hook still blocks commits with missing docs
 - Leader verifies cross-module doc consistency before final merge

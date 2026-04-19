@@ -50,9 +50,37 @@ Project requirements analysis:
 
 Four language scopes, each with an explicit rule:
 
-- **Machine-facing file language: always English.** Files parsed programmatically, loaded into LLM context at session start, or executable code — `CLAUDE.md`, `PROGRESS.md`, `feature-list.json`, `.claude/**/*.md` (agents, skills, protocols, domain-persona, context-map, environment, security, quality-gates, error-recovery, observability), `hooks/*.sh`, `scripts/*.sh` — are written in English regardless of the user's locale. This is non-negotiable: locale variance here breaks hook parsing (e.g., `session-start-bootstrap.sh` awk/grep over PROGRESS.md) and introduces LLM comprehension friction on every session load. No locale detection, no `conversation_language` lookup for these files.
+- **Machine-facing file language: always English.** Files parsed programmatically, loaded into LLM context at session start, or executable code — `CLAUDE.md`, `PROGRESS.md`, `feature-list.json`, `.claude/**/*.md` (agents, skills, protocols, domain-persona, context-map, environment, security, quality-gates, error-recovery, observability), `hooks/*.mjs`, `scripts/*.mjs` — are written in English regardless of the user's locale. This is non-negotiable: locale variance here breaks hook parsing (e.g., `session-start-bootstrap.mjs` regex over PROGRESS.md) and introduces LLM comprehension friction on every session load. No locale detection, no `conversation_language` lookup for these files.
 - **User-facing doc language: `conversation_language`**. `README.md` and `CHANGELOG.md` follow the user's locale. These files are humans-only — no hook parses them, no agent loads them for logic. During `/start`, when the orchestrator appends a feature-completion entry to `CHANGELOG.md` under `## [Unreleased]`, the human description text is written in `conversation_language`. Keep a Changelog structural headings (`## [Unreleased]`, `## [0.1.0]`, `### Added`, `### Changed`, `### Fixed`, `### Removed`) remain English as standard format markers per the Keep a Changelog spec.
-- **Conversation language**: Auto-detected from the system locale (`$LANG` or equivalent). Controls the human-facing text that `/setup` and `/start` print to the user (spinner messages, question prompts, summaries, status updates) and the content of `README.md` / `CHANGELOG.md` description text. No question asked — recorded automatically in `environment.md` as `conversation_language`. Never affects machine-facing files.
+- **Conversation language**: Auto-detected from the system locale via the OS-aware fallback chain below. Controls the human-facing text that `/setup` and `/start` print to the user (spinner messages, question prompts, summaries, status updates) and the content of `README.md` / `CHANGELOG.md` description text. Silent when detection is unambiguous; one numbered-choice confirmation is shown only when every stage returns empty. Recorded in `environment.md` as `conversation_language` (ISO 639-1 primary subtag, e.g. `ko`, `en`, `ja`). Never affects machine-facing files.
+
+### Conversation-Language Fallback Chain <!-- anchor: conversation-language-detection -->
+
+Evaluate in order; stop at the first stage that yields a valid two-letter primary subtag after normalization.
+
+| Stage | Source | OS scope |
+|-------|--------|----------|
+| 1 | `$LC_ALL` env var | all |
+| 2 | `$LANG` env var | all |
+| 3 | `$LC_CTYPE` env var | all |
+| 4 | `locale` stdout, `LANG=` line | POSIX (macOS / Linux / WSL / Git Bash) |
+| 5a | `defaults read -g AppleLocale` | macOS (`uname` = `Darwin`) |
+| 5b | `/etc/locale.conf` → `/etc/default/locale` → `localectl status` | Linux (`uname` = `Linux*`, no WSL marker) |
+| 5c | `powershell.exe -NoProfile -Command "(Get-Culture).Name"` | Windows / Git Bash (`MINGW*`/`MSYS*`/`CYGWIN*`) / WSL fallback |
+| 6 | All empty → numbered-choice confirmation (see `commands/setup.md` Step 1.1.5) | all |
+
+WSL is detected by `grep -qiE 'microsoft|wsl' /proc/sys/kernel/osrelease`. When detected, try stage 5b first, then 5c. Pure PowerShell environments report `uname` failure → fall directly to 5c.
+
+**Normalization (`pick`)**: any raw value (`ko_KR.UTF-8`, `ko-KR`, `en_US`, `zh_Hans_CN`, `ko`) is reduced to the primary ISO 639-1 subtag. Strip at first `.`, split on `_` / `-`, lowercase the first field, accept only if it matches `^[a-z]{2}$`. Values like `C` and `POSIX` fail the regex and fall through to the next stage.
+
+**Execution**: do not inline-embed the detection logic. `/setup` Step 1.1.5 invokes the single source of truth:
+
+```
+node ${CLAUDE_PLUGIN_ROOT}/scripts/detect-conversation-language.mjs
+```
+
+Stdout is the detected subtag (`ko`, `en`, ...) or empty when every stage fails. The script is self-testable with `--self-test` (normalization edge cases + a live-env probe). Any edit to the fallback chain is made in the script; this document reflects it.
+
 - **Code comment language**: Explicitly chosen by the user during Step 1.2. Stored in `environment.md` as `comment_language`. Referenced by tdd-implementer, tdd-refactorer, and reviewer agents when enforcing Comment Rules (see `code-style.md#comment-rules`). All file headers, JSDoc, section dividers, and inline why-comments inside source files must be written in this language. Applies to *comments inside source code* only — never to any `.md` file.
 
 ## Tech Stack Storage

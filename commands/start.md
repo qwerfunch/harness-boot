@@ -25,7 +25,7 @@ Starts actual development work with the harness in place.
      - comment_language: <value>
      Respond in conversation_language. Write source-code comments in comment_language.
      ```
-     This overrides any default English output even when the agent body (generated at Phase 3) already contains its own embedded `## Language Settings` section — the runtime values take precedence. Machine-facing files (`CLAUDE.md`, `PROGRESS.md`, `feature-list.json`, `.claude/**/*.md`, `hooks/*.sh`, `scripts/*.sh`) stay English regardless. User-facing docs (`README.md`, `CHANGELOG.md`) follow `conversation_language`.
+     This overrides any default English output even when the agent body (generated at Phase 3) already contains its own embedded `## Language Settings` section — the runtime values take precedence. Machine-facing files (`CLAUDE.md`, `PROGRESS.md`, `feature-list.json`, `.claude/**/*.md`, `hooks/*.mjs`, `scripts/*.mjs`) stay English regardless. User-facing docs (`README.md`, `CHANGELOG.md`) follow `conversation_language`.
 
 ### Step 2: Determine Session State
 
@@ -238,11 +238,11 @@ Update related documents per the mapping table:
 ### Step 7: Update Feature Status + Single Commit
 After all quality gates pass, update feature status and commit:
 
-1. Run `scripts/update-feature-status.sh FEAT-XXX` to mark `passes: true` in feature-list.json
+1. Run `node scripts/update-feature-status.mjs FEAT-XXX` to mark `passes: true` in feature-list.json
 2. Update PROGRESS.md with completion record
 3. Stage only changed code, tests, and docs explicitly — never use `git add .`
 ```bash
-bash scripts/update-feature-status.sh FEAT-XXX
+node scripts/update-feature-status.mjs FEAT-XXX
 git add {changed source files} {test files} {doc files} feature-list.json PROGRESS.md CHANGELOG.md
 git commit -m "feat(FEAT-XXX): {description}"
 ```
@@ -329,7 +329,7 @@ If the doc-sync hook blocks 3+ consecutive commit attempts:
 2. Present the mapping to the user
 3. Ask: "Update these docs, or commit with `[skip-doc-sync]` in the message?"
 
-The `[skip-doc-sync]` escape hatch is supported by `pre-tool-doc-sync-check.sh`.
+The `[skip-doc-sync]` escape hatch is supported by `pre-tool-doc-sync-check.mjs`.
 
 ## Auto-Pilot Mode
 

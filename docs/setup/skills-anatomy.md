@@ -194,11 +194,22 @@ The 8 skill directory names are **canonical identifiers** and must not be rename
 
 Skills not in this table (`new-feature`, `bug-fix`, `refactor`, `tdd-workflow`, `context-engineering`) are domain-agnostic and need no adaptation.
 
-**Adaptation rules for `/setup` Phase 4**:
+**Template pre-bake (Phase 4 generation strategy)**:
+
+Skill SKILL.md bodies are pre-baked in `${CLAUDE_PLUGIN_ROOT}/docs/templates/skills/`. Phase 4 copies or fills them — it does NOT model-regenerate the 7-section anatomy from scratch.
+
+| Skill class | Template form | Phase 4 action |
+|-------------|---------------|----------------|
+| 5 domain-agnostic (`new-feature`, `bug-fix`, `refactor`, `tdd-workflow`, `context-engineering`) | `<skill>/SKILL.md` — fully written, no placeholders | Copy verbatim to `.claude/skills/<skill>/SKILL.md` |
+| 3 project-adapted (`api-endpoint`, `db-migration`, `deployment`) | `<skill>/SKILL.md.tmpl` — sections §1/§3/§5/§6/§7 pre-filled; only §description, §When-to-Use bullets, and §Process Step 1–4 contain placeholders | Read `.tmpl`, inject 7 placeholders based on project type, write as `SKILL.md` (drop the `.tmpl`) |
+
+**Adaptation rules for `/setup` Phase 4 (project-adapted skills only)**:
 1. Determine project type from tech stack and plan content (web API, game, CLI, library, etc.)
-2. Rewrite the skill's `description` field TRIGGER/DO NOT TRIGGER patterns to match the project domain
-3. Update the skill's internal examples and workflow steps for the project context
-4. Keep the `name` field (directory name) unchanged
+2. Fill `{{DESCRIPTION}}`, `{{TRIGGER_CONDITIONS}}`, `{{EXCLUSION_CONDITIONS}}` in the YAML `description` block
+3. Fill `{{WHEN_TRIGGER}}`, `{{WHEN_NOT}}` bullets in §When to Use
+4. Fill `{{PROCESS_STEP_1}}` through `{{PROCESS_STEP_4}}` with project-specific procedural detail (Steps 5 and 6 are fixed — doc-sync + single commit)
+5. Keep sections §Overview / §TDD Focus / §Common Rationalizations / §Red Flags / §Verification byte-for-byte from the template — these are domain-neutral already
+6. Keep the `name` field (directory name) unchanged
 
 ## Complete Skill Example
 

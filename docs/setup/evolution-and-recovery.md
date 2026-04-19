@@ -7,10 +7,10 @@
 | Layer | Mechanism | Timing |
 |-------|-----------|--------|
 | Prompt | code-doc-sync.md protocol | During work |
-| Hook | pre-tool-doc-sync-check.sh | Just before git commit (blocking) |
+| Hook | pre-tool-doc-sync-check.mjs | Just before git commit (blocking) |
 | Review | Reviewer 3-stage review | During code review |
 
-### Hook Logic (pre-tool-doc-sync-check.sh)
+### Hook Logic (pre-tool-doc-sync-check.mjs)
 
 The doc-sync hook uses a **granular check** rather than blanket "any src → any md" enforcement:
 
@@ -203,7 +203,7 @@ Proactively suggest harness evolution when:
 ```markdown
 ## Doc-Sync Hook Repeated Block
 
-**Trigger**: pre-tool-doc-sync-check.sh blocks commit 3+ consecutive times.
+**Trigger**: pre-tool-doc-sync-check.mjs blocks commit 3+ consecutive times.
 
 **Symptoms**:
 - Commit attempt returns exit 2 with "source changed but no .md changes"
@@ -212,7 +212,7 @@ Proactively suggest harness evolution when:
 
 **Recovery**:
 1. List the exact blocking condition:
-   - Run `bash hooks/pre-tool-doc-sync-check.sh` manually with the stdin JSON to see which files trigger
+   - Run `node hooks/pre-tool-doc-sync-check.mjs` manually with the stdin JSON to see which files trigger
 2. Check mapping table accuracy:
    - Compare `code-doc-sync.md` mapping paths against actual directory structure
    - Fix any stale paths (renamed/moved directories)
@@ -323,12 +323,12 @@ Proactively suggest harness evolution when:
 
 ## Hook logs
 - Pre-tool hooks write block reasons to stderr; the orchestrator captures stderr and appends to `_workspace/hook-stderr.log`
-- `pre-tool-coverage-gate.sh`  — function name, calls count, block/warning level
-- `pre-tool-doc-sync-check.sh` — export-change file list, missing doc_sync targets
-- `pre-tool-security-gate.sh`  — blocked command + matched pattern
-- `session-start-bootstrap.sh` — PROGRESS.md ↔ feature-list.json drift summary
-- `post-tool-test-runner.sh`   — test command invoked, exit code, failing test names
-- `post-tool-format.sh`        — formatter invoked, files touched
+- `pre-tool-coverage-gate.mjs`  — function name, calls count, block/warning level
+- `pre-tool-doc-sync-check.mjs` — export-change file list, missing doc_sync targets
+- `pre-tool-security-gate.mjs`  — blocked command + matched pattern
+- `session-start-bootstrap.mjs` — PROGRESS.md ↔ feature-list.json drift summary
+- `post-tool-test-runner.mjs`   — test command invoked, exit code, failing test names
+- `post-tool-format.mjs`        — formatter invoked, files touched
 
 ## Quality gate evidence
 - Gate 0: `git log` range queries (see start.md §5 Gate 0)
@@ -341,7 +341,7 @@ Proactively suggest harness evolution when:
 - PROGRESS.md `## Current TDD State` — every phase boundary (orchestrator)
 - PROGRESS.md `## Status` — every phase completion (orchestrator)
 - PROGRESS.md `## Incidents` — on escalation only
-- feature-list.json `passes` field — after Gate 4 via `scripts/update-feature-status.sh`
+- feature-list.json `passes` field — after Gate 4 via `scripts/update-feature-status.mjs`
 - CHANGELOG.md `## [Unreleased]` — after Gate 4, single entry per feature
 
 ## Escalation history

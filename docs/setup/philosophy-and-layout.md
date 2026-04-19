@@ -66,15 +66,15 @@ project-root/
 │   └── observability.md
 │
 ├── hooks/                                 # 6 executable hook scripts
-│   ├── session-start-bootstrap.sh
-│   ├── pre-tool-security-gate.sh
-│   ├── pre-tool-doc-sync-check.sh
-│   ├── pre-tool-coverage-gate.sh
-│   ├── post-tool-format.sh
-│   └── post-tool-test-runner.sh
+│   ├── session-start-bootstrap.mjs
+│   ├── pre-tool-security-gate.mjs
+│   ├── pre-tool-doc-sync-check.mjs
+│   ├── pre-tool-coverage-gate.mjs
+│   ├── post-tool-format.mjs
+│   └── post-tool-test-runner.mjs
 │
 ├── scripts/
-│   └── update-feature-status.sh
+│   └── update-feature-status.mjs
 │
 ├── _workspace/                            # Intermediate outputs (Agent Team file-based transfer)
 │   └── {phase}_{agent}_{artifact}.{ext}   #   Convention: 01_architect_dependencies.md

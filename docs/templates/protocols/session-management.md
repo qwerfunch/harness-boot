@@ -7,7 +7,7 @@ Defines how the harness boots, resumes, and terminates sessions across `/setup` 
 | File | Role | Writer | Reader |
 |------|------|--------|--------|
 | `PROGRESS.md` | Current position: phase, active feature, iteration, metrics | orchestrator, implementer (their feature's counter only) | every agent at session start |
-| `feature-list.json` | Feature queue, dependencies, status | `scripts/update-feature-status.sh` (via orchestrator on Gate 4) | orchestrator, implementer, reviewer |
+| `feature-list.json` | Feature queue, dependencies, status | `scripts/update-feature-status.mjs` (via orchestrator on Gate 4) | orchestrator, implementer, reviewer |
 | `CHANGELOG.md` | Release-facing history, `conversation_language` | orchestrator on Gate 4 | human readers |
 | `_workspace/` | Agent Team intermediate artifacts (reports, diffs, escalation trails) | any agent that produces an artifact | orchestrator, debugger, qa-agent |
 
@@ -15,7 +15,7 @@ No other file is authoritative session state. Do not invent new state files with
 
 ## Session start (every `/setup` or `/start` run)
 
-Triggered by the `SessionStart` hook: `hooks/session-start-bootstrap.sh`.
+Triggered by the `SessionStart` hook: `hooks/session-start-bootstrap.mjs`.
 
 1. **Bootstrap hook output** (stdout, shown to Claude at load):
    - `PROGRESS.md` Status section (last_completed_phase, current_feature, mode)

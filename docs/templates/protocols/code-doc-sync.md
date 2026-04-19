@@ -7,7 +7,7 @@ One of the five core principles. Enforces that **every export change ships with 
 | Layer | Mechanism | When | Failure mode |
 |-------|-----------|------|--------------|
 | 1. Prompt protocol | This file + feature-list.json `doc_sync` array | During implementation | Developer/agent forgets — caught by (2) or (3) |
-| 2. PreToolUse hook | `hooks/pre-tool-doc-sync-check.sh` | At `git commit` | Commit blocked (exit 2) until doc_sync targets staged |
+| 2. PreToolUse hook | `hooks/pre-tool-doc-sync-check.mjs` | At `git commit` | Commit blocked (exit 2) until doc_sync targets staged |
 | 3. Reviewer check | Reviewer agent Gate 2 3-stage review | Before gate approval | Critical rejection; PR/commit cannot proceed |
 
 Each layer is independent. Bypassing one (`[skip-doc-sync]` on the hook, or a rushed reviewer) still leaves the other layers intact.
@@ -40,7 +40,7 @@ The `architect` agent additionally enforces this during ADR writing: an ADR that
 
 ## Layer 2 — PreToolUse hook
 
-`hooks/pre-tool-doc-sync-check.sh` inspects every `git commit` command:
+`hooks/pre-tool-doc-sync-check.mjs` inspects every `git commit` command:
 
 - Language-aware export detection. Default regex covers `export`, `pub fn`, `pub struct`, `pub enum`, `public <identifier>`. Extended patterns:
   - Python (`*.py`): `^[+-](def|class)\s+[A-Za-z]` (top-level definitions; underscore-prefixed helpers still match — over-block is preferred to under-block)
