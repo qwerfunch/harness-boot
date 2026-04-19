@@ -119,7 +119,7 @@ Step 1.5 (Module Extraction) and Phase 3 (Module-specific implementer generation
 3. **Merge by tdd_focus overlap.** If two candidate modules share any `tdd_focus` symbol across features in the draft `feature-list.json`, collapse them into one module (named after whichever has more features).
 4. **Output**: `module_count` = number of distinct slugs surviving steps 2–3. `modules` = the slug list.
 
-**Execution direction**: Always Agent Team. `module_count == 1` produces a team of one implementer + reviewer; `module_count ≥ 2` produces a team of one implementer per module + reviewer. The team surface (`TeamCreate`, `SendMessage`, `TaskCreate`) is uniform across project sizes.
+**Execution direction**: Always Subagent Dispatch. `module_count == 1` produces one implementer + reviewer, dispatched sequentially; `module_count ≥ 2` produces one implementer per module + reviewer, with parallel waves dispatched via multiple `Agent` tool_use blocks in a single orchestrator response. The dispatch surface (`Agent(subagent_type=...)` + `_workspace/` files) is uniform across project sizes.
 
 **QA agent decision** (derived from the same output, evaluated in Step 1.6):
 
