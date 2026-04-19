@@ -86,7 +86,9 @@ if (existsSync(FEATURE_LIST)) {
 if (existsSync(PROGRESS_FILE) && features) {
   const progress = readFileSync(PROGRESS_FILE, 'utf8');
   const drift = [];
+  const malformed = [];
   for (const { id, passes } of features) {
+    if (!id) { malformed.push('(missing id)'); continue; }
     // Escape regex metacharacters in id so feature IDs like "FEAT-1.2"
     // don't accidentally match as patterns.
     const m = progress.match(new RegExp(`^\\s*[-*]\\s+\\[([ x])\\]\\s+${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'm'));
@@ -97,6 +99,11 @@ if (existsSync(PROGRESS_FILE) && features) {
     } else if (!checked && passes === true) {
       drift.push(`  - ${id}: PROGRESS.md=Incomplete, feature-list.json=passes:true`);
     }
+  }
+  if (malformed.length > 0) {
+    console.log('### ⚠ Malformed feature-list.json entries');
+    console.log(`  - ${malformed.length} feature(s) missing required \`id\` field.`);
+    console.log('');
   }
   if (drift.length > 0) {
     console.log('### ⚠ State Drift Detected');
@@ -116,9 +123,13 @@ if (existsSync(PROGRESS_FILE) && features) {
 if (features) {
   const violations = [];
   for (let i = 0; i < features.length; i++) {
-    const { id, depends_on = [] } = features[i];
-    const earlier = new Set(features.slice(0, i).map(f => f.id));
-    const late = depends_on.filter(d => !earlier.has(d));
+    const id = features[i]?.id;
+    if (!id) continue;
+    // Normalize depends_on: JSON null and missing both become []. ES default
+    // values only fire on `undefined`, so explicit null would crash `.filter`.
+    const deps = Array.isArray(features[i].depends_on) ? features[i].depends_on : [];
+    const earlier = new Set(features.slice(0, i).map(f => f?.id).filter(Boolean));
+    const late = deps.filter(d => !earlier.has(d));
     if (late.length > 0) {
       violations.push(`  - ${id} at index ${i} depends on ${late.join(',')} which appear later`);
     }

@@ -39,9 +39,17 @@ function validate(file) {
   }
   const lines = [];
   for (let i = 0; i < features.length; i++) {
-    const { id, depends_on = [] } = features[i];
-    const earlier = new Set(features.slice(0, i).map(f => f.id));
-    const late = depends_on.filter(d => !earlier.has(d));
+    const id = features[i]?.id;
+    if (!id) {
+      lines.push(`index ${i} is missing the required \`id\` field`);
+      continue;
+    }
+    // Normalize depends_on: ES default values only fire on `undefined`,
+    // so explicit `"depends_on": null` would pass through and crash
+    // `.filter`. Treat any non-array value as an empty list.
+    const deps = Array.isArray(features[i].depends_on) ? features[i].depends_on : [];
+    const earlier = new Set(features.slice(0, i).map(f => f?.id).filter(Boolean));
+    const late = deps.filter(d => !earlier.has(d));
     if (late.length > 0) {
       lines.push(`${id} at index ${i} depends on ${late.join(',')} which appear later`);
     }

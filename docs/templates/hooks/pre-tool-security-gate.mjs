@@ -17,6 +17,7 @@
  * └─────────────────────────────────────────────────────────────┘ */
 
 import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 
 let input;
 try {
@@ -37,16 +38,25 @@ function block(reason) {
 
 /* ── Destructive filesystem operations ────────────────────────── */
 
-if (/(^|\s)rm\s+(-[A-Za-z]*[rRf][A-Za-z]*\s+)+\/($|\s)/.test(command)) {
+// Compact: `rm -rf /`, `rm -r -f /`, `rm -fr /`, or long-form equivalents.
+if (/(^|\s)rm\s+(-[A-Za-z]*[rRfF][A-Za-z]*(\s+-[A-Za-z]*[rRfF][A-Za-z]*)*|--recursive(\s+--force)?|--force\s+--recursive)\s+\/($|\s)/.test(command)) {
   block('rm -rf / (or equivalent root wipe)');
 }
 
-// ⚠️ Matches only when `--force` AND a protected-branch keyword appear in
-// the same command string. Crafted multi-line or variable-expanded
-// invocations (e.g., `git push $REMOTE --force`) will slip past — accept
-// the false-negative; a full shell AST parser is out of scope here.
+// Branch-name-in-command heuristic: cheap, catches the common copy-paste.
 if (/git\s+push\s+.*(--force|-f(\s|$))/.test(command) && /(main|master|release|prod)/.test(command)) {
   block('git push --force to protected branch');
+}
+
+// Current-branch heuristic: catches `git push -f origin "$BRANCH"` when
+// HEAD itself sits on a protected branch. Costs one git invocation per
+// push; acceptable because force-push is rare.
+if (/git\s+push\s+.*(--force|-f(\s|$))/.test(command)) {
+  const head = spawnSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { encoding: 'utf8' });
+  const branch = head.status === 0 ? head.stdout.trim() : '';
+  if (/^(main|master|release|prod)$/.test(branch)) {
+    block(`git push --force on protected branch "${branch}"`);
+  }
 }
 
 /* ── Pipe-to-shell (remote code execution) ────────────────────── */

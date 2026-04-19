@@ -190,8 +190,12 @@ function detectShellLocale() {
   if (!lang) lang = pick(process.env.LC_CTYPE);
   if (lang) return lang;
 
-  const localeOut = runCapture('locale', []);
-  if (localeOut) return pick(parseLocaleLangLine(localeOut));
+  // `locale` is POSIX-only; on Windows spawnSync still forks a process
+  // that fails, adding noise and latency. Gate by platform.
+  if (process.platform !== 'win32') {
+    const localeOut = runCapture('locale', []);
+    if (localeOut) return pick(parseLocaleLangLine(localeOut));
+  }
   return '';
 }
 

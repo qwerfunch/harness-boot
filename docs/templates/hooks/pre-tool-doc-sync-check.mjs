@@ -56,7 +56,10 @@ try {
 function resolveCurrentFeature(features) {
   const stagedRes = spawnSync('git', ['-C', PROJECT_ROOT, 'show', ':feature-list.json'], { encoding: 'utf8' });
   const headRes = spawnSync('git', ['-C', PROJECT_ROOT, 'show', 'HEAD:feature-list.json'], { encoding: 'utf8' });
-  if (stagedRes.status !== 0 || headRes.status !== 0) {
+  // Initial commit (no HEAD yet): the harness scaffold commit does not
+  // target any feature, so there is no doc_sync contract to verify.
+  if (headRes.status !== 0) return null;
+  if (stagedRes.status !== 0) {
     return features.find(f => f.passes === false);
   }
   let staged, head;
@@ -106,13 +109,15 @@ const SRC_PREFIXES = ['src/', 'lib/', 'app/', 'packages/', 'internal/', 'pkg/', 
  */
 function patternFor(file) {
   if (file.endsWith('.py'))
-    return /^[+-](export|pub fn|pub struct|pub enum|public [a-zA-Z]|(def|class)\s+[A-Za-z])/m;
+    return /^[+-]((def|class)\s+[A-Za-z]|__all__\s*=)/m;
   if (file.endsWith('.go'))
-    return /^[+-](export|pub fn|pub struct|pub enum|public [a-zA-Z]|(func|type|var|const)\s+[A-Z])/m;
-  // ⚠️ Fallback regex is the most permissive of the three. It's the
-  // last line of defense for unknown/unlisted extensions; language-
-  // specific branches above handle the 99% case.
-  return /^[+-].*(export|pub fn|pub struct|pub enum|public [a-zA-Z])/m;
+    return /^[+-](func|type|var|const)\s+[A-Z]/m;
+  if (file.endsWith('.rs'))
+    return /^[+-]\s*pub\s+(fn|struct|enum|mod|const|static|trait|type)\b/m;
+  // ⚠️ Fallback regex is the most permissive branch. It's the last line
+  // of defense for unknown/unlisted extensions; language-specific
+  // branches above handle the 99% case.
+  return /^[+-].*(export|public [a-zA-Z])/m;
 }
 
 let exportChanged = false;

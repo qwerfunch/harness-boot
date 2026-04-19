@@ -42,9 +42,11 @@ function has(bin) {
   return r.status === 0;
 }
 function run(cmd, args) {
-  // stdio: 'inherit' so test output reaches the agent's transcript —
-  // failures are the whole value of running this hook.
-  try { spawnSync(cmd, args, { stdio: 'inherit' }); } catch { /* swallow */ }
+  // stdin is closed because the parent already drained it (JSON event
+  // parse above); inheriting an exhausted pipe tricks TTY-sensing
+  // runners like `pytest --capture=no` into waiting for keystrokes.
+  // stdout/stderr stay inherited so agent sees pass/fail output.
+  try { spawnSync(cmd, args, { stdio: ['ignore', 'inherit', 'inherit'] }); } catch { /* swallow */ }
 }
 
 /**

@@ -47,16 +47,23 @@ function extract(srcPath, startRe, stopRe, destPath) {
   }
   const out = [];
   let found = false;
+  let stopMatched = false;
   for (const line of lines) {
     if (!found) {
       if (startRe.test(line)) { found = true; out.push(line); }
       continue;
     }
-    if (stopRe && stopRe.test(line)) break;
+    if (stopRe && stopRe.test(line)) { stopMatched = true; break; }
     out.push(line);
   }
   if (out.length === 0 || out.every(l => l.trim() === '')) {
     console.error(`ERROR: empty extraction — ${destPath} (start=${startRe} stop=${stopRe} src=${srcPath})`);
+    process.exit(1);
+  }
+  // A non-null stopRe that never matches means the source was renamed;
+  // silently extending to EOF would bleed unrelated sections into the fragment.
+  if (stopRe !== null && !stopMatched) {
+    console.error(`ERROR: stopRe never matched — ${destPath} (stop=${stopRe} src=${srcPath}). Likely a source heading rename; update the generator.`);
     process.exit(1);
   }
   // Per-line trailing `\n` matches the awk reference implementation.
@@ -91,16 +98,21 @@ function extractToString(srcPath, startRe, stopRe) {
   }
   const out = [];
   let found = false;
+  let stopMatched = false;
   for (const line of lines) {
     if (!found) {
       if (startRe.test(line)) { found = true; out.push(line); }
       continue;
     }
-    if (stopRe && stopRe.test(line)) break;
+    if (stopRe && stopRe.test(line)) { stopMatched = true; break; }
     out.push(line);
   }
   if (out.length === 0) {
     console.error(`ERROR: empty extraction (start=${startRe} stop=${stopRe} src=${srcPath})`);
+    process.exit(1);
+  }
+  if (stopRe !== null && !stopMatched) {
+    console.error(`ERROR: stopRe never matched (stop=${stopRe} src=${srcPath}). Likely a source heading rename; update the generator.`);
     process.exit(1);
   }
   return out.map(l => l + '\n').join('');
@@ -148,7 +160,7 @@ extract(
 extract(
   join(REPO_ROOT, 'docs/templates/protocols/message-format.md'),
   /^## `_workspace\/` naming convention <!-- anchor: workspace-naming -->/,
-  /^## Example — fan-out and collect/,
+  /^## Example — parallel dispatch and collect/,
   join(DEST, '08-workspace-naming.md'),
 );
 
