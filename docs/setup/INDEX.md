@@ -53,6 +53,10 @@ Stable anchors cited by `commands/setup.md`, `commands/start.md`, and cross-file
 | `#gate-0-tdd` | `../protocols/tdd-cycles.md` | `/start` Step 5 (Gate 0 evidence for `tdd`) |
 | `#gate-0-state-verification` | `../protocols/tdd-cycles.md` | `/start` Step 5 (Gate 0 evidence for `state-verification`) |
 | `#gate-0-integration` | `../protocols/tdd-cycles.md` | `/start` Step 5 (Gate 0 evidence for `integration`) |
+| `#runtime-smoke-gate` | `agents-and-gates.md` | `/start` session-terminal; session-management.md, qa-agent-guide.md, templates/agents/rules/11-qa-invocation-timing.md |
+| `#runtime-smoke-configuration` | `cross-session-state.md` | `/setup` Phase 1 (environment.md generation); referenced from agents-and-gates.md Gate 5 trigger |
+
+Anchors in `commands/start.md` (e.g. `qa-invocation-timing`, `iteration-tracking`, `feature-selection-algorithm`) live at the command surface, not the setup spec, and are cited directly by path-plus-anchor rather than through this glossary.
 
 When adding a new cross-reference, add an `<!-- anchor: slug -->` HTML comment on the target heading first, then register the slug here.
 
