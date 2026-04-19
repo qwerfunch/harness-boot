@@ -19,7 +19,7 @@ See `docs/references/execution-model-divergence.md` for the full rationale and p
 Run this in your project root:
 
 ```bash
-grep -rE 'TeamCreate|SendMessage|TaskCreate|TaskUpdate' .claude/ 2>/dev/null | grep -v '(legacy|previously|formerly)'
+grep -rE 'TeamCreate|SendMessage|TaskCreate|TaskUpdate' .claude/ 2>/dev/null | grep -vE 'legacy|previously|formerly'
 ```
 
 Hits outside explanatory prose mean your generated harness still references the old primitives and should be migrated.

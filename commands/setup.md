@@ -113,7 +113,7 @@ Report to the user:
 Module Extraction: {module_count} module(s) detected [{modules}]
 ```
 
-Execution is always **Agent Team**. Single-module projects (`module_count == 1`) use a team of one implementer + reviewer. Reference: `${CLAUDE_PLUGIN_ROOT}/docs/references/agent-design-patterns.md`.
+Execution is always **Subagent Dispatch** (parallel `Agent(subagent_type=...)` tool_use blocks + `_workspace/handoff/{from}->{to}.md` envelope files). Single-module projects (`module_count == 1`) dispatch one implementer at a time; the surface is uniform across project sizes. Reference: `${CLAUDE_PLUGIN_ROOT}/docs/references/agent-design-patterns.md`.
 
 #### Step 1.6: QA Agent (auto-decided, no question)
 
@@ -157,7 +157,7 @@ If the user picks (2), ask a single follow-up question (one question at a time, 
 Which decision to revise?
 (1) Conversation language     (2) Comment language
 (3) Tech stack                (4) Architecture pattern
-(5) Execution mode            (6) QA agent inclusion
+(5) QA agent inclusion
 ```
 Re-ask only the selected question, then return to the Step 1.7 summary for re-approval. Do not cascade edits to unrelated decisions.
 
@@ -182,14 +182,13 @@ These are derived from the plan and user decisions without additional questions:
 - `.claude/security.md`
 - `.claude/domain-persona.md` (domain context for agents, from Step 1 draft)
 - `scripts/update-feature-status.mjs` — **copy from `${CLAUDE_PLUGIN_ROOT}/docs/templates/scripts/update-feature-status.mjs.tmpl`** (not LLM-generated). Substitute `{TEST_COMMAND}` using the row in `${CLAUDE_PLUGIN_ROOT}/docs/templates/stacks.md` matching the selected tech stack. On POSIX, `chmod +x scripts/update-feature-status.mjs` after copying. Auto-updates `feature-list.json` passes field after Gate 4.
-- `_workspace/.gitkeep` (intermediate outputs directory for Agent Team file-based transfer)
+- `_workspace/.gitkeep` (Subagent Dispatch artifact directory: phase files + `handoff/` envelopes)
 - `.gitignore` (generated from Tech Stack selection — includes .env, IDE files, build outputs, language-specific patterns)
 
 ### Step 3: Phase 2 — Core Protocols
 - `.claude/protocols/` 5 protocols — **copy from `${CLAUDE_PLUGIN_ROOT}/docs/templates/protocols/`** (not LLM-generated):
   - `tdd-loop.md`, `iteration-cycle.md`, `code-doc-sync.md`, `session-management.md`, `message-format.md`
-  - All 5 are stack-agnostic — copy verbatim.
-  - Skip `message-format.md` when Step 1.5 resolved to `sub-agent` mode (it is only consumed by Agent Team / Hybrid); keep the other 4 in all modes.
+  - All 5 are stack-agnostic — copy verbatim. `message-format.md` defines the `_workspace/handoff/` envelope schema used by Subagent Dispatch; it is always required.
 - `CLAUDE.md` (main, <= 1,500 tokens)
 - `README.md` (in `conversation_language` — same value Phase 1 writes to `environment.md`; Phase 2 uses the locale detected in Step 1.2 directly, no file read required; content: project name, description, tech stack, getting started, project structure, dev guide, license placeholder)
 - `.claude/quality-gates.md`
