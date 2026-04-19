@@ -349,6 +349,14 @@ Orchestrator and module-scoped sub-agents read context-map.md at session start; 
     - Rendering / canvas / DOM / UI feature → `"state-verification"`.
     - Wiring / entry-point / multi-module glue feature → `"integration"`.
     - Everything else → `"lean-tdd"`.
+
+    **Classification rationalization guard** — when applying the rules above, the classifier MUST NOT downgrade a match to save effort:
+
+    | Rationalization | Rebuttal |
+    |---|---|
+    | "This payment feature is simple — `lean-tdd` is enough." | Safety-critical invariants require test-first pinning. Simplicity of the feature ≠ simplicity of failure cost. Keep `tdd`. |
+    | "UI rendering is visually obvious — I'll eyeball it, set `lean-tdd`." | Rendered-state regressions surface only at runtime and often only in production. State-verification is cheap insurance against debug loops later. |
+    | "Auth keyword is incidental (e.g. mentions 'author' in comment) — skip `tdd`." | Keyword matching is intentionally coarse. If the feature genuinely has no auth/security boundary, correct the description (remove the false-positive phrasing), then re-classify. Do not silently strip `tdd`. |
     Present the full classification as a single batch summary (all N features at once — this is an intentional exception to the "one question at a time" rule, since per-feature prompting would exceed the Phase 6 confirmation budget) with two numbered choices: `(1) ★ Approve all` or `(2) Revise specific features`. If (2), then ask one follow-up question listing the feature ids and accept a comma-separated list; for each listed feature, ask one question at a time to pick the new strategy.
   - **Wiring-feature guardrail** (applies when `module_count >= 2` from Step 1.5): after the test_strategy classification resolves, scan the draft `feature-list.json`. If NO feature has `test_strategy: "integration"` AND no feature `description` (case-insensitive) contains any of (`main`, `entry point`, `entry-point`, `bootstrap`, `wiring`, `glue`, `boot`, `launch`, `app init`), synthesize a candidate feature:
     ```jsonc
@@ -372,6 +380,13 @@ Orchestrator and module-scoped sub-agents read context-map.md at session start; 
     (3) Remove — skip; the plan intentionally omits a wiring feature
     ```
     If the user picks (1) or (2), append the feature at the END of the feature-list array (dependency ordering naturally places it last since it depends on every prior feature) and run the acceptance_test contract validation below on it. If (3), leave feature-list.json unchanged.
+
+    **Before picking (3), rationalization check** — orchestrator MUST surface this to the user verbatim when they select (3):
+
+    | Rationalization | Rebuttal |
+    |---|---|
+    | "Wiring is trivial — the user will figure it out later." | FEAT-MAIN's integration tests are the only check that modules actually compose. Without it, `passes: true` across every module can coexist with a non-runnable app. |
+    | "The plan omits it on purpose — I'll respect the spec." | If the plan is a library or a spike, option (3) is correct. If it describes an application, silent omission is a plan gap, not intent — ask the user to confirm library vs. app before accepting (3). |
 
     **Inferred `tdd_focus` by tech stack** (from Step 1.3):
     - Node / TypeScript / JavaScript: read `package.json` `main` or `module` field if present; fallback `src/main.ts` or `src/index.ts`

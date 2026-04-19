@@ -231,6 +231,16 @@ Orchestrator runs this check BEFORE Gate 1 using the feature's `tdd_focus` and `
 
 If any check fails, Gate 0 blocks and the cycle restarts (iteration++).
 
+#### Rationalization defense (applies to Gates 0–4)
+Gates block for a reason. When one fires, resist severity-downgrade and bypass-token shortcuts. Common excuses and rebuttals — every reviewer / implementer MUST consult this table before overriding a gate:
+
+| Rationalization | Rebuttal |
+|---|---|
+| "This Critical is really a Major — the fix is trivial." | Severity is measured by scope of failure, not effort to fix. A Critical blocks Gate 2 even if the fix is one line. Fix the issue, do not relabel it. |
+| "The doc will be updated in the next feature's commit." | Per-feature commit discipline exists to prevent exactly this. Deferred doc updates do not get backfilled. Stage doc changes now, or use `[skip-doc-sync]` **only** with a one-line justification in the commit body. |
+| "One more iteration will converge — it's almost there." | The 5-iteration cap exists because "almost there" is the divergence signature. Route to `debugger` at 6; never mutate the counter to extend the cycle. |
+| "Skip Gate 0 evidence just this once — the code clearly works." | Gate 0 enforces Testable-First. 'Clearly works' without evidence is the rationalization the principle exists to defeat. Regenerate the evidence artifact; do not hand-wave. |
+
 ### Step 6: Code-Doc Sync
 Update related documents per the mapping table:
 - Source changes → related docs/*.md, `.claude/context-map.md` (layer rules)
