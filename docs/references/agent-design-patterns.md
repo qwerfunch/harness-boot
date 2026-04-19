@@ -3,58 +3,68 @@
 > Reference adapted from [revfactory/harness](https://github.com/revfactory/harness) (Apache-2.0).
 > Integrated into harness-boot's TDD-First, Iteration Convergence, Code-Doc Sync, Anti-Rationalization framework.
 
-> **Experimental dependency.** The `TeamCreate` / `SendMessage` / `TaskCreate` / `TaskUpdate` primitives described below are flag-gated behind `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in Claude Code. Without the flag the runtime silently falls back to single-agent execution and the team patterns below break. A refactor to **Subagent Dispatch** (direct `Agent` invocation + `_workspace/` file envelopes) as the default execution model is planned; this document will be rewritten when that lands.
+> **Execution model: Subagent Dispatch.** harness-boot dispatches agents via the
+> Claude Code `Agent` tool (`Agent(subagent_type=<slug>, prompt=...)`). Coordination
+> happens through file envelopes under `_workspace/handoff/` and `PROGRESS.md`, not
+> through `TeamCreate` / `SendMessage` / `TaskCreate`. See
+> `execution-model-divergence.md` for why we diverged from the upstream Agent Team model.
 
 ---
 
-## Agent Team Execution
+## Subagent Dispatch Execution
 
-harness-boot uses a single execution model: **Agent Team**. The team leader creates a team with `TeamCreate`. Members are independent Claude Code instances that communicate directly via `SendMessage` and coordinate through shared task lists (`TaskCreate`/`TaskUpdate`).
+The orchestrator agent is the only durable coordination point. For each phase of work it
+calls `Agent(subagent_type=<agent-name>, prompt=<instructions + context paths>)`,
+reads the resulting artifact from `_workspace/`, and dispatches the next agent with the
+artifact path threaded into its prompt.
 
 ```
-[Leader] <-> [Member A] <-> [Member B]
-  |              |              |
-  +------ Shared Task List ----+
+[Orchestrator]
+    |-- Agent(subagent_type="implementer-auth",  prompt="FEAT-001 ... read _workspace/...")
+    |-- Agent(subagent_type="implementer-task",  prompt="FEAT-002 ... read _workspace/...")
+    |        ^ parallel: multiple Agent tool_use blocks in one response
+    |
+    |-- (both complete, write _workspace/handoff/impl-auth->reviewer.md etc.)
+    |
+    |-- Agent(subagent_type="reviewer", prompt="Review FEAT-001 & FEAT-002, read _workspace/handoff/*")
+    |-- (reviewer writes _workspace/review/{feature}.md)
+    |
+    +-- Orchestrator reads reviews, updates PROGRESS.md, moves to commit.
 ```
 
-**Core Tools:**
-- `TeamCreate`: Create team + spawn members
-- `SendMessage({to: name})`: Direct message to specific member
-- `SendMessage({to: "all"})`: Broadcast (expensive, use sparingly)
-- `TaskCreate`/`TaskUpdate`: Shared task list management
+**Core tools:**
+- `Agent(subagent_type=<slug>, prompt=...)`: invoke a subagent by its frontmatter `name` field.
+- `Write` / `Read`: produce and consume `_workspace/` artifacts.
+- Multiple `Agent` tool_use blocks in a single orchestrator response = parallel dispatch.
 
 **Strengths:**
-- Members communicate directly (no leader bottleneck)
-- Inter-member feedback, challenge, and cross-verification
-- Self-coordination via shared task list
-- Idle members automatically notify leader
+- Universally available. No experimental flag required.
+- Each `Agent` call forks a fresh context, preserving TDD isolation at the tool level.
+- All coordination is observable: every handoff is a file in `_workspace/` (audit trail).
+- Parallel dispatch is the Claude Code canonical pattern.
 
 **Constraints:**
-- One active team per session (but teams can be disbanded and reformed between phases)
-- No nested teams (members cannot create their own teams)
-- Fixed leader (cannot transfer)
+- Coordination is turn-based (orchestrator -> dispatch -> wait -> read -> dispatch).
+  Two subagents cannot exchange messages while both are alive. In practice harness-boot
+  never needed that; all plugin handoffs are already turn-based.
+- Hierarchical delegation is bounded to 2 levels (orchestrator -> specialist -> leaf),
+  matching revfactory's original guidance. Deeper nesting is discouraged; flatten instead.
 
-**Single-module projects** use a team of one implementer + reviewer. The team surface (TeamCreate, TaskCreate, file-based transfer) is identical regardless of project size; there is no "solo" variant. `SendMessage` is effectively idle when only one implementer exists, but protocols remain uniform.
+**Single-module projects** dispatch an `implementer-<module>` then a `reviewer` — the
+same dispatch surface as multi-module, just with one implementer call.
 
-### TDD / BDD Sub-agents are Nested, Not Team Members
+### TDD / BDD Sub-agents are Leaf Calls
 
-`tdd-implementer`, `tdd-refactorer`, `bdd-writer`, `tdd-test-writer` (when generated), and other `Agent`-tool invocations (architect, debugger, tester) are **not team members**. They are called via the `Agent` tool inside an implementer's execution context to preserve isolation (the test-writer never sees implementation code; the bdd-writer never sees implementation code either). Team members are: implementers (one per module), reviewer, and optionally qa-agent.
+`tdd-implementer`, `tdd-refactorer`, `bdd-writer`, `tdd-test-writer` (when generated), and
+other single-shot specialists (architect, debugger, tester) are **leaf calls** from within
+an implementer's execution — they preserve isolation (the test-writer never sees
+implementation code; the bdd-writer never sees implementation code). The implementer
+itself is dispatched by the orchestrator; it then invokes leaves with its own `Agent` tool.
+This is the 2-level hierarchy.
 
-### Team Reformation Pattern
+### Phase Handoff via File Envelopes
 
-When different phases need different specialist combinations: save current team's outputs to files -> disband team -> create new team. Previous outputs persist in `_workspace/` for the new team to read.
-
-```
-1. Current team completes all tasks → outputs in _workspace/02_*.md
-2. New TeamCreate replaces current team (auto-dissolution)
-   TeamCreate("verification-team", members=["qa-agent", "impl-auth", "impl-task"])
-3. New team members reference previous outputs:
-   TaskCreate(assignee="qa-agent", description="Verify boundaries. Read _workspace/02_impl_*.md")
-```
-
-### Phase Numbering Convention
-
-Files in `_workspace/` use zero-padded phase numbers to maintain ordering:
+Artifacts in `_workspace/` use zero-padded phase numbers to maintain ordering:
 
 ```
 _workspace/
@@ -63,8 +73,16 @@ _workspace/
 ├── 02_impl_task_code.md
 ├── 02_impl_notification_code.md
 ├── 03_qa_boundary_report.md
-└── 04_reviewer_final_review.md
+├── 04_reviewer_final_review.md
+└── handoff/
+    ├── impl-auth->reviewer.md            # producer writes, reviewer reads
+    ├── reviewer->impl-auth.md            # review-result back to producer
+    └── qa-agent->orchestrator.md
 ```
+
+An envelope file starts with YAML frontmatter (`from`, `to`, `feature_id`, `phase`,
+`kind`, `status`) and a body. See `docs/templates/agents/rules/06-message-format.md` for
+the schema.
 
 ---
 
@@ -93,7 +111,7 @@ Parallel processing with result aggregation. Independent work on the same input 
 **Best for:** Same input analyzed from different domains/perspectives simultaneously.
 **Example:** Multi-module development — frontend team + backend team + infra team working in parallel -> integration.
 **Watch out:** Merge stage quality determines overall quality.
-**Notes:** Most natural pattern for Agent Teams. Members share discoveries through the shared task list and inter-member messages; one member's finding can redirect another's approach.
+**Notes:** Most natural pattern for Subagent Dispatch — the orchestrator emits parallel `Agent` tool_use blocks, each subagent writes its findings to `_workspace/`, and a synthesis call reads all of them. If one subagent's finding should redirect another's approach, surface it via the handoff envelope and re-dispatch in a follow-up phase.
 
 ### 3. Expert Pool
 Route to the appropriate specialist based on input type.
@@ -115,7 +133,7 @@ Generator and verifier work as a pair.
 **Best for:** Quality assurance with objective verification criteria.
 **Example:** TDD — test-writer produces -> implementer verifies -> reviewer checks.
 **Watch out:** Set max retries (2-3) to prevent infinite loops.
-**Notes:** `SendMessage` enables producer<->reviewer feedback between team members.
+**Notes:** Producer writes to `_workspace/handoff/{producer}->reviewer.md`; reviewer reads it, writes `_workspace/handoff/reviewer->{producer}.md` with a verdict; orchestrator re-dispatches producer with the verdict path if changes are requested.
 
 ### 5. Supervisor
 Central agent manages state and dynamically distributes work to workers.
@@ -129,7 +147,7 @@ Central agent manages state and dynamically distributes work to workers.
 **Best for:** Variable workload or runtime work distribution decisions.
 **Example:** Large-scale feature development — supervisor analyzes feature list, assigns batches to workers based on progress.
 **Difference from Fan-out:** Fan-out pre-assigns work; Supervisor adjusts dynamically based on progress.
-**Notes:** The shared task list naturally matches this pattern. `TaskCreate` for work registration, members self-assign.
+**Notes:** The orchestrator owns the pending-work queue — typically `feature-list.json` filtered by `passes: false` and satisfied `depends_on`. On each pass it picks the next batch and dispatches. `PROGRESS.md` records what was assigned and its result.
 
 ### 6. Hierarchical Delegation
 Upper agents recursively delegate to lower agents.
@@ -143,7 +161,7 @@ Upper agents recursively delegate to lower agents.
 **Best for:** Problems that naturally decompose hierarchically.
 **Example:** Full-stack app — Lead -> Frontend Lead -> (UI/Logic/Tests) + Backend Lead -> (API/DB/Tests).
 **Watch out:** Beyond 3 levels, latency and context loss increase. Keep to 2 levels.
-**Constraint:** Teams don't nest. Implement level 1 as team, level 2 as `Agent`-tool calls within each member's execution. Or flatten into a single team.
+**Constraint:** Subagent Dispatch keeps level 1 as orchestrator -> specialist (e.g. `implementer-<module>`), level 2 as `Agent`-tool calls that the specialist issues to its own leaves (e.g. `tdd-test-writer`). Deeper nesting should flatten: hoist leaves to the orchestrator's direct dispatch or restructure the problem.
 
 ---
 
@@ -172,7 +190,11 @@ Real projects often combine patterns:
 
 ## Agent Definition Structure
 
-The `## Team Communication Protocol` section is added **only to agents that exchange team messages** (orchestrator, module implementers, reviewer, qa-agent). Non-communicating agents (architect, debugger, tester, tdd-*) omit the section — they are invoked via `Agent` tool, not team messaging, so a placeholder would be empty ceremony. The template below shows the section for communicating agents:
+The `## Handoff Protocol` section is added **only to agents that exchange handoff envelopes**
+(orchestrator, module implementers, reviewer, qa-agent). Non-communicating leaves
+(architect, debugger, tester, tdd-*, bdd-writer) omit the section — they are invoked via
+the `Agent` tool and return their result inline or via a single output file, so no envelope
+schema applies. The template below shows the section for communicating agents:
 
 ```markdown
 ---
@@ -193,14 +215,14 @@ model: {opus|sonnet}
 - Principle 2
 
 ## Input/Output Protocol
-- Input: [what from where]
-- Output: [what to where]
-- Format: [file format, structure]
+- Input: [what the orchestrator passes in the prompt, plus `_workspace/...` paths]
+- Output: [what to write to `_workspace/<phase>_<artifact>.md` before exiting]
+- Format: [envelope schema, body structure]
 
-## Team Communication Protocol  # communicating agents only
-- Receive from: [who sends what messages]
-- Send to: [who receives what messages]
-- Task requests: [what types of tasks from shared task list]
+## Handoff Protocol  # communicating agents only
+- Reads from: [which `_workspace/handoff/*->{this-agent}.md` envelopes]
+- Writes to: [which `_workspace/handoff/{this-agent}->*.md` envelopes]
+- Re-dispatch triggers: [which envelope kinds cause the orchestrator to re-call this agent]
 
 ## Error Handling
 - [On failure behavior]
@@ -229,27 +251,41 @@ Recommendation: High reuse -> Skill tool call. Agent-specific -> Inline. Large c
 ## Integration with harness-boot TDD Framework
 
 ### TDD Isolation Preserved
-Agent Teams enable richer collaboration but **TDD context isolation must be maintained**:
-- `tdd-test-writer` still MUST NOT read implementation code (even via `SendMessage`)
-- Team communication is for coordination (progress, blockers, integration points), not for sharing implementation details with test writers
-- The implementer agent acts as the information firewall between test-writer and tdd-implementer
+Subagent Dispatch preserves TDD context isolation at the tool level — each `Agent` call
+forks a fresh context, so leaks are structurally impossible when the dispatch is clean:
+- `tdd-test-writer` MUST NOT receive implementation code in its prompt or as a context path
+- The implementer agent acts as the information firewall: it composes prompts for its
+  `tdd-*` leaves and decides what paths to include
+- Handoff envelopes between implementer and reviewer carry artifact references, not raw
+  implementation snippets, so even reviewer comments flowing back do not leak to leaves
 
 ### Multi-Module Parallel TDD
-When modules are independent, the team runs parallel TDD cycles:
+When modules are independent (no shared `tdd_focus`, no shared `doc_sync`, no depends_on between them),
+the orchestrator dispatches implementers in parallel:
 
 ```
-[Orchestrator/Leader]
-    |-- TeamCreate(module-a-impl, module-b-impl, reviewer)
-    |-- TaskCreate(FEAT-001 for module-a-impl, FEAT-002 for module-b-impl)
-    |-- Each implementer runs its own TDD sub-agent cycle independently
-    |-- Members share integration points via SendMessage
-    |-- Reviewer reviews each module as it completes
-    +-- Leader merges results
+[Orchestrator]
+    |-- Single response containing multiple Agent tool_use blocks:
+    |     Agent(subagent_type="implementer-module-a", prompt="FEAT-001, write to _workspace/02_impl_module-a_*.md")
+    |     Agent(subagent_type="implementer-module-b", prompt="FEAT-002, write to _workspace/02_impl_module-b_*.md")
+    |
+    |-- Each implementer runs its own TDD sub-agent cycle:
+    |     Agent(subagent_type="tdd-test-writer", ...)   # leaf
+    |     Agent(subagent_type="tdd-implementer", ...)   # leaf
+    |     Agent(subagent_type="tdd-refactorer", ...)    # leaf
+    |
+    |-- Integration points coordinated via handoff envelopes, not mid-execution messages.
+    |     If module-a needs an API shape decision from module-b, that is a separate
+    |     orchestrator-dispatched coordination round, not a mid-execution exchange.
+    |
+    +-- Orchestrator dispatches reviewer after all implementers return.
 ```
 
-**Constraint:** Each team member's TDD cycle still uses sub-agents (`Agent` tool) for Red/Green/Refactor isolation. Team communication operates at the module coordination level, not within TDD phases.
+**Constraint:** Within an implementer, TDD leaves still run as `Agent`-tool calls for
+Red/Green/Refactor isolation. Cross-module coordination happens at orchestrator-dispatch
+boundaries, never inside an in-flight agent.
 
 ### Code-Doc Sync
-- Each team member is responsible for doc sync of their assigned modules
-- The `pre-tool-doc-sync-check.mjs` hook still blocks commits with missing docs
-- Leader verifies cross-module doc consistency before final merge
+- Each implementer is responsible for doc sync of its assigned modules
+- The `pre-tool-doc-sync-check.mjs` hook blocks commits with missing docs
+- The reviewer verifies cross-module doc consistency in its Gate 2 pass before the final commit

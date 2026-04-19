@@ -218,9 +218,9 @@ Add to Gate 2 (Review):
 - Reviewer checks QA report in addition to code quality
 - Boundary mismatches are Critical severity (block commit)
 
-### Team Mode Integration
+### Dispatch Integration
 
-The QA agent can be a permanent team member:
-- Receives `SendMessage` notifications when modules complete
-- Runs incremental verification automatically
-- Reports findings back to the team via `SendMessage`
+The QA agent is a first-class dispatch target alongside implementers and reviewer:
+- Orchestrator invokes `Agent(subagent_type="qa-agent", ...)` after each module's implementer returns, passing the producer + consumer-side paths in the prompt
+- QA agent runs incremental boundary verification and writes `_workspace/03_qa_<module>_<feature>.md`
+- When findings warrant follow-up, the QA agent writes `_workspace/handoff/qa-agent->orchestrator.md` with the relevant `kind` (e.g. `qa-report`, `critical-reject`) so the orchestrator can re-dispatch implementers or the reviewer

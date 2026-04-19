@@ -2,44 +2,43 @@
 
 ## Agent Definitions
 
-### Agent Team Execution & Team Architecture
+### Subagent Dispatch Execution & Architecture Patterns
 
-> Patterns adapted from [revfactory/harness](https://github.com/revfactory/harness) (Apache-2.0). Full reference: `docs/references/agent-design-patterns.md`.
+> Patterns adapted from [revfactory/harness](https://github.com/revfactory/harness) (Apache-2.0). Full reference: `docs/references/agent-design-patterns.md`. Divergence rationale: `docs/references/execution-model-divergence.md`.
 
-#### Agent Team Execution
+#### Subagent Dispatch Execution
 
-harness-boot currently targets a single execution model: **Agent Team**. The orchestrator creates a team via `TeamCreate`, assigns work via `TaskCreate`/`TaskUpdate`, and members coordinate via `SendMessage`. The team surface is uniform regardless of project size — single-module projects simply register a team of one implementer + reviewer.
+harness-boot uses a single execution model: **Subagent Dispatch**. The orchestrator dispatches module-specific implementers, reviewer, and optional qa-agent via `Agent(subagent_type=<slug>, prompt=...)`. Parallel work uses multiple `Agent` tool_use blocks in a single orchestrator response; coordination is expressed as file envelopes under `_workspace/handoff/`. The dispatch surface is uniform regardless of project size — single-module projects dispatch one implementer + reviewer, just sequentially instead of in parallel.
 
-> **Experimental dependency.** These primitives (`TeamCreate`/`SendMessage`/`TaskCreate`/`TaskUpdate`) are flag-gated behind `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in Claude Code. Without the flag the runtime silently falls back to single-agent execution and the team patterns below break. A refactor to **Subagent Dispatch** (direct `Agent` invocation + `_workspace/` file envelopes) as the default is planned.
+This model is universally available in Claude Code (no experimental flag). `TeamCreate` / `SendMessage` / `TaskCreate` / `TaskUpdate` are not used. See `execution-model-divergence.md` for the full rationale and mapping from the upstream Agent Team model.
 
-#### Team Architecture Patterns
+#### Architecture Patterns
 
 Choose an architecture pattern based on module structure:
 
 | Pattern | Use When | Example |
 |---------|----------|---------|
-| **Fan-out/Fan-in** | Independent modules, parallel work | Frontend + Backend + Infra teams |
-| **Pipeline** | Sequential dependencies | Analysis -> Design -> Implement -> Test |
-| **Supervisor** | Dynamic work assignment needed | Feature supervisor distributes to workers |
-| **Producer-Reviewer** | Quality assurance critical | Implementer -> Reviewer feedback loops |
+| **Fan-out/Fan-in** | Independent modules, parallel work | Frontend + Backend + Infra implementers dispatched together |
+| **Pipeline** | Sequential dependencies | Architect -> Implementer -> Reviewer chain |
+| **Supervisor** | Dynamic work assignment needed | Orchestrator reads feature-list and dispatches per wave |
+| **Producer-Reviewer** | Quality assurance critical | Implementer -> handoff file -> Reviewer -> verdict file |
 
 > Full pattern descriptions with composite patterns: `docs/references/agent-design-patterns.md`
 
-#### Data Transfer Protocols
+#### Data Transfer Channels
 
-Specify in the orchestrator how agents share work products:
+| Channel | Location | Best When |
+|---------|----------|-----------|
+| **Artifact files** | `_workspace/{phase}_{agent}_{artifact}.{ext}` | Work products per dispatch |
+| **Handoff envelopes** | `_workspace/handoff/{from}->{to}.md` | Directed agent-to-agent signals (verdicts, coordination, escalation) |
+| **Progress state** | `PROGRESS.md` + `feature-list.json` | Per-feature progress consulted by orchestrator only |
 
-| Strategy | Method | Best When |
-|----------|--------|-----------|
-| **Message** | `SendMessage` | Inter-agent coordination, lightweight state |
-| **Task** | `TaskCreate`/`TaskUpdate` | Progress tracking, dependency management |
-| **File** | Write/Read to `_workspace/` | Large data, structured outputs, audit trail |
+TDD / BDD leaf agents (`tdd-test-writer`, `tdd-implementer`, `tdd-refactorer`, `bdd-writer`) are invoked via `Agent` inside an implementer's execution — they are leaves, not coordination participants, and their outputs flow back to the implementer inline.
 
-All three strategies are used together. TDD / BDD sub-agents (`tdd-test-writer`, `tdd-implementer`, `tdd-refactorer`, `bdd-writer`) are invoked via the `Agent` tool inside an implementer's execution — they are not team members and return results directly to the caller.
-
-File-based transfer rules:
+File transfer rules:
 - `_workspace/` folder for intermediate outputs
-- Convention: `{phase}_{agent}_{artifact}.{ext}`
+- Artifact naming: `{phase}_{agent}_{artifact}.{ext}`
+- Handoff naming: `{from}->{to}.md` under `_workspace/handoff/`
 - Final outputs only to user-specified paths; preserve `_workspace/` for audit trail
 
 #### QA Agent Integration
@@ -51,21 +50,21 @@ When the plan has 3+ modules with integration points, generate a QA agent:
 - **Type**: `general-purpose` (needs to run verification scripts, not read-only)
 - **Core method**: "Read Both Sides Simultaneously" — cross-compare producer output with consumer input at every boundary
 - **Timing**: Incremental after each module completion, not just at the end
-- **Team membership**: QA agent as permanent team member receiving completion notifications
+- **Dispatch position**: Orchestrator invokes `Agent(subagent_type="qa-agent", ...)` after each module's implementer returns, reading `_workspace/02_impl_<module>_*.md` + producer/consumer sides of every boundary. The qa-agent writes its report to `_workspace/03_qa_*.md` and a handoff envelope if findings warrant re-dispatch.
 
 Add to the generated harness:
 - `.claude/agents/qa-agent.md`
 - QA step in orchestrator workflow (after module TDD completes, before Gate 2 review)
 - Boundary mismatches classified as Critical severity in Gate 2
 
-#### Team Communication Protocol for Agents
+#### Handoff Protocol for Agents
 
-**Only agents that actually exchange team messages** add a `## Team Communication Protocol` section: `orchestrator`, module-specific implementers, `reviewer`, and `qa-agent` (when included). `architect`, `debugger`, `tester`, `bdd-writer`, and the `tdd-*` sub-agents (test-writer / implementer / refactorer) **omit the section** — they are invoked via the `Agent` tool inside an implementer cycle or on escalation, not through team messaging, so a placeholder section would be empty ceremony.
+**Only agents that exchange handoff envelopes** add a `## Handoff Protocol` section: `orchestrator`, module-specific implementers, `reviewer`, and `qa-agent` (when included). `architect`, `debugger`, `tester`, `bdd-writer`, and the `tdd-*` leaves (test-writer / implementer / refactorer) **omit the section** — they are invoked as leaves via the `Agent` tool and return results to their caller inline or via a single output artifact, so no envelope schema applies.
 
 For agents that include the section, it must specify:
-- **Receive from**: Who sends what messages
-- **Send to**: Who receives what messages
-- **Task requests**: What task types from shared task list
+- **Reads from**: Which `_workspace/handoff/*->{this-agent}.md` envelopes trigger dispatch
+- **Writes to**: Which `_workspace/handoff/{this-agent}->*.md` envelopes this agent emits
+- **Re-dispatch triggers**: Which envelope kinds cause the orchestrator to re-invoke this agent
 
 > Orchestrator template: `docs/references/orchestrator-template.md`
 
@@ -75,9 +74,9 @@ For agents that include the section, it must specify:
 ---
 name: orchestrator
 description: >
-  Orchestrates the development workflow. Team formation, task decomposition,
+  Orchestrates the development workflow. Wave planning, subagent dispatch,
   TDD enforcement, quality gate coordination.
-tools: Read, Glob, Grep, Write, Edit, Bash, Agent, TeamCreate, SendMessage, TaskCreate, TaskUpdate
+tools: Read, Glob, Grep, Write, Edit, Bash, Agent
 model: opus
 ---
 ```

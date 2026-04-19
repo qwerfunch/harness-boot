@@ -2,7 +2,7 @@
 
 This file defines the four per-feature development cycles selected by `feature-list.json` `test_strategy` and the Gate 0 evidence rules that verify each cycle's output. `commands/start.md` Step 4 invokes the cycle below matching the feature's strategy; Step 5 runs the Gate 0 checks on the SHAs / artifacts produced by the cycle.
 
-All cycles execute inside a single `implementer-<slug>`'s context. TDD / BDD sub-agents (`tdd-test-writer`, `tdd-implementer`, `tdd-refactorer`, `bdd-writer`, `tester`) are invoked via the `Agent` tool — they are never team members and never receive `SendMessage`.
+All cycles execute inside a single `implementer-<slug>`'s context. TDD / BDD leaves (`tdd-test-writer`, `tdd-implementer`, `tdd-refactorer`, `bdd-writer`, `tester`) are invoked via the `Agent` tool — they are leaves, not coordination participants, and do not read or write `_workspace/handoff/` envelopes.
 
 ---
 

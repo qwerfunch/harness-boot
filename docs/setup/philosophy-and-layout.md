@@ -76,8 +76,9 @@ project-root/
 ├── scripts/
 │   └── update-feature-status.mjs
 │
-├── _workspace/                            # Intermediate outputs (Agent Team file-based transfer)
-│   └── {phase}_{agent}_{artifact}.{ext}   #   Convention: 01_architect_dependencies.md
+├── _workspace/                            # Intermediate outputs + handoff/ envelopes (Subagent Dispatch coordination)
+│   ├── {phase}_{agent}_{artifact}.{ext}   #   Convention: 01_architect_dependencies.md
+│   └── handoff/{from}->{to}.md            #   Directed agent-to-agent envelopes
 │
 └── src/
     └── ...                                # No sub CLAUDE.md — layer rules injected from .claude/context-map.md
