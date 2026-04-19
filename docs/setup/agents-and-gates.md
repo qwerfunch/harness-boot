@@ -8,7 +8,9 @@
 
 #### Agent Team Execution
 
-harness-boot uses a single execution model: **Agent Team**. The orchestrator creates a team via `TeamCreate`, assigns work via `TaskCreate`/`TaskUpdate`, and members coordinate via `SendMessage`. The team surface is uniform regardless of project size — single-module projects simply register a team of one implementer + reviewer.
+harness-boot currently targets a single execution model: **Agent Team**. The orchestrator creates a team via `TeamCreate`, assigns work via `TaskCreate`/`TaskUpdate`, and members coordinate via `SendMessage`. The team surface is uniform regardless of project size — single-module projects simply register a team of one implementer + reviewer.
+
+> **Experimental dependency.** These primitives (`TeamCreate`/`SendMessage`/`TaskCreate`/`TaskUpdate`) are flag-gated behind `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in Claude Code. Without the flag the runtime silently falls back to single-agent execution and the team patterns below break. A refactor to **Subagent Dispatch** (direct `Agent` invocation + `_workspace/` file envelopes) as the default is planned.
 
 #### Team Architecture Patterns
 
@@ -29,7 +31,7 @@ Specify in the orchestrator how agents share work products:
 
 | Strategy | Method | Best When |
 |----------|--------|-----------|
-| **Message** | `SendMessage` | Real-time coordination, lightweight state |
+| **Message** | `SendMessage` | Inter-agent coordination, lightweight state |
 | **Task** | `TaskCreate`/`TaskUpdate` | Progress tracking, dependency management |
 | **File** | Write/Read to `_workspace/` | Large data, structured outputs, audit trail |
 
