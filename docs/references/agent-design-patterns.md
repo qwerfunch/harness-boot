@@ -3,6 +3,8 @@
 > Reference adapted from [revfactory/harness](https://github.com/revfactory/harness) (Apache-2.0).
 > Integrated into harness-boot's TDD-First, Iteration Convergence, Code-Doc Sync, Anti-Rationalization framework.
 
+> **Experimental dependency.** The `TeamCreate` / `SendMessage` / `TaskCreate` / `TaskUpdate` primitives described below are flag-gated behind `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in Claude Code. Without the flag the runtime silently falls back to single-agent execution and the team patterns below break. A refactor to **Subagent Dispatch** (direct `Agent` invocation + `_workspace/` file envelopes) as the default execution model is planned; this document will be rewritten when that lands.
+
 ---
 
 ## Agent Team Execution
@@ -23,7 +25,7 @@ harness-boot uses a single execution model: **Agent Team**. The team leader crea
 
 **Strengths:**
 - Members communicate directly (no leader bottleneck)
-- Real-time feedback, challenge, and cross-verification between members
+- Inter-member feedback, challenge, and cross-verification
 - Self-coordination via shared task list
 - Idle members automatically notify leader
 
@@ -91,7 +93,7 @@ Parallel processing with result aggregation. Independent work on the same input 
 **Best for:** Same input analyzed from different domains/perspectives simultaneously.
 **Example:** Multi-module development — frontend team + backend team + infra team working in parallel -> integration.
 **Watch out:** Merge stage quality determines overall quality.
-**Notes:** Most natural pattern for Agent Teams. Members share discoveries in real-time; one member's finding can redirect another's approach.
+**Notes:** Most natural pattern for Agent Teams. Members share discoveries through the shared task list and inter-member messages; one member's finding can redirect another's approach.
 
 ### 3. Expert Pool
 Route to the appropriate specialist based on input type.
@@ -113,7 +115,7 @@ Generator and verifier work as a pair.
 **Best for:** Quality assurance with objective verification criteria.
 **Example:** TDD — test-writer produces -> implementer verifies -> reviewer checks.
 **Watch out:** Set max retries (2-3) to prevent infinite loops.
-**Notes:** `SendMessage` enables real-time producer<->reviewer feedback between team members.
+**Notes:** `SendMessage` enables producer<->reviewer feedback between team members.
 
 ### 5. Supervisor
 Central agent manages state and dynamically distributes work to workers.

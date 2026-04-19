@@ -78,7 +78,9 @@ Phase 1-6 sequential generation. After Step 1.7 approval of the decision review,
 
 ## Execution
 
-The harness uses **Agent Team** execution unconditionally. The orchestrator creates a team of module-specific implementers (`implementer-<slug>`), reviewer, and optional qa-agent via `TeamCreate`, coordinates integration points via `SendMessage`, and tracks progress via `TaskCreate`/`TaskUpdate`. Single-module projects use a team of one implementer + reviewer — the team surface is uniform across project sizes.
+The harness currently targets **Agent Team** execution. The orchestrator creates a team of module-specific implementers (`implementer-<slug>`), reviewer, and optional qa-agent via `TeamCreate`, coordinates integration points via `SendMessage`, and tracks progress via `TaskCreate`/`TaskUpdate`. Single-module projects use a team of one implementer + reviewer — the team surface is uniform across project sizes.
+
+These primitives are flag-gated behind `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`; without the flag the runtime silently falls back to single-agent execution and team patterns break. A refactor to **Subagent Dispatch** (direct `Agent` invocation + `_workspace/` file envelopes) as the default is planned.
 
 Team architecture patterns: Fan-out/Fan-in, Pipeline, Supervisor, Producer-Reviewer, Expert Pool, Hierarchical.
 

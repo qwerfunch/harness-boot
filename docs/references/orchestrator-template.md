@@ -95,11 +95,11 @@ Phase 5: Commit & Cleanup
 
 | Strategy | Method | Best When |
 |----------|--------|-----------|
-| **Message-based** | `SendMessage` between members | Real-time coordination, lightweight state |
+| **Message-based** | `SendMessage` between members | Inter-agent coordination, lightweight state |
 | **Task-based** | `TaskCreate`/`TaskUpdate` | Progress tracking, dependency management |
 | **File-based** | Write/Read to agreed paths | Large data, structured outputs, audit trail |
 
-**Recommended combination:** Task-based (coordination) + File-based (outputs) + Message-based (real-time). All three are used together; none is optional.
+**Recommended combination:** Task-based (coordination) + File-based (outputs) + Message-based (direct messaging). All three are used together; none is optional.
 
 ### File-based Transfer Rules
 
