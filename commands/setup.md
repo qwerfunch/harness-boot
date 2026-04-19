@@ -15,7 +15,7 @@ Reads a detailed plan MD and generates a Claude Code native multi-agent harness.
 ### Step 0: Pre-check
 1. Verify the plan MD file at `$ARGUMENTS` exists
 2. If not found, ask the user to confirm the path
-3. Load harness spec index: `${CLAUDE_PLUGIN_ROOT}/docs/setup/INDEX.md`. Always-on topic files at session start: `${CLAUDE_PLUGIN_ROOT}/docs/setup/philosophy-and-layout.md` and `${CLAUDE_PLUGIN_ROOT}/docs/setup/generation-rules.md`. Pull additional files per the INDEX Phase→Files map as each phase runs — never load the legacy `docs/setup-guide.md` (deprecated).
+3. Load harness spec index: `${CLAUDE_PLUGIN_ROOT}/docs/setup/INDEX.md`. Always-on topic files at session start: `${CLAUDE_PLUGIN_ROOT}/docs/setup/philosophy-and-layout.md` and `${CLAUDE_PLUGIN_ROOT}/docs/setup/generation-rules.md`. Pull additional files per the INDEX Phase→Files map as each phase runs.
 4. Check if PROGRESS.md exists
    - If exists with `last_completed_phase: N` where N ∈ {1..5} (unambiguous in-progress): **auto-resume from Phase {N+1}**, inform user: "Resuming from Phase {N+1}. (To start over, delete PROGRESS.md and re-run.)" No question.
    - If exists with `last_completed_phase: setup_complete`: ask "Harness is already set up. (1) ★ Exit  (2) Overwrite and regenerate"
