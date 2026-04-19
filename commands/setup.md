@@ -294,9 +294,26 @@ Orchestrator and module-scoped sub-agents read context-map.md at session start; 
 
 ### Step 7: Phase 6 — State Tracking
 - `feature-list.json` (extracted as JSON from the plan, all `passes: false`). Include:
-  - `depends_on` arrays based on analysis of feature descriptions, shared modules, and tdd_focus overlaps. Validate: (a) no circular dependencies via topological sort, (b) array order respects dependencies.
-    - **Auto-approve path** (no prompt): both (a) and (b) pass → log one-line summary (`Dependency graph: {N} features, acyclic, order-valid`) and continue.
-    - **Prompt path**: if (a) fails (cycle) or (b) fails (out-of-order) → surface the specific violation and the proposed fix, wait for user confirmation before proceeding.
+  - `depends_on` arrays based on analysis of feature descriptions, shared modules, and tdd_focus overlaps.
+  - **Dependency ordering is mandatory and mechanical** — after drafting all features and their `depends_on` arrays, apply the algorithm below BEFORE writing the file. Do not rely on source-plan order.
+    1. **Cycle detection + topological sort (Kahn's algorithm)**: compute indegree for every feature from its `depends_on`. Repeatedly pick any feature with indegree 0, emit it to the output sequence, and decrement the indegree of every feature that lists it in `depends_on`. If the output sequence length is less than the feature count, a cycle exists — surface the remaining (non-emitted) features as the cycle participants and PROMPT the user for resolution. Do not write the file until the cycle is resolved.
+    2. **Tie-breaking during Kahn's pick**: when multiple features have indegree 0 simultaneously, break ties by (a) the order they appeared in the source plan, then (b) alphanumeric `id` ascending. This keeps the output stable across `/setup` re-runs.
+    3. **Write features in the emitted order.** Never preserve source-plan order when it conflicts with dependencies.
+    4. **Post-sort mechanical verification** — before declaring Step 7 complete, run this check and require zero output:
+       ```bash
+       jq -r '
+         [.[] | {id, depends_on}] as $f
+         | $f | to_entries
+         | map(
+             .key as $i | .value.id as $id | .value.depends_on as $deps
+             | ($f | map(.id) | .[0:$i]) as $earlier
+             | ($deps - $earlier) as $late
+             | select($late | length > 0)
+             | "\($id) at index \($i) depends on \($late | join(",")) which appear later"
+           ) | .[]
+       ' feature-list.json
+       ```
+       Any non-empty output means the sort was skipped or the write order was wrong — regenerate feature-list.json from the Kahn output and re-run this check. Only after zero output may you log `Dependency graph: {N} features, acyclic, order-valid` and continue.
     - To revise an auto-approved graph later, delete `PROGRESS.md` and re-run `/setup` (error-recovery rebootstraps from Step 1). Step 1.7 runs before Phase 1 and cannot override a Phase 6 decision.
   - `test_strategy` per feature: classify as `"lean-tdd"` (default: TDD-shaped design, post-hoc BDD verification), `"tdd"` (safety-critical opt-in: strict Red/Green/Refactor isolation), `"state-verification"` (rendering/UI/DOM), or `"integration"` (wiring/entry points). Classification rules:
     - If `category` or `description` mentions any of `auth`, `payment`, `security`, `crypto`, `credential` (case-insensitive) → auto-assign `"tdd"`.
@@ -376,6 +393,21 @@ Verify the entire generated harness:
     - `reviewer.md` must contain a `## Cross-Module Review` section whose body mentions BOTH `qa-report` AND `boundary`. Reviewers without this stage treat cross-module features as single-module and miss boundary drift.
     - `orchestrator.md` AND (if present) `qa-agent.md` must contain a `## QA Invocation Timing` section whose body mentions both `per-module` AND `session-end`. Orchestrators missing the session-end sweep skip the final boundary verification and can ship undetected integration bugs.
     Any missing section means Phase 3 Step 4 rule injection was skipped — regenerate the affected agent from the source in `${CLAUDE_PLUGIN_ROOT}/docs/setup/`, `docs/protocols/`, `docs/templates/protocols/`, or `commands/start.md` (per the anchor table in the rule) and re-verify.
+16. **Dependency order validation** (feature-list.json): re-run the Phase 6 post-sort check — for every feature at array index `i`, every id in its `depends_on` must appear at an earlier index `j < i`.
+    ```bash
+    jq -r '
+      [.[] | {id, depends_on}] as $f
+      | $f | to_entries
+      | map(
+          .key as $i | .value.id as $id | .value.depends_on as $deps
+          | ($f | map(.id) | .[0:$i]) as $earlier
+          | ($deps - $earlier) as $late
+          | select($late | length > 0)
+          | "\($id) at index \($i) depends on \($late | join(",")) which appear later"
+        ) | .[]
+    ' feature-list.json
+    ```
+    Must return zero lines. Any violation means the Phase 6 Kahn sort was skipped or the write order was corrupted by a later patch — reorder features in-place (preserving all other fields) and re-run the check.
 
 Report each item as PASS/FAIL. For each FAIL:
 1. Identify the specific gap (missing file, missing section, wrong model routing, etc.)

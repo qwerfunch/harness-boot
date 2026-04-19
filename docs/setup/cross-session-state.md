@@ -362,18 +362,43 @@ Classification guidance for `/setup`:
 
 **Priority**: Array order determines priority. The first `passes: false` item is the next feature to work on. `/setup` must order features with foundational dependencies first (e.g., auth before profile, profile before order).
 
-**Dependency Validation**: During `/setup` Step 1, after drafting feature-list.json, validate:
-- All `depends_on` IDs must reference existing features within the list.
-- No circular dependencies (topological sort). If cycle detected, report to user and ask for resolution.
-- Array ordering must respect dependencies: if B depends on A, A must appear before B. If violated, reorder and inform user.
-- **Auto-approve when clean**: if both checks pass, log a one-line summary (`Dependency graph: {N} features, acyclic, order-valid`) and continue without prompting. Only prompt the user when a violation is detected; when prompting, show the dependency graph and the specific violation:
-  ```
-  F-01 (physics) [no deps]
-  F-02 (fruit) → F-01
-  F-04 (merging) → F-01, F-02
-  F-03 (score) [no deps]
-  ```
-- The user can still override an auto-approval via Step 1.7 "Change a decision".
+**Dependency Validation**: After drafting feature-list.json during `/setup` Phase 6 (Step 7), the generator MUST apply the algorithm below before writing the file. This is mechanical, not a judgment call — "looks right" is not sufficient.
+
+1. **Reference integrity**: every id in every `depends_on` array must match an `id` of another feature in the list. Unknown id → halt and surface the typo to the user.
+2. **Topological sort via Kahn's algorithm** (cycle detection + correct ordering in one pass):
+   - Compute `indegree[id] = |depends_on|` for every feature.
+   - Initialize the queue with all features where `indegree == 0`. When multiple features tie at indegree 0, break ties by (a) the order they appeared in the source plan, then (b) alphanumeric `id` ascending. This keeps output stable across re-runs.
+   - Repeatedly pop one feature from the queue, append it to the output sequence, and for every feature that lists the popped id in its `depends_on`, decrement indegree; push to the queue when it reaches 0.
+   - If the output sequence length < total feature count, a **cycle** exists. The features that never reached indegree 0 are the cycle participants. Halt the auto-approve path, surface the cycle to the user, and wait for resolution.
+3. **Write features in the emitted order.** Never preserve source-plan order when it conflicts with dependencies. Re-ordering is the tool's job, not the user's.
+4. **Post-sort mechanical verification**: run the check below and require zero output. A non-empty result means the sort was skipped or a later step mutated the array without re-sorting.
+   ```bash
+   jq -r '
+     [.[] | {id, depends_on}] as $f
+     | $f | to_entries
+     | map(
+         .key as $i | .value.id as $id | .value.depends_on as $deps
+         | ($f | map(.id) | .[0:$i]) as $earlier
+         | ($deps - $earlier) as $late
+         | select($late | length > 0)
+         | "\($id) at index \($i) depends on \($late | join(",")) which appear later"
+       ) | .[]
+   ' feature-list.json
+   ```
+
+**Auto-approve path**: if reference integrity passes, Kahn's algorithm emits all features (no cycle), and the post-sort check returns zero lines → log one line (`Dependency graph: {N} features, acyclic, order-valid`) and continue without prompting.
+
+**Prompt path**: if any of the three conditions fails, surface the specific violation and the proposed fix (e.g., show cycle participants, or show the auto-repaired ordering diff), and wait for user confirmation.
+
+Example auto-repaired ordering (stable across runs):
+```
+F-01 (physics) [no deps]
+F-03 (score) [no deps]
+F-02 (fruit) → F-01
+F-04 (merging) → F-01, F-02
+```
+
+The user can still override an auto-approval via Step 1.7 "Change a decision".
 
 Only the `passes` field may be changed during `/start`. Never add/delete/reorder/modify items. `depends_on` and `test_strategy` are set during `/setup` and are immutable during development.
 

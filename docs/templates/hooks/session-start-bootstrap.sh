@@ -56,6 +56,30 @@ if [[ -f "$PROGRESS_FILE" && -f "$FEATURE_LIST" ]]; then
   fi
 fi
 
+# Dependency order validation: every feature's depends_on must reference IDs
+# appearing at an earlier array index. A violation means feature-list.json
+# was hand-edited (or generated pre-fix) without re-sorting — /start's feature
+# selection would then pick blocked features before their prerequisites.
+if [[ -f "$FEATURE_LIST" ]]; then
+  ORDER_VIOLATIONS=$(jq -r '
+    [.[] | {id, depends_on}] as $f
+    | $f | to_entries
+    | map(
+        .key as $i | .value.id as $id | .value.depends_on as $deps
+        | ($f | map(.id) | .[0:$i]) as $earlier
+        | ($deps - $earlier) as $late
+        | select($late | length > 0)
+        | "  - \($id) at index \($i) depends on \($late | join(",")) which appear later"
+      ) | .[]
+  ' "$FEATURE_LIST" 2>/dev/null)
+  if [[ -n "$ORDER_VIOLATIONS" ]]; then
+    echo "### ⚠ Dependency Order Drift"
+    printf "%s\n" "$ORDER_VIOLATIONS"
+    echo "feature-list.json array order violates depends_on. Reorder (Kahn's algorithm) before /start."
+    echo ""
+  fi
+fi
+
 echo "### Recent Commits"
 git -C "$PROJECT_ROOT" log --oneline -5 2>/dev/null || echo "(no git history)"
 
