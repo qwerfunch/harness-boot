@@ -5,7 +5,7 @@
 ```
 Phase 1: Infrastructure ── settings.json, hooks/ (6 scripts), environment.md, security.md, domain-persona.md, scripts/update-feature-status.mjs, .gitignore
 Phase 2: Protocols ── protocols/ (5 protocols), CLAUDE.md, README.md, quality-gates.md
-Phase 3: Agents ── agents/ (9+ agents, with model: field; team communication protocols on communicating agents; optional qa-agent)
+Phase 3: Agents ── agents/ (9+ agents, with model: field; Handoff Protocol section on communicating agents; optional qa-agent)
 Phase 4: Skills ── skills/ (8 skills, Anthropic Agent Skills format, 7-section anatomy), examples/
 Phase 5: Context Map ── .claude/context-map.md (module → layer mapping, architecture rules)
 Phase 6: State ── feature-list.json, PROGRESS.md, CHANGELOG.md, error-recovery.md, observability.md

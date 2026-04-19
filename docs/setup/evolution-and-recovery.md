@@ -288,9 +288,9 @@ Proactively suggest harness evolution when:
    - Decompose into sub-features (FEAT-XXX-a, FEAT-XXX-b)
    - Each sub-feature gets its own TDD cycle
    - Note: feature-list.json items cannot be added, so track sub-features in PROGRESS.md only
-4. For multi-module teams:
-   - Distribute different tdd_focus functions across team members
-   - Each member handles a smaller context load
+4. For multi-module projects:
+   - Distribute different tdd_focus functions across per-module implementers (`implementer-<slug>`)
+   - Each dispatched implementer handles a smaller context load
 
 **Prevention**: Monitor feature complexity. If tdd_focus has > 8 functions or acceptance_test has > 10 items, decompose before starting TDD.
 ```

@@ -56,12 +56,12 @@ Harness ready. Start development.
 2. Check PROGRESS.md → determine session state
 3. Analyze module independence among top-priority passes: false features
 4. Select features that can be parallelized (different modules, no shared dependencies); single-module projects run one feature at a time
-5. TeamCreate with module-specific implementers + reviewer + QA agent (if included)
-6. TaskCreate with feature assignments per implementer
-7. Each implementer runs TDD sub-agent cycle independently
-8. Members coordinate integration points via SendMessage
-9. QA agent verifies cross-boundary consistency after each module completes (reports written to _workspace/qa-{module_name}-report.md)
-10. Reviewer reviews each module, leader verifies cross-module consistency
+5. Emit parallel Agent(subagent_type="implementer-<slug>", prompt=...) tool_use blocks — one per wave feature — in a single orchestrator response
+6. Each implementer runs its test_strategy cycle, invoking tdd-*/bdd-writer sub-agents via Agent inside its own context
+7. Implementers write deliverables to _workspace/02_impl_<slug>_<feature>.md and exit with a _workspace/handoff/implementer-<slug>->reviewer.md envelope (or ->orchestrator.md for coordinate/escalate)
+8. Shared-contract decisions are orchestrator-brokered: the orchestrator reads coordinate envelopes and dispatches a counterparty implementer in the next round (no live cross-member messaging)
+9. If qa-agent is included: Agent(subagent_type="qa-agent") after each module's Gate 1; report written to _workspace/qa_qa-agent_<module>-<feature>.md and attached to Gate 2
+10. Agent(subagent_type="reviewer") reads _workspace/02_impl_* + qa reports; writes _workspace/03_reviewer_<feature>.md; on rejection emits _workspace/handoff/reviewer->implementer-<slug>.md and orchestrator re-dispatches
 11. Run scripts/update-feature-status.mjs for each completed feature
 12. Single commit per feature (code + tests + docs + feature-list.json) — never batch features
 

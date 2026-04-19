@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-harness-boot is a Claude Code plugin that converts detailed plan MDs into executable multi-agent harnesses. It generates ~56 files (9+ agents, 8 skills, 6 hooks, 5 protocols) with TDD sub-agent isolation, code-doc sync enforcement, coverage gate enforcement, anti-rationalization skills, Opus/Sonnet model routing, and Agent Team execution (`TeamCreate`/`SendMessage`/`TaskCreate`) for module-parallel development.
+harness-boot is a Claude Code plugin that converts detailed plan MDs into executable multi-agent harnesses. It generates ~56 files (9+ agents, 8 skills, 6 hooks, 5 protocols) with TDD sub-agent isolation, code-doc sync enforcement, coverage gate enforcement, anti-rationalization skills, Opus/Sonnet model routing, and **Subagent Dispatch** execution (parallel `Agent(subagent_type=...)` tool_use blocks + `_workspace/handoff/` file envelopes) for module-parallel development.
 
 ## Commands
 
@@ -78,11 +78,11 @@ Phase 1-6 sequential generation. After Step 1.7 approval of the decision review,
 
 ## Execution
 
-The harness currently targets **Agent Team** execution. The orchestrator creates a team of module-specific implementers (`implementer-<slug>`), reviewer, and optional qa-agent via `TeamCreate`, coordinates integration points via `SendMessage`, and tracks progress via `TaskCreate`/`TaskUpdate`. Single-module projects use a team of one implementer + reviewer — the team surface is uniform across project sizes.
+The harness uses **Subagent Dispatch** execution. The orchestrator dispatches module-specific implementers (`implementer-<slug>`), reviewer, and optional qa-agent by emitting `Agent(subagent_type=<slug>, prompt=...)` calls. Parallel waves are expressed as multiple `Agent` tool_use blocks in a single orchestrator response — Claude Code's canonical parallel pattern. Coordination is turn-based through `_workspace/handoff/{from}->{to}.md` envelope files; there is no live messaging between simultaneously-running subagents. Per-feature progress lives in `PROGRESS.md`; per-phase artifacts live under `_workspace/`. Single-module projects dispatch one implementer at a time — the dispatch surface is uniform across project sizes.
 
-These primitives are flag-gated behind `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`; without the flag the runtime silently falls back to single-agent execution and team patterns break. A refactor to **Subagent Dispatch** (direct `Agent` invocation + `_workspace/` file envelopes) as the default is planned.
+Divergence from upstream: `docs/references/execution-model-divergence.md` records why Subagent Dispatch replaces the experimental `TeamCreate` / `SendMessage` / `TaskCreate` / `TaskUpdate` path (the primitives are gated behind `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` and silently fall back to single-agent execution without it).
 
-Team architecture patterns: Fan-out/Fan-in, Pipeline, Supervisor, Producer-Reviewer, Expert Pool, Hierarchical.
+Architecture patterns preserved under Subagent Dispatch: Fan-out/Fan-in (N parallel `Agent` blocks), Pipeline (sequential `Agent` calls reading handoff files), Supervisor (orchestrator reads progress + decides next dispatch), Producer-Reviewer (producer `Agent` → handoff → reviewer `Agent`), Expert Pool (dispatch by input type), Hierarchical (2 levels: orchestrator → implementer-with-`Agent`-tool → leaf).
 
 Reference: `docs/references/agent-design-patterns.md` (adapted from [revfactory/harness](https://github.com/revfactory/harness))
 

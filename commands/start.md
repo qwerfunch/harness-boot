@@ -18,7 +18,7 @@ Starts actual development work with the harness in place.
 3. Load `.claude/domain-persona.md` for domain context
 4. Read `conversation_language` and `comment_language` from `.claude/environment.md`. From this point forward the orchestrator MUST:
    - Respond to the user in `conversation_language` (all spinner messages, numbered-choice prompts, status reports, summaries, and CHANGELOG human-description text under `## [Unreleased]`). Keep a Changelog structural headings (`### Added`, etc.) stay English.
-   - Include a `Language Settings` prefix in every subagent dispatch — both `Agent` tool task prompts and `SendMessage` / `TaskCreate` payloads — using this block verbatim:
+   - Include a `Language Settings` prefix in every `Agent(subagent_type=..., prompt=...)` dispatch, using this block verbatim:
      ```
      Language Settings:
      - conversation_language: <value>
@@ -135,7 +135,7 @@ The implementer writes the forwarded payload to `_workspace/bdd_implementer_feat
 
 #### Per-feature cycle by `test_strategy`
 
-Each team member runs the cycle matching its assigned feature's `test_strategy`. Cycles execute inside each `implementer-<slug>`'s context, not at the orchestrator level. Full cycle bodies are embedded in each implementer's agent file at Phase 3 generation (see `commands/setup.md` Phase 3 "Rule text injection"), so the implementer resolves its cycle from its own `## TDD Cycles` section at runtime. Plugin-internal citation (`docs/protocols/tdd-cycles.md`) is the canonical source but is NOT read by subagents at runtime.
+Each dispatched implementer runs the cycle matching its assigned feature's `test_strategy`. Cycles execute inside each `implementer-<slug>`'s context, not at the orchestrator level. Full cycle bodies are embedded in each implementer's agent file at Phase 3 generation (see `commands/setup.md` Phase 3 "Rule text injection"), so the implementer resolves its cycle from its own `## TDD Cycles` section at runtime. Plugin-internal citation (`docs/protocols/tdd-cycles.md`) is the canonical source but is NOT read by subagents at runtime.
 
 | `test_strategy` | Embedded anchor in agent body |
 |-----------------|-------------------------------|
@@ -146,46 +146,54 @@ Each team member runs the cycle matching its assigned feature's `test_strategy`.
 
 All cycles apply Comment Rules in the Implement / Green phase (from the agent's own embedded `## Comment Rules` section) and enforce the 5-iteration convergence limit. `lean-tdd` skips Red-before-Green ordering in favor of post-hoc BDD verification — use for most features. Escalate to `tdd` when invariants are security-sensitive (auth / payment / security / crypto / credential) or when the spec is ambiguous enough that test-first discipline helps pin it down.
 
-#### Team formation and dispatch
-Create a team for parallel module development. Each team member runs its own TDD sub-agent cycle (per `test_strategy` above).
+#### Parallel dispatch (Subagent Dispatch model)
+The orchestrator dispatches one implementer per wave feature in a single response by emitting multiple `Agent` tool_use blocks. Each implementer then invokes its own sub-agent cycle (per `test_strategy` above) within its isolated context. Coordination is turn-based and flows through `_workspace/handoff/` envelope files — there is no live messaging between simultaneously-running subagents. (See `docs/references/execution-model-divergence.md` for why Subagent Dispatch replaces the experimental `TeamCreate` / `SendMessage` / `TaskCreate` path.)
 
-**Task prompt contract** — every `TaskCreate` / `SendMessage` call to an implementer MUST include, at minimum:
+**Dispatch prompt contract** — every `Agent(subagent_type="implementer-<slug>", prompt=...)` call MUST include, at minimum:
 - `feature_id`
 - `test_strategy` (one of `lean-tdd` / `tdd` / `state-verification` / `integration`) — the implementer selects the matching cycle from the `## TDD Cycles` section embedded in its own agent body (no external file read needed)
 - The Language Settings block from Step 1
 - `tdd_focus`, `acceptance_test`, `doc_sync` (sanitized per the Step 4 sub-agent input sanitization rules before any further pass-through to `tdd-test-writer` or `bdd-writer`)
+- Output path instructions: main artifact at `_workspace/02_impl_<slug>_<feature_id>.md`; Gate 2 handoff at `_workspace/handoff/implementer-<slug>->reviewer.md` when the cycle completes cleanly; coordination or escalation handoff at `_workspace/handoff/implementer-<slug>->orchestrator.md` otherwise
 
-The implementer uses `test_strategy` to look up the correct cycle inside its embedded `## TDD Cycles` section — the cycle body travels with the agent, not with the task.
+The implementer uses `test_strategy` to look up the correct cycle inside its embedded `## TDD Cycles` section — the cycle body travels with the agent, not with the prompt.
 
 ```
-# Member names come from .claude/agents/ — one implementer-<slug>.md per
+# One orchestrator response emits N parallel Agent tool_use blocks.
+# Subagent slugs come from .claude/agents/ — one implementer-<slug>.md per
 # module (slug from domain-persona.md), plus reviewer and optionally qa-agent.
-TeamCreate(members: [implementer-<module-a>, implementer-<module-b>, ..., reviewer, qa-agent?])
+
+Agent(subagent_type="implementer-<module-of-feat-xxx>",
+      prompt="FEAT-XXX | test_strategy=<strategy> | Language Settings | sanitized focus/acceptance/doc_sync | write _workspace/02_impl_<slug>_FEAT-XXX.md; on Gate 2 ready write _workspace/handoff/implementer-<slug>->reviewer.md")
+Agent(subagent_type="implementer-<module-of-feat-yyy>",
+      prompt="FEAT-YYY | test_strategy=<strategy> | Language Settings | sanitized focus/acceptance/doc_sync | write _workspace/02_impl_<slug>_FEAT-YYY.md; on Gate 2 ready write _workspace/handoff/implementer-<slug>->reviewer.md")
   ↓
-TaskCreate(FEAT-XXX -> implementer-<module-of-feat-xxx>,
-           FEAT-YYY -> implementer-<module-of-feat-yyy>)
-  # Task prompt carries feature_id, test_strategy, Language Settings, and sanitized focus/acceptance/doc_sync
-  ↓
-Each implementer independently runs the cycle matching its feature's test_strategy:
+Each implementer independently runs the cycle matching its feature's test_strategy
+(sub-agents invoked via Agent tool inside the implementer):
   - "lean-tdd":         Design(self) → Implement(tdd-implementer) → BDD-Verify(bdd-writer) → [optional] Refactor(tdd-refactorer)
   - "tdd":              Red(tdd-test-writer) → Green(tdd-implementer) → Refactor(tdd-refactorer)
   - "state-verification": Implement(tdd-implementer) → StateTest(tdd-test-writer) → Refactor
   - "integration":      Implement(tdd-implementer) → IntegrationTest(tester)
   ↓
-Members coordinate via SendMessage (integration points, shared contracts)
+Shared-contract decisions travel via _workspace/handoff/implementer-<slug>->orchestrator.md
+  (kind=coordinate, status=blocked). The orchestrator brokers a second-round dispatch
+  to the counterparty implementer in its next response — no live cross-member messaging.
   ↓
-QA agent verifies cross-boundary consistency after each module TDD completes (if included)
+When qa-agent is included, orchestrator dispatches it after each module's Gate 1:
+  Agent(subagent_type="qa-agent", prompt="read _workspace/02_impl_*, write _workspace/qa_qa-agent_<module>-<feature_id>.md")
   ↓
-Reviewer reviews each module (QA report included in Gate 2 review material)
+Reviewer dispatch (one call per module, or batched):
+  Agent(subagent_type="reviewer", prompt="read _workspace/02_impl_*, _workspace/qa_qa-agent_* ; write _workspace/03_reviewer_<feature_id>.md; on rejection write _workspace/handoff/reviewer->implementer-<slug>.md")
   ↓
-Leader merges results, verifies cross-module consistency
+Orchestrator reads _workspace/handoff/*, re-dispatches rejected implementers with
+the envelope path, then proceeds to per-feature commits.
 ```
 
-**TDD / BDD isolation preserved in team mode**: Team communication is for module-level coordination only. `tdd-test-writer` still MUST NOT read implementation code, and `bdd-writer` still MUST NOT read implementation code, even via `SendMessage`. The implementer agent remains the information firewall.
+**TDD / BDD isolation preserved under parallel dispatch**: Handoff envelopes carry only the fields in `docs/templates/protocols/message-format.md` — `tdd-test-writer` still MUST NOT read implementation code, and `bdd-writer` still MUST NOT read implementation code. The implementer agent remains the information firewall, sanitizing inputs before forwarding.
 
-**TDD / BDD sub-agents are NOT team members**: `tdd-implementer`, `tdd-refactorer`, `bdd-writer`, and (when generated) `tdd-test-writer` are called via `Agent` tool within each implementer's context. They never receive `SendMessage` and are not part of `TeamCreate`. Team members are: implementers (one per module), reviewer, and optionally qa-agent. Sub-agents are nested inside each implementer's execution.
+**TDD / BDD sub-agents are NOT directly dispatched by the orchestrator**: `tdd-implementer`, `tdd-refactorer`, `bdd-writer`, and (when generated) `tdd-test-writer` are called via the `Agent` tool from inside each implementer's execution. The orchestrator only dispatches implementers, reviewer, and (optionally) qa-agent. Sub-agents are nested one level below each implementer — matching revfactory/harness's "keep to 2 levels" guidance.
 
-**Intermediate outputs**: Written to `_workspace/` with naming convention `{phase}_{agent}_{artifact}.{ext}`.
+**Intermediate outputs**: Main deliverables go to `_workspace/{phase}_{agent}_{artifact}.{ext}`. Directed signals go to `_workspace/handoff/{from}->{to}.md`.
 
 **QA agent invocation points** (only when qa-agent is included per `commands/setup.md` Step 1.6): <!-- anchor: qa-invocation-timing -->
 
@@ -297,7 +305,7 @@ The banner below prints only when both stages either pass or skip and `feature-l
 - 3 → Show remaining features list, let user choose
 
 ## Principles
-- **One feature per agent at a time** (key Anthropic lesson). One feature per team member; multiple features run in parallel across the team when modules are independent. Single-module projects run one feature at a time (team of one).
+- **One feature per agent at a time** (key Anthropic lesson). One feature per dispatched implementer; multiple features run in parallel when the orchestrator emits multiple `Agent` tool_use blocks in a single response and the features share no `tdd_focus` / `doc_sync` / `depends_on`. Single-module projects dispatch one implementer at a time.
 - **One feature per commit** (non-negotiable). Each feature must be committed individually with its tests and docs before proceeding to the next. Never batch multiple features into a single commit — this enables `git revert` per feature and satisfies Gate 4. If the user requests "implement all features at once", still execute them sequentially: TDD cycle → quality gates → commit → next feature. Parallel team execution commits each module's feature independently.
 - **Auto-proceed on success**: Steps 4-7 run without mid-feature pauses when all gates pass. Pause only at decision points (Steps 3, 8) and on escalation conditions. Auto-pilot mode also auto-proceeds through Steps 3 and 8.
 - On convergence failure (> 5 iterations), suggest switching to debugger
@@ -354,15 +362,13 @@ Auto-pilot runs all remaining features end-to-end, pausing only on escalation co
   (2) Continue in manual mode
   ```
 
-#### Stop propagation across the team
-Auto-pilot with multiple team members running concurrently under the orchestrator requires graceful stop handling. A `stop`/`pause` input from the user must not abort mid-commit or leave orphaned sub-agent work. The orchestrator enforces the following protocol:
+#### Stop propagation across parallel implementers
+Auto-pilot with a multi-implementer wave requires graceful stop handling. A `stop`/`pause` input from the user must not abort mid-commit or leave orphaned sub-agent work. Because Subagent Dispatch has no live cancel channel into a running `Agent` call (see `docs/references/execution-model-divergence.md`), stop is enforced at wave boundaries rather than mid-wave:
 
-1. On `stop`/`pause` detection, orchestrator calls `TaskUpdate(<child_task>, status: 'cancel-pending')` for every in-flight member task.
-2. Each team member checks the cancel flag at every **phase boundary**: end of Design / Implement / BDD-Verify / Refactor / Verify under `lean-tdd`; end of Red / Green / Refactor / Verify under `tdd`; end of Implement / State-Test / Refactor under `state-verification`; end of Implement / Integration-Test under `integration`. Mid-phase work is never interrupted — phases are atomic.
-3. A member that sees `cancel-pending` at a phase boundary:
-   - If the member is **before its feature's commit**: finish the current phase, emit a partial-progress report to `_workspace/`, set `status: 'cancelled'`, exit without committing.
-   - If the member is **at or after its feature's commit**: complete the commit (single-commit discipline), set `status: 'completed'`, exit.
-4. Orchestrator waits for all members to reach a terminal state (`cancelled` or `completed`), then sets `auto_pilot: false` in PROGRESS.md and returns to manual mode at Step 8.
-5. Any feature that exited as `cancelled` stays `passes: false`; next `/start` re-selects it per the normal Step 3 dependency gate.
+1. The currently in-flight dispatch wave (the N parallel `Agent` calls emitted in the orchestrator's latest response) runs to completion — each implementer is atomic once dispatched. Stops are never injected mid-wave.
+2. When all in-flight implementers return their handoff envelopes, the orchestrator checks for `stop`/`pause` before emitting the next dispatch wave.
+3. For each feature that completed its cycle in the just-finished wave (handoff `kind=review-request`, `status=completed`): proceed through the reviewer dispatch and per-feature commit normally — single-commit discipline wins over stop latency.
+4. For each feature that exited with `kind=escalate` or `kind=coordinate` (`status=blocked`): leave it `passes: false`; do not dispatch the next round.
+5. After settling all just-completed features, orchestrator sets `auto_pilot: false` in PROGRESS.md and returns to manual mode at Step 8. Any non-committed feature stays `passes: false`; next `/start` re-selects it per the normal Step 3 dependency gate.
 
-This guarantees: no half-commits, no lost partial work (`_workspace/` artifacts survive), no inconsistent PROGRESS.md / feature-list.json state.
+This guarantees: no half-commits, no lost partial work (`_workspace/` artifacts and handoff envelopes survive), no inconsistent PROGRESS.md / feature-list.json state. Stop latency is bounded by the longest-running implementer in the current wave — typically one feature's cycle.
