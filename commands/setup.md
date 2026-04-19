@@ -46,7 +46,7 @@ Resolve `conversation_language` by invoking the detection script via the Bash to
 node "${CLAUDE_PLUGIN_ROOT}/scripts/detect-conversation-language.mjs"
 ```
 
-The script is the single source of truth; its OS-aware fallback chain (macOS / Linux / systemd / WSL / Git Bash / MSYS / Cygwin / pure PowerShell) and normalization rules are documented at `${CLAUDE_PLUGIN_ROOT}/docs/setup/cross-session-state.md#conversation-language-detection`. Capture stdout as `$lang`.
+The script is the single source of truth; the OS-first contract (OS display language > shell locale > prompt) is summarized at `${CLAUDE_PLUGIN_ROOT}/docs/setup/cross-session-state.md#conversation-language-detection`, and the per-platform stage list (macOS / Linux systemd / WSL / Git Bash / MSYS / Cygwin / pure PowerShell) lives in the script's header JSDoc. Capture stdout as `$lang`.
 
 - **Non-empty `$lang`** (e.g. `ko`, `en`, `ja`): record silently in `environment.md` as `conversation_language: <lang>` and proceed to Step 1.2. This is the normal path — no prompt shown.
 - **Empty `$lang`** (every stage returned blank, or only rejected values like `C`/`POSIX`): the system locale is indeterminate. Ask exactly one question, with the ★ default inferred from the language the user has already used in **this session** (if any), otherwise ★ defaults to `en`:
