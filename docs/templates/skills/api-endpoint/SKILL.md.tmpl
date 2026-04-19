@@ -1,0 +1,80 @@
+---
+name: api-endpoint
+description: >
+  {{DESCRIPTION}}
+  TRIGGER when: {{TRIGGER_CONDITIONS}}.
+  DO NOT TRIGGER when: {{EXCLUSION_CONDITIONS}}.
+metadata:
+  author: harness-boot
+  version: "1.0"
+  category: integration
+allowed-tools: "Read Glob Grep Write Edit Bash"
+---
+# API Endpoint
+
+## Overview
+Adds or modifies a caller-facing interface boundary. The boundary's contract
+(inputs, outputs, error shapes) is the single thing every test and every
+downstream consumer agrees on — this skill keeps the contract, the
+implementation, and the docs synchronized across one commit.
+
+## When to Use
+- **Trigger**: {{WHEN_TRIGGER}}
+- **Not when**: {{WHEN_NOT}}
+- **Related skills**: `new-feature` (the enclosing feature cycle invokes
+  this skill at the boundary step), `db-migration` (when the endpoint's
+  backing storage changes), `tdd-workflow` (when the feature is on a
+  `tdd` strategy).
+
+## TDD Focus
+- **Must test**: Every input validator, every response branch (success +
+  each error shape), and the serialization layer. Boundary tests assert the
+  observable contract, not internal implementation paths.
+- **Test exempt**: Middleware shared across endpoints and already covered
+  by its own suite — do not duplicate here.
+- **Coverage target**: The endpoint's handler + validator + serializer
+  meet the project's `test_strategy` coverage rule (see each agent's
+  `## Gate 0 Evidence` section).
+
+## Process
+### Step 1: Lock the contract
+{{PROCESS_STEP_1}}
+
+### Step 2: Tests against the contract
+{{PROCESS_STEP_2}}
+
+### Step 3: Implement handler + validator + serializer
+{{PROCESS_STEP_3}}
+
+### Step 4: Wire to the router / entry point
+{{PROCESS_STEP_4}}
+
+### Step 5: Doc sync
+Update the interface doc (OpenAPI / schema / handler docstring) cited in
+the feature's `doc_sync` array. The pre-commit doc-sync hook blocks
+otherwise.
+
+### Step 6: Single commit
+Stage contract doc + tests + handler/validator/serializer + route wiring
+in one commit. Verify `git revert <sha>` removes the endpoint cleanly.
+
+## Common Rationalizations
+| Excuse | Rebuttal |
+|--------|----------|
+| "It's an internal API — the doc can wait" | Next month's caller is another agent (or you), and it will read the doc, not your brain. The feature's `doc_sync` array exists because at least one consumer was known; update it now or the pre-commit hook blocks. |
+| "Validation can go in later — the handler works for happy path" | Error shapes are part of the contract. Callers rely on the shape to branch. "Later" validators change the contract mid-flight — that is a breaking change, not a cleanup. |
+| "I'll reuse the serializer from another endpoint with small tweaks" | If it is reused, extract and test it once. If it is tweaked, the tweak is a new surface that needs its own boundary test. Either way, the "copy-paste + edit" path skips the test step and lands untested code at the boundary. |
+| "The boundary test duplicates the implementation, so it's redundant" | The boundary test asserts the *observable* contract. The implementation could be rewritten end-to-end and the boundary test would still hold — that is the point. Redundancy with the implementation is the feature. |
+
+## Red Flags
+- New endpoint committed without any file under the test path being added
+- Handler returns a shape not mentioned in the contract doc (or vice versa)
+- Route wiring happens in a later commit than the handler (partial state merged)
+- An error response shape added without a corresponding boundary test
+
+## Verification
+- [ ] Contract doc updated and referenced in `doc_sync` (evidence: `git diff --name-only` includes the doc path)
+- [ ] Boundary test file exercises every declared response shape (evidence: test runner output with each case labelled)
+- [ ] Route wiring present in the same commit as handler (evidence: `git show --stat`)
+- [ ] Handler / validator / serializer coverage meets `test_strategy` target (evidence: coverage report)
+- [ ] `git revert <sha>` removes endpoint without leaving dangling routes (evidence: runtime smoke)
