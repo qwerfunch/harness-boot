@@ -43,7 +43,48 @@ try {
 } catch {
   process.exit(0);
 }
-const current = features.find(f => f.passes === false);
+
+/**
+ * Find the feature this commit is finalizing by diffing the staged
+ * feature-list.json against HEAD and picking the id whose `passes`
+ * flipped false → true. `/start` Step 7 runs update-feature-status
+ * BEFORE `git commit`, so at hook time the just-completed feature is
+ * already `passes: true` — a naive `find(passes === false)` would
+ * return the NEXT feature and apply the wrong doc_sync contract to
+ * this commit.
+ */
+function resolveCurrentFeature(features) {
+  const stagedRes = spawnSync('git', ['-C', PROJECT_ROOT, 'show', ':feature-list.json'], { encoding: 'utf8' });
+  const headRes = spawnSync('git', ['-C', PROJECT_ROOT, 'show', 'HEAD:feature-list.json'], { encoding: 'utf8' });
+  if (stagedRes.status !== 0 || headRes.status !== 0) {
+    return features.find(f => f.passes === false);
+  }
+  let staged, head;
+  try {
+    staged = JSON.parse(stagedRes.stdout);
+    head = JSON.parse(headRes.stdout);
+  } catch {
+    return features.find(f => f.passes === false);
+  }
+  if (!Array.isArray(staged) || !Array.isArray(head)) {
+    return features.find(f => f.passes === false);
+  }
+  const flipped = staged.filter(s => {
+    const h = head.find(x => x.id === s.id);
+    return s.passes === true && h && h.passes === false;
+  });
+  if (flipped.length === 1) {
+    return features.find(f => f.id === flipped[0].id);
+  }
+  if (flipped.length > 1) {
+    console.error(`WARNING: multiple features flipped in single commit: ${flipped.map(f => f.id).join(', ')}`);
+    console.error('Single-commit-per-feature is required. Checking first flipped feature only.');
+    return features.find(f => f.id === flipped[0].id);
+  }
+  return features.find(f => f.passes === false);
+}
+
+const current = resolveCurrentFeature(features);
 if (!current) process.exit(0);
 
 /* ── Staged-diff scan ─────────────────────────────────────────── */
