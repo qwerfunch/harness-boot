@@ -57,8 +57,8 @@ When iteration ≥ 5:
 
 Parallel features run concurrently across module implementers. Because each feature's counter lives under its own `feature_id` scope in `## Current TDD State`, there is no shared mutable field — the only shared resource is the PROGRESS.md file itself.
 
-- Writers append/update their own feature_id's row; the orchestrator serializes PROGRESS.md writes when multiple implementers finish a phase at the same tick.
-- If two implementers attempt to write simultaneously, the orchestrator's `TaskUpdate` dispatch queue is the single serialization point. Members MUST NOT bypass the orchestrator to write PROGRESS.md directly.
+- Each implementer updates only its own feature_id's row within its `Agent` call; PROGRESS.md writes are serialized naturally because Subagent Dispatch waits for all parallel `Agent` calls in a wave to return before the orchestrator emits the next write.
+- Implementers MUST NOT bypass the orchestrator to commit PROGRESS.md directly to git — the orchestrator stages PROGRESS.md as part of each feature's single commit (Step 7). Intra-run PROGRESS.md edits by implementers are local filesystem writes consumed by the orchestrator between dispatch rounds.
 
 ## Observability
 

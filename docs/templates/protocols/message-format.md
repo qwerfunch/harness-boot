@@ -1,67 +1,95 @@
-# Message Format Protocol
+# Handoff Envelope Format Protocol
 
-Defines the payload schema for inter-agent communication. Applies to `SendMessage`, `TaskCreate`, `TaskUpdate` tool calls and the `_workspace/` file transfer convention.
+Defines the schema for inter-agent handoff envelopes written to `_workspace/handoff/{from}->{to}.md`. These envelopes are the sole mechanism for directed agent-to-agent signals in Subagent Dispatch — task assignment travels through the `Agent` tool's `prompt` parameter, not through envelopes.
 
 ## Principles
 
-1. **Structured over free-form** — every message carries named fields, not just a prose blob
-2. **Location-only artifacts** — large outputs live in `_workspace/`; messages carry paths, not content
+1. **Structured over free-form** — every envelope carries named fields in YAML frontmatter, not just a prose blob
+2. **Location-only artifacts** — large outputs live in `_workspace/{phase}_{agent}_{artifact}.{ext}`; envelopes carry paths, not content
 3. **Versioned status enum** — status values are drawn from a fixed set; inventing new values is not allowed without updating this protocol
-4. **No implicit broadcast** — every message has a named recipient; team-wide announcements go through the orchestrator
+4. **Directed, not broadcast** — every envelope has a single named recipient in its filename; fan-out is N separate files
+
+## Envelope location and naming <!-- anchor: envelope-location -->
+
+```
+_workspace/handoff/{from}->{to}.md
+```
+
+- `{from}` and `{to}` are agent slugs (e.g., `implementer-auth`, `reviewer`, `orchestrator`)
+- One envelope per directed pair per round; a later round overwrites the previous file for the same pair
+- The orchestrator reads envelopes addressed to itself between dispatch rounds; subagents read envelopes addressed to them via paths passed into their `Agent` prompt
 
 ## Core fields <!-- anchor: core-fields -->
 
-Every `SendMessage` payload carries these fields (JSON-serializable):
+Every envelope is a markdown file with YAML frontmatter + a short body:
+
+```yaml
+---
+from: implementer-auth          # sender agent slug
+to: reviewer                    # single recipient agent slug (or `orchestrator`)
+feature_id: FEAT-042            # which feature this pertains to
+phase: Gate2                    # Red | Green | Refactor | Verify | Gate2 | QA | Escalate | Coordinate
+kind: review-request            # see "Envelope kinds" below
+status: completed               # see "Status enum"
+artifact_path: _workspace/02_impl_auth_feat-042-bundle.md   # required for kinds listed below
+blockers: []                    # required when status ∈ {blocked, failed}
+summary: Red-Green-Refactor done, ready for review          # ≤ 200 chars
+---
+
+<optional body: free-form notes, rationale, links to multiple artifacts>
+```
+
+Field rules:
 
 | Field | Type | Required | Notes |
 |-------|------|----------|-------|
-| `from` | string (agent name) | yes | Must match the sender's agent slug (e.g., `implementer-auth`) |
-| `to` | string (agent name) | yes | Single recipient. Fan-out is N separate messages |
-| `feature_id` | string | yes | `FEAT-XXX` — which feature this message pertains to |
-| `phase` | enum | yes | `Red`, `Green`, `Refactor`, `Verify`, `Gate2`, `QA`, `Escalate`, or `Coordinate` |
-| `kind` | enum | yes | See "Message kinds" below |
-| `artifact_path` | string | when kind ∈ {`artifact-ready`, `review-request`, `qa-report`} | Path under `_workspace/` |
+| `from` | string | yes | Must match sender's agent slug |
+| `to` | string | yes | Single recipient; fan-out uses N separate envelope files |
+| `feature_id` | string | yes | `FEAT-XXX` |
+| `phase` | enum | yes | `Red`, `Green`, `Refactor`, `Verify`, `Gate2`, `QA`, `Escalate`, `Coordinate` |
+| `kind` | enum | yes | See "Envelope kinds" |
 | `status` | enum | yes | See "Status enum" |
-| `blockers` | array<string> | when status ∈ {`blocked`, `cancel-pending`} | Human-readable reasons |
+| `artifact_path` | string | when kind ∈ {`artifact-ready`, `review-request`, `review-result`, `qa-report`, `escalate`} | Path under `_workspace/` |
+| `blockers` | array<string> | when status ∈ {`blocked`, `failed`} | Human-readable reasons |
 | `summary` | string | yes | ≤ 200 chars — the one-line takeaway |
 
-## Message kinds
+## Envelope kinds
 
 | Kind | Sender → Receiver | Meaning |
 |------|-------------------|---------|
-| `task-assigned` | orchestrator → implementer-<slug> | A feature is assigned to this implementer |
-| `artifact-ready` | implementer-<slug> → reviewer / qa-agent | A _workspace artifact is available for review |
+| `artifact-ready` | implementer-<slug> → reviewer / qa-agent | A `_workspace/` artifact is available for review |
 | `review-request` | implementer-<slug> → reviewer | Gate 2 review requested |
 | `review-result` | reviewer → implementer-<slug> | Approve / request-changes / critical-reject |
 | `qa-report` | qa-agent → orchestrator | Cross-module boundary verification report |
-| `coordinate` | implementer-<slug> → implementer-<slug> | Shared-contract negotiation (e.g., API shape) |
+| `coordinate` | implementer-<slug> → orchestrator | Shared-contract decision needed (orchestrator brokers the round-trip) |
 | `escalate` | implementer-<slug> → orchestrator | Convergence failure or unrecoverable error |
-| `cancel-pending` | orchestrator → any member | Stop at the next phase boundary |
+
+> **No real-time messaging.** Subagent Dispatch has no equivalent of `SendMessage` / `cancel-pending` to a live agent. If an agent must stop, the orchestrator simply does not re-dispatch it. Task assignment is delivered through the `Agent` tool's `prompt` parameter, not as an envelope.
 
 ## Status enum
 
 ```
-queued       — task created, not yet started
-running      — member is actively working
-blocked      — member stopped waiting for input/coordination
-cancel-pending — orchestrator asked to stop; member finishes current phase then exits
+running      — subagent is producing output (transient state inside an active Agent call)
+blocked      — subagent exited while waiting on coordination (envelope carries the blocker)
 completed    — work done, evidence in artifact_path
 failed       — terminal failure, requires escalation
 ```
 
-Transitions are monotonic within a task: `queued → running → (blocked → running)* → (completed | failed | cancel-pending)`. A task cannot go from `completed` back to `running`; start a new task.
+A single `Agent` invocation resolves to `completed`, `blocked`, or `failed` — an envelope is written once at exit. `running` is informational only (for log-shaped artifacts that stream progress).
 
 ## `_workspace/` naming convention <!-- anchor: workspace-naming -->
+
+Envelopes live under `_workspace/handoff/`. Main deliverables (the artifact a subagent produced) live at:
 
 ```
 _workspace/{phase}_{agent}_{artifact}.{ext}
 ```
 
 Examples:
-- `_workspace/red_tdd-test-writer_feat-042-tests.ts`
-- `_workspace/gate2_reviewer_feat-042-report.md`
+- `_workspace/01_architect_dependencies.md`
+- `_workspace/02_impl_auth_feat-042-bundle.md`
+- `_workspace/03_reviewer_feat-042.md`
 - `_workspace/qa_qa-agent_module-auth-order-boundary.md`
-- `_workspace/escalate_implementer-auth_feat-042-trail.md`
 
 Rules:
 - Slugs are lowercase, hyphenated
@@ -69,33 +97,47 @@ Rules:
 - Overwrite is permitted for same-phase same-agent retries; the last-write is authoritative
 - The orchestrator does not clean `_workspace/` between sessions — artifacts are debugging evidence
 
-## Example — fan-out and collect
+## Example — parallel dispatch and collect
 
-Orchestrator assigns two parallel features:
+Orchestrator dispatches two parallel implementers in one response (two `Agent` tool_use blocks):
 
-```json
-{ "from": "orchestrator", "to": "implementer-auth",  "feature_id": "FEAT-042", "phase": "Red",     "kind": "task-assigned",  "status": "queued", "summary": "Start TDD cycle for FEAT-042" }
-{ "from": "orchestrator", "to": "implementer-order", "feature_id": "FEAT-043", "phase": "Red",     "kind": "task-assigned",  "status": "queued", "summary": "Start TDD cycle for FEAT-043" }
+```
+Agent(subagent_type="implementer-auth",
+      prompt="FEAT-042 ... write _workspace/02_impl_auth_feat-042-bundle.md; on Gate 2 ready write _workspace/handoff/implementer-auth->reviewer.md")
+Agent(subagent_type="implementer-order",
+      prompt="FEAT-043 ... write _workspace/02_impl_order_feat-043-bundle.md; on Gate 2 ready write _workspace/handoff/implementer-order->reviewer.md")
 ```
 
-Each implementer reports back on Gate 2 readiness:
+Each implementer, on completion, writes its envelope (example frontmatter shown):
 
-```json
-{ "from": "implementer-auth",  "to": "reviewer", "feature_id": "FEAT-042", "phase": "Gate2", "kind": "review-request", "artifact_path": "_workspace/gate2_implementer-auth_feat-042-bundle.md",  "status": "completed", "summary": "Red-Green-Refactor done, ready for review" }
-{ "from": "implementer-order", "to": "reviewer", "feature_id": "FEAT-043", "phase": "Gate2", "kind": "review-request", "artifact_path": "_workspace/gate2_implementer-order_feat-043-bundle.md", "status": "completed", "summary": "Red-Green-Refactor done, ready for review" }
+```yaml
+# _workspace/handoff/implementer-auth->reviewer.md
+---
+from: implementer-auth
+to: reviewer
+feature_id: FEAT-042
+phase: Gate2
+kind: review-request
+status: completed
+artifact_path: _workspace/02_impl_auth_feat-042-bundle.md
+summary: Red-Green-Refactor done, ready for review
+---
 ```
+
+The orchestrator then dispatches the reviewer with the envelope path in its prompt.
 
 ## Coordination across modules <!-- anchor: coordinate-round-trip -->
 
-When two implementers need to agree on a shared contract (e.g., `auth` exposes a function that `order` consumes):
+Subagent Dispatch has no live inter-agent channel, so coordination is always orchestrator-brokered:
 
-1. Consumer sends `coordinate` with `summary` = proposed shape, `artifact_path` = proposal doc
-2. Producer responds `coordinate` with either `status: completed` (accepted) or `status: blocked` (counter-proposal in new artifact_path)
-3. Up to 3 rounds. If unresolved, both escalate to orchestrator with `kind: escalate`
-4. The orchestrator either rules on the shape (architect consulted) or blocks both features until the plan is revised
+1. **Consumer requests.** The consumer implementer writes `_workspace/handoff/implementer-<consumer>->orchestrator.md` with `kind: coordinate`, `status: blocked`, and `artifact_path` pointing to a proposal doc (e.g., proposed function signature).
+2. **Orchestrator brokers.** On the next dispatch round, the orchestrator dispatches the producer implementer with a prompt that references the consumer's proposal.
+3. **Producer responds.** The producer writes `_workspace/handoff/implementer-<producer>->orchestrator.md` with either `status: completed` (accepted — signature inlined in summary) or `status: blocked` (counter-proposal in a new artifact_path).
+4. Up to 3 rounds. If unresolved, both implementers escalate with `kind: escalate`. The orchestrator either rules on the shape (architect consulted) or blocks both features until the plan is revised.
 
 ## Out of scope
 
 - Binary payloads (images, archives) — not supported; reference a path instead
 - Direct agent-to-agent file editing — all writes go through `_workspace/` first, then the receiving agent reads
 - Chain-of-thought or reasoning dumps — these stay internal to each agent
+- Real-time messaging between simultaneously-live agents — not supported by Subagent Dispatch; all coordination is turn-based through the orchestrator

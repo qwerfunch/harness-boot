@@ -224,8 +224,8 @@ Each agent YAML frontmatter includes a `model:` field.
 - **Module-specific implementer agents**:
   - For each slug produced by the **Module Extraction algorithm** (`${CLAUDE_PLUGIN_ROOT}/docs/setup/domain-persona.md#module-extraction`) at Step 1.5, generate `implementer-<module-slug>.md` (model: sonnet). Do not re-derive modules here — use the frozen slug set from Step 1.5.
   - All module implementers are instantiated from the same `implementer.md` body; per-instance overrides live in the YAML frontmatter (`metadata.module: <slug>`, `metadata.allowed-paths: [...]`) and in one inlined "Module scope" block referencing the matching row from `.claude/context-map.md`.
-  - The generic `implementer.md` is the template of record; it is not registered as a team member.
-  - Count: one per module (minimum 1 for single-module projects — team of one implementer + reviewer).
+  - The generic `implementer.md` is the template of record; it is not itself a dispatchable subagent — only the generated `implementer-<slug>.md` files are.
+  - Count: one per module (minimum 1 for single-module projects — one implementer + reviewer).
 
 **Sub-agent input contract**:
 - When generating `tdd-test-writer.md` (if emitted), inject the "TDD sub-agent input sanitization" clause from `commands/start.md` Step 4 into the agent prompt body under a `## Inputs` section. The clause lists what fields the writer may read and what implementation hints must be absent; the writer self-checks on receipt and aborts with a note to `_workspace/` if the inputs look contaminated.
@@ -281,8 +281,8 @@ Respond to the user in conversation_language. Write all source-code comments in 
 
 Embedding is done inside the `/setup` slash-command context (top-level), which CAN resolve `${CLAUDE_PLUGIN_ROOT}`. Subagents only ever see the post-embed files.
 
-**Team Communication Protocol integration:**
-Add `## Team Communication Protocol` section **only to agents that actually exchange team messages** — orchestrator, module-specific implementers, reviewer, and qa-agent (if included). Non-communicating agents (`architect`, `debugger`, `tester`, `bdd-writer`, and all `tdd-*` sub-agents) **omit the section** to avoid empty-ceremony placeholders. `${CLAUDE_PLUGIN_ROOT}/docs/references/orchestrator-template.md` is a **structural example** for the orchestrator's `TeamCreate`/`SendMessage`/`TaskCreate` workflow only; it is NOT the source of truth for selection, coordination, or QA timing semantics — those come from the inline-embed rules 5, 6, 7, 10, 11 above. Do not restate algorithms from the template; embed from the anchored sources.
+**Handoff Protocol integration:**
+Add `## Handoff Protocol` section **only to agents that actually produce or consume handoff envelopes** — orchestrator, module-specific implementers, reviewer, and qa-agent (if included). Non-communicating agents (`architect`, `debugger`, `tester`, `bdd-writer`, and all `tdd-*` sub-agents) **omit the section** to avoid empty-ceremony placeholders. `${CLAUDE_PLUGIN_ROOT}/docs/references/orchestrator-template.md` is a **structural example** for the orchestrator's Subagent Dispatch workflow (parallel `Agent` tool_use blocks + `_workspace/handoff/` envelopes) only; it is NOT the source of truth for selection, coordination, or QA timing semantics — those come from the inline-embed rules 5, 6, 7, 10, 11 above. Do not restate algorithms from the template; embed from the anchored sources.
 
 **Generate agents in parallel.** Agents do not read each other's file bodies — cross-references are name-based only. Issue all agent-file `Write` tool calls in a single message (one per agent). The agent set (including optional qa-agent and conditional tdd-test-writer) must be resolved before dispatching — decide the set first, then write them all concurrently.
 
@@ -406,7 +406,7 @@ Verify the entire generated harness:
 9. Tokens: CLAUDE.md <= 1,500 tokens, per-task ~3,900-4,000 tokens
 10. Architecture: If pattern was selected, verify environment.md contains pattern rules, context-map.md contains the Module → Layer mapping, and architect agent includes pattern constraints
 11. Domain persona: domain-persona.md exists, contains all 6 sections (Purpose, Key Entities, Domain Rules, Vocabulary, Stakeholder Concerns, Success Criteria), entities table has >= 2 rows, domain rules has >= 2 items
-12. Team communication: communicating agents (orchestrator, module implementers, reviewer, qa-agent) have `## Team Communication Protocol` section — non-communicating agents (architect, debugger, tester, tdd-*) do NOT; if QA agent included, qa-agent.md exists with `model: opus`
+12. Handoff protocol: communicating agents (orchestrator, module implementers, reviewer, qa-agent) have `## Handoff Protocol` section — non-communicating agents (architect, debugger, tester, bdd-writer, tdd-*) do NOT; if QA agent included, qa-agent.md exists with `model: opus`
 13. Data transfer: orchestrator specifies data transfer protocols (message/task/file-based); `_workspace/` directory convention documented
 14. **Placeholder sweep**: `grep -rEn '\{(COVERAGE_COMMAND|COVERAGE_FILE)\}' .claude/ hooks/ scripts/ 2>/dev/null` → must return zero matches. Any hit means Phase 1 Step 2 substitution was skipped — regenerate the affected hook from `${CLAUDE_PLUGIN_ROOT}/docs/templates/hooks/` with the correct `stacks.md` row, then re-run this check.
 15. **Rule embed verification**: every generated agent file under `.claude/agents/` must contain a `## Language Settings` section. In addition:
