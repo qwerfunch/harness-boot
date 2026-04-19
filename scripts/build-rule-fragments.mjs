@@ -29,6 +29,26 @@ mkdirSync(DEST, { recursive: true });
 /* ── Extractor ───────────────────────────────────────────────── */
 
 /**
+ * Rewrite plugin-internal references into target-harness-valid ones.
+ * Rule fragments are concatenated verbatim into `.claude/agents/*.md`
+ * in the target project, which has no access to `docs/setup/*`,
+ * `docs/protocols/*`, `docs/templates/*`, or `commands/*`. Without this
+ * step, baked references would dangle on the target side.
+ */
+function rewriteTargetReferences(text) {
+  return text
+    // Comment Rules are embedded into each agent body at Phase 3 — point there, not the plugin spec.
+    .replace(/`docs\/setup\/code-style\.md#comment-rules`/g, "this agent's `## Comment Rules` section")
+    // Target harness copies protocols into `.claude/protocols/`.
+    .replace(/`docs\/templates\/protocols\/([a-z0-9-]+)\.md/g, "`.claude/protocols/$1.md")
+    // tdd-cycles body is embedded in each implementer's own `## TDD Cycles` section at Phase 3.
+    .replace(/`docs\/protocols\/tdd-cycles\.md`/g, "this agent's `## TDD Cycles` section")
+    // Gate 5 Runtime Smoke lives in the generated orchestrator's body in the target harness.
+    .replace(/`docs\/setup\/agents-and-gates\.md` anchor `runtime-smoke-gate`/g, "the orchestrator's `## Gate 5: Runtime Smoke` section")
+    .replace(/`docs\/setup\/agents-and-gates\.md`/g, "the orchestrator's embedded gate sections");
+}
+
+/**
  * Slice lines from startRe (inclusive) up to stopRe (exclusive) and
  * write the result to destPath. stopRe === null means "to EOF".
  *
@@ -67,7 +87,7 @@ function extract(srcPath, startRe, stopRe, destPath) {
     process.exit(1);
   }
   // Per-line trailing `\n` matches the awk reference implementation.
-  const text = out.map(l => l + '\n').join('');
+  const text = rewriteTargetReferences(out.map(l => l + '\n').join(''));
   writeFileSync(destPath, text);
   return text;
 }
@@ -115,7 +135,7 @@ function extractToString(srcPath, startRe, stopRe) {
     console.error(`ERROR: stopRe never matched (stop=${stopRe} src=${srcPath}). Likely a source heading rename; update the generator.`);
     process.exit(1);
   }
-  return out.map(l => l + '\n').join('');
+  return rewriteTargetReferences(out.map(l => l + '\n').join(''));
 }
 
 const cyclesBody = extractToString(tddSrc, /^## Cycle: lean-tdd <!-- anchor: cycle-lean-tdd -->/, /^---$/);
