@@ -4,10 +4,11 @@
 
 | Principle | Description | Enforcement Mechanism |
 |-----------|-------------|----------------------|
-| **TDD-First** | Test first → minimal implementation → refactor. Focus on core logic only. | Gate 0 + sub-agent context isolation |
+| **Testable-First** | Code is designed for testability (separable functions, pure boundaries, DI points). `lean-tdd` defers test writing to a post-hoc BDD gate; strict `tdd` keeps Red → Green → Refactor for safety-critical domains. | Gate 0 evidence + sub-agent context isolation |
 | **Iteration Convergence** | Implement → test → verify → feedback → fix loop. Repeat until convergence. | Max 5 iterations then escalation |
 | **Code-Doc Sync** | When code changes, update related docs in the same commit. | **Runtime blocking** via PreToolUse hook |
-| **Anti-Rationalization** | Pre-empt agent excuses for skipping steps. | Excuse-rebuttal tables in every skill |
+| **Anti-Rationalization** | Pre-empt agent excuses for skipping steps. | Excuse-rebuttal tables in every skill (>= 2 rows) |
+| **One Question at a Time** | All user-facing decisions use numbered choices with ★ recommended option. | Enforced in command prompts (`commands/setup.md`, `commands/start.md`) |
 
 > LLMs are adept at corner-cutting reasoning like "this small change doesn't need tests."
 > **"I know you'll say X. But you're wrong because Y"** is more effective than "don't do X."
