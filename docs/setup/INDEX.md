@@ -7,14 +7,14 @@ This directory holds the harness-engineering specification consumed by `/harness
 | File | Covers | Phase(s) | Size |
 |------|--------|----------|------|
 | [philosophy-and-layout.md](philosophy-and-layout.md) | Core philosophy + directory tree | always-on | ~85 lines |
-| [runtime-guardrails.md](runtime-guardrails.md) | Security gate, coverage gate, hooks, gate evidence | 1, 2 | ~350 lines |
+| [runtime-guardrails.md](runtime-guardrails.md) | Security gate, coverage gate, hooks, gate evidence | 1, 2 | ~185 lines |
 | [domain-persona.md](domain-persona.md) | Domain persona template + module extraction | 1 | ~130 lines |
-| [cross-session-state.md](cross-session-state.md) | Tech stack / architecture decisions, language, feature-list.json, PROGRESS.md | 1, 2, 6 | ~420 lines |
-| [tdd-isolation.md](tdd-isolation.md) | TDD 3-agent split + bdd-writer, file classification | 3 | ~125 lines |
+| [cross-session-state.md](cross-session-state.md) | Tech stack / architecture decisions, language, runtime-smoke config, feature-list.json, PROGRESS.md | 1, 2, 6 | ~520 lines (size-exception: single anchor namespace) |
+| [tdd-isolation.md](tdd-isolation.md) | TDD 3-agent split + bdd-writer, file classification | 3 | ~120 lines |
 | [model-routing.md](model-routing.md) | Opus/Sonnet per-agent routing | 3 | ~35 lines |
 | [code-style.md](code-style.md) | Google style, Comment Rules, logging | 3, 4 | ~195 lines |
-| [skills-anatomy.md](skills-anatomy.md) | 7-section skill format + validation checklist | 4 | ~310 lines |
-| [agents-and-gates.md](agents-and-gates.md) | Agent roster, team architecture, Gates 0-4 | 3 | ~185 lines |
+| [skills-anatomy.md](skills-anatomy.md) | 7-section skill format + validation checklist | 4 | ~320 lines |
+| [agents-and-gates.md](agents-and-gates.md) | Agent roster, team architecture, Gates 0-5 | 2, 3 | ~240 lines |
 | [evolution-and-recovery.md](evolution-and-recovery.md) | Code-doc sync, evolution, error recovery, observability | 2, 6 | ~360 lines |
 | [generation-rules.md](generation-rules.md) | Phase order, plan→harness conversion, token budget | always-on | ~65 lines |
 
@@ -26,7 +26,7 @@ This directory holds the harness-engineering specification consumed by `/harness
 |-------|---------|---------------|
 | — | Session bootstrap | `philosophy-and-layout.md`, `generation-rules.md`, this index |
 | **1** | Infrastructure (settings, hooks, environment, security, domain-persona, update-feature-status.mjs) | `runtime-guardrails.md`, `domain-persona.md`, `cross-session-state.md` (tech-stack / architecture / language / .gitignore sections) |
-| **2** | Protocols + CLAUDE.md + README.md | `runtime-guardrails.md` (protocol references), `cross-session-state.md` (README.md section), `evolution-and-recovery.md` (code-doc-sync protocol) |
+| **2** | Protocols + CLAUDE.md + README.md + quality-gates.md | `runtime-guardrails.md` (protocol references), `cross-session-state.md` (README.md section), `evolution-and-recovery.md` (code-doc-sync protocol), `agents-and-gates.md` (quality-gates.md body) |
 | **3** | Agents (orchestrator, implementers, reviewer, QA, TDD sub-agents) | `agents-and-gates.md`, `tdd-isolation.md`, `model-routing.md`, `code-style.md` (for Comment Rules reference) + pre-baked rule fragments from `../templates/agents/rules/*.md` |
 | **4** | Skills (8-skill pack in Anthropic Agent Skills format) | `skills-anatomy.md`, `code-style.md` (Comment Rules) + pre-baked skill bodies from `../templates/skills/<skill>/SKILL.md` (5 domain-agnostic) and `.tmpl` (3 project-adapted) |
 | **5** | Context map (`.claude/context-map.md`) | `philosophy-and-layout.md` (layout rules) |
