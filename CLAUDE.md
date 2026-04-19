@@ -64,7 +64,7 @@ Phase 1-6 sequential generation. After Step 1.7 approval of the decision review,
 
 ## Constraints for Generated Harnesses
 
-- CLAUDE.md <= 1,500 tokens; SKILL.md <= 500 lines
+- Generated-harness CLAUDE.md <= 1,500 tokens; SKILL.md <= 500 lines (applies to plugin output under target projects — this meta-spec file is exempt)
 - Hook scripts: shebang + stdin JSON parsing; exit 0 = proceed, exit 1 = hook error (proceeds), exit 2 = block action
 - feature-list.json: array order = priority; `depends_on` for dependency tracking; `test_strategy` per feature (`lean-tdd`/`tdd`/`state-verification`/`integration`); only `passes` field may be changed during `/start`
 - Tech stack not specified in plan -> present 2-3 recommendations, wait for developer choice (never auto-select). Stored in CLAUDE.md (summary) + environment.md (detail).
