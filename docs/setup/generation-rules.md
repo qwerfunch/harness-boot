@@ -3,7 +3,7 @@
 ## Generation Order
 
 ```
-Phase 1: Infrastructure ── settings.json, hooks/ (6 scripts), environment.md, security.md, domain-persona.md, scripts/update-feature-status.sh, .gitignore
+Phase 1: Infrastructure ── settings.json, hooks/ (6 scripts), environment.md, security.md, domain-persona.md, scripts/update-feature-status.mjs, .gitignore
 Phase 2: Protocols ── protocols/ (5 protocols), CLAUDE.md, README.md, quality-gates.md
 Phase 3: Agents ── agents/ (9+ agents, with model: field; team communication protocols on communicating agents; optional qa-agent)
 Phase 4: Skills ── skills/ (8 skills, Anthropic Agent Skills format, 7-section anatomy), examples/
@@ -24,7 +24,7 @@ Phase 6: State ── feature-list.json, PROGRESS.md, CHANGELOG.md, error-recove
 | Core business logic | Each feature's tdd_focus field |
 | API design | skills/api-endpoint + context-map.md (api module row) |
 | DB schema | skills/db-migration + schema docs |
-| Security requirements | security.md + hooks/security-gate.sh |
+| Security requirements | security.md + hooks/pre-tool-security-gate.mjs |
 | Test strategy | quality-gates.md + tdd-loop.md |
 | Coding conventions | CLAUDE.md + context-map.md (layer-scoped rules) |
 | Documentation targets | code-doc-sync.md mapping table |

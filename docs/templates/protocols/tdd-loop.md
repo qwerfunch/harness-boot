@@ -81,5 +81,5 @@ The implementer never edits sub-agent artifacts directly. If a BDD scenario is w
 1. For `lean-tdd`: a BDD file exists with ≥ `acceptance_test.length` Given/When/Then blocks, all passing. For `tdd`: every `tdd_focus` function has tests covering the success path and at least one failure path.
 2. All Quality Gates (0-4) cleared with evidence captured to `_workspace/`
 3. Single commit on the feature branch
-4. `feature-list.json` entry updated to `passes: true` via `scripts/update-feature-status.sh`
+4. `feature-list.json` entry updated to `passes: true` via `scripts/update-feature-status.mjs`
 5. `CHANGELOG.md [Unreleased]` gains one entry in `conversation_language`

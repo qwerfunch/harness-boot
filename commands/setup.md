@@ -39,11 +39,32 @@ Show a brief summary of the analyzed plan:
    {N} modules, {M} features, {K} integration points
 ```
 
+#### Step 1.1.5: Conversation Language Detection (no question when detection succeeds)
+Resolve `conversation_language` by invoking the detection script via the Bash tool, exactly once:
+
+```bash
+node "${CLAUDE_PLUGIN_ROOT}/scripts/detect-conversation-language.mjs"
+```
+
+The script is the single source of truth; the OS-first contract (OS display language > shell locale > prompt) is summarized at `${CLAUDE_PLUGIN_ROOT}/docs/setup/cross-session-state.md#conversation-language-detection`, and the per-platform stage list (macOS / Linux systemd / WSL / Git Bash / MSYS / Cygwin / pure PowerShell) lives in the script's header JSDoc. Capture stdout as `$lang`.
+
+- **Non-empty `$lang`** (e.g. `ko`, `en`, `ja`): record silently in `environment.md` as `conversation_language: <lang>` and proceed to Step 1.2. This is the normal path — no prompt shown.
+- **Empty `$lang`** (every stage returned blank, or only rejected values like `C`/`POSIX`): the system locale is indeterminate. Ask exactly one question, with the ★ default inferred from the language the user has already used in **this session** (if any), otherwise ★ defaults to `en`:
+  ```
+  Conversation language: could not auto-detect from locale.
+  (1) ★ {inferred-from-session} — you've been typing in {language}
+  (2) en — English
+  (3) Custom — ISO 639-1 code
+  ```
+  Store the chosen code in `environment.md` as `conversation_language`.
+
+Do NOT re-run the snippet on later sessions — `/start` reads the value from `environment.md`.
+
 #### Step 1.2: Code Comment Language
-Conversation language (spinner messages and prompts shown to the user) auto-detects from the system locale and is recorded as `conversation_language` — no question needed. Machine-facing harness files (`CLAUDE.md`, `.claude/**`, `feature-list.json`, `PROGRESS.md`, `hooks/*.sh`, `scripts/*.sh`) are **always English** regardless of locale (parsed by hooks or loaded into LLM context). User-facing docs (`README.md`, `CHANGELOG.md`) follow `conversation_language` — humans only. Code comment language requires an explicit choice:
+With `conversation_language` resolved in Step 1.1.5, it now governs spinner messages, prompts, summaries, and `README.md` / `CHANGELOG.md` description text. Machine-facing harness files (`CLAUDE.md`, `.claude/**`, `feature-list.json`, `PROGRESS.md`, `hooks/*.mjs`, `scripts/*.mjs`) are **always English** regardless of locale (parsed by hooks or loaded into LLM context). Code comment language requires an explicit choice; the ★ default is the value resolved in Step 1.1.5:
 ```
 Code comment language (applies to source code comments only — machine-facing harness files are always English; README/CHANGELOG follow conversation language):
-(1) ★ {system locale language} — match your environment
+(1) ★ {conversation_language from Step 1.1.5} — match your environment
 (2) English
 (3) Custom — type your own
 ```
@@ -153,14 +174,14 @@ These are derived from the plan and user decisions without additional questions:
 ### Step 2: Phase 1 — Infrastructure
 - `.claude/settings.json` (hook configuration — see `${CLAUDE_PLUGIN_ROOT}/docs/setup/runtime-guardrails.md`)
 - `hooks/` 6 scripts — **copy from `${CLAUDE_PLUGIN_ROOT}/docs/templates/hooks/`** (not LLM-generated):
-  - 5 scripts (`session-start-bootstrap.sh`, `pre-tool-security-gate.sh`, `pre-tool-doc-sync-check.sh`, `post-tool-format.sh`, `post-tool-test-runner.sh`) are copied verbatim — they are stack-agnostic (extension-dispatched or language-independent).
-  - 1 script (`pre-tool-coverage-gate.sh`) requires substituting `{COVERAGE_COMMAND}` and `{COVERAGE_FILE}` using the row in `${CLAUDE_PLUGIN_ROOT}/docs/templates/stacks.md` matching the selected tech stack.
-  - `chmod +x hooks/*.sh` after copying.
+  - 5 scripts (`session-start-bootstrap.mjs`, `pre-tool-security-gate.mjs`, `pre-tool-doc-sync-check.mjs`, `post-tool-format.mjs`, `post-tool-test-runner.mjs`) are copied verbatim — they are stack-agnostic (extension-dispatched or language-independent).
+  - 1 script (`pre-tool-coverage-gate.mjs`) requires substituting `{COVERAGE_COMMAND}` and `{COVERAGE_FILE}` using the row in `${CLAUDE_PLUGIN_ROOT}/docs/templates/stacks.md` matching the selected tech stack.
+  - On POSIX, `chmod +x hooks/*.mjs` after copying (no-op on Windows — the generated settings.json invokes `node hooks/x.mjs` directly).
   - If the stack is not in `stacks.md`, ask the developer: "What coverage command and output file path do you use?" and record the answer in `.claude/environment.md`.
 - `.claude/environment.md` — MUST include a `## Runtime Smoke Configuration` section with `build_command`, `run_command`, and `ready_signal` fields (schema and skip rules in `${CLAUDE_PLUGIN_ROOT}/docs/setup/cross-session-state.md#runtime-smoke-configuration`). If the tech stack is not runnable (library-only), set `build_command: null` / `run_command: null` so Gate 5 skips automatically.
 - `.claude/security.md`
 - `.claude/domain-persona.md` (domain context for agents, from Step 1 draft)
-- `scripts/update-feature-status.sh` (auto-update feature-list.json passes field after Gate 4)
+- `scripts/update-feature-status.mjs` — **copy from `${CLAUDE_PLUGIN_ROOT}/docs/templates/scripts/update-feature-status.mjs.tmpl`** (not LLM-generated). Substitute `{TEST_COMMAND}` using the row in `${CLAUDE_PLUGIN_ROOT}/docs/templates/stacks.md` matching the selected tech stack. On POSIX, `chmod +x scripts/update-feature-status.mjs` after copying. Auto-updates `feature-list.json` passes field after Gate 4.
 - `_workspace/.gitkeep` (intermediate outputs directory for Agent Team file-based transfer)
 - `.gitignore` (generated from Tech Stack selection — includes .env, IDE files, build outputs, language-specific patterns)
 
@@ -176,7 +197,7 @@ These are derived from the plan and user decisions without additional questions:
 ### Phase 1 + Phase 2 Parallel Execution
 
 **Run Phase 1 and Phase 2 concurrently** — they have no dependencies between them. Issue all file-generation tool calls for both phases in a single message with parallel tool calls (one per file). Dependencies are strictly within-phase (none between phases):
-- Phase 1 writes: settings.json, hooks/, environment.md, security.md, domain-persona.md, scripts/*.sh, _workspace/.gitkeep, .gitignore
+- Phase 1 writes: settings.json, hooks/, environment.md, security.md, domain-persona.md, scripts/*.mjs, _workspace/.gitkeep, .gitignore
 - Phase 2 writes: .claude/protocols/*.md, CLAUDE.md, README.md, .claude/quality-gates.md
 
 After **both** phases finish, record `last_completed_phase: 2` in PROGRESS.md → auto-proceed to Phase 3. Pause only if any step errors.
@@ -210,40 +231,53 @@ Each agent YAML frontmatter includes a `model:` field.
 - When generating `tdd-test-writer.md` (if emitted), inject the "TDD sub-agent input sanitization" clause from `commands/start.md` Step 4 into the agent prompt body under a `## Inputs` section. The clause lists what fields the writer may read and what implementation hints must be absent; the writer self-checks on receipt and aborts with a note to `_workspace/` if the inputs look contaminated.
 - When generating `bdd-writer.md`, inject the parallel "BDD sub-agent input sanitization" clause from `commands/start.md` Step 4 under a `## Inputs` section. The clause lists the allowed input fields (`acceptance_test` array + public type headers only) and explicitly forbids implementation references; the writer self-checks and aborts to `_workspace/` on contamination.
 
-**Rule text injection (inline-embed, MANDATORY)**:
+**Rule text injection (template concat + narrow inject, MANDATORY)**:
 
-Subagents invoked via the `Agent` tool cannot resolve `${CLAUDE_PLUGIN_ROOT}` paths — their system prompt is the literal body of their agent file. Any rule referenced only as `see ${CLAUDE_PLUGIN_ROOT}/...` is unreadable at runtime. Phase 3 MUST embed the following rule texts verbatim into generated agent files by reading the source and copying the section body (not a link).
+Subagents invoked via the `Agent` tool cannot resolve `${CLAUDE_PLUGIN_ROOT}` paths — their system prompt is the literal body of their agent file. Any rule referenced only as `see ${CLAUDE_PLUGIN_ROOT}/...` is unreadable at runtime. Phase 3 embeds the rule texts into each generated agent file.
 
-1. **Language Settings block** — embed into every generated agent (`orchestrator.md`, all `implementer-*.md`, `reviewer.md`, `qa-agent.md` if included, `architect.md`, `debugger.md`, `tester.md`, `tdd-implementer.md`, `tdd-refactorer.md`, `bdd-writer.md`, `tdd-test-writer.md` if generated). Read `conversation_language` (from the locale detected in Step 1.2) and `comment_language` (from `.claude/environment.md`) and write a `## Language Settings` section at the top of the agent body:
-   ```markdown
-   ## Language Settings
-   - conversation_language: <value>   # user-facing messages, spinner, prompts, summaries
-   - comment_language: <value>         # file headers, JSDoc, inline why-comments in source code
-   Respond to the user in conversation_language. Write all source-code comments in comment_language. Machine-facing files (CLAUDE.md, .claude/**/*.md, feature-list.json, PROGRESS.md, hooks/*.sh, scripts/*.sh) stay English regardless.
-   ```
+**Pre-baked fragments** — Rules 2–11 live as single-source-of-truth fragments in `${CLAUDE_PLUGIN_ROOT}/docs/templates/agents/rules/NN-*.md`, regenerated from the anchored sources in `docs/setup/*` / `docs/protocols/*` / `commands/start.md` / `docs/templates/protocols/*` by `scripts/build-rule-fragments.mjs`. Phase 3 READS those fragments and appends them verbatim per the matrix below. Do NOT re-read the original source anchors; do NOT regenerate this text with the model; do NOT paraphrase. The fragments are the derived canonical form.
 
-2. **Comment Rules** — embed into `tdd-implementer.md`, `tdd-refactorer.md`, and `reviewer.md`. Read `${CLAUDE_PLUGIN_ROOT}/docs/setup/code-style.md` and copy the section body starting at the `## Comment Rules <!-- anchor: comment-rules -->` heading through (but not including) the next `## ` heading. Paste it verbatim into the agent body under a `## Comment Rules` section. Do not paraphrase; do not replace with a link.
+**Only Rule 1 (Language Settings) is per-project** — it holds the only two values that vary between runs (`conversation_language`, `comment_language`).
 
-3. **TDD Cycles + Gate 0 Evidence** — embed into `orchestrator.md`, every `implementer-<slug>.md`, and `reviewer.md`. Read `${CLAUDE_PLUGIN_ROOT}/docs/protocols/tdd-cycles.md` and copy:
-   - All four `## Cycle: <strategy>` sections (from each `## Cycle:` heading through the next `## ` heading)
-   - The full `## Gate 0 Evidence Verification` section including its four `### <strategy>` sub-blocks
-   Paste verbatim under `## TDD Cycles` and `## Gate 0 Evidence` sections in the agent body. This lets the agent route by `test_strategy` at runtime without needing to read the plugin.
+**Per-agent fragment matrix** (✓ = append this fragment into the agent body as a top-level `## <section>`):
 
-4. **File Classification for tdd-test-writer / bdd-writer** — embed into `bdd-writer.md` (always) and `tdd-test-writer.md` (if generated). Read `${CLAUDE_PLUGIN_ROOT}/docs/setup/tdd-isolation.md` and copy the section body under `## File Classification for tdd-test-writer <!-- anchor: file-classification-for-tdd-test-writer -->` verbatim into each agent body under `## File Classification`. `bdd-writer.md` additionally appends one line: `For bdd-writer, the input is further narrowed to the feature's acceptance_test array plus the above-allowed type headers — no other test files are read.`
+| Agent | 01 Lang | 02 Comment Rules | 03 TDD Cycles + Gate 0 | 04 File Class | 05 Feature Sel | 06 Message Format | 07 Coord Round-Trip | 08 Workspace | 09 Iter Track | 10 Cross-Review | 11 QA Timing |
+|-------|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| `orchestrator.md` | ✓ | — | ✓ | — | ✓ | ✓ | — | — | — | — | ✓ |
+| `implementer-<slug>.md` (each) | ✓ | — | ✓ | — | — | ✓ | ✓ | ✓ | ✓ | — | — |
+| `reviewer.md` | ✓ | ✓ | ✓ | — | — | ✓ | — | ✓ | — | ✓ | — |
+| `qa-agent.md` (if generated) | ✓ | — | — | — | — | ✓ | — | ✓ | — | — | ✓ |
+| `tdd-implementer.md` | ✓ | ✓ | — | — | — | — | — | ✓ | — | — | — |
+| `tdd-refactorer.md` | ✓ | ✓ | — | — | — | — | — | ✓ | — | — | — |
+| `bdd-writer.md` | ✓ | — | — | ✓ | — | — | — | ✓ | — | — | — |
+| `tdd-test-writer.md` (if generated) | ✓ | — | — | ✓ | — | — | — | ✓ | — | — | — |
+| `architect.md` | ✓ | — | — | — | — | — | — | — | — | — | — |
+| `debugger.md` | ✓ | — | — | — | — | — | — | — | — | — | — |
+| `tester.md` | ✓ | — | — | — | — | — | — | — | — | — | — |
 
-5. **Feature Selection Algorithm** — embed into `orchestrator.md`. Read `${CLAUDE_PLUGIN_ROOT}/commands/start.md` anchor `<!-- anchor: feature-selection-algorithm -->` and copy the section body (from the `#### Feature selection` anchor heading through the end of Step 3, i.e., up to but not including `### Step 4: Execute Development Cycle`) verbatim into the agent body under `## Feature Selection Algorithm`. The orchestrator's Phase 1 Feature Selection MUST use this algorithm — selecting a single feature is only correct when the independence check or dependency gate rules multi-feature parallel dispatch out; the default for multi-module projects is a parallel wave. Do not paraphrase or collapse to "pick the first unblocked feature."
+The matrix is authoritative — it replaces the previous per-rule prose targeting.
 
-6. **Message Format Contract** — embed into `orchestrator.md`, every `implementer-<slug>.md`, `reviewer.md`, and `qa-agent.md` (if generated). Read `${CLAUDE_PLUGIN_ROOT}/docs/templates/protocols/message-format.md` anchor `<!-- anchor: core-fields -->` and copy the section body covering the Core fields table, Message kinds table, and Status enum (through the end of the `## Status enum` section, up to but not including `## \`_workspace/\` naming convention`) verbatim into each agent body under `## Message Format`. This guarantees every communicating agent knows the 8 `kind` enum values (`task-assigned`, `artifact-ready`, `review-request`, `review-result`, `qa-report`, `coordinate`, `escalate`, `cancel-pending`) and the 6 `status` enum values without needing to load the external protocol file at runtime.
+**Rule 1 — Language Settings (per-project injection)**: Read `conversation_language` (from the locale detected in Step 1.2) and `comment_language` (from `.claude/environment.md`) and prepend a `## Language Settings` section at the top of every generated agent body:
+```markdown
+## Language Settings
+- conversation_language: <value>   # user-facing messages, spinner, prompts, summaries
+- comment_language: <value>         # file headers, JSDoc, inline why-comments in source code
+Respond to the user in conversation_language. Write all source-code comments in comment_language. Machine-facing files (CLAUDE.md, .claude/**/*.md, feature-list.json, PROGRESS.md, hooks/*.mjs, scripts/*.mjs) stay English regardless.
+```
 
-7. **Coordinate Round-Trip** — embed into every `implementer-<slug>.md`. Read `${CLAUDE_PLUGIN_ROOT}/docs/templates/protocols/message-format.md` anchor `<!-- anchor: coordinate-round-trip -->` and copy the section body (through the end of the `## Coordination across modules` section, up to but not including `## Out of scope`) verbatim into the agent body under `## Coordinate Round-Trip`. This encodes the responder side of the negotiation: receive a `coordinate` message → respond with `status: completed` (accepted) OR `status: blocked` (counter-proposal in a new artifact) → 3 rounds maximum → escalate to orchestrator on unresolved round 3. Implementers that carry only the sending side of coordinate cannot participate in bidirectional contract negotiation.
+**Rules 2–11 — Fragment append (verbatim, no model regeneration)**:
+- **02 Comment Rules** — `docs/templates/agents/rules/02-comment-rules.md`
+- **03 TDD Cycles + Gate 0 Evidence** — `docs/templates/agents/rules/03-tdd-cycles.md` (already contains both `## TDD Cycles` and `## Gate 0 Evidence` wrapper headings)
+- **04 File Classification** — `docs/templates/agents/rules/04-file-classification.md`. For `bdd-writer.md` only, append one final line after the fragment: `For bdd-writer, the input is further narrowed to the feature's acceptance_test array plus the above-allowed type headers — no other test files are read.`
+- **05 Feature Selection Algorithm** — `docs/templates/agents/rules/05-feature-selection.md`
+- **06 Message Format Contract** — `docs/templates/agents/rules/06-message-format.md`
+- **07 Coordinate Round-Trip** — `docs/templates/agents/rules/07-coordinate-round-trip.md`
+- **08 Workspace Artifact Path** — `docs/templates/agents/rules/08-workspace-naming.md`
+- **09 Iteration Tracking** — `docs/templates/agents/rules/09-iteration-tracking.md`. Each `implementer-<slug>.md` carries its own copy — the generic `implementer.md` template does NOT substitute for per-module embedding.
+- **10 Cross-Module Review** — `docs/templates/agents/rules/10-cross-module-review.md`
+- **11 QA Invocation Timing** — `docs/templates/agents/rules/11-qa-invocation-timing.md`. Only when `qa-agent.md` is generated (see Step 1.6 QA criterion) does it also receive this fragment.
 
-8. **Workspace Artifact Path Convention** — embed into every `implementer-<slug>.md`, `reviewer.md`, `qa-agent.md` (if generated), `tdd-implementer.md`, `tdd-refactorer.md`, `bdd-writer.md`, and `tdd-test-writer.md` (if generated). Read `${CLAUDE_PLUGIN_ROOT}/docs/templates/protocols/message-format.md` anchor `<!-- anchor: workspace-naming -->` and copy the section body (through the end of the `## \`_workspace/\` naming convention` section, up to but not including `## Example — fan-out and collect`) verbatim into the agent body under `## Artifact Path`. This ensures every agent that writes to `_workspace/` uses the `_workspace/{phase}_{agent}_{artifact}.{ext}` pattern — cross-agent consistency is a precondition for `SendMessage` `artifact_path` correctness.
-
-9. **Iteration Tracking** — embed into every `implementer-<slug>.md` (module-specific). Read `${CLAUDE_PLUGIN_ROOT}/commands/start.md` anchor `<!-- anchor: iteration-tracking -->` and copy the section body covering the four-step iteration counter protocol (read → increment → check `> 5` → escalate/reset) verbatim into the agent body under `## Iteration Tracking`. This is the only convergence-failure guard; module implementers that drop it risk unbounded retry loops. The generic `implementer.md` template is not a substitute — each module implementer must carry its own copy.
-
-10. **Cross-Module Review Stage** — embed into `reviewer.md`. Read `${CLAUDE_PLUGIN_ROOT}/docs/setup/agents-and-gates.md` anchor `<!-- anchor: cross-module-review -->` and copy the section body (through the end of the `### Gate 2: Cross-Module Review Stage` section, up to but not including the next `### ` heading) verbatim into the agent body under `## Cross-Module Review`. This stage is required when a feature's `tdd_focus` or `doc_sync` spans two or more modules; the reviewer reads both sides of each boundary in parallel, folds any `qa-report` as input, and classifies findings as Critical/Major/Minor per the stage's procedure. Reviewers without this section treat cross-module features identically to single-module features and silently miss boundary drift.
-
-11. **QA Invocation Timing** — embed into `orchestrator.md` AND `qa-agent.md` (the latter only when generated). Read `${CLAUDE_PLUGIN_ROOT}/commands/start.md` anchor `<!-- anchor: qa-invocation-timing -->` and copy the section body covering both invocation points (per-module after Gate 1; session-end sweep before any termination path) verbatim into each agent body under `## QA Invocation Timing`. This fixes the most common QA regression: orchestrators that only trigger QA for cross-module features and skip the session-end sweep. Both triggers are mandatory whenever qa-agent is present.
+**If a fragment file is missing**, abort Phase 3 with the message: `Rule fragments missing — run scripts/build-rule-fragments.mjs and re-invoke /setup`. Do not attempt to re-derive from source anchors inline; the drift risk is why the fragments exist.
 
 Embedding is done inside the `/setup` slash-command context (top-level), which CAN resolve `${CLAUDE_PLUGIN_ROOT}`. Subagents only ever see the post-embed files.
 
@@ -255,26 +289,31 @@ Add `## Team Communication Protocol` section **only to agents that actually exch
 **Phase 3 complete → record `last_completed_phase: 3` in PROGRESS.md → auto-proceed to Phase 4.** Pause only if a step errors.
 
 ### Step 5: Phase 4 — 8 Skills (Anthropic Agent Skills Format)
-Each skill follows the [Anthropic Agent Skills Specification](https://github.com/anthropics/skills).
-Generate as `skill-name/SKILL.md` (uppercase) with optional `references/`, `scripts/`, `assets/` subdirectories.
+Each skill follows the [Anthropic Agent Skills Specification](https://github.com/anthropics/skills). Generate as `skill-name/SKILL.md` (uppercase) with optional `references/`, `scripts/`, `assets/` subdirectories.
 
-Refer to `${CLAUDE_PLUGIN_ROOT}/docs/setup/skills-anatomy.md` for complete generation rules — YAML frontmatter schema, 7-section anatomy template, progressive disclosure token budget, description writing guide (TRIGGER/DO NOT TRIGGER pattern), the 8-skill list with triggers, a full `new-feature` example, and the validation checklist at `#validation-checklist`.
+**Skill templates are pre-baked.** `${CLAUDE_PLUGIN_ROOT}/docs/templates/skills/` contains the canonical SKILL.md bodies. Phase 4 copies or fills in these templates — it does NOT model-regenerate the 7-section anatomy from scratch. Refer to `${CLAUDE_PLUGIN_ROOT}/docs/setup/skills-anatomy.md` only for the schema, the validation checklist at `#validation-checklist`, and the Project-Type Adaptation table (`skills-anatomy.md:189`) that governs which 3 skills need adaptation.
 
-Must follow 7-section anatomy (Overview / When to Use / TDD Focus / Process / Common Rationalizations (>= 2 rows, domain-specific) / Red Flags (>= 2 items) / Verification (with evidence)).
+**Two skill classes**:
 
-YAML frontmatter must include:
-- `name` (1-64 chars, lowercase a-z/numbers/hyphens, matches directory name)
-- `description` (WHAT + WHEN + TRIGGER + DO NOT TRIGGER, max 1024 chars)
-- `metadata` (author, version, category at minimum)
-- `allowed-tools` (space-separated tool list)
+1. **Domain-agnostic (5 skills) — copy-verbatim**: `new-feature`, `bug-fix`, `refactor`, `tdd-workflow`, `context-engineering`. Copy `${CLAUDE_PLUGIN_ROOT}/docs/templates/skills/<skill-name>/SKILL.md` to `.claude/skills/<skill-name>/SKILL.md` unchanged. No placeholders. No model generation.
 
-Skills to generate:
-- `new-feature`, `bug-fix`, `refactor`, `tdd-workflow`
-- `api-endpoint`, `db-migration`, `deployment`, `context-engineering`
+2. **Project-adapted (3 skills) — template with placeholder injection**: `api-endpoint`, `db-migration`, `deployment`. Read `${CLAUDE_PLUGIN_ROOT}/docs/templates/skills/<skill-name>/SKILL.md.tmpl` and fill the 7 placeholders using the project type detected from tech stack / plan content (see `skills-anatomy.md:185` Project-Type Adaptation table):
+   - `{{DESCRIPTION}}` — one sentence naming the surface in this project's vocabulary (e.g., "REST endpoint", "Canvas/Physics module", "CLI command handler")
+   - `{{TRIGGER_CONDITIONS}}` — specific trigger keywords for this project type (from the adaptation table)
+   - `{{EXCLUSION_CONDITIONS}}` — scenarios that should route to a different skill in this project
+   - `{{WHEN_TRIGGER}}` — bullet text for §When to Use → Trigger, with project-specific framing
+   - `{{WHEN_NOT}}` — bullet text for §When to Use → Not when, project-specific
+   - `{{PROCESS_STEP_1}}` through `{{PROCESS_STEP_4}}` — four project-specific procedural steps. The fifth and sixth steps (doc-sync + single commit) are fixed in the template and need no injection.
 
-Additional: `.claude/examples/`
+   Sections §1 (Overview), §3 (TDD Focus), §5 (Common Rationalizations), §6 (Red Flags), §7 (Verification) are pre-filled and MUST NOT be model-regenerated. Only the placeholders above are written.
 
-**Generate skills in parallel.** Each `SKILL.md` is self-contained (no cross-skill references in bodies). Issue all 8 skill-file `Write` tool calls in a single message. `.claude/examples/` may be written in the same batch. (`.claude/context-map.md` is produced in Phase 5, not here.)
+   Strip the `.tmpl` extension on write — output filename is `SKILL.md`.
+
+**If a template file is missing**, abort Phase 4 with the message: `Skill templates missing — ensure docs/templates/skills/ is present and re-invoke /setup`.
+
+Additional: `.claude/examples/` (project-specific usage snippets — model-generated here).
+
+**Generate skills in parallel.** Each `SKILL.md` is self-contained. Issue all 8 skill-file `Write` tool calls (5 copies + 3 filled templates) in a single message. `.claude/examples/` may be written in the same batch. (`.claude/context-map.md` is produced in Phase 5, not here.)
 
 **Phase 4 complete → record `last_completed_phase: 4` in PROGRESS.md → auto-proceed to Phase 5.** Pause only if a step errors.
 
@@ -294,9 +333,16 @@ Orchestrator and module-scoped sub-agents read context-map.md at session start; 
 
 ### Step 7: Phase 6 — State Tracking
 - `feature-list.json` (extracted as JSON from the plan, all `passes: false`). Include:
-  - `depends_on` arrays based on analysis of feature descriptions, shared modules, and tdd_focus overlaps. Validate: (a) no circular dependencies via topological sort, (b) array order respects dependencies.
-    - **Auto-approve path** (no prompt): both (a) and (b) pass → log one-line summary (`Dependency graph: {N} features, acyclic, order-valid`) and continue.
-    - **Prompt path**: if (a) fails (cycle) or (b) fails (out-of-order) → surface the specific violation and the proposed fix, wait for user confirmation before proceeding.
+  - `depends_on` arrays based on analysis of feature descriptions, shared modules, and tdd_focus overlaps.
+  - **Dependency ordering is mandatory and mechanical** — after drafting all features and their `depends_on` arrays, apply the algorithm below BEFORE writing the file. Do not rely on source-plan order.
+    1. **Cycle detection + topological sort (Kahn's algorithm)**: compute indegree for every feature from its `depends_on`. Repeatedly pick any feature with indegree 0, emit it to the output sequence, and decrement the indegree of every feature that lists it in `depends_on`. If the output sequence length is less than the feature count, a cycle exists — surface the remaining (non-emitted) features as the cycle participants and PROMPT the user for resolution. Do not write the file until the cycle is resolved.
+    2. **Tie-breaking during Kahn's pick**: when multiple features have indegree 0 simultaneously, break ties by (a) the order they appeared in the source plan, then (b) alphanumeric `id` ascending. This keeps the output stable across `/setup` re-runs.
+    3. **Write features in the emitted order.** Never preserve source-plan order when it conflicts with dependencies.
+    4. **Post-sort mechanical verification** — before declaring Step 7 complete, run the canonical check and require zero output (exit 0):
+       ```bash
+       node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-feature-order.mjs" feature-list.json
+       ```
+       Any stdout line (exit 2) means the sort was skipped or the write order was wrong — regenerate feature-list.json from the Kahn output and re-run. Only after zero output may you log `Dependency graph: {N} features, acyclic, order-valid` and continue. The script is the single source of truth for this check; Step 8 item 16 re-invokes the same command.
     - To revise an auto-approved graph later, delete `PROGRESS.md` and re-run `/setup` (error-recovery rebootstraps from Step 1). Step 1.7 runs before Phase 1 and cannot override a Phase 6 decision.
   - `test_strategy` per feature: classify as `"lean-tdd"` (default: TDD-shaped design, post-hoc BDD verification), `"tdd"` (safety-critical opt-in: strict Red/Green/Refactor isolation), `"state-verification"` (rendering/UI/DOM), or `"integration"` (wiring/entry points). Classification rules:
     - If `category` or `description` mentions any of `auth`, `payment`, `security`, `crypto`, `credential` (case-insensitive) → auto-assign `"tdd"`.
@@ -345,7 +391,7 @@ Orchestrator and module-scoped sub-agents read context-map.md at session start; 
 
 ### Step 8: Verification
 Verify the entire generated harness:
-1. File completeness: settings.json + 6 hooks + agents (9 base including `bdd-writer.md`; conditional: qa-agent if included, `tdd-test-writer.md` if any `tdd`/`state-verification` feature, one `implementer-<slug>.md` per module) + 8 skills + 5 protocols + feature-list.json + scripts/update-feature-status.sh
+1. File completeness: settings.json + 6 hooks + agents (9 base including `bdd-writer.md`; conditional: qa-agent if included, `tdd-test-writer.md` if any `tdd`/`state-verification` feature, one `implementer-<slug>.md` per module) + 8 skills + 5 protocols + feature-list.json + scripts/update-feature-status.mjs
 2. Runtime guardrails: hook stdin JSON parsing, security-gate exit 2, doc-sync-check commit blocking, coverage-gate commit blocking
 3. Skill anatomy (4 gates — full rules in `${CLAUDE_PLUGIN_ROOT}/docs/setup/skills-anatomy.md#validation-checklist`):
    - **Structural**: `SKILL.md` exists, directory name matches frontmatter `name` field, all 4 required frontmatter fields present (`name`, `description`, `metadata`, `allowed-tools`)
@@ -375,7 +421,14 @@ Verify the entire generated harness:
     - Every `implementer-*.md` (module-specific) must contain a `## Iteration Tracking` section whose body mentions `iteration > 5` AND either `debugger` or `Incidents`. Missing this section removes the only convergence-failure guard.
     - `reviewer.md` must contain a `## Cross-Module Review` section whose body mentions BOTH `qa-report` AND `boundary`. Reviewers without this stage treat cross-module features as single-module and miss boundary drift.
     - `orchestrator.md` AND (if present) `qa-agent.md` must contain a `## QA Invocation Timing` section whose body mentions both `per-module` AND `session-end`. Orchestrators missing the session-end sweep skip the final boundary verification and can ship undetected integration bugs.
-    Any missing section means Phase 3 Step 4 rule injection was skipped — regenerate the affected agent from the source in `${CLAUDE_PLUGIN_ROOT}/docs/setup/`, `docs/protocols/`, `docs/templates/protocols/`, or `commands/start.md` (per the anchor table in the rule) and re-verify.
+    Any missing section means Phase 3 Step 4 fragment concat was skipped — re-run `scripts/build-rule-fragments.mjs` to ensure `docs/templates/agents/rules/*.md` are present, then regenerate the affected agent file(s) by re-appending the ✓-marked fragments per the Step 4 matrix.
+16. **Dependency order validation** (feature-list.json): re-run the canonical Phase 6 post-sort check — for every feature at array index `i`, every id in its `depends_on` must appear at an earlier index `j < i`.
+    ```bash
+    node "${CLAUDE_PLUGIN_ROOT}/scripts/validate-feature-order.mjs" feature-list.json
+    ```
+    Must exit 0 with zero stdout lines. Any violation (exit 2) means the Phase 6 Kahn sort was skipped or the write order was corrupted by a later patch — reorder features in-place (preserving all other fields) and re-run the check.
+
+17. **Template fragment byte-equality** (Phase 3 + Phase 4 pre-bake): for each agent that received a ✓-marked Rule 2–11 fragment per the Step 4 matrix, confirm the corresponding `## <section>` block in the generated `.claude/agents/<agent>.md` matches `${CLAUDE_PLUGIN_ROOT}/docs/templates/agents/rules/NN-*.md` byte-for-byte (modulo surrounding whitespace). Similarly, for the 5 domain-agnostic skills (`new-feature`, `bug-fix`, `refactor`, `tdd-workflow`, `context-engineering`), confirm `.claude/skills/<skill>/SKILL.md` equals the corresponding `${CLAUDE_PLUGIN_ROOT}/docs/templates/skills/<skill>/SKILL.md` byte-for-byte. A mismatch means the fragment was regenerated or paraphrased by the model instead of copied — re-run the Phase 3/4 copy steps verbatim. For the 3 project-adapted skills (`api-endpoint`, `db-migration`, `deployment`), confirm sections §1/§3/§5/§6/§7 match the `.tmpl` file byte-for-byte; only §description, §When-to-Use bullets, and §Process Step 1–4 may differ.
 
 Report each item as PASS/FAIL. For each FAIL:
 1. Identify the specific gap (missing file, missing section, wrong model routing, etc.)
@@ -405,7 +458,7 @@ Guide the user to the next step: start development with the `/start` command.
 - Never auto-select tech stack or architecture without developer confirmation
 - Mark anything not in the plan as `{TODO: needs confirmation}`
 - **Three-tier language policy**:
-  1. **Machine-facing files — always English**: `CLAUDE.md`, `.claude/**/*.md` (agents, skills, protocols, domain-persona, context-map, environment, security, quality-gates, error-recovery, observability), `PROGRESS.md`, `feature-list.json`, `hooks/*.sh`, `scripts/*.sh`. These are parsed by hooks, loaded into LLM context at session start, or are executable code — locale variance breaks them.
+  1. **Machine-facing files — always English**: `CLAUDE.md`, `.claude/**/*.md` (agents, skills, protocols, domain-persona, context-map, environment, security, quality-gates, error-recovery, observability), `PROGRESS.md`, `feature-list.json`, `hooks/*.mjs`, `scripts/*.mjs`. These are parsed by hooks, loaded into LLM context at session start, or are executable code — locale variance breaks them.
   2. **User-facing docs — follow `conversation_language`**: `README.md` and `CHANGELOG.md`. Humans only; no hook parses them, no agent loads them for logic. Orchestrator writes CHANGELOG feature-completion entries in `conversation_language`. Keep a Changelog structural headings (`## [Unreleased]`, `### Added`, etc.) remain English as standard format markers.
   3. **Source code comments — follow `comment_language`**: Explicit Step 1.2 choice. Applies inside source files (`.ts`, `.py`, `.go`, etc.), never to `.md` files.
   See `${CLAUDE_PLUGIN_ROOT}/docs/setup/cross-session-state.md#language-settings` for the full rule.

@@ -50,9 +50,24 @@ Project requirements analysis:
 
 Four language scopes, each with an explicit rule:
 
-- **Machine-facing file language: always English.** Files parsed programmatically, loaded into LLM context at session start, or executable code — `CLAUDE.md`, `PROGRESS.md`, `feature-list.json`, `.claude/**/*.md` (agents, skills, protocols, domain-persona, context-map, environment, security, quality-gates, error-recovery, observability), `hooks/*.sh`, `scripts/*.sh` — are written in English regardless of the user's locale. This is non-negotiable: locale variance here breaks hook parsing (e.g., `session-start-bootstrap.sh` awk/grep over PROGRESS.md) and introduces LLM comprehension friction on every session load. No locale detection, no `conversation_language` lookup for these files.
+- **Machine-facing file language: always English.** Files parsed programmatically, loaded into LLM context at session start, or executable code — `CLAUDE.md`, `PROGRESS.md`, `feature-list.json`, `.claude/**/*.md` (agents, skills, protocols, domain-persona, context-map, environment, security, quality-gates, error-recovery, observability), `hooks/*.mjs`, `scripts/*.mjs` — are written in English regardless of the user's locale. This is non-negotiable: locale variance here breaks hook parsing (e.g., `session-start-bootstrap.mjs` regex over PROGRESS.md) and introduces LLM comprehension friction on every session load. No locale detection, no `conversation_language` lookup for these files.
 - **User-facing doc language: `conversation_language`**. `README.md` and `CHANGELOG.md` follow the user's locale. These files are humans-only — no hook parses them, no agent loads them for logic. During `/start`, when the orchestrator appends a feature-completion entry to `CHANGELOG.md` under `## [Unreleased]`, the human description text is written in `conversation_language`. Keep a Changelog structural headings (`## [Unreleased]`, `## [0.1.0]`, `### Added`, `### Changed`, `### Fixed`, `### Removed`) remain English as standard format markers per the Keep a Changelog spec.
-- **Conversation language**: Auto-detected from the system locale (`$LANG` or equivalent). Controls the human-facing text that `/setup` and `/start` print to the user (spinner messages, question prompts, summaries, status updates) and the content of `README.md` / `CHANGELOG.md` description text. No question asked — recorded automatically in `environment.md` as `conversation_language`. Never affects machine-facing files.
+- **Conversation language**: Auto-detected from the system locale via the OS-aware fallback chain below. Controls the human-facing text that `/setup` and `/start` print to the user (spinner messages, question prompts, summaries, status updates) and the content of `README.md` / `CHANGELOG.md` description text. Silent when detection is unambiguous; one numbered-choice confirmation is shown only when every stage returns empty. Recorded in `environment.md` as `conversation_language` (ISO 639-1 primary subtag, e.g. `ko`, `en`, `ja`). Never affects machine-facing files.
+
+### Conversation-Language Fallback Chain <!-- anchor: conversation-language-detection -->
+
+Contract: OS display language wins over shell locale (env vars → `locale` command); an empty result triggers the numbered-choice prompt at `commands/setup.md` Step 1.1.5. Unsupported platforms fall through to shell signals without error.
+
+**Normalization**: any raw value (`ko_KR.UTF-8`, `ko-KR`, `en_US`, `zh_Hans_CN`, `ko`) is reduced to the primary ISO 639-1 subtag. Strip at first `.`, split on `_` / `-`, lowercase the first field, accept only if it matches `^[a-z]{2}$`. Values like `C` and `POSIX` fail the regex and fall through.
+
+**Execution**: do not inline-embed the detection logic. `/setup` Step 1.1.5 invokes the single source of truth:
+
+```
+node ${CLAUDE_PLUGIN_ROOT}/scripts/detect-conversation-language.mjs
+```
+
+Stdout is the detected subtag (`ko`, `en`, ...) or empty. Per-platform stages (macOS `defaults`, Linux `localectl` / config files, Windows PowerShell with timeout & `pwsh.exe` fallback, WSL handling, sudo-drop rule, unknown-platform default branch) are documented in the script header JSDoc and verified by `--self-test`. Any edit to the fallback chain is made in the script; this doc describes the contract, not the implementation.
+
 - **Code comment language**: Explicitly chosen by the user during Step 1.2. Stored in `environment.md` as `comment_language`. Referenced by tdd-implementer, tdd-refactorer, and reviewer agents when enforcing Comment Rules (see `code-style.md#comment-rules`). All file headers, JSDoc, section dividers, and inline why-comments inside source files must be written in this language. Applies to *comments inside source code* only — never to any `.md` file.
 
 ## Tech Stack Storage
@@ -362,18 +377,43 @@ Classification guidance for `/setup`:
 
 **Priority**: Array order determines priority. The first `passes: false` item is the next feature to work on. `/setup` must order features with foundational dependencies first (e.g., auth before profile, profile before order).
 
-**Dependency Validation**: During `/setup` Step 1, after drafting feature-list.json, validate:
-- All `depends_on` IDs must reference existing features within the list.
-- No circular dependencies (topological sort). If cycle detected, report to user and ask for resolution.
-- Array ordering must respect dependencies: if B depends on A, A must appear before B. If violated, reorder and inform user.
-- **Auto-approve when clean**: if both checks pass, log a one-line summary (`Dependency graph: {N} features, acyclic, order-valid`) and continue without prompting. Only prompt the user when a violation is detected; when prompting, show the dependency graph and the specific violation:
-  ```
-  F-01 (physics) [no deps]
-  F-02 (fruit) → F-01
-  F-04 (merging) → F-01, F-02
-  F-03 (score) [no deps]
-  ```
-- The user can still override an auto-approval via Step 1.7 "Change a decision".
+**Dependency Validation**: After drafting feature-list.json during `/setup` Phase 6 (Step 7), the generator MUST apply the algorithm below before writing the file. This is mechanical, not a judgment call — "looks right" is not sufficient.
+
+1. **Reference integrity**: every id in every `depends_on` array must match an `id` of another feature in the list. Unknown id → halt and surface the typo to the user.
+2. **Topological sort via Kahn's algorithm** (cycle detection + correct ordering in one pass):
+   - Compute `indegree[id] = |depends_on|` for every feature.
+   - Initialize the queue with all features where `indegree == 0`. When multiple features tie at indegree 0, break ties by (a) the order they appeared in the source plan, then (b) alphanumeric `id` ascending. This keeps output stable across re-runs.
+   - Repeatedly pop one feature from the queue, append it to the output sequence, and for every feature that lists the popped id in its `depends_on`, decrement indegree; push to the queue when it reaches 0.
+   - If the output sequence length < total feature count, a **cycle** exists. The features that never reached indegree 0 are the cycle participants. Halt the auto-approve path, surface the cycle to the user, and wait for resolution.
+3. **Write features in the emitted order.** Never preserve source-plan order when it conflicts with dependencies. Re-ordering is the tool's job, not the user's.
+4. **Post-sort mechanical verification**: run the check below and require zero output. A non-empty result means the sort was skipped or a later step mutated the array without re-sorting.
+   ```bash
+   jq -r '
+     [.[] | {id, depends_on}] as $f
+     | $f | to_entries
+     | map(
+         .key as $i | .value.id as $id | .value.depends_on as $deps
+         | ($f | map(.id) | .[0:$i]) as $earlier
+         | ($deps - $earlier) as $late
+         | select($late | length > 0)
+         | "\($id) at index \($i) depends on \($late | join(",")) which appear later"
+       ) | .[]
+   ' feature-list.json
+   ```
+
+**Auto-approve path**: if reference integrity passes, Kahn's algorithm emits all features (no cycle), and the post-sort check returns zero lines → log one line (`Dependency graph: {N} features, acyclic, order-valid`) and continue without prompting.
+
+**Prompt path**: if any of the three conditions fails, surface the specific violation and the proposed fix (e.g., show cycle participants, or show the auto-repaired ordering diff), and wait for user confirmation.
+
+Example auto-repaired ordering (stable across runs):
+```
+F-01 (physics) [no deps]
+F-03 (score) [no deps]
+F-02 (fruit) → F-01
+F-04 (merging) → F-01, F-02
+```
+
+The user can still override an auto-approval via Step 1.7 "Change a decision".
 
 Only the `passes` field may be changed during `/start`. Never add/delete/reorder/modify items. `depends_on` and `test_strategy` are set during `/setup` and are immutable during development.
 

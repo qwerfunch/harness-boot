@@ -18,7 +18,7 @@
 | Parameter count | > 4 | Convert to object parameter |
 | Cyclomatic complexity | > 10 | Must split |
 
-> **Enforcement**: Formatting rules (whitespace, semicolons, indentation) are auto-enforced by the `post-tool-format.sh` hook (prettier/black). Structural style rules (naming, nesting depth, function length) are enforced by the **reviewer agent** during Gate 2 code review.
+> **Enforcement**: Formatting rules (whitespace, semicolons, indentation) are auto-enforced by the `post-tool-format.mjs` hook (prettier/black). Structural style rules (naming, nesting depth, function length) are enforced by the **reviewer agent** during Gate 2 code review.
 
 ## Comment Rules <!-- anchor: comment-rules -->
 

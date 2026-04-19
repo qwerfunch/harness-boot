@@ -38,7 +38,7 @@ The plugin is structured as Claude Code native commands + hooks:
 
 Phase 1-6 sequential generation. After Step 1.7 approval of the decision review, phases 1-6 auto-progress without per-phase prompts. `last_completed_phase` is still checkpointed in PROGRESS.md at every phase boundary so an interrupted session auto-resumes from Phase N+1 on re-run. The flow pauses for the user only on errors, or at Phase 6 when the dependency graph / test-strategy classification is surfaced for confirmation. QA agent inclusion is auto-decided from the 3+ modules-with-integration-points criterion (shown in the Step 1.7 summary; overridable via "Change a decision").
 
-1. Infrastructure (settings.json, hooks/, environment.md, security.md, domain-persona.md, scripts/update-feature-status.sh)
+1. Infrastructure (settings.json, hooks/, environment.md, security.md, domain-persona.md, scripts/update-feature-status.mjs)
 2. Protocols (tdd-loop, iteration-cycle, code-doc-sync, session-management, message-format) + CLAUDE.md
 3. Agents (9+ agents with `model:` frontmatter — opus for judgment, sonnet for execution) + module-specific implementers + optional QA agent
 4. Skills (8 skills in [Anthropic Agent Skills format](https://github.com/anthropics/skills): `skill-name/SKILL.md` with 7-section anatomy, YAML frontmatter with name/description/metadata/allowed-tools, Rationalizations >= 2 rows)
@@ -73,7 +73,7 @@ Phase 1-6 sequential generation. After Step 1.7 approval of the decision review,
 - Gate 4 rollback: single commit per feature enables `git revert`; DB migrations require down-migration
 - Coverage gate hook: for `tdd`, blocks `git commit` when any tdd_focus function falls below 70% line coverage (fnMap.loc ∩ statementMap). For `lean-tdd`, blocks when BDD file is missing or Given/When/Then block count is less than the feature's `acceptance_test` length. `state-verification` warns only on missing test file; `integration` blocks below 60% overall file coverage. ([skip-coverage] bypass)
 - Doc-sync hook: blocks `git commit` only when export changes detected without feature's doc_sync targets updated (internal refactors pass through). ([skip-doc-sync] bypass)
-- Feature status auto-update: `scripts/update-feature-status.sh` marks `passes: true` after Gate 4 passes — prevents tracking drift
+- Feature status auto-update: `scripts/update-feature-status.mjs` marks `passes: true` after Gate 4 passes — prevents tracking drift
 - Per-feature commit discipline: even "implement all features" requests execute sequentially (TDD → gates → commit → next)
 
 ## Execution
