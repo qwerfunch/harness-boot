@@ -38,9 +38,9 @@ harness-boot starts from a simple question — what if the rules were enforced b
 
 harness-boot doesn't produce a one-size-fits-all scaffold. It reads your plan and tailors the harness to the project — extracting tech stack, architecture patterns, and feature lists from the document. When the plan leaves something unspecified, it presents 2–3 options and waits for your decision. No silent defaults.
 
-### TDD Isolation — Separation Enforces Honesty
+### Testable-First — Separation Enforces Honesty
 
-The agent writing tests cannot see the implementation, and vice versa. Since the test-writer has never read the production code, tests can't be reverse-engineered to pass. Each TDD phase — writing a failing test (Red), making it pass (Green), cleaning up (Refactor) — runs in a separate sub-agent with its own isolated context.
+The default cycle is **lean-tdd**: design for testability, implement, then verify at the feature boundary with an isolated BDD writer that has never read the implementation. The heavier **strict TDD** path (Red → Green → Refactor across three isolated sub-agents) is reserved for safety-critical domains — auth, payment, security, crypto, credential — where test-first discipline pins down ambiguous invariants. Either way, the agent writing tests cannot see the implementation, so tests can't be reverse-engineered to pass.
 
 ### Domain Persona — Agents That Understand Your Business
 
@@ -75,9 +75,12 @@ claude --plugin-dir .
 # 2. Feed it your plan
 /harness-boot:setup path/to/plan.md
 
-# 3. Confirm each generation phase (1-6) as prompted
+# 3. Review the decision summary at Step 1.7 and approve.
+#    Phases 1-6 then auto-progress; you'll only be prompted again on
+#    errors or if the Phase 6 dependency graph needs confirmation.
 
-# 4. Start development — picks the next feature, runs TDD cycle
+# 4. Start development — picks the next feature, runs the cycle
+#    matching its test_strategy (lean-tdd by default)
 /harness-boot:start
 ```
 
