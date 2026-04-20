@@ -230,7 +230,7 @@ Each agent YAML frontmatter includes a `model:` field.
 
 **Tier-1 agent body templates (copy-verbatim, MANDATORY)**:
 
-The bodies of the 10 fixed-scope agents live as pre-baked templates under `${CLAUDE_PLUGIN_ROOT}/docs/templates/agents/bodies/<slug>.md.tmpl`. Phase 3 COPIES each template verbatim between the `<!-- AGENT_BODY_START -->` / `<!-- AGENT_BODY_END -->` markers (strip the markers on write) — do NOT model-regenerate the body, do NOT paraphrase, do NOT re-read the original setup docs as body source. The templates are the canonical form and their own input sanitization clauses (for `tdd-test-writer` and `bdd-writer`) are already in-body under `## Inputs`.
+The bodies of the 10 fixed-scope agents live as pre-baked templates under `${CLAUDE_PLUGIN_ROOT}/docs/templates/agents/bodies/<slug>.md.tmpl`. Phase 3 COPIES each template verbatim between the `<!-- AGENT_BODY_START -->` / `<!-- AGENT_BODY_END -->` markers (strip the markers on write) — do NOT model-regenerate the body, do NOT paraphrase, do NOT re-read the original setup docs as body source. The templates are the canonical form. For `tdd-test-writer` and `bdd-writer`, the body's `## Inputs` section is a brief pointer; the normative sanitization contract lives in the Rule 12 fragment appended per the matrix below.
 
 | Agent | Template | Notes |
 |-------|----------|-------|
@@ -240,8 +240,8 @@ The bodies of the 10 fixed-scope agents live as pre-baked templates under `${CLA
 | `debugger.md` | `bodies/debugger.md.tmpl` | — |
 | `tdd-implementer.md` | `bodies/tdd-implementer.md.tmpl` | — |
 | `tdd-refactorer.md` | `bodies/tdd-refactorer.md.tmpl` | — |
-| `bdd-writer.md` | `bodies/bdd-writer.md.tmpl` | `## Inputs` already embedded |
-| `tdd-test-writer.md` (if generated) | `bodies/tdd-test-writer.md.tmpl` | `## Inputs` already embedded |
+| `bdd-writer.md` | `bodies/bdd-writer.md.tmpl` | `## Inputs` pointer; Rule 12 carries the contract |
+| `tdd-test-writer.md` (if generated) | `bodies/tdd-test-writer.md.tmpl` | `## Inputs` pointer; Rule 12 carries the contract |
 | `tester.md` | `bodies/tester.md.tmpl` | — |
 | `intent-verifier.md` | `bodies/intent-verifier.md.tmpl` | Includes `## Handoff Protocol` in-body |
 
@@ -257,26 +257,26 @@ The bodies of the 10 fixed-scope agents live as pre-baked templates under `${CLA
 
 Subagents invoked via the `Agent` tool cannot resolve `${CLAUDE_PLUGIN_ROOT}` paths — their system prompt is the literal body of their agent file. Any rule referenced only as `see ${CLAUDE_PLUGIN_ROOT}/...` is unreadable at runtime. Phase 3 embeds the rule texts into each generated agent file.
 
-**Pre-baked fragments** — Rules 2–11 live as single-source-of-truth fragments in `${CLAUDE_PLUGIN_ROOT}/docs/templates/agents/rules/NN-*.md`, regenerated from the anchored sources in `docs/setup/*` / `docs/protocols/*` / `commands/start.md` / `docs/templates/protocols/*` by `scripts/build-rule-fragments.mjs`. Phase 3 READS those fragments and appends them verbatim per the matrix below. Do NOT re-read the original source anchors; do NOT regenerate this text with the model; do NOT paraphrase. The fragments are the derived canonical form.
+**Pre-baked fragments** — Rules 2–12 live as single-source-of-truth fragments in `${CLAUDE_PLUGIN_ROOT}/docs/templates/agents/rules/NN-*.md`, regenerated from the anchored sources in `docs/setup/*` / `docs/protocols/*` / `commands/start.md` / `docs/templates/protocols/*` by `scripts/build-rule-fragments.mjs`. Phase 3 READS those fragments and appends them verbatim per the matrix below. Do NOT re-read the original source anchors; do NOT regenerate this text with the model; do NOT paraphrase. The fragments are the derived canonical form.
 
 **Only Rule 1 (Language Settings) is per-project** — it holds the only two values that vary between runs (`conversation_language`, `comment_language`).
 
 **Per-agent fragment matrix** (✓ = append this fragment into the agent body as a top-level `## <section>`):
 
-| Agent | 01 Lang | 02 Comment Rules | 03 TDD Cycles + Gate 0 | 04 File Class | 05 Feature Sel | 06 Message Format | 07 Coord Round-Trip | 08 Workspace | 09 Iter Track | 10 Cross-Review | 11 QA Timing |
-|-------|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| `orchestrator.md` | ✓ | — | ✓ | — | ✓ | ✓ | — | — | — | — | ✓ |
-| `implementer-<slug>.md` (each) | ✓ | — | ✓ | — | — | ✓ | ✓ | ✓ | ✓ | — | — |
-| `reviewer.md` | ✓ | ✓ | ✓ | — | — | ✓ | — | ✓ | — | ✓ | — |
-| `qa-agent.md` (if generated) | ✓ | — | — | — | — | ✓ | — | ✓ | — | — | ✓ |
-| `tdd-implementer.md` | ✓ | ✓ | — | — | — | — | — | ✓ | — | — | — |
-| `tdd-refactorer.md` | ✓ | ✓ | — | — | — | — | — | ✓ | — | — | — |
-| `bdd-writer.md` | ✓ | — | — | ✓ | — | — | — | ✓ | — | — | — |
-| `tdd-test-writer.md` (if generated) | ✓ | — | — | ✓ | — | — | — | ✓ | — | — | — |
-| `architect.md` | ✓ | — | — | — | — | — | — | — | — | — | — |
-| `debugger.md` | ✓ | — | — | — | — | — | — | — | — | — | — |
-| `tester.md` | ✓ | — | — | — | — | — | — | — | — | — | — |
-| `intent-verifier.md` | ✓ | — | — | — | — | ✓ | — | ✓ | — | — | — |
+| Agent | 01 Lang | 02 Comment Rules | 03 TDD Cycles + Gate 0 | 04 File Class | 05 Feature Sel | 06 Message Format | 07 Coord Round-Trip | 08 Workspace | 09 Iter Track | 10 Cross-Review | 11 QA Timing | 12 Input Sanitization |
+|-------|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| `orchestrator.md` | ✓ | — | ✓ | — | ✓ | ✓ | — | — | — | — | ✓ | — |
+| `implementer-<slug>.md` (each) | ✓ | — | ✓ | — | — | ✓ | ✓ | ✓ | ✓ | — | — | — |
+| `reviewer.md` | ✓ | ✓ | ✓ | — | — | ✓ | — | ✓ | — | ✓ | — | — |
+| `qa-agent.md` (if generated) | ✓ | — | — | — | — | ✓ | — | ✓ | — | — | ✓ | — |
+| `tdd-implementer.md` | ✓ | ✓ | — | — | — | — | — | ✓ | — | — | — | — |
+| `tdd-refactorer.md` | ✓ | ✓ | — | — | — | — | — | ✓ | — | — | — | — |
+| `bdd-writer.md` | ✓ | — | — | ✓ | — | — | — | ✓ | — | — | — | ✓ |
+| `tdd-test-writer.md` (if generated) | ✓ | — | — | ✓ | — | — | — | ✓ | — | — | — | ✓ |
+| `architect.md` | ✓ | — | — | — | — | — | — | — | — | — | — | — |
+| `debugger.md` | ✓ | — | — | — | — | — | — | — | — | — | — | — |
+| `tester.md` | ✓ | — | — | — | — | — | — | — | — | — | — | — |
+| `intent-verifier.md` | ✓ | — | — | — | — | ✓ | — | ✓ | — | — | — | — |
 
 The matrix is authoritative — it replaces the previous per-rule prose targeting.
 
@@ -288,7 +288,7 @@ The matrix is authoritative — it replaces the previous per-rule prose targetin
 Respond to the user in conversation_language. Write all source-code comments in comment_language. Machine-facing files (CLAUDE.md, .claude/**/*.md, feature-list.json, PROGRESS.md, hooks/*.mjs, scripts/*.mjs) stay English regardless.
 ```
 
-**Rules 2–11 — Fragment append (verbatim, no model regeneration)**:
+**Rules 2–12 — Fragment append (verbatim, no model regeneration)**:
 - **02 Comment Rules** — `docs/templates/agents/rules/02-comment-rules.md`
 - **03 TDD Cycles + Gate 0 Evidence** — `docs/templates/agents/rules/03-tdd-cycles.md` (already contains both `## TDD Cycles` and `## Gate 0 Evidence` wrapper headings)
 - **04 File Classification** — `docs/templates/agents/rules/04-file-classification.md`. For `bdd-writer.md` only, append one final line after the fragment: `For bdd-writer, the input is further narrowed to the feature's acceptance_test array plus the above-allowed type headers — no other test files are read.`
@@ -299,6 +299,7 @@ Respond to the user in conversation_language. Write all source-code comments in 
 - **09 Iteration Tracking** — `docs/templates/agents/rules/09-iteration-tracking.md`. Each `implementer-<slug>.md` carries its own copy — the generic `implementer.md` template does NOT substitute for per-module embedding.
 - **10 Cross-Module Review** — `docs/templates/agents/rules/10-cross-module-review.md`
 - **11 QA Invocation Timing** — `docs/templates/agents/rules/11-qa-invocation-timing.md`. Only when `qa-agent.md` is generated (see Step 1.6 QA criterion) does it also receive this fragment.
+- **12 Sub-agent Input Sanitization** — `docs/templates/agents/rules/12-subagent-input-sanitization.md`. Only for `bdd-writer.md` and (when generated) `tdd-test-writer.md`. Carries both the TDD and BDD sanitization clauses as a single block — the `## Inputs` body pointer in each agent delegates to this fragment as the normative contract.
 
 **If a fragment file is missing**, abort Phase 3 with the message: `Rule fragments missing — run scripts/build-rule-fragments.mjs and re-invoke /setup`. Do not attempt to re-derive from source anchors inline; the drift risk is why the fragments exist.
 
@@ -464,6 +465,7 @@ Verify the entire generated harness:
     - Every `implementer-*.md` (module-specific) must contain a `## Iteration Tracking` section whose body mentions `iteration > 5` AND either `debugger` or `Incidents`. Missing this section removes the only convergence-failure guard.
     - `reviewer.md` must contain a `## Cross-Module Review` section whose body mentions BOTH `qa-report` AND `boundary`. Reviewers without this stage treat cross-module features as single-module and miss boundary drift.
     - `orchestrator.md` AND (if present) `qa-agent.md` must contain a `## QA Invocation Timing` section whose body mentions both `per-module` AND `session-end`. Orchestrators missing the session-end sweep skip the final boundary verification and can ship undetected integration bugs.
+    - `bdd-writer.md` AND (if generated) `tdd-test-writer.md` must contain the heading `#### TDD / BDD sub-agent input sanitization` (the Rule 12 fragment append) AND both of the strings `Allowed to pass through` and `self-check`. Missing any of the three signals means the Rule 12 append was skipped — without it the sub-agent has only the body's pointer paragraph and no normative allowed/forbidden list, which breaks the isolation invariant the Testable-First principle depends on.
     Any missing section means Phase 3 Step 4 fragment concat was skipped — re-run `scripts/build-rule-fragments.mjs` to ensure `docs/templates/agents/rules/*.md` are present, then regenerate the affected agent file(s) by re-appending the ✓-marked fragments per the Step 4 matrix.
 16. **Dependency order validation** (feature-list.json): re-run the canonical Phase 6 post-sort check — for every feature at array index `i`, every id in its `depends_on` must appear at an earlier index `j < i`.
     ```bash
@@ -471,7 +473,7 @@ Verify the entire generated harness:
     ```
     Must exit 0 with zero stdout lines. Any violation (exit 2) means the Phase 6 Kahn sort was skipped or the write order was corrupted by a later patch — reorder features in-place (preserving all other fields) and re-run the check.
 
-17. **Template fragment byte-equality** (Phase 3 + Phase 4 pre-bake): for each agent that received a ✓-marked Rule 2–11 fragment per the Step 4 matrix, confirm the corresponding `## <section>` block in the generated `.claude/agents/<agent>.md` matches `${CLAUDE_PLUGIN_ROOT}/docs/templates/agents/rules/NN-*.md` byte-for-byte (modulo surrounding whitespace). Similarly, for the 5 domain-agnostic skills (`new-feature`, `bug-fix`, `refactor`, `tdd-workflow`, `context-engineering`), confirm `.claude/skills/<skill>/SKILL.md` equals the corresponding `${CLAUDE_PLUGIN_ROOT}/docs/templates/skills/<skill>/SKILL.md` byte-for-byte. A mismatch means the fragment was regenerated or paraphrased by the model instead of copied — re-run the Phase 3/4 copy steps verbatim. For the 3 project-adapted skills (`api-endpoint`, `db-migration`, `deployment`), confirm sections §1/§3/§5/§6/§7 match the `.tmpl` file byte-for-byte; only §description, §When-to-Use bullets, and §Process Step 1–4 may differ.
+17. **Template fragment byte-equality** (Phase 3 + Phase 4 pre-bake): for each agent that received a ✓-marked Rule 2–12 fragment per the Step 4 matrix, confirm the corresponding `## <section>` block in the generated `.claude/agents/<agent>.md` matches `${CLAUDE_PLUGIN_ROOT}/docs/templates/agents/rules/NN-*.md` byte-for-byte (modulo surrounding whitespace). Similarly, for the 5 domain-agnostic skills (`new-feature`, `bug-fix`, `refactor`, `tdd-workflow`, `context-engineering`), confirm `.claude/skills/<skill>/SKILL.md` equals the corresponding `${CLAUDE_PLUGIN_ROOT}/docs/templates/skills/<skill>/SKILL.md` byte-for-byte. A mismatch means the fragment was regenerated or paraphrased by the model instead of copied — re-run the Phase 3/4 copy steps verbatim. For the 3 project-adapted skills (`api-endpoint`, `db-migration`, `deployment`), confirm sections §1/§3/§5/§6/§7 match the `.tmpl` file byte-for-byte; only §description, §When-to-Use bullets, and §Process Step 1–4 may differ.
 
 18. **Intent-verification artifacts**: confirm `.claude/plan-source.md` exists with YAML frontmatter containing `origin`, `sha256`, `captured_at`; the SHA256 must match the current file bytes of the original plan MD at `origin` (if the path is still reachable). Confirm `.claude/agents/intent-verifier.md` exists with `model: opus` and contains `## Role`, `## Inputs`, `## Process`, `## Severity Contract`, `## Output`, `## Handoff Protocol`, and `## Common Rationalizations` sections. Confirm `.claude/environment.md` contains `intent_verifier_enabled:` (default `true`). A missing `plan-source.md` means Phase 1 Step 2 skipped the plan copy — regenerate by reading `$ARGUMENTS` verbatim.
 

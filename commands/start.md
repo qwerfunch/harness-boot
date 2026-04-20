@@ -94,7 +94,7 @@ The `implementer-<slug>` agent **owns** iteration counter writes for its own fea
 4. On feature completion (Step 7), the implementer resets `iteration: 0`
 5. When a feature is **resurrected** by the session-terminal sweep (session-end QA Critical, Gate 5 Build/Run failure — see the `qa-invocation-timing` anchor below and `docs/setup/agents-and-gates.md` anchor `runtime-smoke-gate`), its iteration counter is **preserved**. Do NOT reset to 0 at resurrection time: a recurring failure on the same feature is divergence, and the `> 5` cap must trigger so the normal escalation path runs (Step 3 above). Reset only happens again on successful re-completion in step 4.
 
-#### TDD / BDD sub-agent input sanitization (isolation invariant)
+#### TDD / BDD sub-agent input sanitization (isolation invariant) <!-- anchor: sub-agent-input-sanitization -->
 
 The Testable-First principle relies on two isolation barriers: `tdd-test-writer` never seeing implementation intent (under `tdd` / `state-verification`), and `bdd-writer` never seeing implementation code (under `lean-tdd`). Both sub-agents are invoked via the `Agent` tool inside each implementer's execution context, and the implementer MUST sanitize inputs before forwarding.
 
