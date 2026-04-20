@@ -6,8 +6,8 @@ Agents where reasoning is critical use Opus; agents where code generation is cri
 Specified via the frontmatter `model:` field.
 
 ```
-Opus (judgment, 4 core + 1 optional)
-  ── orchestrator, architect, reviewer, debugger
+Opus (judgment, 5 core + 1 optional)
+  ── orchestrator, architect, reviewer, debugger, intent-verifier
   ── qa-agent          (only if QA agent is included per Step 1.6 criteria)
 
 Sonnet (execution, 5 core + 1 conditional + N conditional)
@@ -16,7 +16,7 @@ Sonnet (execution, 5 core + 1 conditional + N conditional)
   ── implementer-<slug> (one per module, slug from domain-persona.md)
 ```
 
-`bdd-writer` is always generated — `lean-tdd` is the default strategy. `tdd-test-writer` is conditional because neither `lean-tdd` nor `integration` features use it.
+`bdd-writer` is always generated — `lean-tdd` is the default strategy. `intent-verifier` is always generated — Gate 2.5 runs per-feature and is the single external oracle against `.claude/plan-source.md`; it can be disabled per-project via `intent_verifier_enabled: false` in `.claude/environment.md`, in which case the agent file is still generated but Gate 2.5 is skipped at `/start`. `tdd-test-writer` is conditional because neither `lean-tdd` nor `integration` features use it.
 
 ```markdown
 ---

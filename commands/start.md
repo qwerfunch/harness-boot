@@ -215,6 +215,14 @@ If qa-agent is NOT included, these invocation points are omitted and boundary ve
   - Reviewer MUST verify code-doc sync: if staged diff includes export changes (per the feature's `doc_sync` mapping), every listed doc target must also be staged. Missing targets are **Critical** (block). This is the third defender alongside the prompt protocol (this checklist) and the pre-tool-doc-sync-check hook.
   - If QA agent is included: QA boundary verification report feeds into Gate 2
   - Boundary mismatches are Critical severity (block commit)
+- **Gate 2.5**: Intent verification (plan fidelity, conditional)
+  - **Skip condition**: `.claude/environment.md` records `intent_verifier_enabled: false` → log one line to `PROGRESS.md` and proceed to Gate 3.
+  - Orchestrator dispatches `Agent(subagent_type="intent-verifier", prompt=...)` with: `feature_id`, path to `.claude/plan-source.md`, the feature entry from `feature-list.json`, BDD/test paths discovered via `git ls-files '*{feature_id}.bdd.*' '*{feature_id}.test.*'`, and the staged diff (`git diff --cached`). See `docs/setup/agents-and-gates.md#intent-verification-gate` for the agent's Process / Severity Contract.
+  - Orchestrator reads the handoff envelope at `_workspace/handoff/intent-verifier->orchestrator.md` (`kind: intent-report`). Routing by severity:
+    - **Critical** → re-dispatch the module's implementer, **iteration++** (counts against the 5-iteration cap). A recurring Critical on the same feature escalates via the standard debugger route.
+    - **Major** → re-dispatch the module's implementer, **iteration unchanged** (single free revision).
+    - **Minor** → append one line per finding to `PROGRESS.md ## Incidents`; proceed to Gate 3. Non-blocking.
+  - Why this gate exists, not just Gate 2: Gate 2 covers code quality + seam correctness (intra-code axis). Gate 2.5 covers plan fidelity (code ↔ user-intent axis). `intent-verifier` is the only agent that reads `.claude/plan-source.md` — every other agent consumes LLM-derived artifacts, which is why acceptance_test drift can survive Gate 2 undetected.
 - **Gate 3**: Tests pass (coverage report)
 - **Gate 4**: Deploy approval (feature passes: true ready)
 

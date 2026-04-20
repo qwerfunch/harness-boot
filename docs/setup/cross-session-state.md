@@ -76,7 +76,7 @@ Stdout is the detected subtag (`ko`, `en`, ...) or empty. Per-platform stages (m
 
 Once selected, the tech stack is recorded in exactly two places:
 - `CLAUDE.md`: one-line summary (e.g., "Stack: Next.js 14 + TypeScript + Prisma + PostgreSQL")
-- `.claude/environment.md`: full detail (versions, package manager, runtime requirements, dev dependencies, conversation_language, comment_language, and Runtime Smoke Configuration — see below)
+- `.claude/environment.md`: full detail (versions, package manager, runtime requirements, dev dependencies, conversation_language, comment_language, Runtime Smoke Configuration — see below, and `intent_verifier_enabled` flag — see `docs/setup/agents-and-gates.md#intent-verification-gate`; default `true`, set `false` to skip Gate 2.5 without removing the agent file)
 
 ## Runtime Smoke Configuration <!-- anchor: runtime-smoke-configuration -->
 

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-harness-boot is a Claude Code plugin that converts detailed plan MDs into executable multi-agent harnesses. It generates ~56 files (9+ agents, 8 skills, 6 hooks, 5 protocols) with TDD sub-agent isolation, code-doc sync enforcement, coverage gate enforcement, anti-rationalization skills, Opus/Sonnet model routing, and **Subagent Dispatch** execution (parallel `Agent(subagent_type=...)` tool_use blocks + `_workspace/handoff/` file envelopes) for module-parallel development.
+harness-boot is a Claude Code plugin that converts detailed plan MDs into executable multi-agent harnesses. It generates ~57 files (10+ agents, 8 skills, 6 hooks, 5 protocols) with TDD sub-agent isolation, code-doc sync enforcement, coverage gate enforcement, anti-rationalization skills, Opus/Sonnet model routing, Gate 2.5 intent verification against the preserved plan MD, and **Subagent Dispatch** execution (parallel `Agent(subagent_type=...)` tool_use blocks + `_workspace/handoff/` file envelopes) for module-parallel development.
 
 ## Commands
 
@@ -40,7 +40,7 @@ Phase 1-6 sequential generation. After Step 1.7 approval of the decision review,
 
 1. Infrastructure (settings.json, hooks/, environment.md, security.md, domain-persona.md, scripts/update-feature-status.mjs)
 2. Protocols (tdd-loop, iteration-cycle, code-doc-sync, session-management, message-format) + CLAUDE.md
-3. Agents (9+ agents with `model:` frontmatter — opus for judgment, sonnet for execution) + module-specific implementers + optional QA agent
+3. Agents (10+ agents with `model:` frontmatter — opus for judgment, sonnet for execution; includes always-generated `intent-verifier` for Gate 2.5) + module-specific implementers + optional QA agent
 4. Skills (8 skills in [Anthropic Agent Skills format](https://github.com/anthropics/skills): `skill-name/SKILL.md` with 7-section anatomy, YAML frontmatter with name/description/metadata/allowed-tools, Rationalizations >= 2 rows)
 5. Context map (`.claude/context-map.md` — module → layer mapping; architecture rules injected into sub-agent prompts at dispatch time, no per-directory CLAUDE.md files)
 6. State files (feature-list.json, PROGRESS.md, CHANGELOG.md, error-recovery.md with 5 scenario playbooks)
@@ -52,7 +52,7 @@ Phase 1-6 sequential generation. After Step 1.7 approval of the decision review,
 3. Select feature(s) with numbered choices: parallel independent modules by default; single-module projects run one feature at a time. **Auto-pilot option** runs all remaining features, pausing only on errors.
 4. Run development cycle per `test_strategy`: `lean-tdd` (default) → Design/Implement/BDD-Verify/Refactor (tests not written during implementation; feature-level BDD is the gate); `tdd` (safety-critical opt-in for auth/payment/security/crypto/credential domains) → Red/Green/Refactor (3 isolated sub-agents); `state-verification` → Implement/State-Test/Refactor; `integration` → Implement/Integration-Test. Steps 3-6 auto-proceed on success — no mid-feature pauses. Max 5 iterations (tracked in PROGRESS.md), then escalate.
 5. QA agent verifies cross-boundary consistency (if included per QA criteria)
-6. Quality gates 0-4 (Gate 0 enforced by implementer + reviewer), coverage gate hook, code-doc sync, auto-update feature-list.json, single commit per feature (never batch)
+6. Quality gates 0-4 (Gate 0 enforced by implementer + reviewer), **Gate 2.5 intent verification** (intent-verifier compares implementation against `.claude/plan-source.md`, the sole external oracle — Critical blocks with iteration++, Major blocks with iteration unchanged, Minor logs to Incidents; skip when `intent_verifier_enabled: false`), coverage gate hook, code-doc sync, auto-update feature-list.json, single commit per feature (never batch)
 
 ## Five Core Principles
 
@@ -89,7 +89,7 @@ Reference: `docs/references/agent-design-patterns.md` (adapted from [revfactory/
 ## Model Routing
 
 ```
-Opus (judgment): orchestrator, architect, reviewer, debugger, qa-agent
+Opus (judgment): orchestrator, architect, reviewer, debugger, intent-verifier, qa-agent
 Sonnet (execution): implementer, tdd-implementer, tdd-refactorer, bdd-writer, tester
 ```
-`bdd-writer` is always generated (lean-tdd is the default strategy). `tdd-test-writer` is generated conditionally — only when `feature-list.json` contains at least one feature with `"test_strategy": "tdd"` or `"state-verification"`.
+`bdd-writer` and `intent-verifier` are always generated (lean-tdd is the default strategy; intent-verifier runs Gate 2.5 per-feature). `tdd-test-writer` is generated conditionally — only when `feature-list.json` contains at least one feature with `"test_strategy": "tdd"` or `"state-verification"`.
