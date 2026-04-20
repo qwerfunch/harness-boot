@@ -59,18 +59,9 @@ For each feature, read `doc_sync` from `feature-list.json`. For every listed doc
 - If the feature's code change touched any `export` that the doc references, the doc must be updated in the same commit.
 - Missing doc update for a real export change → **Critical** (REJECT, not downgrade). Pure internal refactor with no export change → skip, even if `doc_sync` lists the doc.
 
-## Cross-Module Review Stage
+## Cross-Module Review
 
-When a feature's `tdd_focus` or `doc_sync` paths span **two or more module directories** (per `.claude/context-map.md`), run this stage in addition to Stages 1–3. This is distinct from the per-file quality pass — it catches seam mistakes that only appear when both sides are read together.
-
-**Inputs**: the artifact paths from all implementers that worked on the feature (both sides of the seam).
-
-**Checks**:
-- Shape consistency — producer's return shape matches consumer's expected input shape
-- Type consistency — type definitions agree across the boundary (no quiet narrowing or widening)
-- Semantics — error-path contracts align (producer throws vs. consumer expects Result), pagination / ordering assumptions match
-
-**Output**: `_workspace/gate2_reviewer_{feature_id}-cross-module.md`. Any Critical finding returns the feature to the implementer with `review-result: critical-reject` per `docs/templates/protocols/message-format.md#coordinate-round-trip`; this counts toward the 5-iteration convergence limit.
+When a feature's `tdd_focus` or `doc_sync` paths span two or more module directories (per `.claude/context-map.md`), the reviewer runs an additional **Cross-Module Review** stage in addition to Stages 1–3 above. This stage compares the producer and consumer sides of every integration boundary the feature touches, folds in any `qa-report` written by the qa-agent, and classifies shape/type/semantics/error-path mismatches by severity. The full procedure, inputs, and severity contract are defined in the appended `### Gate 2: Cross-Module Review Stage` rule-fragment section below — treat that section as the normative reference and do not paraphrase it here.
 
 ## Output
 
