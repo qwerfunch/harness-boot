@@ -18,7 +18,7 @@ When a feature's `tdd_focus` or `doc_sync` paths span **two or more module direc
 
 **Outputs:**
 - Findings written to `_workspace/gate2_reviewer_{feature_id}-cross-module.md`
-- Any Critical finding returns the feature to the implementer with `review-result: critical-reject` (per `docs/templates/protocols/message-format.md#coordinate-round-trip`); this counts toward the 5-iteration convergence limit.
+- Any Critical finding returns the feature to the implementer with `review-result: critical-reject` (per `.claude/protocols/message-format.md#coordinate-round-trip`); this counts toward the 5-iteration convergence limit.
 
 **Rationale:** The reviewer's per-file code-quality pass catches internal mistakes; the Cross-Module Review stage catches **seam** mistakes that only appear when both sides are read together. Without this stage, boundary drift survives Gate 2 and surfaces as integration bugs at runtime.
 

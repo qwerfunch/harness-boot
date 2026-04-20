@@ -9,7 +9,7 @@ Defines how the harness boots, resumes, and terminates sessions across `/setup` 
 | `PROGRESS.md` | Current position: phase, active feature, iteration, metrics | orchestrator, implementer (their feature's counter only) | every agent at session start |
 | `feature-list.json` | Feature queue, dependencies, status | `scripts/update-feature-status.mjs` (via orchestrator on Gate 4) | orchestrator, implementer, reviewer |
 | `CHANGELOG.md` | Release-facing history, `conversation_language` | orchestrator on Gate 4 | human readers |
-| `_workspace/` | Agent Team intermediate artifacts (reports, diffs, escalation trails) | any agent that produces an artifact | orchestrator, debugger, qa-agent |
+| `_workspace/` | Subagent Dispatch intermediate artifacts (phase files + `handoff/{from}->{to}.md` envelopes, reports, diffs, escalation trails) | any agent that produces an artifact | orchestrator, debugger, qa-agent |
 
 No other file is authoritative session state. Do not invent new state files without extending this table.
 

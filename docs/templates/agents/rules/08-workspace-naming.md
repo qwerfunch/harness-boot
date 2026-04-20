@@ -1,14 +1,16 @@
 ## `_workspace/` naming convention <!-- anchor: workspace-naming -->
 
+Envelopes live under `_workspace/handoff/`. Main deliverables (the artifact a subagent produced) live at:
+
 ```
 _workspace/{phase}_{agent}_{artifact}.{ext}
 ```
 
 Examples:
-- `_workspace/red_tdd-test-writer_feat-042-tests.ts`
-- `_workspace/gate2_reviewer_feat-042-report.md`
+- `_workspace/01_architect_dependencies.md`
+- `_workspace/02_impl_auth_feat-042-bundle.md`
+- `_workspace/03_reviewer_feat-042.md`
 - `_workspace/qa_qa-agent_module-auth-order-boundary.md`
-- `_workspace/escalate_implementer-auth_feat-042-trail.md`
 
 Rules:
 - Slugs are lowercase, hyphenated

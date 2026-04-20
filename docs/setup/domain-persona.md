@@ -116,7 +116,7 @@ Step 1.5 (Module Extraction) and Phase 3 (Module-specific implementer generation
 
 1. **Seed from Key Entities.** Every row of the Key Entities table is a module candidate. The module slug is the lowercase-hyphenated entity name (e.g., `User` → `user`, `OrderFulfillment` → `order-fulfillment`).
 2. **Merge by Bounded Context.** If Bounded Contexts are defined, all entities owned by the same context collapse into one module. The merged slug is the context's lowercase-hyphenated name (e.g., Bounded Context `Authentication` owning `User` + `Credential` → module slug `authentication`, not two separate modules).
-3. **Merge by tdd_focus overlap.** If two candidate modules share any `tdd_focus` symbol across features in the draft `feature-list.json`, collapse them into one module (named after whichever has more features).
+3. **Merge by tdd_focus overlap.** If two candidate modules share any `tdd_focus` symbol across features in the draft `feature-list.json`, collapse them into one module (named after whichever has more features; on tie, pick the slug that sorts alphabetically first so the output is deterministic across runs).
 4. **Output**: `module_count` = number of distinct slugs surviving steps 2–3. `modules` = the slug list.
 
 **Execution direction**: Always Subagent Dispatch. `module_count == 1` produces one implementer + reviewer, dispatched sequentially; `module_count ≥ 2` produces one implementer per module + reviewer, with parallel waves dispatched via multiple `Agent` tool_use blocks in a single orchestrator response. The dispatch surface (`Agent(subagent_type=...)` + `_workspace/` files) is uniform across project sizes.

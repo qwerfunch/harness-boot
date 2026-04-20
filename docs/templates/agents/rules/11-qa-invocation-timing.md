@@ -7,7 +7,7 @@
      2. **Create** — no existing feature owns the boundary → append a new `FEAT-FIX-<slug>` entry with `test_strategy: "integration"`, `depends_on: [<features touching the boundary>]`, `tdd_focus: [<boundary files>]`, `doc_sync: []`, `passes: false`.
      After the update, auto-pilot re-enters naturally (the queue is no longer empty). No session-level wave counter, no bounded one-off pass — the only convergence guard is the per-feature 5-iteration cap in `## Iteration Tracking` above. A feature that keeps re-failing escalates to the user through the normal channel.
    - **Major / Minor**: append to `PROGRESS.md ## Incidents` only; do not modify `feature-list.json`.
-   - **No findings**: verification sweep passes; proceed to Gate 5 Runtime Smoke (`docs/setup/agents-and-gates.md` anchor `runtime-smoke-gate`).
+   - **No findings**: verification sweep passes; proceed to Gate 5 Runtime Smoke (the orchestrator's `## Gate 5: Runtime Smoke` section).
 
 If qa-agent is NOT included, these invocation points are omitted and boundary verification falls to the reviewer's Gate 2 checklist alone.
 

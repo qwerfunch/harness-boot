@@ -92,4 +92,4 @@ Reference: `docs/references/agent-design-patterns.md` (adapted from [revfactory/
 Opus (judgment): orchestrator, architect, reviewer, debugger, qa-agent
 Sonnet (execution): implementer, tdd-implementer, tdd-refactorer, bdd-writer, tester
 ```
-`bdd-writer` is always generated (lean-tdd is the default strategy). `tdd-test-writer` is generated conditionally — only when `feature-list.json` contains at least one feature with `"test_strategy": "tdd"`.
+`bdd-writer` is always generated (lean-tdd is the default strategy). `tdd-test-writer` is generated conditionally — only when `feature-list.json` contains at least one feature with `"test_strategy": "tdd"` or `"state-verification"`.

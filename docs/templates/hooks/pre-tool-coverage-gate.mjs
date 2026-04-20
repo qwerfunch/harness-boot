@@ -120,7 +120,12 @@ function runShell(cmd, opts = {}) {
 function resolveCurrentFeature(features) {
   const stagedRes = spawnSync('git', ['-C', PROJECT_ROOT, 'show', ':feature-list.json'], { encoding: 'utf8' });
   const headRes = spawnSync('git', ['-C', PROJECT_ROOT, 'show', 'HEAD:feature-list.json'], { encoding: 'utf8' });
-  if (stagedRes.status !== 0 || headRes.status !== 0) {
+  // Initial commit (no HEAD yet): the harness scaffold commit does not
+  // target any feature, so there is no contract to verify. Short-circuit
+  // with null rather than walking into the passes:false fallback, which
+  // would wrongly pin the gate to FEAT-1.
+  if (headRes.status !== 0) return null;
+  if (stagedRes.status !== 0) {
     return features.find(f => f.passes === false);
   }
   let staged, head;
@@ -155,25 +160,25 @@ function resolveCurrentFeature(features) {
 if (testStrategy === 'lean-tdd') {
   const expected = Array.isArray(current.acceptance_test) ? current.acceptance_test.length : 0;
   if (!featureId) process.exit(0);
-  const allFiles = walk(PROJECT_ROOT);
-  const bddFile = allFiles.find(f => {
-    const base = basename(f);
-    return base.startsWith(`${featureId}.bdd`) && (base === `${featureId}.bdd` || base.startsWith(`${featureId}.bdd.`));
-  });
+  // `git ls-files` scales to large repos where `walk(PROJECT_ROOT)` would
+  // stat thousands of files on every commit.
+  const lsRes = spawnSync('git', ['-C', PROJECT_ROOT, 'ls-files', `*${featureId}.bdd*`], { encoding: 'utf8' });
+  const bddFile = lsRes.status === 0
+    ? (lsRes.stdout.split('\n').find(p => p.trim()) || '').trim()
+    : '';
   if (!bddFile) {
     console.error(`BLOCKED: No BDD file found for ${featureId} (test_strategy: lean-tdd).`);
     console.error(`Expected: <test-dir>/${featureId}.bdd.<ext> with ${expected} Given/When/Then block(s).`);
     console.error('Bypass: include [skip-coverage] in commit message.');
     process.exit(2);
   }
-  const body = readFileSync(bddFile, 'utf8');
-  // ⚠️ Line-match heuristic, not a Gherkin parser. Counts single-line
-  // `given … when … then …` sentences. Multi-line Gherkin scenarios
-  // that span several lines won't match — the bdd-writer agent is
-  // responsible for emitting the compact form this regex expects.
-  const scenarios = body.split('\n').filter(l => /given.*when.*then/i.test(l)).length;
+  const body = readFileSync(join(PROJECT_ROOT, bddFile), 'utf8');
+  // Count each scenario by its leading `Given`. Works for multi-line
+  // Gherkin (`Given …\n  When …\n  Then …`) and single-line compact form
+  // alike; bdd-writer may emit either.
+  const scenarios = body.split('\n').filter(l => /^\s*Given\b/i.test(l)).length;
   if (scenarios < expected) {
-    console.error(`BLOCKED: BDD file ${bddFile} has ${scenarios} Given/When/Then block(s); acceptance_test requires ${expected}.`);
+    console.error(`BLOCKED: BDD file ${bddFile} has ${scenarios} Given block(s); acceptance_test requires ${expected}.`);
     console.error('Add the missing scenarios (bdd-writer) before committing.');
     console.error('Bypass: include [skip-coverage] in commit message.');
     process.exit(2);
@@ -208,7 +213,9 @@ if (testStrategy === 'state-verification') {
 if (testStrategy === 'integration') {
   const covCmd = runShell(COVERAGE_COMMAND, { stdio: ['ignore', 'ignore', 'ignore'] });
   if (covCmd.status !== 0) {
-    console.error('WARNING: coverage command failed — gate cannot verify. Fix before committing.');
+    console.error('BLOCKED: coverage command failed (test_strategy: integration) — gate cannot verify.');
+    console.error('Fix the failing tests and retry, or include [skip-coverage] in the commit message.');
+    process.exit(2);
   }
   const coverageFile = join(PROJECT_ROOT, COVERAGE_FILE);
   if (existsSync(coverageFile)) {
@@ -237,12 +244,16 @@ if (testStrategy === 'integration') {
 
 const covCmd = runShell(COVERAGE_COMMAND, { stdio: ['ignore', 'ignore', 'ignore'] });
 if (covCmd.status !== 0) {
-  console.error('WARNING: coverage command failed — gate cannot verify. Fix before committing.');
+  console.error('BLOCKED: coverage command failed (test_strategy: tdd) — gate cannot verify tdd_focus.');
+  console.error('Fix the failing tests and retry, or include [skip-coverage] in the commit message.');
+  process.exit(2);
 }
 const coverageFile = join(PROJECT_ROOT, COVERAGE_FILE);
 if (!existsSync(coverageFile)) {
-  console.error('WARNING: Coverage report not generated, skipping gate.');
-  process.exit(0);
+  console.error('BLOCKED: Coverage report not generated at expected path.');
+  console.error(`Expected: ${coverageFile}. Verify the COVERAGE_COMMAND writes this artifact.`);
+  console.error('Bypass: include [skip-coverage] in commit message.');
+  process.exit(2);
 }
 
 let cov;

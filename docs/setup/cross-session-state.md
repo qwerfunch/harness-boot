@@ -1,3 +1,5 @@
+<!-- size-exception: cross-session state hub (tech-stack, architecture, language, runtime-smoke, feature-list, PROGRESS) must stay in one file so /setup Phase 1, 2, 6 can rely on a single anchor namespace -->
+
 # Cross-Session State Management
 
 ## Initializer Mode (First Session)

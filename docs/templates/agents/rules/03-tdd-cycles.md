@@ -12,7 +12,7 @@ Design: implementer (self, no sub-agent)
   ↓
 Implement: call tdd-implementer sub-agent
   - Build the full implementation following the design sketch
-  - Apply Comment Rules (see `docs/setup/code-style.md#comment-rules`): file headers, JSDoc, why-comments
+  - Apply Comment Rules (see this agent's `## Comment Rules` section): file headers, JSDoc, why-comments
   - MUST NOT write tests (tests arrive in the next phase)
   - Verify: compile/lint pass
   ↓
@@ -50,7 +50,7 @@ Red: call tdd-test-writer sub-agent
   ↓
 Green: call tdd-implementer sub-agent
   - Write minimal implementation to pass tests
-  - Apply Comment Rules (see `docs/setup/code-style.md#comment-rules`): file headers, JSDoc, why-comments
+  - Apply Comment Rules (see this agent's `## Comment Rules` section): file headers, JSDoc, why-comments
   - Verify: run tests → all PASS
   ↓
 Refactor: call tdd-refactorer sub-agent
@@ -72,7 +72,7 @@ Plan (analyze acceptance_test, identify testable state vs visual output)
   ↓
 Implement: call tdd-implementer sub-agent
   - Build the full feature implementation
-  - Apply Comment Rules (see `docs/setup/code-style.md#comment-rules`): file headers, JSDoc, why-comments
+  - Apply Comment Rules (see this agent's `## Comment Rules` section): file headers, JSDoc, why-comments
   - Verify: compile/lint pass
   ↓
 State-Test: call tdd-test-writer sub-agent
@@ -99,7 +99,7 @@ Plan (analyze acceptance_test, identify integration points)
   ↓
 Implement: call tdd-implementer sub-agent
   - Build the feature implementation
-  - Apply Comment Rules (see `docs/setup/code-style.md#comment-rules`): file headers, JSDoc, why-comments
+  - Apply Comment Rules (see this agent's `## Comment Rules` section): file headers, JSDoc, why-comments
   - Verify: compile/lint pass
   ↓
 Integration-Test: call tester sub-agent
