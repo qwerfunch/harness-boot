@@ -228,11 +228,32 @@ Each agent YAML frontmatter includes a `model:` field.
   - The generic `implementer.md` is the template of record; it is not itself a dispatchable subagent — only the generated `implementer-<slug>.md` files are.
   - Count: one per module (minimum 1 for single-module projects — one implementer + reviewer).
 
-**Sub-agent input contract**:
-- When generating `tdd-test-writer.md` (if emitted), inject the "TDD sub-agent input sanitization" clause from `commands/start.md` Step 4 into the agent prompt body under a `## Inputs` section. The clause lists what fields the writer may read and what implementation hints must be absent; the writer self-checks on receipt and aborts with a note to `_workspace/` if the inputs look contaminated.
-- When generating `bdd-writer.md`, inject the parallel "BDD sub-agent input sanitization" clause from `commands/start.md` Step 4 under a `## Inputs` section. The clause lists the allowed input fields (`acceptance_test` array + public type headers only) and explicitly forbids implementation references; the writer self-checks and aborts to `_workspace/` on contamination.
+**Tier-1 agent body templates (copy-verbatim, MANDATORY)**:
 
-**Rule text injection (template concat + narrow inject, MANDATORY)**:
+The bodies of the 10 fixed-scope agents live as pre-baked templates under `${CLAUDE_PLUGIN_ROOT}/docs/templates/agents/bodies/<slug>.md.tmpl`. Phase 3 COPIES each template verbatim between the `<!-- AGENT_BODY_START -->` / `<!-- AGENT_BODY_END -->` markers (strip the markers on write) — do NOT model-regenerate the body, do NOT paraphrase, do NOT re-read the original setup docs as body source. The templates are the canonical form and their own input sanitization clauses (for `tdd-test-writer` and `bdd-writer`) are already in-body under `## Inputs`.
+
+| Agent | Template | Notes |
+|-------|----------|-------|
+| `orchestrator.md` | `bodies/orchestrator.md.tmpl` | Includes `## Handoff Protocol` in-body |
+| `architect.md` | `bodies/architect.md.tmpl` | — |
+| `reviewer.md` | `bodies/reviewer.md.tmpl` | Contains `{{DOMAIN_CONTEXT_INLINE}}` placeholder (see below) |
+| `debugger.md` | `bodies/debugger.md.tmpl` | — |
+| `tdd-implementer.md` | `bodies/tdd-implementer.md.tmpl` | — |
+| `tdd-refactorer.md` | `bodies/tdd-refactorer.md.tmpl` | — |
+| `bdd-writer.md` | `bodies/bdd-writer.md.tmpl` | `## Inputs` already embedded |
+| `tdd-test-writer.md` (if generated) | `bodies/tdd-test-writer.md.tmpl` | `## Inputs` already embedded |
+| `tester.md` | `bodies/tester.md.tmpl` | — |
+| `intent-verifier.md` | `bodies/intent-verifier.md.tmpl` | Includes `## Handoff Protocol` in-body |
+
+**Excluded from Tier-1 copy-verbatim** (still LLM-generated per the existing path):
+- `implementer-<slug>.md` — module-specific content per Step 1.5 module extraction. Uses `implementer.md` as the body template of record (not a Tier-1 body template file), plus a one-inlined "Module scope" block referencing the matching `.claude/context-map.md` row.
+- `qa-agent.md` — conditional on QA inclusion; body follows the QA-agent guide at `${CLAUDE_PLUGIN_ROOT}/docs/references/qa-agent-guide.md`.
+
+**Reviewer placeholder — `{{DOMAIN_CONTEXT_INLINE}}`**: After copying `bodies/reviewer.md.tmpl`, replace the literal `{{DOMAIN_CONTEXT_INLINE}}` line between the `<!-- DOMAIN_CONTEXT_START -->` / `<!-- DOMAIN_CONTEXT_END -->` markers with the per-project Entities + Domain Rules + Vocabulary subset from `.claude/domain-persona.md` (see `${CLAUDE_PLUGIN_ROOT}/docs/setup/domain-persona.md` Agent Domain Views). Do not expand the reviewer template beyond this substitution.
+
+**If a template file is missing**, abort Phase 3 with: `Agent body templates missing — ensure docs/templates/agents/bodies/ is present and re-invoke /setup`.
+
+**Rule text injection (fragment append onto copied body, MANDATORY)**:
 
 Subagents invoked via the `Agent` tool cannot resolve `${CLAUDE_PLUGIN_ROOT}` paths — their system prompt is the literal body of their agent file. Any rule referenced only as `see ${CLAUDE_PLUGIN_ROOT}/...` is unreadable at runtime. Phase 3 embeds the rule texts into each generated agent file.
 
@@ -284,7 +305,11 @@ Respond to the user in conversation_language. Write all source-code comments in 
 Embedding is done inside the `/setup` slash-command context (top-level), which CAN resolve `${CLAUDE_PLUGIN_ROOT}`. Subagents only ever see the post-embed files.
 
 **Handoff Protocol integration:**
-Add `## Handoff Protocol` section **only to agents that actually produce or consume handoff envelopes** — orchestrator, module-specific implementers, reviewer, and qa-agent (if included). Non-communicating agents (`architect`, `debugger`, `tester`, `bdd-writer`, and all `tdd-*` sub-agents) **omit the section** to avoid empty-ceremony placeholders. `${CLAUDE_PLUGIN_ROOT}/docs/references/orchestrator-template.md` is a **structural example** for the orchestrator's Subagent Dispatch workflow (parallel `Agent` tool_use blocks + `_workspace/handoff/` envelopes) only; it is NOT the source of truth for selection, coordination, or QA timing semantics — those come from the inline-embed rules 5, 6, 7, 10, 11 above. Do not restate algorithms from the template; embed from the anchored sources.
+The Tier-1 body templates already include (or correctly omit) a `## Handoff Protocol` section per the communicating-agent rule — orchestrator, reviewer, and intent-verifier carry it in-body; architect, debugger, tester, bdd-writer, and the tdd-* leaves omit it. This instruction therefore applies only to the two non-Tier-1 agents:
+- `implementer-<slug>.md` (each) — **add** `## Handoff Protocol` documenting which handoff envelopes the implementer reads and writes for its module.
+- `qa-agent.md` (if generated) — **add** `## Handoff Protocol` per `${CLAUDE_PLUGIN_ROOT}/docs/references/qa-agent-guide.md`.
+
+`${CLAUDE_PLUGIN_ROOT}/docs/references/orchestrator-template.md` remains a **structural example** for the orchestrator's Subagent Dispatch workflow only; it is NOT the source of truth for selection, coordination, or QA timing semantics — those come from the inline-embed rules 5, 6, 7, 10, 11 above. Do not restate algorithms from the template; embed from the anchored sources.
 
 **Generate agents in parallel.** Agents do not read each other's file bodies — cross-references are name-based only. Issue all agent-file `Write` tool calls in a single message (one per agent). The agent set (including optional qa-agent and conditional tdd-test-writer) must be resolved before dispatching — decide the set first, then write them all concurrently.
 
@@ -449,6 +474,12 @@ Verify the entire generated harness:
 17. **Template fragment byte-equality** (Phase 3 + Phase 4 pre-bake): for each agent that received a ✓-marked Rule 2–11 fragment per the Step 4 matrix, confirm the corresponding `## <section>` block in the generated `.claude/agents/<agent>.md` matches `${CLAUDE_PLUGIN_ROOT}/docs/templates/agents/rules/NN-*.md` byte-for-byte (modulo surrounding whitespace). Similarly, for the 5 domain-agnostic skills (`new-feature`, `bug-fix`, `refactor`, `tdd-workflow`, `context-engineering`), confirm `.claude/skills/<skill>/SKILL.md` equals the corresponding `${CLAUDE_PLUGIN_ROOT}/docs/templates/skills/<skill>/SKILL.md` byte-for-byte. A mismatch means the fragment was regenerated or paraphrased by the model instead of copied — re-run the Phase 3/4 copy steps verbatim. For the 3 project-adapted skills (`api-endpoint`, `db-migration`, `deployment`), confirm sections §1/§3/§5/§6/§7 match the `.tmpl` file byte-for-byte; only §description, §When-to-Use bullets, and §Process Step 1–4 may differ.
 
 18. **Intent-verification artifacts**: confirm `.claude/plan-source.md` exists with YAML frontmatter containing `origin`, `sha256`, `captured_at`; the SHA256 must match the current file bytes of the original plan MD at `origin` (if the path is still reachable). Confirm `.claude/agents/intent-verifier.md` exists with `model: opus` and contains `## Role`, `## Inputs`, `## Process`, `## Severity Contract`, `## Output`, `## Handoff Protocol`, and `## Common Rationalizations` sections. Confirm `.claude/environment.md` contains `intent_verifier_enabled:` (default `true`). A missing `plan-source.md` means Phase 1 Step 2 skipped the plan copy — regenerate by reading `$ARGUMENTS` verbatim.
+
+19. **Tier-1 agent body byte-equality** (Phase 3 copy-verbatim): for each of the 10 Tier-1 agents (orchestrator, architect, reviewer, debugger, tdd-implementer, tdd-refactorer, bdd-writer, tdd-test-writer if generated, tester, intent-verifier), confirm the body region between the first `## Role` heading and the last rationalization-table row of `.claude/agents/<slug>.md` matches the content between `<!-- AGENT_BODY_START -->` and `<!-- AGENT_BODY_END -->` in `${CLAUDE_PLUGIN_ROOT}/docs/templates/agents/bodies/<slug>.md.tmpl` byte-for-byte. Exception: `reviewer.md` must have the `{{DOMAIN_CONTEXT_INLINE}}` placeholder replaced with the project-specific Entities+Rules+Vocabulary subset — every other byte of the reviewer body must still match. Run the canonical check:
+    ```bash
+    node "${CLAUDE_PLUGIN_ROOT}/scripts/verify-agent-bodies.mjs" .claude/agents/
+    ```
+    Must exit 0 with zero stdout lines. A mismatch means the agent body was regenerated or paraphrased by the model instead of copied from the template — re-run the Phase 3 copy step for that agent verbatim.
 
 Report each item as PASS/FAIL. For each FAIL:
 1. Identify the specific gap (missing file, missing section, wrong model routing, etc.)

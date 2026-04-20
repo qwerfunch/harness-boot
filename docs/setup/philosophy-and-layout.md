@@ -29,6 +29,9 @@ project-root/
 ├── .claude/
 │   ├── settings.json                      # Hook configuration (runtime guardrails)
 │   ├── agents/                            # 10+ agents (+ optional qa-agent, module-specific agents)
+│   │                                      # 10 Tier-1 agents are copied verbatim from
+│   │                                      # docs/templates/agents/bodies/<slug>.md.tmpl;
+│   │                                      # implementer-<slug> and qa-agent remain LLM-generated.
 │   │   ├── orchestrator.md                #   Orchestrator
 │   │   ├── implementer.md                 #   TDD orchestration
 │   │   ├── tdd-test-writer.md             #   Red phase only

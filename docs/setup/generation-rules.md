@@ -5,7 +5,7 @@
 ```
 Phase 1: Infrastructure ── settings.json, hooks/ (6 scripts), environment.md, security.md, domain-persona.md, scripts/update-feature-status.mjs, .gitignore, plan-source.md (verbatim copy of $ARGUMENTS)
 Phase 2: Protocols ── protocols/ (5 protocols), CLAUDE.md, README.md, quality-gates.md
-Phase 3: Agents ── agents/ (10+ agents incl. intent-verifier, with model: field; Handoff Protocol section on communicating agents; optional qa-agent)
+Phase 3: Agents ── agents/ (10+ agents incl. intent-verifier, with model: field; Handoff Protocol section on communicating agents; optional qa-agent). The 10 fixed-scope agent bodies are copied verbatim from docs/templates/agents/bodies/<slug>.md.tmpl (Tier-1 copy-verbatim) — only implementer-<slug>.md and qa-agent.md remain LLM-generated.
 Phase 4: Skills ── skills/ (8 skills, Anthropic Agent Skills format, 7-section anatomy), examples/
 Phase 5: Context Map ── .claude/context-map.md (module → layer mapping, architecture rules)
 Phase 6: State ── feature-list.json, PROGRESS.md, CHANGELOG.md, error-recovery.md, observability.md
