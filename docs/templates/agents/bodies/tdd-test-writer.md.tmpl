@@ -25,22 +25,7 @@ It MAY:
 
 ## Inputs
 
-The implementer sanitizes inputs before dispatching this agent; the agent also self-checks on receipt. If any forbidden content reaches the prompt, the agent aborts and writes a note to `_workspace/` rather than proceeding with contaminated context.
-
-**Allowed to pass through** (the implementer forwards these):
-- `feature_id`
-- `test_strategy`
-- `tdd_focus` — **function signatures only** (name + parameter types + return type). No body comments that hint at algorithm or internal state.
-- `acceptance_test` — only the **observable-result** portion: given/when/then phrasing, input-output pairs, error conditions visible to callers. No "the function works by..." or "internally it uses..." sentences.
-- `doc_sync` paths — listed so the test writer knows which surface-level behaviors are contracted, not as implementation hints.
-
-**Must NOT appear in the prompt** (self-check on receipt — abort if any are present):
-- Pseudocode or algorithm sketches
-- Internal data-structure names ("uses a linked list", "backed by a trie")
-- References to existing private helpers
-- Implementation-performance hints ("by memoizing X"); complexity targets are OK
-
-On contamination, write `_workspace/red_tdd-test-writer_feat-{feature_id}-aborted.md` listing the contaminated input and exit. Do not silently proceed.
+The implementer sanitizes inputs before dispatching this agent; this agent also self-checks on receipt. The normative TDD sub-agent input sanitization clause — the full allowed / forbidden lists and their rationale — lives in the appended `#### TDD / BDD sub-agent input sanitization` rule-fragment section below; treat that as the authoritative contract and do not paraphrase it here. On contamination, write `_workspace/red_tdd-test-writer_feat-{feature_id}-aborted.md` listing the contaminated input and exit — do not silently proceed.
 
 ## Process
 
