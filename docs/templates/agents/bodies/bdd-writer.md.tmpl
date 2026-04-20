@@ -26,21 +26,7 @@ It MAY:
 
 ## Inputs
 
-The implementer sanitizes inputs before dispatching this agent; the agent also self-checks on receipt. If forbidden content reaches the prompt, abort and write to `_workspace/` rather than proceed.
-
-**Allowed to pass through** (the implementer forwards these):
-- `feature_id`
-- `acceptance_test` — the full Given/When/Then array from `feature-list.json`. Each entry must already be in Given/When/Then form (Phase 6 of `/setup` validates this).
-- Public type-header file paths only (`*.d.ts`, `*.types.*`, exported interface modules). These are the ONLY reads you may make beyond the test directory.
-- `doc_sync` paths — informational, so the BDD suite knows the contracted surfaces.
-
-**Must NOT appear in the prompt** (self-check on receipt — abort if any are present):
-- Implementation file paths (`src/**/*.{ts,js,py,go,...}`)
-- `tdd_focus` function bodies or private helper names
-- Design notes from `_workspace/{feature_id}_design.md` (implementer's internal sketch)
-- Any sentence phrased as "the implementation uses..." / "internally we..." — if such a sentence is present in `acceptance_test`, treat it as a Phase 6 contract violation and abort rather than forward it.
-
-On contamination, write `_workspace/bdd_bdd-writer_feat-{feature_id}-aborted.md` listing the contaminated input and exit.
+The implementer sanitizes inputs before dispatching this agent; this agent also self-checks on receipt. The normative BDD sub-agent input sanitization clause — the full allowed / forbidden lists and their rationale — lives in the appended `#### TDD / BDD sub-agent input sanitization` rule-fragment section below; treat that as the authoritative contract and do not paraphrase it here. On contamination, write `_workspace/bdd_bdd-writer_feat-{feature_id}-aborted.md` listing the contaminated input and exit rather than proceed.
 
 ## Process
 

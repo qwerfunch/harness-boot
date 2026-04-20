@@ -1,0 +1,37 @@
+name: Template Checks
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+jobs:
+  template-checks:
+    name: Verify agent templates and rule fragments
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Canonical-source → rule-fragment drift detector.
+      # build-rule-fragments.mjs is deterministic; if its output differs from
+      # the checked-in rules/ tree, either the canonical source was edited
+      # without re-running the generator, or a fragment file was hand-edited.
+      # Both are forbidden per docs/templates/agents/rules/README.md.
+      - name: Regenerate rule fragments and verify no drift
+        run: |
+          node scripts/build-rule-fragments.mjs
+          if ! git diff --exit-code docs/templates/agents/rules/; then
+            echo ""
+            echo "::error::Rule fragments are out of sync with their canonical sources."
+            echo "Edit the source file, then run 'node scripts/build-rule-fragments.mjs' locally and commit the regenerated fragments."
+            exit 1
+          fi
+
+      # Structural self-consistency: body template markers + frontmatter,
+      # TIER1_AGENTS ↔ .tmpl file alignment, matrix ↔ rule file coverage.
+      - name: Validate template structure
+        run: node scripts/check-template-structure.mjs
