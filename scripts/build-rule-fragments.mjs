@@ -196,7 +196,7 @@ extract(
 extract(
   join(REPO_ROOT, 'docs/setup/agents-and-gates.md'),
   /^### Gate 2: Cross-Module Review Stage <!-- anchor: cross-module-review -->/,
-  /^### Rollback Procedure/,
+  /^### Gate 2\.5: Intent Verification/,
   join(DEST, '10-cross-module-review.md'),
 );
 

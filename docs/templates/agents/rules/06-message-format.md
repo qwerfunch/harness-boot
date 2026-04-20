@@ -28,7 +28,7 @@ Field rules:
 | `phase` | enum | yes | `Red`, `Green`, `Refactor`, `Verify`, `Gate2`, `QA`, `Escalate`, `Coordinate` |
 | `kind` | enum | yes | See "Envelope kinds" |
 | `status` | enum | yes | See "Status enum" |
-| `artifact_path` | string | when kind ∈ {`artifact-ready`, `review-request`, `review-result`, `qa-report`, `escalate`} | Path under `_workspace/` |
+| `artifact_path` | string | when kind ∈ {`artifact-ready`, `review-request`, `review-result`, `qa-report`, `intent-report`, `escalate`} | Path under `_workspace/` |
 | `blockers` | array<string> | when status ∈ {`blocked`, `failed`} | Human-readable reasons |
 | `summary` | string | yes | ≤ 200 chars — the one-line takeaway |
 
@@ -40,6 +40,7 @@ Field rules:
 | `review-request` | implementer-<slug> → reviewer | Gate 2 review requested |
 | `review-result` | reviewer → implementer-<slug> | Approve / request-changes / critical-reject |
 | `qa-report` | qa-agent → orchestrator | Cross-module boundary verification report |
+| `intent-report` | intent-verifier → orchestrator | Gate 2.5 plan-fidelity verdict (Critical/Major/Minor counts + findings) |
 | `coordinate` | implementer-<slug> → orchestrator | Shared-contract decision needed (orchestrator brokers the round-trip) |
 | `escalate` | implementer-<slug> → orchestrator | Convergence failure or unrecoverable error |
 

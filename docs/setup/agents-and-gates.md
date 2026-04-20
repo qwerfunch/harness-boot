@@ -113,6 +113,7 @@ Model assignment per agent is defined once in `model-routing.md`. This table cov
 | **tdd-implementer** | Implement / Green phase (all strategies). Minimal implementation; MUST NOT write tests | Feature-scoped entities + rules (from implementer prompt) |
 | **tdd-refactorer** | Refactor phase (all strategies). No behavior changes | Vocabulary only (from implementer prompt) |
 | **bdd-writer** | BDD-Verify phase for `lean-tdd` features. Reads acceptance_test + type headers only; implementation code is forbidden. Writes one Given/When/Then scenario per acceptance_test item to `{test-dir}/{feature_id}.bdd.{ext}`. Always generated (lean-tdd is the default strategy) | Feature-scoped acceptance_test + vocabulary (from implementer prompt) |
+| **intent-verifier** | Gate 2.5 plan-fidelity judge. Reads `.claude/plan-source.md` + feature entry + BDD/test files + staged diff; verifies implementation fulfills the plan's stated intent (not just the LLM-derived acceptance_test). Emits Critical/Major/Minor findings. Always generated | Plan MD as external oracle + feature entry (from orchestrator prompt) |
 
 ### Agent Rationalization Defense
 
@@ -126,6 +127,8 @@ Each generated agent MD must include a "Common Rationalizations" section (minimu
 | **debugger** | "I know the fix, skip root cause analysis" | Root cause must be documented; symptom fixes recur |
 | **bdd-writer** | "Let me peek at the implementation so my scenarios are realistic" | Reading implementation leaks internals into the BDD surface; scenarios must be written from `acceptance_test` alone. Ask the implementer for a type header if the public shape is unclear. |
 | **bdd-writer** | "One Given/When/Then block can cover two scenarios" | Gate 0 (lean-tdd) counts blocks against `acceptance_test` length — one block per scenario, no folding. |
+| **intent-verifier** | "Plan is ambiguous, trust the acceptance_test" | acceptance_test was drafted by an LLM from the same plan. You are the only external oracle. Ambiguity → `spec-gap` Minor; never silently adopt the LLM interpretation. |
+| **intent-verifier** | "This Major is more like Minor — user won't notice" | Major = asserting the wrong thing. "User won't notice" is the test suite's job and that's what's failing now. Downgrade forbidden. |
 
 ---
 
@@ -138,6 +141,7 @@ Each generated agent MD must include a "Common Rationalizations" section (minimu
 | **0: TDD** (prerequisite) | Tests exist for tdd_focus. Behavior varies by `test_strategy` (see below) | Test files, call order logs | "Too simple to need tests" → if tdd_focus specified, no exceptions |
 | **1: Implementation** | 0 compile errors, 0 lint errors, all tests pass, docs changes included | tsc/eslint/test output, git diff | "Docs later" → hook blocks commit |
 | **2: Review** | 0 Critical/Major issues + **Comment Rules compliance** (see `code-style.md#comment-rules`) | Reviewer feedback (file/line/severity) | "Trivial change, skip review" → all changes are reviewed |
+| **2.5: Intent Verification** (conditional) | 0 Critical/Major findings against `.claude/plan-source.md`. Gated by `intent_verifier_enabled` flag in `.claude/environment.md` (default `true`) | intent-verifier report at `_workspace/gate2_5_intent-verifier_{feature_id}.md` | "Acceptance_test passes, intent must be met" → acceptance_test is LLM-derived; plan MD is the external oracle |
 | **3: Testing** | Coverage per `test_strategy` (see below); overall project coverage: no regression | Coverage report, execution logs | — |
 | **4: Deploy** | Gates 0-3 pass, feature passes: true, rollback procedure ready | sync-docs pass log | "Worked in staging" → check environment differences |
 
@@ -194,6 +198,69 @@ When a feature's `tdd_focus` or `doc_sync` paths span **two or more module direc
 - Any Critical finding returns the feature to the implementer with `review-result: critical-reject` (per `docs/templates/protocols/message-format.md#coordinate-round-trip`); this counts toward the 5-iteration convergence limit.
 
 **Rationale:** The reviewer's per-file code-quality pass catches internal mistakes; the Cross-Module Review stage catches **seam** mistakes that only appear when both sides are read together. Without this stage, boundary drift survives Gate 2 and surfaces as integration bugs at runtime.
+
+### Gate 2.5: Intent Verification <!-- anchor: intent-verification-gate -->
+
+**Problem this gate solves:** Gates 0-2 verify procedural evidence — BDD block counts, coverage percentages, code quality, boundary consistency. None of them verify whether the implementation actually fulfills the user's stated intent. `acceptance_test` is drafted by an LLM from the plan MD, BDD is drafted by another LLM from `acceptance_test`, and implementation is written by the same LLM family. If the first extraction drifts from the plan, every downstream artifact drifts with it — and all gates still pass.
+
+Gate 2.5 adds a **single external oracle**: the `intent-verifier` agent is the only judge that reads `.claude/plan-source.md` (the verbatim copy of the user's plan MD captured during `/setup` Phase 1). Every other agent sees only LLM-derived artifacts.
+
+This gate runs after Gate 2 (code quality + cross-module boundary) and before Gate 3 (coverage) — spec-diverged code should not burn coverage iterations. The Gate 2 axis (code quality / seam correctness) and the Gate 2.5 axis (plan fidelity) are orthogonal, so the two stages never conflict.
+
+#### intent-verifier Agent Frontmatter
+
+```yaml
+---
+name: intent-verifier
+description: >
+  Gate 2.5 plan-fidelity judge. Reads .claude/plan-source.md + feature entry
+  + BDD/test files + staged diff. Emits Critical/Major/Minor findings. The
+  only agent that reads the user's original plan MD.
+tools: Read, Glob, Grep, Bash
+model: opus
+---
+```
+
+#### Inputs
+
+The orchestrator dispatches the intent-verifier with:
+1. `feature_id`
+2. Path to `.claude/plan-source.md`
+3. The feature entry from `feature-list.json` (description, acceptance_test, tdd_focus, doc_sync)
+4. BDD/test file paths discovered via `git ls-files '*{feature_id}.bdd.*' '*{feature_id}.test.*'`
+5. Staged diff via `git diff --cached`
+
+#### Process
+
+1. **Locate the feature section in `plan-source.md`.** Grep for the `feature_id` anchor first; if absent, fall back to fuzzy-match on `category` + `description`. If no section is found, emit `plan-reference-unclear` at Minor severity and continue with the feature entry alone.
+2. **Extract the observable outcomes the plan promises.** User-visible behavior, error paths, edge cases. Ignore internal architecture commentary.
+3. **Cross-check `acceptance_test` against the plan outcomes.** Any outcome or error path present in the plan but absent from `acceptance_test` is a `spec-gap`.
+4. **Inspect BDD/test blocks for trivial assertions.** `expect(true)`, empty bodies, self-equality, constant-only checks are Critical (tautology).
+5. **Trace test input → production code → assertion in the staged diff.** At least one successful trace is required; otherwise the implementation is disconnected from its test.
+6. **Classify and emit findings.**
+
+#### Severity Contract
+
+| Severity | Trigger | Action |
+|----------|---------|--------|
+| **Critical** | Implementation doesn't achieve the plan's stated outcome / trivial assertion / plan-mandated error path missing | Block commit, **iteration++** (re-dispatch implementer) |
+| **Major** | Structure correct but asserts internal state instead of user-visible outcome / plan edge case absent from BDD | Block commit, **iteration unchanged** (single free revision) |
+| **Minor** | `plan-reference-unclear`, naming drift, non-critical `spec-gap` | Non-blocking, record in `PROGRESS.md ## Incidents` |
+
+#### Output
+
+- **Artifact**: `_workspace/gate2_5_intent-verifier_{feature_id}.md` (Rule 8 naming: `{phase}_{agent}_{artifact}.{ext}`)
+- **Handoff envelope**: `_workspace/handoff/intent-verifier->orchestrator.md` with `kind: intent-report`, `status: passed | blocked`, severity counts, and findings list. Follows the schema in `docs/templates/protocols/message-format.md`.
+
+#### Handoff Protocol
+
+- **Reads from**: orchestrator dispatch prompt (no envelope trigger — Gate 2.5 fires unconditionally after Gate 2 passes)
+- **Writes to**: `_workspace/handoff/intent-verifier->orchestrator.md`
+- **Re-dispatch triggers**: Critical → orchestrator re-dispatches the module's implementer with iteration++. Major → orchestrator re-dispatches the same implementer with iteration unchanged. Minor → orchestrator logs and proceeds to Gate 3.
+
+#### Flag Control
+
+Gate 2.5 is controlled by `intent_verifier_enabled` in `.claude/environment.md` (default `true`). When `false`, the orchestrator skips Gate 2.5 with a one-line note in `PROGRESS.md` and proceeds directly to Gate 3. No other flow changes.
 
 ### Rollback Procedure (Gate 4 Requirement)
 

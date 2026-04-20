@@ -28,16 +28,18 @@ project-root/
 │
 ├── .claude/
 │   ├── settings.json                      # Hook configuration (runtime guardrails)
-│   ├── agents/                            # 9+ agents (+ optional qa-agent, module-specific agents)
+│   ├── agents/                            # 10+ agents (+ optional qa-agent, module-specific agents)
 │   │   ├── orchestrator.md                #   Orchestrator
 │   │   ├── implementer.md                 #   TDD orchestration
 │   │   ├── tdd-test-writer.md             #   Red phase only
 │   │   ├── tdd-implementer.md             #   Green phase only
 │   │   ├── tdd-refactorer.md              #   Refactor phase only
+│   │   ├── bdd-writer.md                  #   BDD-Verify phase (lean-tdd; always generated)
 │   │   ├── reviewer.md                    #   Code review
 │   │   ├── tester.md                      #   Integration/E2E testing
 │   │   ├── architect.md                   #   Design decisions
 │   │   ├── debugger.md                    #   Debugging specialist
+│   │   ├── intent-verifier.md             #   Gate 2.5 plan fidelity (always generated)
 │   │   └── qa-agent.md                    #   Integration coherence (optional)
 │   │                                      #   Model routing: see model-routing.md
 │   ├── skills/                            # 8 skills (Anthropic Agent Skills format)

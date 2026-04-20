@@ -184,6 +184,7 @@ These are derived from the plan and user decisions without additional questions:
 - `scripts/update-feature-status.mjs` — **copy from `${CLAUDE_PLUGIN_ROOT}/docs/templates/scripts/update-feature-status.mjs.tmpl`** (not LLM-generated). Substitute `{TEST_COMMAND}` using the row in `${CLAUDE_PLUGIN_ROOT}/docs/templates/stacks.md` matching the selected tech stack. On POSIX, `chmod +x scripts/update-feature-status.mjs` after copying. Auto-updates `feature-list.json` passes field after Gate 4.
 - `_workspace/.gitkeep` (Subagent Dispatch artifact directory: phase files + `handoff/` envelopes)
 - `.gitignore` (generated from Tech Stack selection — includes .env, IDE files, build outputs, language-specific patterns)
+- `.claude/plan-source.md` — **verbatim copy** of the `$ARGUMENTS` plan MD. Prepend YAML frontmatter with `origin: <original-path>`, `sha256: <sha256 of the original file bytes>`, `captured_at: <ISO-8601 timestamp>`. This file is the single external oracle for Gate 2.5 intent verification; only the `intent-verifier` agent reads it. Do not edit after Phase 1 — drift from the original is treated as an incident.
 
 ### Step 3: Phase 2 — Core Protocols
 - `.claude/protocols/` 5 protocols — **copy from `${CLAUDE_PLUGIN_ROOT}/docs/templates/protocols/`** (not LLM-generated):
@@ -206,7 +207,7 @@ After **both** phases finish, record `last_completed_phase: 2` in PROGRESS.md �
 ### Step 4: Phase 3 — Agents + Execution Mode
 Each agent YAML frontmatter includes a `model:` field.
 
-**Default 9 agents:**
+**Default 10 agents:**
 - `orchestrator.md` (model: opus)
 - `architect.md` (model: opus)
 - `reviewer.md` (model: opus)
@@ -216,6 +217,7 @@ Each agent YAML frontmatter includes a `model:` field.
 - `tdd-refactorer.md` (model: sonnet, effort: low)
 - `bdd-writer.md` (model: sonnet, effort: low) — always generated (lean-tdd is the default strategy). See `${CLAUDE_PLUGIN_ROOT}/docs/setup/tdd-isolation.md` for the full agent definition.
 - `tester.md` (model: sonnet)
+- `intent-verifier.md` (model: opus) — always generated. Gate 2.5 plan-fidelity judge; the only agent that reads `.claude/plan-source.md`. Full spec in `${CLAUDE_PLUGIN_ROOT}/docs/setup/agents-and-gates.md#intent-verification-gate`.
 
 **Conditional agents (from Step 1 / feature-list.json):**
 - `qa-agent.md` (model: opus) — if QA agent inclusion was confirmed
@@ -253,6 +255,7 @@ Subagents invoked via the `Agent` tool cannot resolve `${CLAUDE_PLUGIN_ROOT}` pa
 | `architect.md` | ✓ | — | — | — | — | — | — | — | — | — | — |
 | `debugger.md` | ✓ | — | — | — | — | — | — | — | — | — | — |
 | `tester.md` | ✓ | — | — | — | — | — | — | — | — | — | — |
+| `intent-verifier.md` | ✓ | — | — | — | — | ✓ | — | ✓ | — | — | — |
 
 The matrix is authoritative — it replaces the previous per-rule prose targeting.
 
@@ -398,6 +401,7 @@ Orchestrator and module-scoped sub-agents read context-map.md at session start; 
 
     **Skip condition** (no prompt, silent): any existing feature already has `test_strategy: "integration"`, OR any feature's description matches the wiring keyword list above. This prevents duplicating wiring the user already specified in the plan MD.
   - **`acceptance_test` contract validation**: for every feature, verify `acceptance_test.length >= 3` and every entry contains `Given`/`When`/`Then` (case-insensitive). If any feature fails the check, ask the user per-feature (one question at a time, numbered choices): `(1) ★ Auto-draft the missing scenarios from description + tdd_focus` or `(2) Pause — I will rewrite the plan entry`.
+  - **intent-verifier dry-run** (after contract validation passes for all features): for each feature, dispatch `Agent(subagent_type="intent-verifier", prompt=...)` with `.claude/plan-source.md` + the draft feature entry (no BDD/diff yet — dry-run mode). Collect features that produced Minor-or-higher findings. Features with zero findings continue the auto-progression path silently (no prompt — this preserves the Step 1.7 auto-progress contract). Features with findings route through the **existing per-feature revision prompt** — one question at a time, numbered choices: `(1) ★ Auto-draft from plan findings` or `(2) Pause — I will rewrite the plan entry`. This gate ensures acceptance_test drift from the plan is caught before the harness is committed, not at Gate 2.5 during `/start`. Skip this step when `intent_verifier_enabled: false` is already recorded in `.claude/environment.md`.
 - `PROGRESS.md`
 - `CHANGELOG.md` ([Keep a Changelog](https://keepachangelog.com) format with `## [Unreleased]` section. Initial entry: "Added — Initial project setup via harness-boot, {N} features defined")
 - `.claude/error-recovery.md`
@@ -405,7 +409,7 @@ Orchestrator and module-scoped sub-agents read context-map.md at session start; 
 
 ### Step 8: Verification
 Verify the entire generated harness:
-1. File completeness: settings.json + 6 hooks + agents (9 base including `bdd-writer.md`; conditional: qa-agent if included, `tdd-test-writer.md` if any `tdd`/`state-verification` feature, one `implementer-<slug>.md` per module) + 8 skills + 5 protocols + feature-list.json + scripts/update-feature-status.mjs
+1. File completeness: settings.json + 6 hooks + agents (10 base including `bdd-writer.md` and `intent-verifier.md`; conditional: qa-agent if included, `tdd-test-writer.md` if any `tdd`/`state-verification` feature, one `implementer-<slug>.md` per module) + 8 skills + 5 protocols + feature-list.json + scripts/update-feature-status.mjs + `.claude/plan-source.md`
 2. Runtime guardrails: hook stdin JSON parsing, security-gate exit 2, doc-sync-check commit blocking, coverage-gate commit blocking
 3. Skill anatomy (4 gates — full rules in `${CLAUDE_PLUGIN_ROOT}/docs/setup/skills-anatomy.md#validation-checklist`):
    - **Structural**: `SKILL.md` exists, directory name matches frontmatter `name` field, all 4 required frontmatter fields present (`name`, `description`, `metadata`, `allowed-tools`)
@@ -443,6 +447,8 @@ Verify the entire generated harness:
     Must exit 0 with zero stdout lines. Any violation (exit 2) means the Phase 6 Kahn sort was skipped or the write order was corrupted by a later patch — reorder features in-place (preserving all other fields) and re-run the check.
 
 17. **Template fragment byte-equality** (Phase 3 + Phase 4 pre-bake): for each agent that received a ✓-marked Rule 2–11 fragment per the Step 4 matrix, confirm the corresponding `## <section>` block in the generated `.claude/agents/<agent>.md` matches `${CLAUDE_PLUGIN_ROOT}/docs/templates/agents/rules/NN-*.md` byte-for-byte (modulo surrounding whitespace). Similarly, for the 5 domain-agnostic skills (`new-feature`, `bug-fix`, `refactor`, `tdd-workflow`, `context-engineering`), confirm `.claude/skills/<skill>/SKILL.md` equals the corresponding `${CLAUDE_PLUGIN_ROOT}/docs/templates/skills/<skill>/SKILL.md` byte-for-byte. A mismatch means the fragment was regenerated or paraphrased by the model instead of copied — re-run the Phase 3/4 copy steps verbatim. For the 3 project-adapted skills (`api-endpoint`, `db-migration`, `deployment`), confirm sections §1/§3/§5/§6/§7 match the `.tmpl` file byte-for-byte; only §description, §When-to-Use bullets, and §Process Step 1–4 may differ.
+
+18. **Intent-verification artifacts**: confirm `.claude/plan-source.md` exists with YAML frontmatter containing `origin`, `sha256`, `captured_at`; the SHA256 must match the current file bytes of the original plan MD at `origin` (if the path is still reachable). Confirm `.claude/agents/intent-verifier.md` exists with `model: opus` and contains `## Role`, `## Inputs`, `## Process`, `## Severity Contract`, `## Output`, `## Handoff Protocol`, and `## Common Rationalizations` sections. Confirm `.claude/environment.md` contains `intent_verifier_enabled:` (default `true`). A missing `plan-source.md` means Phase 1 Step 2 skipped the plan copy — regenerate by reading `$ARGUMENTS` verbatim.
 
 Report each item as PASS/FAIL. For each FAIL:
 1. Identify the specific gap (missing file, missing section, wrong model routing, etc.)
