@@ -40,7 +40,7 @@ Phase 1-6 sequential generation. After Step 1.7 approval of the decision review,
 
 1. Infrastructure (settings.json, hooks/, environment.md, security.md, domain-persona.md, scripts/update-feature-status.mjs)
 2. Protocols (tdd-loop, iteration-cycle, code-doc-sync, session-management, message-format) + CLAUDE.md
-3. Agents (10+ agents with `model:` frontmatter — opus for judgment, sonnet for execution; includes always-generated `intent-verifier` for Gate 2.5) + module-specific implementers + optional QA agent
+3. Agents (10+ agents with `model:` frontmatter — opus for judgment, sonnet for execution; includes always-generated `intent-verifier` for Gate 2.5). The 10 fixed-scope agent bodies are **copied verbatim** from `docs/templates/agents/bodies/<slug>.md.tmpl` (Tier-1 copy-verbatim; rule fragments still append per matrix). Only `implementer-<slug>.md` (per-module) and `qa-agent.md` (conditional) remain LLM-generated.
 4. Skills (8 skills in [Anthropic Agent Skills format](https://github.com/anthropics/skills): `skill-name/SKILL.md` with 7-section anatomy, YAML frontmatter with name/description/metadata/allowed-tools, Rationalizations >= 2 rows)
 5. Context map (`.claude/context-map.md` — module → layer mapping; architecture rules injected into sub-agent prompts at dispatch time, no per-directory CLAUDE.md files)
 6. State files (feature-list.json, PROGRESS.md, CHANGELOG.md, error-recovery.md with 5 scenario playbooks)
