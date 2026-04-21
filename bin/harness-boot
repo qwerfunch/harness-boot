@@ -1,11 +1,10 @@
 #!/usr/bin/env node
-// harness-boot CLI — Stage 0 bootstrap entry
+// harness-boot CLI — Stage 0+1 dispatcher
 //
-// 이 파일은 F-001 Walking Skeleton 의 CLI 기동 증명이다.
-// 현재 구현 범위는 `version` 서브커맨드 하나뿐이며, 나머지(analyze/spec/plan/
-// work/check/evolve) 는 F-007 이후 `dist/cli.mjs` 로 이양된다.
-// 덮어쓰기 금지 (BR-001): F-007 전환 시 이 파일은 동일 인터페이스를 유지한 채
-// 위임자(thin dispatcher) 로 축소된다.
+// `version` (F-001) 는 이 파일 자체가 처리한다.  그 외 서브커맨드(analyze
+// 부터) 는 컴파일된 `dist/cli.mjs` 로 위임한다 — 따라서 analyze 이후는 `npm
+// run build` 이후에만 동작한다.  BR-001: 이 파일은 thin dispatcher 로만 남고,
+// 실제 로직은 `src/cli.ts` 에 있다.
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +12,7 @@ import { dirname, resolve } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkgPath = resolve(__dirname, '..', 'package.json');
+const distCliPath = resolve(__dirname, '..', 'dist', 'cli.js');
 
 function readPackage() {
   try {
@@ -35,15 +35,36 @@ function printHelp(pkg) {
       `  harness-boot <command> [options]\n` +
       `\n` +
       `Commands:\n` +
-      `  version         Print version and exit 0 (F-001 Walking Skeleton)\n` +
+      `  version         Print version and exit 0 (F-001)\n` +
+      `  analyze         Detect .harness/ state and write skeleton (F-007)\n` +
+      `                    --dry-run : report state without writing\n` +
       `  help            Show this help\n` +
       `\n` +
-      `후속 명령(analyze · spec · plan · work · check · evolve) 은 F-007 이후 구현됩니다.\n` +
-      `그때까지는 Claude Code 슬래시 명령(/harness:*) 은 아직 노출되지 않습니다.\n`
+      `후속 명령(spec · plan · work · check · evolve) 은 F-008+ 에서 추가됩니다.\n` +
+      `analyze 이후 명령은 \`npm run build\` 로 dist/ 가 준비된 뒤에만 동작합니다.\n`
   );
 }
 
-function main(argv) {
+async function dispatchToDist(argv) {
+  try {
+    const mod = await import(distCliPath);
+    return await mod.runCli(argv);
+  } catch (err) {
+    if (err && err.code === 'ERR_MODULE_NOT_FOUND') {
+      process.stderr.write(
+        `harness-boot: 컴파일된 CLI 를 찾을 수 없다 (${distCliPath}).\n` +
+          `  조치: 저장소 루트에서 \`npm run build\` 를 먼저 실행하세요.\n`
+      );
+      return 2;
+    }
+    process.stderr.write(
+      `harness-boot: analyze 실행 중 예기치 못한 에러\n  ${err && err.stack ? err.stack : String(err)}\n`
+    );
+    return 1;
+  }
+}
+
+async function main(argv) {
   const args = argv.slice(2);
   const cmd = args[0];
   const pkg = readPackage();
@@ -62,14 +83,17 @@ function main(argv) {
       printHelp(pkg);
       return 0;
 
+    case 'analyze':
+      return dispatchToDist(args);
+
     default:
       process.stderr.write(
         `harness-boot: 알 수 없는 명령 '${cmd}'\n` +
-          `  Stage 0 에서는 'version' · 'help' 만 지원됩니다 (F-001).\n` +
-          `  나머지 명령은 F-007 이후 활성화됩니다. 'harness-boot help' 를 참고하세요.\n`
+          `  지원 명령: version · analyze · help.\n` +
+          `  나머지 명령(spec · plan · work · check · evolve) 은 F-008+ 에서 추가됩니다.\n`
       );
       return 2;
   }
 }
 
-process.exit(main(process.argv));
+main(process.argv).then((code) => process.exit(code));
