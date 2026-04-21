@@ -16,7 +16,8 @@ harness-boot 는 `spec.yaml` 하나를 SSoT 로 삼아 Claude Code 어댑터 계
 파생하는 플러그인이다.  본 Constitution 은 그 파생 · 배포 · 운영 전 단계에
 일관되게 적용되는 **7 개의 비협상 조항** 이다.
 
-**9 → 7 재구성 이력.**  spec-kit v0.1 (`design/oss-refs/spec-kit/spec-driven.md`)
+**9 → 7 재구성 이력.**  [spec-kit][ref-spec-kit] v0.1 (원문은 동 저장소
+`spec-driven.md`, 로컬 복제본은 `design/oss-refs/spec-kit/spec-driven.md`)
 의 9 조항 중 Article IV / V / VI (각각 CLI Interface Mandate 세부, Observability,
 Versioning Discipline) 는 harness-boot 의 범위(Claude Code 위의 플러그인)
 에서는 다른 조항에 흡수되거나 `spec.yaml` 구조로 대체되어 7 조항 체계로
@@ -95,8 +96,9 @@ CLI 수준에서도 허용하지 않는다.  6-Step 외의 상위 집합/하위 
 **sensitive 엔티티(Hook · Gate · EventLog) 참조 피처** 는 `test_strategy: tdd`
 가 강제된다 (§5.1 검증 규칙 4 · BR-004).
 
-**Rationale.**  Iron Law (superpowers OSS 인용) — "NO COMPLETION CLAIMS WITHOUT
-FRESH VERIFICATION EVIDENCE".  관측 가능한 증거 없는 "작동합니다" 는 부채다.
+**Rationale.**  Iron Law ([superpowers][ref-superpowers] OSS 인용) —
+"NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE".  관측 가능한 증거
+없는 "작동합니다" 는 부채다.
 
 **BR backrefs.**
 - BR-004 — Iron Law
@@ -118,9 +120,10 @@ FRESH VERIFICATION EVIDENCE".  관측 가능한 증거 없는 "작동합니다" 
 루트 `commands/agents/skills/hooks/`) + (선택) 사용자 전용 덮어쓰기.
 새 층 · 새 최상위 디렉토리 추가는 ADR 1 건을 요구한다.
 
-**Rationale.**  spec-kit Article VII "Simplicity(3-프로젝트)" 와 harness
-6-phase · 4-stage 복잡도의 충돌(C3) 을 "계층은 3 층, 단계는 6-Step" 으로
-해소한다.  플러그인 ⊃ 사용자 거울(BR-009) 도 같은 단순성의 표현이다.
+**Rationale.**  spec-kit Article VII "Simplicity(3-프로젝트)" 와
+[harness][ref-harness] 6-phase · 4-stage 복잡도의 충돌(C3) 을 "계층은 3 층,
+단계는 6-Step" 으로 해소한다.  플러그인 ⊃ 사용자 거울(BR-009) 도 같은 단순성의
+표현이다.
 
 **BR backrefs.**
 - BR-009 — 플러그인 저장소 ⊃ 사용자 저장소 구조 거울
@@ -238,7 +241,19 @@ Article VII 위반으로 차단 (F-013 구현 후 하드 게이트).
 
 ## 참고
 
-- `spec.yaml` — SSoT (`domain.business_rules[BR-001..010]`)
+**내부 문서.**
+
+- `spec.yaml` — SSoT (`domain.business_rules[BR-001..010]` · `metadata.external_references`)
 - `design/oss-refs-analysis.md` §2.3 — 9 → 7 조항 도출 근거 (로컬 · gitignored)
-- `design/oss-refs/spec-kit/spec-driven.md` — 원본 9 조항 출처
 - `CLAUDE.md` — 세션 에티켓 · "항상 기억해야 할 7 가지"
+
+**외부 OSS 레퍼런스.**  정식 목록 · 역할 · 라이선스는 `spec.yaml`
+`metadata.external_references` 참조.  본문에서 인용된 것만 여기에 요약한다.
+
+- [spec-kit][ref-spec-kit] (MIT) — GitHub 공식 SDD.  9 조항 Constitution 의 원형 (본 문서의 "9 → 7 재구성" 기준점).
+- [superpowers][ref-superpowers] (MIT) — Iron Law 의 출처 (Article II).
+- [harness][ref-harness] (Apache-2.0) — Phase 0~6 워크플로.  C3/C4 충돌의 한 축.
+
+[ref-spec-kit]: https://github.com/github/spec-kit
+[ref-superpowers]: https://github.com/obra/superpowers
+[ref-harness]: https://github.com/revfactory/harness
