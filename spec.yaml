@@ -746,7 +746,7 @@ features:
     type: feature
     title: "Skill Layout — SKILL.md ≤500L + references/rationalization.md"
     priority: 3
-    status: planned
+    status: in_progress
     test_strategy: state-verification
     test_strategy_reason: |
       Skill 의 파일 트리 · 라인 수 · 섹션 존재는 정적 구조 검증의 대상이다.
