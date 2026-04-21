@@ -1,0 +1,19 @@
+{
+  "name": "harness",
+  "version": "0.2.0",
+  "description": "Spec-driven development harness for Claude Code — single `spec.yaml` derives `.claude/**` adapters and `.harness/**` views, self-hosted via dogfooding.",
+  "author": {
+    "name": "qwerfunch",
+    "email": "jungsoo.kim@doverunner.com"
+  },
+  "homepage": "https://github.com/qwerfunch/harness-boot",
+  "repository": "https://github.com/qwerfunch/harness-boot",
+  "license": "Apache-2.0",
+  "keywords": [
+    "claude-code",
+    "spec-driven-development",
+    "tdd",
+    "plugin",
+    "harness"
+  ]
+}

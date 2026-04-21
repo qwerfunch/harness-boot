@@ -1,0 +1,45 @@
+{
+  "name": "harness-boot",
+  "version": "0.2.0",
+  "description": "Spec-driven development harness plugin for Claude Code. Single spec.yaml derives .claude/** adapters and .harness/** views; self-hosted via dogfooding.",
+  "type": "module",
+  "bin": {
+    "harness-boot": "./bin/harness-boot"
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    "schemas/",
+    ".claude-plugin/",
+    "commands/",
+    "agents/",
+    "skills/",
+    "hooks/",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "echo \"(build placeholder — implemented in F-006+)\" && exit 0",
+    "test": "echo \"(test placeholder — implemented in F-006+)\" && exit 0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "Apache-2.0",
+  "author": "qwerfunch <jungsoo.kim@doverunner.com>",
+  "homepage": "https://github.com/qwerfunch/harness-boot",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/qwerfunch/harness-boot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/qwerfunch/harness-boot/issues"
+  },
+  "keywords": [
+    "claude-code",
+    "plugin",
+    "spec-driven-development",
+    "tdd",
+    "harness"
+  ]
+}

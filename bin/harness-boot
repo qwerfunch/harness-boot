@@ -1,0 +1,75 @@
+#!/usr/bin/env node
+// harness-boot CLI — Stage 0 bootstrap entry
+//
+// 이 파일은 F-001 Walking Skeleton 의 CLI 기동 증명이다.
+// 현재 구현 범위는 `version` 서브커맨드 하나뿐이며, 나머지(analyze/spec/plan/
+// work/check/evolve) 는 F-007 이후 `dist/cli.mjs` 로 이양된다.
+// 덮어쓰기 금지 (BR-001): F-007 전환 시 이 파일은 동일 인터페이스를 유지한 채
+// 위임자(thin dispatcher) 로 축소된다.
+
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkgPath = resolve(__dirname, '..', 'package.json');
+
+function readPackage() {
+  try {
+    return JSON.parse(readFileSync(pkgPath, 'utf8'));
+  } catch (err) {
+    process.stderr.write(
+      `harness-boot: package.json 을 읽을 수 없습니다 (${pkgPath})\n` +
+        `  원인: ${err.message}\n` +
+        `  조치: 플러그인 저장소 루트에서 실행하거나 전역 설치 상태를 확인하세요.\n`
+    );
+    process.exit(2);
+  }
+}
+
+function printHelp(pkg) {
+  process.stdout.write(
+    `${pkg.name} ${pkg.version}\n` +
+      `\n` +
+      `Usage:\n` +
+      `  harness-boot <command> [options]\n` +
+      `\n` +
+      `Commands:\n` +
+      `  version         Print version and exit 0 (F-001 Walking Skeleton)\n` +
+      `  help            Show this help\n` +
+      `\n` +
+      `후속 명령(analyze · spec · plan · work · check · evolve) 은 F-007 이후 구현됩니다.\n` +
+      `그때까지는 Claude Code 슬래시 명령(/harness:*) 은 아직 노출되지 않습니다.\n`
+  );
+}
+
+function main(argv) {
+  const args = argv.slice(2);
+  const cmd = args[0];
+  const pkg = readPackage();
+
+  switch (cmd) {
+    case 'version':
+    case '--version':
+    case '-v':
+      process.stdout.write(`${pkg.name} ${pkg.version}\n`);
+      return 0;
+
+    case 'help':
+    case '--help':
+    case '-h':
+    case undefined:
+      printHelp(pkg);
+      return 0;
+
+    default:
+      process.stderr.write(
+        `harness-boot: 알 수 없는 명령 '${cmd}'\n` +
+          `  Stage 0 에서는 'version' · 'help' 만 지원됩니다 (F-001).\n` +
+          `  나머지 명령은 F-007 이후 활성화됩니다. 'harness-boot help' 를 참고하세요.\n`
+      );
+      return 2;
+  }
+}
+
+process.exit(main(process.argv));
