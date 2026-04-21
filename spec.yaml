@@ -5,7 +5,7 @@
 # 이 파일의 성격
 #   - harness-boot 의 **단일 진실의 원천(SSoT)**. 사용자 편집은 오로지 이 한
 #     파일에서만 발생한다 (BR-001 덮어쓰기 금지의 기준점).
-#   - 설계 문서 `design/harness-boot-design-2.3.6.md` §5.1 스키마를 그대로 준수한다.
+#   - 파일 맨 위 `version:` 스키마 (v2.3.6) 를 그대로 준수한다.
 #   - harness-boot 이 "자기 자신의 spec.yaml" 로 기술되는 **도그푸딩(dogfooding)**
 #     예시이자, 사용자 프로젝트에도 같은 형태를 권장하는 레퍼런스.
 #
@@ -29,7 +29,7 @@
 #   Stage 2 — `/harness:work` 도달 후 "다음 피처 자동 pick → integrator wire-up
 #            → Gate 5 통과 → PR" 로 완전 자기 호스팅.
 #
-# 해소 대상 5 대 구조적 충돌 (oss-refs-analysis.md rev.1.1 식별)
+# 해소 대상 5 대 구조적 충돌
 #   C1  SKILL.md Progressive Disclosure (500 라인 상한) vs
 #       Anti-Rationalization 3-섹션 의무    → BR-006 (references/rationalization.md 분리)
 #   C2  spec-kit Anti-Abstraction vs
@@ -39,14 +39,6 @@
 #   C4  워크플로 3 종 중첩(spec-kit/harness/BMAD) → BR-007 (단일 Canonical 6-Step)
 #   C5  Hook 3 필드 vs 실제 필요 확장       → BR-005 (공식 필드 네이티브
 #                                           + .harness/hooks/meta.json 확장)
-#
-# 관련 문서 — 로컬(gitignored)
-#   - design/harness-boot-design-2.3.6.md          : 본 스펙이 구현 대상으로 삼는 설계서
-#   - design/harness-boot-oss-integration-report.md: 23 건 OSS 제안 검증 보고
-#   - design/oss-refs-analysis.md                  : 5 대 충돌 도출 근거
-#   - design/spec-template.yaml                    : 본 스펙의 도그푸딩 템플릿(참고)
-#   - design/oss-refs/<name>/                      : 각 OSS 레퍼런스의 로컬 복제본
-#   - legacy/                                      : v0.1.0 아카이브 (재작성 전)
 #
 # 외부 OSS 레퍼런스 — 본 스펙 · Constitution · BR 의 인용 대상
 #   - spec-kit              https://github.com/github/spec-kit            (MIT)
@@ -1121,23 +1113,23 @@ metadata:
     refined_at: "2026-04-21T00:00:00Z"
     source_lines:
       - field_path: "project.description"
-        source_file: "design/harness-boot-design-2.3.6.md"
+        source_file: "internal:design-notes"
         source_range: [1, 3298]
         confidence: high
       - field_path: "project.description"
-        source_file: "design/oss-refs-analysis.md"
+        source_file: "internal:oss-refs-analysis"
         source_range: [1, 0]         # 전 문서를 근거로 함 (5 대 충돌 도출)
         confidence: high
       - field_path: "domain.business_rules[BR-001..BR-008]"
-        source_file: "design/harness-boot-design-2.3.6.md"
+        source_file: "internal:design-notes"
         source_range: [255, 340]
         confidence: high
       - field_path: "domain.business_rules[BR-005]"
-        source_file: "design/harness-boot-design-2.3.6.md"
+        source_file: "internal:design-notes"
         source_range: [301, 310]
         confidence: medium           # 공식 hooks.json 필드와 재조정됨
       - field_path: "domain.business_rules[BR-009]"
-        source_file: "design/harness-boot-design-2.3.6.md"
+        source_file: "internal:design-notes"
         source_range: [195, 235]     # §3 시스템 경계 + 구조 거울 해석
         confidence: high
       - field_path: "domain.business_rules[BR-010]"
@@ -1145,11 +1137,11 @@ metadata:
         source_range: [0, 0]         # 사용자 지시 (한국어 1 차, 영어 전환)
         confidence: high
       - field_path: "domain.entities[Hook]"
-        source_file: "design/harness-boot-design-2.3.6.md"
+        source_file: "internal:design-notes"
         source_range: [1001, 1052]
         confidence: high
       - field_path: "domain.entities[Gate]"
-        source_file: "design/harness-boot-design-2.3.6.md"
+        source_file: "internal:design-notes"
         source_range: [912, 940]
         confidence: high
       - field_path: "domain.entities[PluginManifest]"
@@ -1161,23 +1153,23 @@ metadata:
         source_range: [0, 0]         # hexagonal → layered 결정
         confidence: high
       - field_path: "deliverable.smoke_scenarios"
-        source_file: "design/harness-boot-design-2.3.6.md"
+        source_file: "internal:design-notes"
         source_range: [424, 462]
         confidence: high
       - field_path: "features[F-001]"
-        source_file: "design/harness-boot-design-2.3.6.md"
+        source_file: "internal:design-notes"
         source_range: [140, 148]     # Runtime-Verified-First 원칙 + Walking Skeleton
         confidence: high
       - field_path: "features[F-004]"
-        source_file: "design/harness-boot-oss-integration-report.md"
+        source_file: "internal:oss-integration-report"
         source_range: [1, 200]
         confidence: medium           # 공식 hooks.json 재검증 반영
       - field_path: "features[F-007..F-012]"
-        source_file: "design/harness-boot-design-2.3.6.md"
+        source_file: "internal:design-notes"
         source_range: [1299, 2007]
         confidence: high             # §7 명령어 체계
       - field_path: "features[F-011]"
-        source_file: "design/harness-boot-design-2.3.6.md"
+        source_file: "internal:design-notes"
         source_range: [1696, 1760]   # §7.3.4 /harness:work (Gate 0~5 순차 검증)
         confidence: high
       - field_path: "features[F-015]"
@@ -1194,9 +1186,8 @@ metadata:
         confidence: high
   external_references:
     # v0.2.0 재설계 근거가 된 OSS 레퍼런스.  각 항목은 본 스펙 · Constitution ·
-    # business_rules · features 본문에서 name 으로 인용되며, 로컬 복제본이
-    # design/oss-refs/<name>/ 에 있다(gitignored).  라이선스는 복제본 시점의
-    # LICENSE 파일 기준이며, 상류 변경 시 복제본 재동기화 후 갱신한다.
+    # business_rules · features 본문에서 name 으로 인용된다.  라이선스는 인용
+    # 시점의 상류 LICENSE 기준이며, 상류 변경 시 재확인 후 갱신한다.
     - id: ref.spec-kit
       name: "spec-kit"
       url: "https://github.com/github/spec-kit"
@@ -1236,9 +1227,8 @@ metadata:
       url: "https://github.com/affaan-m/everything-claude-code"
       license: MIT
       role: |
-        Claude Code 주변 도구 · 프롬프트 큐레이션.
-        design/harness-boot-oss-integration-report.md 의 23 건 OSS 통합 제안에
-        포함된 레퍼런스 중 하나.
+        Claude Code 주변 도구 · 프롬프트 큐레이션.  v0.2.0 재설계 과정에서
+        검토한 23 건 OSS 통합 제안에 포함된 레퍼런스 중 하나.
     - id: ref.harness
       name: "harness"
       url: "https://github.com/revfactory/harness"

@@ -16,13 +16,12 @@ harness-boot 는 `spec.yaml` 하나를 SSoT 로 삼아 Claude Code 어댑터 계
 파생하는 플러그인이다.  본 Constitution 은 그 파생 · 배포 · 운영 전 단계에
 일관되게 적용되는 **7 개의 비협상 조항** 이다.
 
-**9 → 7 재구성 이력.**  [spec-kit][ref-spec-kit] v0.1 (원문은 동 저장소
-`spec-driven.md`, 로컬 복제본은 `design/oss-refs/spec-kit/spec-driven.md`)
-의 9 조항 중 Article IV / V / VI (각각 CLI Interface Mandate 세부, Observability,
-Versioning Discipline) 는 harness-boot 의 범위(Claude Code 위의 플러그인)
-에서는 다른 조항에 흡수되거나 `spec.yaml` 구조로 대체되어 7 조항 체계로
-통합되었다.  Article V(spec-kit 의 Anti-Abstraction 이었던 것) 는 C2 충돌
-해소(BR-003) 를 반영하여 **"Anti-Abstraction-Scoped"** 로 의미가 명시된다.
+**9 → 7 재구성 이력.**  [spec-kit][ref-spec-kit] v0.1 의 9 조항 (저장소
+내 `spec-driven.md`) 중 Article IV / V / VI (각각 CLI Interface Mandate 세부,
+Observability, Versioning Discipline) 는 harness-boot 의 범위(Claude Code 위의
+플러그인) 에서는 다른 조항에 흡수되거나 `spec.yaml` 구조로 대체되어 7 조항
+체계로 통합되었다.  Article V(spec-kit 의 Anti-Abstraction 이었던 것) 는 C2
+충돌 해소(BR-003) 를 반영하여 **"Anti-Abstraction-Scoped"** 로 의미가 명시된다.
 
 **5 대 충돌 (C1~C5) 과의 관계.**  각 충돌은 아래 조항 중 하나 이상의 직접
 대상이다 (표의 "직접 참조 BR" 열 참조).
@@ -244,7 +243,6 @@ Article VII 위반으로 차단 (F-013 구현 후 하드 게이트).
 **내부 문서.**
 
 - `spec.yaml` — SSoT (`domain.business_rules[BR-001..010]` · `metadata.external_references`)
-- `design/oss-refs-analysis.md` §2.3 — 9 → 7 조항 도출 근거 (로컬 · gitignored)
 - `CLAUDE.md` — 세션 에티켓 · "항상 기억해야 할 7 가지"
 
 **외부 OSS 레퍼런스.**  정식 목록 · 역할 · 라이선스는 `spec.yaml`

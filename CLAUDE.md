@@ -106,9 +106,8 @@ F-001 완료 조건 = SS-001 + SS-005 smoke 통과 (`spec.yaml` 참조).
 ## 주요 참조 문서
 
 - `spec.yaml` — SSoT.  항상 이 파일을 1 차로 참조
-- `design/harness-boot-design-2.3.6.md` — 상세 설계 (gitignored, 개인 워크스페이스)
-- `design/spec-template.yaml` — 도그푸드 템플릿 (gitignored)
-- `design/oss-refs-analysis.md` — 5 대 충돌 도출 근거 (gitignored)
+- `spec.yaml` `metadata.external_references` — OSS 인용의 canonical 목록 (URL · 라이선스 · 역할)
+- `docs/constitution.md` — 7 조항 Constitution (BR-001~010 과 교차 참조)
 - `legacy/` — v0.1.0 아카이브 (읽기만, 수정 금지)
 
 ---
