@@ -827,7 +827,7 @@ features:
     type: feature
     title: "/harness:spec — 대화형 `spec.yaml` 채우기 (Mode A/B/R/E)"
     priority: 4
-    status: planned
+    status: in_progress
     test_strategy: lean-tdd
     test_strategy_reason: |
       대화형 질문 → `spec.yaml` 업데이트는 입출력이 명확한 결정 로직이다.
