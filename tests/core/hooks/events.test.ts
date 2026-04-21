@@ -91,6 +91,22 @@ describe('selectHooksForEvent', () => {
     expect(skipped).toEqual([]);
   });
 
+  it('invalid regex matcher does not match (fails closed)', () => {
+    const resolved = [mkResolved('PreToolUse', 'bad-regex', '[invalid')];
+
+    const picked = selectHooksForEvent(resolved, 'PreToolUse', {
+      toolName: 'Write',
+    });
+
+    expect(picked).toEqual([]);
+  });
+
+  it('returns empty when context subject is missing but matcher is set', () => {
+    const resolved = [mkResolved('PreToolUse', 'needs-tool', 'Write')];
+
+    expect(selectHooksForEvent(resolved, 'PreToolUse')).toEqual([]);
+  });
+
   it('preserves declaration order for multiple matching hooks', () => {
     const resolved = [
       mkResolved('PostToolUse', 'first'),

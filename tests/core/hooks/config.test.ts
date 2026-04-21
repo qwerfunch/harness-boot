@@ -73,6 +73,83 @@ describe('parseHooksJson', () => {
     ).toThrow(HooksConfigError);
   });
 
+  it('rejects hooks.json root that is not an object', () => {
+    expect(() => parseHooksJson([])).toThrow(HooksConfigError);
+  });
+
+  it('rejects event value that is not an array', () => {
+    expect(() => parseHooksJson({ PreToolUse: 'oops' })).toThrow(
+      HooksConfigError,
+    );
+  });
+
+  it('rejects matcher block that is not an object', () => {
+    expect(() =>
+      parseHooksJson({ PreToolUse: ['not-a-block'] }),
+    ).toThrow(HooksConfigError);
+  });
+
+  it('rejects non-string matcher on a block', () => {
+    expect(() =>
+      parseHooksJson({
+        PreToolUse: [
+          { matcher: 42, hooks: [{ type: 'command', command: 'x' }] },
+        ],
+      }),
+    ).toThrow(HooksConfigError);
+  });
+
+  it('rejects hooks field that is not an array', () => {
+    expect(() =>
+      parseHooksJson({ PreToolUse: [{ hooks: 'nope' }] }),
+    ).toThrow(HooksConfigError);
+  });
+
+  it('rejects non-boolean async / asyncRewake / once', () => {
+    expect(() =>
+      parseHooksJson({
+        PreToolUse: [
+          { hooks: [{ type: 'command', command: 'x', async: 'true' }] },
+        ],
+      }),
+    ).toThrow(/async/);
+    expect(() =>
+      parseHooksJson({
+        PreToolUse: [
+          {
+            hooks: [{ type: 'command', command: 'x', asyncRewake: 1 }],
+          },
+        ],
+      }),
+    ).toThrow(/asyncRewake/);
+    expect(() =>
+      parseHooksJson({
+        PreToolUse: [
+          { hooks: [{ type: 'command', command: 'x', once: 'yes' }] },
+        ],
+      }),
+    ).toThrow(/once/);
+  });
+
+  it('rejects non-string command or statusMessage', () => {
+    expect(() =>
+      parseHooksJson({
+        PreToolUse: [{ hooks: [{ type: 'command', command: 42 }] }],
+      }),
+    ).toThrow(/command/);
+    expect(() =>
+      parseHooksJson({
+        PreToolUse: [
+          {
+            hooks: [
+              { type: 'command', command: 'x', statusMessage: 1 },
+            ],
+          },
+        ],
+      }),
+    ).toThrow(/statusMessage/);
+  });
+
   it('preserves optional matcher on the block', () => {
     const raw = {
       PreToolUse: [
@@ -137,6 +214,70 @@ describe('parseMetaJson', () => {
         hooks: [{ id: 'x', event: 'PreToolUse', index: 1.5 }],
       }),
     ).toThrow(HooksConfigError);
+  });
+
+  it('rejects non-string matcher', () => {
+    expect(() =>
+      parseMetaJson({
+        hooks: [{ id: 'x', event: 'PreToolUse', index: 0, matcher: 42 }],
+      }),
+    ).toThrow(/matcher/);
+  });
+
+  it('rejects non-object env', () => {
+    expect(() =>
+      parseMetaJson({
+        hooks: [{ id: 'x', event: 'PreToolUse', index: 0, env: 'oops' }],
+      }),
+    ).toThrow(/env/);
+  });
+
+  it('rejects env value that is not a string', () => {
+    expect(() =>
+      parseMetaJson({
+        hooks: [
+          { id: 'x', event: 'PreToolUse', index: 0, env: { FOO: 1 } },
+        ],
+      }),
+    ).toThrow(/env\.FOO/);
+  });
+
+  it('rejects meta.json root that is not an object', () => {
+    expect(() => parseMetaJson([])).toThrow(HooksConfigError);
+  });
+
+  it('rejects hooks entry that is not an object', () => {
+    expect(() => parseMetaJson({ hooks: ['not-an-object'] })).toThrow(
+      HooksConfigError,
+    );
+  });
+
+  it('rejects missing or empty id', () => {
+    expect(() =>
+      parseMetaJson({ hooks: [{ event: 'PreToolUse', index: 0 }] }),
+    ).toThrow(/\.id/);
+    expect(() =>
+      parseMetaJson({ hooks: [{ id: '', event: 'PreToolUse', index: 0 }] }),
+    ).toThrow(/\.id/);
+  });
+
+  it('rejects non-string description', () => {
+    expect(() =>
+      parseMetaJson({
+        hooks: [
+          { id: 'x', event: 'PreToolUse', index: 0, description: 42 },
+        ],
+      }),
+    ).toThrow(/description/);
+  });
+
+  it('rejects non-array or non-string allowedEnvVars', () => {
+    expect(() =>
+      parseMetaJson({ hooks: [], allowedEnvVars: 'FOO' }),
+    ).toThrow(/allowedEnvVars/);
+    expect(() =>
+      parseMetaJson({ hooks: [], allowedEnvVars: ['FOO', 42] }),
+    ).toThrow(/allowedEnvVars/);
   });
 });
 

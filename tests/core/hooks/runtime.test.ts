@@ -198,6 +198,30 @@ describe('dispatchEvent', () => {
     expect(entries.map((e: EventLogEntry) => e.type)).toContain('hook_error');
   });
 
+  it('logs hook_error with stringified error when runner throws unexpectedly', async () => {
+    class ThrowingRunner implements HookRunner {
+      async run(): Promise<RunnerOutput> {
+        throw new Error('bang');
+      }
+    }
+    const opts: DispatchOptions = { ...baseOpts(), runner: new ThrowingRunner() };
+
+    const results = await dispatchEvent(
+      [mkHook('boom')],
+      'PreToolUse',
+      undefined,
+      {},
+      opts,
+    );
+
+    expect(results[0]?.ok).toBe(false);
+    expect(results[0]?.timedOut).toBe(false);
+    expect(results[0]?.error).toBe('bang');
+
+    const entries = (opts.eventLog as InMemoryEventLog).entries;
+    expect(entries.map((e: EventLogEntry) => e.type)).toContain('hook_error');
+  });
+
   it('event log preserves chronological order across multiple dispatches', async () => {
     const opts = baseOpts();
 

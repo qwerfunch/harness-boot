@@ -13,9 +13,30 @@ export interface EnvResolution {
 }
 
 export function resolveEnv(
-  _hookEnv: Record<string, string> | undefined,
-  _processEnv: Record<string, string | undefined>,
-  _policy: EnvPolicy,
+  hookEnv: Record<string, string> | undefined,
+  processEnv: Record<string, string | undefined>,
+  policy: EnvPolicy,
 ): EnvResolution {
-  throw new Error('not implemented: resolveEnv');
+  const allowed = new Set(policy.allowedEnvVars);
+  const env: Record<string, string> = {};
+  const denied: string[] = [];
+
+  for (const key of Object.keys(processEnv).sort()) {
+    if (!allowed.has(key)) continue;
+    const value = processEnv[key];
+    if (value === undefined) continue;
+    env[key] = value;
+  }
+
+  if (hookEnv) {
+    for (const key of Object.keys(hookEnv).sort()) {
+      if (allowed.has(key)) {
+        env[key] = hookEnv[key] as string;
+      } else {
+        denied.push(key);
+      }
+    }
+  }
+
+  return { env, denied };
 }

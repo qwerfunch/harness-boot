@@ -8,9 +8,29 @@ export interface EventContext {
 }
 
 export function selectHooksForEvent(
-  _resolved: readonly ResolvedHook[],
-  _event: HookEvent,
-  _context?: EventContext,
+  resolved: readonly ResolvedHook[],
+  event: HookEvent,
+  context?: EventContext,
 ): ResolvedHook[] {
-  throw new Error('not implemented: selectHooksForEvent');
+  const subject = matcherSubject(event, context);
+
+  return resolved.filter((hook) => {
+    if (hook.event !== event) return false;
+    if (hook.matcher === undefined || hook.matcher === '') return true;
+    if (subject === undefined) return false;
+    try {
+      return new RegExp(hook.matcher).test(subject);
+    } catch {
+      return false;
+    }
+  });
+}
+
+function matcherSubject(
+  event: HookEvent,
+  context: EventContext | undefined,
+): string | undefined {
+  if (!context) return undefined;
+  if (event === 'UserPromptSubmit') return context.promptText;
+  return context.toolName;
 }
