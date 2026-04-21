@@ -705,7 +705,7 @@ features:
     type: feature
     title: "Hook Runtime — 공식 hooks.json 네이티브 + 확장 meta.json"
     priority: 3
-    status: planned
+    status: in_progress
     test_strategy: tdd                          # sensitive Hook 참조 → §5.1 규칙 4 강제
     test_strategy_reason: |
       Hook 은 sensitive 엔티티이며 BR-005 의 직접 대상.  공식 필드 × 7 이벤트
