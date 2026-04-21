@@ -802,7 +802,7 @@ features:
     type: feature
     title: "/harness:analyze — 초기 분석 · `.harness/` 스켈레톤 · 3-way 분기"
     priority: 4
-    status: in_progress
+    status: done
     test_strategy: integration
     test_strategy_reason: |
       파일 시스템 감지 · 기존 상태 3 분기(missing / partial / new input)
