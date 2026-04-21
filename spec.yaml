@@ -770,7 +770,7 @@ features:
     type: feature
     title: "spec.yaml Schema v0.2 + JSON Schema 공개 + 검증 규칙 6 개"
     priority: 3
-    status: in_progress
+    status: done
     test_strategy: tdd
     test_strategy_reason: |
       스키마는 전체 도메인의 형식 계약이다.  한 번 잘못 고정되면 모든 파생이
