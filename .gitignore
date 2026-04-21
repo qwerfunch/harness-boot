@@ -25,6 +25,9 @@ Thumbs.db
 # Translation shadow directory (user learning aid, not for commit)
 translations-ko/
 
+# Personal design notes (user-only workspace, not for commit)
+design/
+
 # Archived v0.1.0 tree — already-tracked files remain tracked,
 # but no new local artifacts under legacy/ should enter git
 legacy/
