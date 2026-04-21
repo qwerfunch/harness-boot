@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harness-boot.dev/schemas/spec.schema.json",
+  "title": "harness-boot spec.yaml",
+  "description": "Spec-driven development SSoT for harness-boot — validates the top-level shape. Semantic rules (cycle detection, Walking Skeleton, sensitive enforcement, …) are applied by src/core/spec/validate.ts.",
+  "type": "object",
+  "required": ["version", "project", "domain", "constraints", "deliverable", "features"],
+  "additionalProperties": true,
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "project": { "$ref": "#/$defs/project" },
+    "domain": { "$ref": "#/$defs/domain" },
+    "constraints": { "$ref": "#/$defs/constraints" },
+    "deliverable": { "$ref": "#/$defs/deliverable" },
+    "features": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/feature" }
+    },
+    "metadata": { "type": "object", "additionalProperties": true }
+  },
+  "$defs": {
+    "project": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+" },
+        "summary": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    "domain": {
+      "type": "object",
+      "required": ["overview"],
+      "additionalProperties": true,
+      "properties": {
+        "overview": { "type": "string", "minLength": 1 },
+        "entities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "additionalProperties": true,
+            "properties": {
+              "name": { "type": "string" },
+              "description": { "type": "string" },
+              "invariants": { "type": "array", "items": { "type": "string" } },
+              "sensitive": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "required": ["tech_stack", "architecture", "quality"],
+      "additionalProperties": true,
+      "properties": {
+        "tech_stack": {
+          "type": "object",
+          "required": ["language", "runtime", "framework", "testing"],
+          "additionalProperties": true,
+          "properties": {
+            "language": { "type": "string", "minLength": 1 },
+            "runtime": { "type": "string", "minLength": 1 },
+            "framework": { "type": "string", "minLength": 1 },
+            "testing": { "type": "string", "minLength": 1 }
+          }
+        },
+        "architecture": {
+          "type": "object",
+          "required": ["pattern"],
+          "additionalProperties": true,
+          "properties": {
+            "pattern": { "type": "string", "minLength": 1 },
+            "reference": { "type": "string" }
+          }
+        },
+        "quality": {
+          "type": "object",
+          "required": ["coverage_threshold", "required_gates"],
+          "additionalProperties": true,
+          "properties": {
+            "coverage_threshold": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "required_gates": {
+              "type": "array",
+              "items": { "type": "integer", "minimum": 0 }
+            },
+            "prototype_mode": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "deliverable": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["library", "cli", "web-service", "ui", "data-pipeline", "other"]
+        },
+        "entry_points": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/entryPoint" }
+        },
+        "smoke_scenarios": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/smokeScenario" }
+        }
+      }
+    },
+    "entryPoint": {
+      "type": "object",
+      "required": ["name", "command"],
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "command": { "type": "string", "minLength": 1 },
+        "build_command": { "type": "string" },
+        "health_check": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "smokeScenario": {
+      "type": "object",
+      "required": ["id", "description", "steps", "success_criteria"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "pattern": "^SS-\\d{3,}$" },
+        "description": { "type": "string", "minLength": 1 },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "success_criteria": { "type": "string", "minLength": 1 }
+      }
+    },
+    "docSync": {
+      "type": "object",
+      "required": ["target", "watch", "severity"],
+      "additionalProperties": true,
+      "properties": {
+        "target": { "type": "string", "minLength": 1 },
+        "watch": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["error", "warn", "warning", "info"]
+        }
+      }
+    },
+    "feature": {
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "title",
+        "priority",
+        "status",
+        "test_strategy",
+        "acceptance_criteria"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "pattern": "^F-\\d{3,}$" },
+        "type": {
+          "type": "string",
+          "enum": ["skeleton", "feature", "spike", "chore"]
+        },
+        "title": { "type": "string", "minLength": 1 },
+        "priority": { "type": "integer", "minimum": 1 },
+        "status": {
+          "type": "string",
+          "enum": ["planned", "in_progress", "done", "blocked"]
+        },
+        "test_strategy": {
+          "type": "string",
+          "enum": [
+            "tdd",
+            "lean-tdd",
+            "integration",
+            "state-verification",
+            "property",
+            "manual"
+          ]
+        },
+        "test_strategy_reason": { "type": "string" },
+        "acceptance_criteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "tdd_focus": { "type": "array", "items": { "type": "string" } },
+        "depends_on": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^F-\\d{3,}$" }
+        },
+        "modules": { "type": "array", "items": { "type": "string" } },
+        "doc_sync": { "type": "array", "items": { "$ref": "#/$defs/docSync" } },
+        "sensitive": { "type": "boolean" }
+      }
+    }
+  }
+}
