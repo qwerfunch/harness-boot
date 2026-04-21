@@ -21,3 +21,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Translation shadow directory (user learning aid, not for commit)
+translations-ko/
