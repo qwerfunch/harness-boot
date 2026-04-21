@@ -654,7 +654,7 @@ features:
     type: feature
     title: "Constitution v0.2 — 7 Articles (Anti-Abstraction-Scoped 포함)"
     priority: 2
-    status: planned
+    status: in_progress
     test_strategy: state-verification
     test_strategy_reason: |
       Constitution 은 문서 아티팩트 + 검증 규칙의 조합이다.  렌더링 결과와
