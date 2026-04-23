@@ -155,12 +155,21 @@ features:
   started_at: null
   completed_at: null
 - id: F-020
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
       ts: '2026-04-23T13:04:27Z'
       note: 'cmd: python3 -m unittest discover tests.unit'
+    gate_4:
+      last_result: pass
+      ts: '2026-04-23T13:06:37Z'
+      note: 'cmd: sh -c git diff --quiet && git diff --cached --quiet'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-23T13:06:37Z'
+      note: test_starter_schema 2 tests + template first-line grep verified ( directive
+        유효) · AC-1 검증
   evidence:
   - ts: '2026-04-23T13:04:27Z'
     kind: gate_run
@@ -169,8 +178,12 @@ features:
     kind: test
     summary: docs/templates/starter/spec.yaml.template 에 $schema 주석 추가 · tests/unit/test_starter_schema.py
       2 tests PASS · gate_0 376 tests (override 필요 · 향후 auto-detect 개선 후보)
+  - ts: '2026-04-23T13:06:37Z'
+    kind: gate_run
+    summary: 'Gate gate_4 pass (0.0s) · cmd: sh -c git diff --quiet && git diff --cached
+      --quiet'
   started_at: '2026-04-23T13:02:49Z'
-  completed_at: null
+  completed_at: '2026-04-23T13:06:46Z'
 - id: F-021
   status: in_progress
   gates: {}
@@ -183,5 +196,5 @@ features:
 session:
   started_at: '2026-04-23T13:02:49Z'
   last_command: /harness:work F-020
-  last_gate_passed: gate_0
-  active_feature_id: F-020
+  last_gate_passed: gate_5
+  active_feature_id: null
