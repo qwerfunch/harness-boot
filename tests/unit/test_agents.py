@@ -26,6 +26,10 @@ _EXPERT_AGENTS = (
     "a11y-auditor",
     "researcher",
     "product-planner",
+    "frontend-engineer",
+    "backend-engineer",
+    "security-engineer",
+    "performance-engineer",
 )
 
 # Stage D (Discovery) agents operate before any domain.md exists,

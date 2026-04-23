@@ -138,9 +138,40 @@ class AC1_CodeFormatTests(unittest.TestCase): ...
 - `--complete` 인데 gate_5 미통과 또는 evidence 없음 → action=queried + 이유 메시지 반환 (실패 아님, 재호출 가능).
 - invalid gate result → exit 3.
 
+## Orchestration Routing (v0.5)
+
+orchestrator 가 피처 shape 에 따라 소환 체인을 결정한다. 아래 표는 **머신 체크 가능한 계약** — `tests/unit/test_work_routing.py` 가 이 표를 파싱해 6 행 존재 + shape_key + agent_chain 컬럼을 assert.
+
+| shape_key | agent_chain |
+|---|---|
+| baseline-empty-vague | `@harness:researcher` → `@harness:product-planner` → `/harness:spec <plan.md>` |
+| ui_surface.present | `@harness:ux-architect` → `@harness:visual-designer` (+ `@harness:audio-designer` if has_audio) → `@harness:a11y-auditor` → `@harness:frontend-engineer` (+ `@harness:software-engineer` for logic) |
+| sensitive_or_auth | `@harness:security-engineer` ∥ `@harness:reviewer` (parallel audit; security BLOCK vetoes) |
+| performance_budget | `@harness:performance-engineer` (v0.6 schema field 연동, v0.5 는 inline payload 전달 시만) |
+| pure_domain_logic | `@harness:backend-engineer` (+ `@harness:software-engineer` 보조) |
+| feature_completion | `@harness:qa-engineer` → engineers (tests) → `@harness:integrator` → `@harness:tech-writer` → `@harness:reviewer` (final) |
+
+**Conflict resolution (orchestrator 책임)**:
+- `security-engineer` vs `reviewer` 불일치 → security BLOCK 이 **veto** (민감성 우위)
+- `ux-architect` flow 와 `visual-designer` tokens 충돌 → ux-architect authoritative; 2회 반복 시 orchestrator 가 사용자에게 결정 요청
+- `a11y-auditor` 는 read-only 이므로 BLOCK 만 발행 — PASS 판정에 다른 에이전트 영향 없음
+
+**Feature context payload (orchestrator → expert)**:
+에이전트 호출 시 프롬프트에 아래 prose 로 인라인 삽입. 전문가는 spec.yaml 을 뒤져 찾지 않음.
+```
+feature_id: F-NNN
+ac_summary:
+  - AC-1: ...
+  - AC-2: ...
+modules: [...]
+test_strategy: tdd | contract | property | smoke
+ui_surface: {present, platforms, has_audio}  # (있을 때만)
+```
+
 ## 참조
 
 - `scripts/work.py` — 실제 구현.
 - `scripts/state.py` — state.yaml helper.
 - `docs/samples/harness-boot-self/spec.yaml` — F-004 AC · modules.
 - BR-004 (Iron Law): "NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE".
+- `agents/*.md` — 각 전문가 에이전트의 `## Context` · `## 산출 규약`.
