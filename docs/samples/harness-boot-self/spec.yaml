@@ -298,6 +298,8 @@ features:
   - id: "F-001"
     name: "Skeleton — /harness:init 으로 Walking Skeleton 부팅"
     type: "skeleton"
+    status: "done"             # v0.1.0 (2026-04-23 태그) · v0.1.1 에서 hardening 완료
+    release_target: "v0.1"
     description: "사용자 프로젝트에 `.harness/` + `.claude/` 설치, spec.yaml stub, CLAUDE.md shim, 훅/에이전트/스킬 기본 세트를 깔고 첫 실행이 Gate 5 까지 성공하도록 만듦."
     modules:
       - "init_command"
@@ -314,6 +316,10 @@ features:
       - "생성된 CLAUDE.md 는 shim 형태(플러그인 루트 참조)"
       - "events.log 에 install 이벤트 1건 적재"
       - "preamble 3줄이 정확한 형식(mode/scope/next)"
+    v0_1_smoke_notes:
+      - "CC 2.1.x 에서 $CLAUDE_PLUGIN_ROOT 미설정 확정 — $PATH bin 역산으로 경로 해석 (NEW-37)"
+      - ".claude/ 빈 디렉터리 · CLAUDE.md 의 phantom @import 모두 silently ignore"
+      - "directory-type marketplace 의 installPath 가 실제로 생성되지 않음 (NEW-44)"
 
   - id: "F-002"
     name: "/harness:spec — Mode A/B/R/E 자동 분기"
@@ -338,23 +344,30 @@ features:
   - id: "F-003"
     name: "/harness:sync — Phase 0(파생) + Phase 1(빌드) 2단계"
     type: "feature"
+    status: "planned"
+    release_target: "v0.2"      # v0.2 Core — sync 는 self-describe round trip 의 진입점
+    depends_on: ["F-009", "F-010"]   # include 엔진 + canonical hashing 선행
     description: "Phase 0 = spec.yaml 확장·해시·파생 파일(domain.md, architecture.yaml) 재생성. Phase 1 = 풀 빌드·테스트·Gate 5 실행. delta 모드는 영향받은 피처만."
     modules:
       - "sync_command"
-      - "include_expander"      # $include 전개
+      - "include_expander"      # $include 전개 (F-009 에서 제공)
       - "domain_renderer"
       - "architecture_renderer"
       - "gate_runner"           # Gate 0~5
       - "delta_selector"
+      - "plugin_root_resolver"  # v0.1.1 NEW-37 패턴 — $PATH bin 역산 + installPath fallback
     test_strategy: "tdd"
     tdd_focus:
       - "edit-wins 보존(domain.md 사용자 수정이 덮이지 않음)"
       - "delta 빌드가 영향 피처만 선별"
       - "include expand 실패 시 즉시 중단"
+      - "plugin_root_resolver 가 directory-type marketplace 에서도 source.path fallback 으로 정상 동작 (NEW-44 회귀)"
     acceptance_criteria:
       - "Phase 0 재실행 시 해시가 동일(canonical 재현성)"
       - "Gate 5 통과 이전에는 state.yaml.active_feature 가 done 으로 전환되지 않음"
       - "sync --delta 가 전체 빌드 대비 ≥ 60% 시간 단축(표준 케이스 측정)"
+      - "첫 실행 시 생성된 domain.md · architecture.yaml 이 CLAUDE.md 의 @import 타겟과 매칭 (v0.1.x 의 phantom import 해소)"
+      - "harness-boot-self 스펙을 입력으로 sync 실행 → self-describe round trip 성공 (dogfood 검증)"
 
   - id: "F-004"
     name: "/harness:work — 피처 개발 사이클"
@@ -1174,3 +1187,53 @@ metadata:
 
     # -- NEW-31 : drift_catalog -------------------------------------------
     # 소스: §10.4 (L2498-2513). 8 종 drift.
+    # (이미 위 drift_catalog 블록 L1055 에 정의됨 — 이 주석은 historical)
+
+  # -- release_plan : harness-boot 자체 릴리즈 스케줄 (2026-04-23 추가) -----
+  # 어느 피처가 어느 릴리즈에 묶이는지. acceptance_criteria 는 피처 본문에.
+  # features[] 순서/의존성은 그대로, 이 블록은 release scope 뷰.
+  release_plan:
+    v0.1:
+      shipped: true
+      shipped_at: "2026-04-23"
+      tag: "v0.1.1"
+      scope: "Walking Skeleton — /harness:init 만. plan.md → spec.yaml 변환 스킬은 v0.5."
+      features: ["F-001"]
+
+    v0.2:
+      shipped: false
+      target: "Self-describe round trip — /harness:sync 로 spec → domain.md · architecture.yaml 파생 가능."
+      rationale: "v0.1.x 는 빈 spec.yaml 을 만들 뿐. v0.2 는 채워진 spec 이 실제 파생물을 생성하도록 해서, harness-boot-self 스펙으로 첫 dogfood 검증을 가능하게 함."
+      features:
+        - "F-003"    # /harness:sync (primary deliverable)
+        - "F-009"    # $include 전개 엔진 (F-003 의존)
+        - "F-010"    # Canonical Hashing (F-003 의존)
+        - "F-011"    # Preamble (F-001 과 일관성)
+        - "F-002"    # /harness:spec — 스펙 편집 UX (Mode A/B/R/E)
+
+    v0.3:
+      shipped: false
+      target: "Development loop closed — /harness:work + 조회/검증 명령."
+      rationale: "v0.2 로 spec↔파생이 닫히면, 이제 피처 단위 TDD 루프를 자동화. 이 시점부터 harness-boot 자체가 별도 워크스페이스에서 harness-boot 으로 개발됨 (진짜 dogfood)."
+      features:
+        - "F-004"    # /harness:work
+        - "F-005"    # /harness:status
+        - "F-006"    # /harness:check
+        - "F-007"    # /harness:events
+
+    later:
+      shipped: false
+      target: "확장 인프라 — hooks 시스템 · 에이전트 · 스킬 · 마이그레이션."
+      features:
+        - "F-008"    # /harness:metrics
+        - "F-012"    # sub-agents 권한 매트릭스
+        - "F-013"    # skills 호출
+        - "F-014"    # hooks 시스템
+        - "F-015"    # CLAUDE.md shim
+        - "F-016"    # $include 재귀 가드
+        - "F-017"    # protocols
+        - "F-018"    # edit-wins 엔진
+        - "F-019"    # v1→v2 마이그레이션
+        - "F-020"    # IDE/YAML LS 지원
+        - "F-021"    # 최종 자료
+
