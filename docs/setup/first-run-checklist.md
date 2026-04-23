@@ -11,24 +11,69 @@
 ## 준비
 
 **사전 요건**
-- Claude Code 최신 버전 (`claude --version`).
+- Claude Code **2.1.x 이상** (`claude --version`). 플러그인 시스템이 marketplace 기반이라 구버전과 스키마 다름.
 - 깨끗한 테스트 프로젝트 디렉터리 (예: `~/tmp/harness-first-run/`, 기존 프로젝트 금물).
-- 이 레포를 로컬에 클론 (`~/.claude/plugins/harness-boot/` 권장).
+- 이 레포가 로컬에 있는 경로 (예: `~/Developer/harness-boot/`).
 
-**플러그인 등록** (`~/.claude/settings.json` 에 추가):
+**플러그인 등록 — 2 가지 경로**
 
-```json
+### 경로 A: 로컬 개발 설치 (유지보수자용)
+
+하네스를 단일 플러그인 marketplace 로 래핑한 뒤 `~/.claude/settings.json` 에 등록합니다.
+
+```bash
+# 1. marketplace 래퍼 디렉터리 생성
+mkdir -p ~/.claude/plugins/local-harness-marketplace/.claude-plugin
+
+# 2. marketplace.json 작성
+cat > ~/.claude/plugins/local-harness-marketplace/.claude-plugin/marketplace.json <<'EOF'
 {
+  "name": "local-harness",
+  "owner": { "name": "<your-name>" },
   "plugins": [
     {
       "name": "harness-boot",
-      "path": "~/.claude/plugins/harness-boot"
+      "source": "./harness-boot",
+      "version": "0.1.0"
     }
   ]
 }
+EOF
+
+# 3. 실제 repo 를 심볼릭 링크
+ln -sfn /path/to/harness-boot ~/.claude/plugins/local-harness-marketplace/harness-boot
 ```
 
-Claude Code 재시작.
+`~/.claude/settings.json` 에 추가 (기존 필드 보존):
+
+```json
+{
+  "extraKnownMarketplaces": {
+    "local-harness": {
+      "source": {
+        "source": "directory",
+        "path": "~/.claude/plugins/local-harness-marketplace"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "harness-boot@local-harness": true
+  }
+}
+```
+
+Claude Code 재시작 (기존 세션 내부에서 띄운 child claude 는 부모의 plugin-dir 를 상속하므로 항상 **새 터미널**에서 `claude` 실행).
+
+### 경로 B: 공식 마켓플레이스 (일반 사용자용 · v0.1.0 머지 후)
+
+마켓플레이스 PR 이 머지된 후:
+
+```
+/plugin marketplace add claude-plugins-official     # 이미 추가돼 있으면 skip
+/plugin install harness-boot@claude-plugins-official
+```
+
+이후 Claude Code 재시작. 이 경로는 v0.1.0 릴리즈 후 end-to-end 스모크용.
 
 ---
 
