@@ -216,6 +216,141 @@ class EvidenceTests(HarnessScratch, unittest.TestCase):
         self.assertEqual(findings, [])
 
 
+class CodeDriftTests(HarnessScratch, unittest.TestCase):
+    def test_string_modules_are_skipped(self):
+        """단순 문자열 modules 는 논리 식별자로 보고 skip — false positive 방지."""
+        self.write_spec()  # modules = [] in fixture
+        spec = yaml.safe_load((self.harness / "spec.yaml").read_text(encoding="utf-8"))
+        spec["features"][0]["modules"] = ["init_command", "install_target_detector"]
+        findings = check.check_code(self.harness, spec)
+        self.assertEqual(findings, [])
+
+    def test_dict_module_without_source_skipped(self):
+        spec = dict(SPEC_FIXTURE)
+        spec["features"] = [dict(SPEC_FIXTURE["features"][0], modules=[{"name": "init_command"}])]
+        findings = check.check_code(self.harness, spec)
+        self.assertEqual(findings, [])
+
+    def test_source_present_and_resolves(self):
+        (self.tmp / "scripts").mkdir()
+        (self.tmp / "scripts" / "foo.py").write_text("# ok\n", encoding="utf-8")
+        spec = dict(SPEC_FIXTURE)
+        spec["features"] = [
+            dict(
+                SPEC_FIXTURE["features"][0],
+                modules=[{"name": "foo_mod", "source": "scripts/foo.py"}],
+            )
+        ]
+        findings = check.check_code(self.harness, spec)
+        self.assertEqual(findings, [])
+
+    def test_source_missing_is_error(self):
+        spec = dict(SPEC_FIXTURE)
+        spec["features"] = [
+            dict(
+                SPEC_FIXTURE["features"][0],
+                modules=[{"name": "missing", "source": "scripts/does_not_exist.py"}],
+            )
+        ]
+        findings = check.check_code(self.harness, spec)
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].severity, "error")
+        self.assertEqual(findings[0].kind, "Code")
+        self.assertIn("F-1::missing", findings[0].path)
+
+
+class DocDriftTests(HarnessScratch, unittest.TestCase):
+    def test_no_claude_md_skipped(self):
+        findings = check.check_doc(self.harness)
+        self.assertEqual(findings, [])
+
+    def test_claude_md_with_resolving_import(self):
+        (self.tmp / "CLAUDE.md").write_text("@.harness/spec.yaml\n", encoding="utf-8")
+        self.write_spec()
+        findings = check.check_doc(self.harness)
+        self.assertEqual(findings, [])
+
+    def test_claude_md_with_missing_import(self):
+        (self.tmp / "CLAUDE.md").write_text("@.harness/phantom.md\n", encoding="utf-8")
+        findings = check.check_doc(self.harness)
+        self.assertEqual(len(findings), 1)
+        self.assertIn("phantom.md", findings[0].message)
+
+    def test_empty_domain_md_is_error(self):
+        (self.harness / "domain.md").write_text("", encoding="utf-8")
+        findings = check.check_doc(self.harness)
+        errs = [f for f in findings if f.severity == "error"]
+        self.assertEqual(len(errs), 1)
+        self.assertIn("domain.md", errs[0].path)
+
+    def test_empty_architecture_yaml_is_error(self):
+        (self.harness / "architecture.yaml").write_text("", encoding="utf-8")
+        findings = check.check_doc(self.harness)
+        errs = [f for f in findings if f.severity == "error"]
+        self.assertEqual(len(errs), 1)
+        self.assertIn("architecture.yaml", errs[0].path)
+
+    def test_http_import_ignored(self):
+        (self.tmp / "CLAUDE.md").write_text("@https://example.com/ref\n", encoding="utf-8")
+        findings = check.check_doc(self.harness)
+        self.assertEqual(findings, [])
+
+
+class AnchorDriftTests(HarnessScratch, unittest.TestCase):
+    def test_valid_ids_no_findings(self):
+        spec = {
+            "features": [
+                {"id": "F-001"},
+                {"id": "F-002"},
+            ]
+        }
+        findings = check.check_anchor(spec)
+        self.assertEqual(findings, [])
+
+    def test_missing_id_flagged(self):
+        spec = {"features": [{"name": "nope"}]}
+        findings = check.check_anchor(spec)
+        self.assertEqual(len(findings), 1)
+        self.assertIn("id 누락", findings[0].message)
+
+    def test_bad_id_pattern_flagged(self):
+        spec = {"features": [{"id": "feature-1"}]}
+        findings = check.check_anchor(spec)
+        self.assertTrue(any("F-NNN" in f.message for f in findings))
+
+    def test_duplicate_id_flagged(self):
+        spec = {"features": [{"id": "F-001"}, {"id": "F-001"}]}
+        findings = check.check_anchor(spec)
+        dups = [f for f in findings if "중복" in f.message]
+        self.assertEqual(len(dups), 1)
+
+    def test_depends_on_resolves(self):
+        spec = {
+            "features": [
+                {"id": "F-001"},
+                {"id": "F-002", "depends_on": ["F-001"]},
+            ]
+        }
+        findings = check.check_anchor(spec)
+        self.assertEqual(findings, [])
+
+    def test_depends_on_broken_flagged(self):
+        spec = {"features": [{"id": "F-001", "depends_on": ["F-999"]}]}
+        findings = check.check_anchor(spec)
+        self.assertEqual(len(findings), 1)
+        self.assertIn("F-999", findings[0].message)
+
+    def test_depends_on_not_list_flagged(self):
+        spec = {"features": [{"id": "F-001", "depends_on": "F-002"}]}
+        findings = check.check_anchor(spec)
+        self.assertTrue(any("배열이 아님" in f.message for f in findings))
+
+    def test_non_dict_feature_flagged(self):
+        spec = {"features": ["not a dict"]}
+        findings = check.check_anchor(spec)
+        self.assertTrue(any(f.severity == "error" for f in findings))
+
+
 class IntegrationTests(HarnessScratch, unittest.TestCase):
     def test_clean_run_reports_no_findings(self):
         # 정상 시나리오: harness.yaml 있고 spec 해시 맞고 파생 없음 (미파생 상태지만 해시도 기록 안 된 이상 warn 안 나옴)

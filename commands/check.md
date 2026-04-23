@@ -1,22 +1,24 @@
 ---
-description: Drift 탐지 — Spec · Derived · Include · Generated · Evidence 5 종 (v0.3 범위). 읽기 전용 (CQS).
+description: Drift 탐지 — Generated · Spec · Derived · Include · Evidence · Code · Doc · Anchor 8/8 (v0.3.8+). 읽기 전용 (CQS).
 allowed-tools: [Read, Bash]
-argument-hint: "[--json]  # 결과에 따라 exit 0 (clean) 또는 6 (drift)"
+argument-hint: "[--json] [--project-root DIR]  # 결과에 따라 exit 0 (clean) 또는 6 (drift)"
 ---
 
 # /harness:check — 일관성 검증 (F-006)
 
-**v0.3 범위** — 5 종 drift:
+**v0.3.8+ 범위** — 8 종 drift **전부** (design 완결):
+
+**Harness 기반 5 종**:
 1. **Generated** — harness.yaml 의 필수 키 존재 검증.
 2. **Spec** — spec.yaml canonical hash vs `harness.yaml.generation.spec_hash`.
 3. **Derived** — domain.md / architecture.yaml 파일 해시 vs `harness.yaml.derived_from.*.output_hash` (edit-wins 감지).
 4. **Include** — harness.yaml 에 기록된 `$include` 와 spec 의 현재 `$include` 비교 + chapters 파일 실존.
 5. **Evidence** — state.yaml 의 `done` 피처는 evidence 최소 1 건 기록돼야 함 (BR-004).
 
-**v0.4+ 범위** (미포함):
-- Code drift — 실제 소스 코드와 spec.architecture 교차 검증.
-- Doc drift — 별도 docs 디렉터리 변경 감지.
-- Anchor drift — `source_ref` 앵커 유효성.
+**교차 3 종 (v0.3.8 신규)**:
+6. **Code** — `features[].modules[]` 가 dict 이고 `source` 필드가 있으면 그 경로가 `project_root` 기준으로 실존하는지. 단순 문자열 모듈은 논리 식별자로 보고 skip (false positive 방지).
+7. **Doc** — `project_root/CLAUDE.md` 의 `@<path>` import 타겟이 실존하는지 + 파생된 `domain.md` · `architecture.yaml` 이 0 byte 가 아닌지.
+8. **Anchor** — `features[].id` 가 `^F-\d+$` 패턴인지 · ID 유일성 · `depends_on: [...]` 참조가 실제 feature 목록 내에 존재하는지.
 
 **CQS 불변조건**: 파일 수정 없음. spec-drift 를 찾아도 **자동 수정 제안하지 않음** (사용자 개입 필요).
 
@@ -24,7 +26,7 @@ argument-hint: "[--json]  # 결과에 따라 exit 0 (clean) 또는 6 (drift)"
 
 ```
 🔍 /harness:check · <clean|N findings> · <근거 5~10 단어>
-NO skip: 5 종 drift 각각 실행 (Generated · Spec · Derived · Include · Evidence)
+NO skip: 8 종 drift 각각 실행 (Generated · Derived · Spec · Include · Evidence · Code · Doc · Anchor)
 NO shortcut: 자동 수정 금지 — Spec drift 는 반드시 사용자 개입 (BR-012)
 ```
 
@@ -37,7 +39,10 @@ NO shortcut: 자동 수정 금지 — Spec drift 는 반드시 사용자 개입 
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/check.py" --harness-dir "$(pwd)/.harness" --json
+python3 "$PLUGIN_ROOT/scripts/check.py" --harness-dir "$(pwd)/.harness" --project-root "$(pwd)"
 ```
+
+기본 `project-root` 은 `--harness-dir` 의 부모. 다른 레이아웃 (`~/.harness` 등) 은 명시.
 
 ### 종료 코드
 
@@ -50,11 +55,12 @@ python3 "$PLUGIN_ROOT/scripts/check.py" --harness-dir "$(pwd)/.harness" --json
 ```
 🔍 /harness:check
 
-Checked: Generated, Derived, Spec, Include, Evidence
+Checked: Generated, Derived, Spec, Include, Evidence, Code, Anchor, Doc
 
-Findings (2):
+Findings (3):
   ⚠️  [Derived] domain.md: 해시 불일치 (edit-wins 감지) — sync --force 로 재생성 or 수동 수정 reconcile 필요
   ❌ [Include] missing-chapter.md: $include 타겟 파일 없음: chapters/missing-chapter.md
+  ❌ [Anchor] F-002: depends_on 에 존재하지 않는 피처 참조: F-999
 ```
 
 ## Finding severity

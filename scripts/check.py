@@ -9,14 +9,15 @@ check.py — /harness:check (F-006) drift 탐지. Read-only, CQS.
 
 CQS: 파일 수정 없음. Spec 드리프트 발견 시 자동 수정 제안도 없음 (BR 참조).
 
-v0.3 범위 — 8종 드리프트 중 다음 5 종:
-  1. Derived   — domain.md/architecture.yaml 의 output_hash 와 현재 파일 해시 비교
-  2. Spec      — spec.yaml 의 canonical hash 와 harness.yaml.generation.spec_hash 비교
-  3. Include   — harness.yaml.include_sources 의 파일 존재 + 내용 해시 비교
-  4. Generated — harness.yaml 자체가 올바른 구조/버전을 유지하는지
+v0.3.8 범위 — 8/8 드리프트 전부:
+  1. Generated — harness.yaml 자체가 올바른 구조/버전을 유지하는지
+  2. Derived   — domain.md/architecture.yaml 의 output_hash 와 현재 파일 해시 비교
+  3. Spec      — spec.yaml 의 canonical hash 와 harness.yaml.generation.spec_hash 비교
+  4. Include   — harness.yaml.include_sources 의 파일 존재 + 내용 해시 비교
   5. Evidence  — state.yaml 의 done 피처에 evidence 가 기록돼 있는지 (BR-004)
-
-v0.4+: Code / Doc / Anchor drift — 스펙·코드·앵커 교차 검증 필요 (더 큰 작업).
+  6. Code      — features[].modules 에 dict 형태로 `source` 필드가 있으면 그 경로가 존재하는지
+  7. Doc       — project_root/CLAUDE.md 의 `@` import 타겟이 실제 존재하는지 + derived 파일 비어있지 않은지
+  8. Anchor    — features[].id 포맷/유일성 + depends_on 참조가 존재하는 피처 ID 인지
 
 종료 코드:
   0 = clean (no drift)
@@ -29,6 +30,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -49,7 +51,10 @@ import include_expander as ie  # noqa: E402
 from state import State  # noqa: E402
 
 
-DriftKind = str  # "Derived" | "Spec" | "Include" | "Generated" | "Evidence"
+DriftKind = str  # "Generated" | "Derived" | "Spec" | "Include" | "Evidence" | "Code" | "Doc" | "Anchor"
+
+_FEATURE_ID_PATTERN = re.compile(r"^F-\d+$")
+_CLAUDE_IMPORT_PATTERN = re.compile(r"^@([^\s]+)", re.MULTILINE)
 
 
 @dataclass
@@ -215,9 +220,147 @@ def check_evidence(harness_dir: Path) -> list[DriftFinding]:
     return findings
 
 
-def run_check(harness_dir: Path) -> CheckReport:
+def check_code(harness_dir: Path, spec: dict, project_root: Path | None = None) -> list[DriftFinding]:
+    """features[].modules 내 dict 항목의 `source` 필드가 가리키는 파일이 실제 존재하는지.
+
+    **경계**: 모듈이 단순 문자열 ("init_command") 이면 논리 식별자로 보고 skip.
+    dict + source 로 명시적 파일 경로를 선언한 경우만 검증 → false positive 최소화.
+    경로는 project_root (harness_dir 의 부모) 기준 상대.
+    """
+    findings: list[DriftFinding] = []
+    if project_root is None:
+        project_root = harness_dir.parent
+
+    features = spec.get("features") or []
+    for f in features:
+        if not isinstance(f, dict):
+            continue
+        fid = f.get("id", "?")
+        modules = f.get("modules") or []
+        for m in modules:
+            if not isinstance(m, dict):
+                continue
+            src = m.get("source")
+            if not isinstance(src, str) or not src.strip():
+                continue
+            target = (project_root / src).resolve()
+            if not target.is_file():
+                name = m.get("name", "?")
+                findings.append(
+                    DriftFinding(
+                        "Code",
+                        f"{fid}::{name}",
+                        f"모듈 '{name}' 의 source 경로 부재: {src}",
+                        "error",
+                    )
+                )
+    return findings
+
+
+def check_doc(harness_dir: Path, project_root: Path | None = None) -> list[DriftFinding]:
+    """Doc drift — CLAUDE.md @import 타겟 유효성 + derived 파일 비어있음 감지.
+
+    1. project_root/CLAUDE.md 의 `@<path>` 라인이 존재하는 파일을 가리키는지.
+       (없는 타겟은 Claude Code 가 silently ignore 하지만 drift 로 인식.)
+    2. harness_dir/domain.md · architecture.yaml 이 존재한다면 0 byte 여서는 안 됨.
+    """
+    findings: list[DriftFinding] = []
+    if project_root is None:
+        project_root = harness_dir.parent
+
+    claude_md = project_root / "CLAUDE.md"
+    if claude_md.is_file():
+        try:
+            text = claude_md.read_text(encoding="utf-8")
+        except OSError:
+            text = ""
+        for match in _CLAUDE_IMPORT_PATTERN.finditer(text):
+            rel = match.group(1).strip().rstrip(".,;:)")
+            if not rel or rel.startswith(("http://", "https://")):
+                continue
+            target = (project_root / rel).resolve()
+            if not target.exists():
+                findings.append(
+                    DriftFinding(
+                        "Doc",
+                        f"CLAUDE.md::@{rel}",
+                        f"CLAUDE.md @import 타겟 부재: {rel}",
+                    )
+                )
+
+    for fname in ("domain.md", "architecture.yaml"):
+        path = harness_dir / fname
+        if path.is_file():
+            try:
+                size = path.stat().st_size
+            except OSError:
+                size = 0
+            if size == 0:
+                findings.append(
+                    DriftFinding("Doc", fname, f"{fname} 파일이 비어있음 — sync 재생성 필요", "error")
+                )
+    return findings
+
+
+def check_anchor(spec: dict) -> list[DriftFinding]:
+    """Anchor drift — feature ID 포맷 · 유일성 · depends_on 참조 유효성.
+
+    - 각 feature 의 `id` 는 F-NNN (숫자 3 자리 이상) 형식.
+    - id 중복 금지.
+    - depends_on 에 나열된 ID 는 모두 실제 feature 목록에 존재해야 함.
+    """
+    findings: list[DriftFinding] = []
+    features = spec.get("features") or []
+    seen: set[str] = set()
+    all_ids: set[str] = set()
+
+    for i, f in enumerate(features):
+        if not isinstance(f, dict):
+            findings.append(DriftFinding("Anchor", f"features[{i}]", "feature 항목이 매핑이 아님", "error"))
+            continue
+        fid = f.get("id")
+        if not isinstance(fid, str) or not fid:
+            findings.append(DriftFinding("Anchor", f"features[{i}]", "feature id 누락", "error"))
+            continue
+        if not _FEATURE_ID_PATTERN.match(fid):
+            findings.append(
+                DriftFinding("Anchor", fid, f"feature id 가 F-NNN 패턴이 아님 (got: {fid!r})", "error")
+            )
+        if fid in seen:
+            findings.append(DriftFinding("Anchor", fid, f"중복 feature id: {fid}", "error"))
+        seen.add(fid)
+        all_ids.add(fid)
+
+    for f in features:
+        if not isinstance(f, dict):
+            continue
+        fid = f.get("id", "?")
+        deps = f.get("depends_on")
+        if deps is None:
+            continue
+        if not isinstance(deps, list):
+            findings.append(DriftFinding("Anchor", fid, "depends_on 이 배열이 아님", "error"))
+            continue
+        for dep in deps:
+            if not isinstance(dep, str):
+                findings.append(DriftFinding("Anchor", fid, f"depends_on 항목이 문자열 아님: {dep!r}", "error"))
+                continue
+            if dep not in all_ids:
+                findings.append(
+                    DriftFinding(
+                        "Anchor",
+                        fid,
+                        f"depends_on 에 존재하지 않는 피처 참조: {dep}",
+                        "error",
+                    )
+                )
+    return findings
+
+
+def run_check(harness_dir: Path, project_root: Path | None = None) -> CheckReport:
     report = CheckReport()
     harness_yaml = _load_yaml(harness_dir / "harness.yaml")
+    spec_yaml = _load_yaml(harness_dir / "spec.yaml")
 
     report.findings.extend(check_generated(harness_dir, harness_yaml))
     report.checked.append("Generated")
@@ -232,6 +375,15 @@ def run_check(harness_dir: Path) -> CheckReport:
 
     report.findings.extend(check_evidence(harness_dir))
     report.checked.append("Evidence")
+
+    if spec_yaml is not None:
+        report.findings.extend(check_code(harness_dir, spec_yaml, project_root))
+        report.checked.append("Code")
+        report.findings.extend(check_anchor(spec_yaml))
+        report.checked.append("Anchor")
+
+    report.findings.extend(check_doc(harness_dir, project_root))
+    report.checked.append("Doc")
     return report
 
 
@@ -252,6 +404,7 @@ def format_human(report: CheckReport) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="/harness:check (F-006) — drift detection (read-only)")
     parser.add_argument("--harness-dir", type=Path, default=Path.cwd() / ".harness")
+    parser.add_argument("--project-root", type=Path, default=None, help="default: harness-dir 의 부모")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
 
@@ -259,7 +412,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {args.harness_dir} not found", file=sys.stderr)
         return 2
 
-    report = run_check(args.harness_dir)
+    report = run_check(args.harness_dir, project_root=args.project_root)
 
     if args.json:
         json.dump(
