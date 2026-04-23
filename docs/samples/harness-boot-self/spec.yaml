@@ -344,8 +344,9 @@ features:
   - id: "F-003"
     name: "/harness:sync — Phase 0(파생) + Phase 1(빌드) 2단계"
     type: "feature"
-    status: "planned"
-    release_target: "v0.2"      # v0.2 Core — sync 는 self-describe round trip 의 진입점
+    status: "done"              # 2026-04-23: Phase 0 구현 완료 (scripts/sync.py + 14 tests).
+                                # Phase 1 (Gate 실행) 은 F-004 /harness:work 에 분리.
+    release_target: "v0.2"
     depends_on: ["F-009", "F-010"]   # include 엔진 + canonical hashing 선행
     description: "Phase 0 = spec.yaml 확장·해시·파생 파일(domain.md, architecture.yaml) 재생성. Phase 1 = 풀 빌드·테스트·Gate 5 실행. delta 모드는 영향받은 피처만."
     modules:
@@ -444,6 +445,8 @@ features:
   - id: "F-009"
     name: "$include 전개 엔진"
     type: "feature"
+    status: "done"              # 2026-04-23: scripts/include_expander.py + 23 tests.
+    release_target: "v0.2"
     description: "spec.yaml 의 $include 노드를 .harness/chapters/*.md 에서 읽어 🗒 필드에 치환."
     modules:
       - "include_expander"
@@ -462,6 +465,8 @@ features:
   - id: "F-010"
     name: "Canonical Hashing — Merkle 3층"
     type: "feature"
+    status: "done"              # 2026-04-23: scripts/canonical_hash.py + 19 tests.
+    release_target: "v0.2"
     description: "Canonical YAML → Canonical JSON → SHA-256. 전체/스코프/include expanded-vs-raw 3종."
     modules:
       - "canonical_yaml"
@@ -1201,15 +1206,27 @@ metadata:
       features: ["F-001"]
 
     v0.2:
-      shipped: false
+      shipped: partial          # 2026-04-23 현재: Phase 0 핵심 구현 완료 (F-003/F-009/F-010).
+                                # F-002 spec 는 stub 계약만, F-011 preamble 은 F-001 내장.
+      in_progress_at: "2026-04-23"
       target: "Self-describe round trip — /harness:sync 로 spec → domain.md · architecture.yaml 파생 가능."
       rationale: "v0.1.x 는 빈 spec.yaml 을 만들 뿐. v0.2 는 채워진 spec 이 실제 파생물을 생성하도록 해서, harness-boot-self 스펙으로 첫 dogfood 검증을 가능하게 함."
       features:
-        - "F-003"    # /harness:sync (primary deliverable)
-        - "F-009"    # $include 전개 엔진 (F-003 의존)
-        - "F-010"    # Canonical Hashing (F-003 의존)
-        - "F-011"    # Preamble (F-001 과 일관성)
-        - "F-002"    # /harness:spec — 스펙 편집 UX (Mode A/B/R/E)
+        - "F-003"    # /harness:sync (primary deliverable) — DONE
+        - "F-009"    # $include 전개 엔진 — DONE
+        - "F-010"    # Canonical Hashing — DONE
+        - "F-011"    # Preamble — F-001 에서 이미 동작 (별도 리팩터 불필요)
+        - "F-002"    # /harness:spec — 스펙 편집 UX (Mode A/B/R/E) · commands/spec.md stub 작성됨
+      implementation_artifacts:
+        - "scripts/canonical_hash.py + tests/unit/test_canonical_hash.py (19 tests)"
+        - "scripts/include_expander.py + tests/unit/test_include_expander.py (23 tests)"
+        - "scripts/plugin_root.py + tests/unit/test_plugin_root.py (14 tests)"
+        - "scripts/render_domain.py + tests/unit/test_render_domain.py (18 tests)"
+        - "scripts/render_architecture.py + tests/unit/test_render_architecture.py (16 tests)"
+        - "scripts/sync.py + tests/unit/test_sync.py (14 tests)"
+        - "commands/sync.md (Phase 0 계약 + scripts/sync.py 위임)"
+        - "commands/spec.md (Mode A/B/R/E 계약 stub)"
+      total_tests: 104
 
     v0.3:
       shipped: false

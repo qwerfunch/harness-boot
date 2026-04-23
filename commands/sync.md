@@ -1,7 +1,7 @@
 ---
-description: spec.yaml 변경을 domain.md · architecture.yaml · harness.yaml 해시트리에 반영 — v0.2 Phase 0 구현 중 (Phase 1 Gate 실행은 /harness:work 에 분리)
-allowed-tools: [Read, Write, Edit, Bash, Glob]
-argument-hint: "[--delta | --full] [--dry-run]  # 기본 --full --write"
+description: spec.yaml 변경을 domain.md · architecture.yaml · harness.yaml 해시트리에 반영 — v0.2 Phase 0 전체가 scripts/sync.py 에 구현돼 있음 (Phase 1 은 /harness:work)
+allowed-tools: [Read, Bash]
+argument-hint: "[--dry-run] [--force]  # --dry-run: 변경 없이 plan · --force: edit-wins 무시"
 ---
 
 # /harness:sync — 파생 동기화
@@ -21,10 +21,23 @@ argument-hint: "[--delta | --full] [--dry-run]  # 기본 --full --write"
 ## 전제 조건
 
 1. `.harness/spec.yaml` 존재 (없으면 중단, "먼저 /harness:init 또는 /harness:spec 실행하세요").
-2. `.harness/harness.yaml` 존재 (없으면 중단, 같은 안내).
-3. 플러그인 루트 경로 해석 성공 (`commands/init.md §2` 의 4-전략 체인과 동일 — PATH bin 역산 · installPath 레지스트리 · marketplace source.path · 사용자 프롬프트).
+2. 플러그인 루트 경로 해석 성공 — `Bash: python3 $(python3 -c "import sys,os; sys.path.insert(0, os.path.expanduser('~/.claude/plugins/local-harness-marketplace/harness-boot/scripts')); import plugin_root; r=plugin_root.resolve(); print(r.root)")` (NEW-37/44 4-전략 체인). 또는 `commands/init.md §2` 의 bash 스니펫 재사용.
 
-## Phase 0 — 파생 생성 (v0.2 범위)
+## Phase 0 실행 — scripts/sync.py 위임
+
+v0.2 Phase 0 전체 로직은 `scripts/sync.py` 에 구현돼 있어 Claude 가 다음 1줄로 실행:
+
+```bash
+python3 "$PLUGIN_ROOT/scripts/sync.py" --harness-dir "$(pwd)/.harness" --json
+```
+
+- `--dry-run`: 파일 변경 없이 plan 확인.
+- `--force`: edit-wins 무시하고 재생성 (domain.md / architecture.yaml 사용자 수정 덮어씀).
+- JSON 출력을 받아 preamble 요약에 활용.
+
+스크립트가 내부적으로 하는 일 (아래는 상세 계약 — 직접 실행할 필요는 없으나 문제 진단용):
+
+## 내부 동작 참조
 
 ### 0.1 스펙 로드 + 스키마 검증 (Gate 0~1)
 
