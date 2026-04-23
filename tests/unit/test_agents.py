@@ -19,7 +19,14 @@ AGENTS_DIR = REPO_ROOT / "agents"
 _REQUIRED_AGENTS = {"orchestrator", "software-engineer", "reviewer"}
 
 # v0.5 expert pool — expand as Stage D/X/E/Q/I agents land.
-_EXPERT_AGENTS = ("ux-architect", "researcher", "product-planner")
+_EXPERT_AGENTS = (
+    "ux-architect",
+    "visual-designer",
+    "audio-designer",
+    "a11y-auditor",
+    "researcher",
+    "product-planner",
+)
 
 # Stage D (Discovery) agents operate before any domain.md exists,
 # so they are exempt from the "spec.yaml direct-read ban" (there IS no
