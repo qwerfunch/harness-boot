@@ -8,8 +8,8 @@ Claude Code 2.1.x 규약: `agents/<name>.md` at plugin root (not `.claude-plugin
 
 ## 호출 방법 (사용자 측)
 
-- **@-mention**: `@harness:orchestrator` · `@harness:implementer` · `@harness:reviewer`
-- **CLI session-wide**: `claude --agent harness:implementer`
+- **@-mention**: `@harness:orchestrator` · `@harness:software-engineer` · `@harness:reviewer`
+- **CLI session-wide**: `claude --agent harness:software-engineer`
 - **자동 delegation**: Claude 가 description 기반 판단
 
 ## 권한 매트릭스 (F-012 AC)
@@ -17,7 +17,7 @@ Claude Code 2.1.x 규약: `agents/<name>.md` at plugin root (not `.claude-plugin
 | Agent | tools (allow-list) | 사용 시점 | 금지 |
 |---|---|---|---|
 | **orchestrator** | 전부 (무제한) | 다단계 작업 조율 · 다른 에이전트에게 delegate | — |
-| **implementer** | Read · Write · Edit · Bash · Grep · Glob · NotebookEdit | 스펙 → 코드 → 테스트 · BR-004 사이클 | Git push · 공유 시스템 수정 · 마켓 PR |
+| **software-engineer** | Read · Write · Edit · Bash · Grep · Glob · NotebookEdit | 스펙 → 코드 → 테스트 · BR-004 사이클 | Git push · 공유 시스템 수정 · 마켓 PR |
 | **reviewer** | Read · Grep · Glob · Bash (읽기 전용) | PR/코드 리뷰 · drift 진단 · evidence 검증 | Edit · Write · 모든 mutation |
 
 Claude Code 가 `tools` 밖 호출 **자동 차단**. 런타임 enforcement.
@@ -25,7 +25,7 @@ Claude Code 가 `tools` 밖 호출 **자동 차단**. 런타임 enforcement.
 ## 디자인 원칙
 
 1. **최소 권한** — 각 에이전트는 담당 범위를 벗어나는 tool 미허용
-2. **BR-004 Iron Law 적용** — implementer 는 gate_5 + evidence 없이 done 못 함
+2. **BR-004 Iron Law 적용** — software-engineer 는 gate_5 + evidence 없이 done 못 함
 3. **Preamble + Anti-rationalization** (BR-014) — 출력 맨 앞 3 줄 규약 유지
 4. **CQS (BR-012)** — reviewer 는 read-only · 진단만
 

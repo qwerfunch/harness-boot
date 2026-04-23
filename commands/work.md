@@ -113,7 +113,7 @@ class BR004_StrictestRuleTests(unittest.TestCase): ...
 class AC1_CodeFormatTests(unittest.TestCase): ...
 ```
 
-상세: `agents/implementer.md § 코딩 스타일`.
+상세: `agents/software-engineer.md § 코딩 스타일`.
 
 ## 전형 시나리오
 

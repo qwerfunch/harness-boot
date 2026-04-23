@@ -16,13 +16,13 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 AGENTS_DIR = REPO_ROOT / "agents"
 
 # Core agents that must ship with v0.4+
-_REQUIRED_AGENTS = {"orchestrator", "implementer", "reviewer"}
+_REQUIRED_AGENTS = {"orchestrator", "software-engineer", "reviewer"}
 
 # Permission matrix: allowed tools per agent (F-012 AC-2 contract).
-# reviewer is strictly read-only; implementer is restricted from
+# reviewer is strictly read-only; software-engineer is restricted from
 # shared-system mutation; orchestrator is broad.
 _REVIEWER_ALLOWED = {"Read", "Grep", "Glob", "Bash"}
-_IMPLEMENTER_FORBIDDEN = {"Agent"}  # implementer shouldn't spawn further agents
+_SOFTWARE_ENGINEER_FORBIDDEN = {"Agent"}  # software-engineer shouldn't spawn further agents
 # orchestrator has no forbidden tools (coordinator)
 
 _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---", re.DOTALL)
@@ -94,19 +94,19 @@ class PermissionMatrixTests(unittest.TestCase):
         self.assertNotIn("Write", tools)
         self.assertNotIn("NotebookEdit", tools)
 
-    def test_implementer_forbids_agent_spawn(self):
-        fm = _load_agent("implementer")
+    def test_software_engineer_forbids_agent_spawn(self):
+        fm = _load_agent("software-engineer")
         tools = set(fm["tools"])
-        # implementer 는 Agent tool 없음 (multi-step 은 orchestrator 책임)
-        for forbidden in _IMPLEMENTER_FORBIDDEN:
-            self.assertNotIn(forbidden, tools, f"implementer has forbidden: {forbidden}")
+        # software-engineer 는 Agent tool 없음 (multi-step 은 orchestrator 책임)
+        for forbidden in _SOFTWARE_ENGINEER_FORBIDDEN:
+            self.assertNotIn(forbidden, tools, f"software-engineer has forbidden: {forbidden}")
 
-    def test_implementer_has_write_permissions(self):
-        fm = _load_agent("implementer")
+    def test_software_engineer_has_write_permissions(self):
+        fm = _load_agent("software-engineer")
         tools = set(fm["tools"])
         # TDD 수행을 위한 필수 tools
         for required in {"Read", "Write", "Edit", "Bash"}:
-            self.assertIn(required, tools, f"implementer missing: {required}")
+            self.assertIn(required, tools, f"software-engineer missing: {required}")
 
     def test_orchestrator_has_broad_access(self):
         fm = _load_agent("orchestrator")
@@ -129,15 +129,15 @@ class PreambleConventionTests(unittest.TestCase):
 
 
 class StyleGuideTests(unittest.TestCase):
-    """Implementer agent 가 Google Python Style + ID-in-docstring 규칙을 문서화해야."""
+    """Software-engineer agent 가 Google Python Style + ID-in-docstring 규칙을 문서화해야."""
 
-    def test_implementer_references_google_python_style(self):
-        body = (AGENTS_DIR / "implementer.md").read_text(encoding="utf-8")
+    def test_software_engineer_references_google_python_style(self):
+        body = (AGENTS_DIR / "software-engineer.md").read_text(encoding="utf-8")
         self.assertIn("Google Python Style Guide", body)
 
-    def test_implementer_documents_id_in_docstring_rule(self):
+    def test_software_engineer_documents_id_in_docstring_rule(self):
         """Spec reference 는 docstring/주석, 이름은 도메인 의미."""
-        body = (AGENTS_DIR / "implementer.md").read_text(encoding="utf-8")
+        body = (AGENTS_DIR / "software-engineer.md").read_text(encoding="utf-8")
         # 규칙 문구 존재
         self.assertIn("docstring", body.lower())
         # 반례 (금지 패턴) 가 문서화되어 있음
