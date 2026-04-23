@@ -1,0 +1,512 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/qwerfunch/harness-boot/v2.3.7/docs/schemas/spec.schema.json
+# .harness/spec.yaml — APK SAST Harness (VAPT v4.5 기반)
+#
+# 주의: 이 문서는 Phase 2.5 검증 성격. 원본은 plan.md 가 아닌
+# VAPT_ARCHITECTURE_v4_5.md (≈1730 줄, 28 섹션 + 부록 A~D). 성숙도는
+# "기획"보다 "아키텍처"에 가까우며 많은 결정이 이미 내려져 있다.
+# v2.3.7 스키마 한계가 가장 크게 드러날 것으로 예상됨 — unrepresentable.md
+# 참고.
+version: "2.3.7"
+
+project:
+  name: "apk-sast-harness"
+  summary: "Tool-First + Self-Evolving Android APK 정적 보안 분석(SAST) 하네스 + SaaS"
+  description: |
+    Android APK 바이너리에 대해 Manifest·Code·Binary·SCA·상관분석·보고서
+    전 과정을 자동화하는 SAST 시스템. 핵심은 "도구로 결정할 수 있는 것은
+    도구로 판정"(85-90% tools / 10-15% LLM) 하고 판단이 필요한 부분만
+    LLM 에이전트로 에스컬레이션하는 Tool-First 아키텍처. 탐지력 목표는
+    MobSF 대비 recall +20~30%p, F1 score L1>83% / L2>87%
+    (InsecureBankv2 기준). 외부 인터페이스는 FastAPI + React SPA(업로드 /
+    진행 / 결과) 와 CI/CD 통합용 REST API.
+  vision: |
+    MobSF 가 "개별 룰 매칭"에 머무는 것과 달리 Taint 전파(74 규칙)·공격
+    체인(13 템플릿)·SCA 핑거프린트·자가 진화 파이프라인으로 실세계
+    난독화·ICC·코루틴·반사(reflection) 상황까지 추적한다. 무료 티어(L1,
+    도구 단독)로 기본 커버리지를, 유료 티어(L2, LLM 심층)로 비정형 taint
+    재구성·PoC 생성·인사이트 서술을 제공.
+  stakeholders:
+    - role: "security_engineer"
+      concerns:
+        - "false positive 를 벤치마크 기반으로 자동 보정(Confidence Calibrator)"
+        - "공격 체인을 개별 취약점이 아닌 그래프로 확인"
+        - "SARIF 내보내 GitHub Security tab / CI 에 연동"
+    - role: "saas_customer"
+      concerns:
+        - "L1 Free: 커뮤니티 룰만 / L2 Pro $49/월: LLM 인사이트"
+        - "스캔 히스토리·요금제 대시보드·API Key 로 CI/CD 연동"
+        - "멀티테넌시 (org·project 격리), Auth0/Cognito SSO"
+    - role: "ci_cd_user"
+      concerns:
+        - "PR 병합 시 quick 스캔 통과 필수"
+        - "REST API 로 scan 트리거, SARIF 아티팩트 업로드"
+    - role: "ml_ops"
+      concerns:
+        - "AWS Bedrock 비용 제어(L2 deep ≈ \\$0.74/APK)"
+        - "자가 진화 파이프라인(도구 생성 → 벤치마크 → 승격)의 A/B 품질 열화 방지"
+    - role: "legal_compliance"
+      concerns:
+        - "OSS 결과만 재배포(라이선스), 분석 대상 APK 는 고객 자산 — 보존·파기 정책"
+        - "개인정보 추적(PII source/sink registry) 이 실제 PII 만 탐지"
+    - role: "research_team"
+      concerns:
+        - "Ground Truth(InsecureBankv2 25개 전수, 6개 공격 체인) 유지·확장"
+        - "벤치마크 회귀 발생 시 자동 알람"
+
+domain:
+  overview: |
+    핵심 엔티티는 Scan(스캔 단위), Vulnerability(발견), VulnGroup(체인으로
+    묶인 취약점 집합), AgentResult(에이전트별 산출), ScanResult(최종 보고
+    객체), Tool(실행 가능 도구), EscalationFlag(L2 요청 신호), Rule(규칙
+    정의), ChainTemplate(공격 체인 템플릿). 10개 에이전트가 Orchestrator
+    상태머신에서 Tier 0~3 순서로 실행되고 모든 중간 산출은 ScanDB
+    (agent_outputs 테이블)에 영속된다. L1→L2 는 scan_id 를 이어받으며,
+    escalation_flags 조건이 만족되면 L2 가 자동 트리거된다.
+  entities:
+    - name: "Scan"
+      description: "단일 APK 업로드에 대한 전체 스캔 실행."
+      invariants:
+        - "scan_id 는 uuid4, 전체 파이프라인에서 상관 키"
+        - "status ∈ {pending, running, degraded, succeeded, failed, cancelled}"
+        - "depth ∈ {L1_quick, L1_standard, L2_deep} 중 하나로 고정"
+        - "L2 는 반드시 선행하는 L1 scan 의 id 를 승계"
+      sensitive: true
+      sensitive_reason: "업로드 APK 는 고객 자산, 사용자 식별·결제 정보와 연결"
+    - name: "Vulnerability"
+      description: "한 에이전트가 보고하는 개별 발견(50+ 필드 중 핵심만 여기에 표기)."
+      invariants:
+        - "vuln_id 는 (scan_id, finder_agent, rule_id, location_hash) 기반 결정적"
+        - "severity ∈ {critical, high, medium, low, info}"
+        - "confidence ∈ [0.0, 1.0] — ConfidenceCalibrator 가 역사 TP/FP 기반 보정"
+        - "cwe_id / owasp_masvs 가 있으면 컴플라이언스 보고에 포함"
+        - "duplicate_of 가 있으면 cross-agent dedup 대상"
+      sensitive: false
+    - name: "VulnGroup"
+      description: "Correlator 가 여러 Vulnerability 를 공격 체인으로 묶은 단위."
+      invariants:
+        - "chain_template_id (T001~T013 중 하나) 또는 graph_path 기반"
+        - "member vuln_id 는 2개 이상 (단일 취약점은 그룹화 금지)"
+        - "chain_score 는 member.confidence · graph.path_score 로 계산"
+      sensitive: false
+    - name: "AgentResult"
+      description: "한 에이전트가 ScanDB.agent_outputs 에 기록하는 단위."
+      invariants:
+        - "(scan_id, agent_id, version) 유일"
+        - "status ∈ {ok, partial, skipped, failed}"
+        - "metrics 에 tp/fp 미측정 필드는 null 가능"
+      sensitive: false
+    - name: "ScanResult"
+      description: "최종 보고 객체 — 모든 AgentResult 합성 + VulnGroup + 메타."
+      invariants:
+        - "scan_id 로 Scan 과 1:1"
+        - "depth 정보 + 커버리지 요약 + 비용(L2) 포함"
+        - "후속 에이전트(리포트·DAST·Compliance)는 ScanResult 만으로 동작 가능"
+      sensitive: false
+    - name: "Tool"
+      description: "Registry 에 등록된 실행 가능 분석 단위(전체 83개)."
+      invariants:
+        - "tool_id 는 (category, name, version) 로 유일"
+        - "status ∈ {core, generated, experimental, archived}"
+        - "security_profile 이 'sandbox_required' 이면 seccomp + cgroup 제한 필수"
+        - "generated 는 벤치마크 precision ≥ 0.85 이전에는 core 승격 불가"
+      sensitive: false
+    - name: "EscalationFlag"
+      description: "L1 이 L2 자동 트리거를 요청할 때 ScanDB 에 남기는 플래그."
+      invariants:
+        - "(scan_id, flag_type) 유일"
+        - "flag_type ∈ {reflective_call, obfuscated_lib, taint_gap, chain_incomplete, coroutine_present}"
+        - "resolution 필드에 L2 응답(accepted / skipped / downgraded) 기록"
+      sensitive: false
+    - name: "Rule"
+      description: "libsast·semgrep·YARA·taint 공용 규칙 정의."
+      invariants:
+        - "source ∈ {core, community, pending, archived}"
+        - "pending 규칙은 RuleRefiner 통과 이전엔 실행 제외(opt-in만)"
+        - "rule_id 은 org 전역 유일"
+      sensitive: false
+    - name: "ChainTemplate"
+      description: "Correlator 가 참조하는 13개 공격 체인 정의(T001~T013)."
+      invariants:
+        - "required_components 가 모두 발견되어야 매칭 성공"
+        - "dataflow_linker 조건을 만족해야 점수 가산"
+      sensitive: false
+  business_rules:
+    - id: "BR-001"
+      statement: "L1 스캔은 LLM 을 호출하지 않는다. 모든 판정은 Tool 만으로 결정."
+      rationale: "Tool-First 원칙 + 무료 티어 비용 0 유지"
+    - id: "BR-002"
+      statement: "L2 는 항상 선행 L1 이 존재해야 한다. 단독 L2 실행 금지."
+      rationale: "토큰 낭비·중복 작업 방지, scan_id 승계로 에이전트 간 일관성"
+    - id: "BR-003"
+      statement: "Orchestrator 는 LLM 을 호출하지 않는 상태머신이다."
+      rationale: "파이프라인 결정은 DAG + 조건 라우팅 으로 완전 결정론적이어야 함"
+    - id: "BR-004"
+      statement: "에이전트 간 통신은 오직 ScanDB.agent_outputs 를 통해서만 한다."
+      rationale: "토큰 무관, 영속, 디버깅 가능 — 프롬프트 payload 기반 통신 금지"
+    - id: "BR-005"
+      statement: "생성된 도구(status=generated)는 벤치마크 precision ≥ 0.85 에 도달해야 core 승격."
+      rationale: "자가 진화 품질 게이트 — 오탐 주입 차단"
+    - id: "BR-006"
+      statement: "모든 에이전트는 seccomp + cgroup 이 적용된 per-scan Docker 컨테이너에서 실행."
+      rationale: "악성 APK 자체가 분석 환경을 공격할 수 있음, 도구 보안 4-Layer 중 2단계"
+    - id: "BR-007"
+      statement: "VulnGroup 은 단일 Vulnerability 로 구성될 수 없다."
+      rationale: "'그룹'의 의미가 체인(2+ 취약점의 결합) 일 때만 유효"
+    - id: "BR-008"
+      statement: "ConfidenceCalibrator 는 cold-start 에서 벤치마크 사전 보정값을 사용한다."
+      rationale: "TP/FP 통계가 부족한 초기에 임의 confidence 를 방지"
+    - id: "BR-009"
+      statement: "ScanResult 는 불변. 수정이 필요하면 새 scan_id 를 발급한다."
+      rationale: "보고서·SARIF 재현성, 고객 감사 로그 신뢰성"
+    - id: "BR-010"
+      statement: "L1 Free 티어는 core 룰셋만 사용하고, community/pending 룰셋은 L2 만."
+      rationale: "품질 보증된 룰만 무료 사용자에게 노출"
+  vocabulary:
+    - term: "Tool"
+      meaning: "입출력 스키마가 명확한 결정론적 실행 단위. LLM 호출 없음."
+    - term: "Skill"
+      meaning: "Tool 의 조합 + 간단한 로직. LLM 선택적 호출."
+    - term: "Agent"
+      meaning: "Skill·Tool 을 조율하는 자율 단위. 대부분 LLM 주도, 일부는 결정론적."
+    - term: "Orchestrator"
+      meaning: "Agent 간 실행 순서·조건을 제어하는 LLM 없는 상태머신."
+    - term: "Self-Evolution"
+      meaning: "벤치마크 신호 기반으로 Tool/Rule 을 자동 생성·승격·은퇴."
+    - term: "Graceful Degradation"
+      meaning: "단계적 폴백(jadx→smali→unzip, Graph→없이, LLM→L1)으로 완전 실패를 피함."
+    - term: "Taint Analysis"
+      meaning: "오염된 데이터(Source)가 민감한 함수(Sink)에 도달하는 전파 경로 추적."
+    - term: "Code Graph"
+      meaning: "igraph 로 구축한 메서드·클래스 콜 그래프. 3-Tier 서브그래프 전략."
+
+features:
+  - id: "F-001"
+    name: "Skeleton — 업로드·큐잉·상태 조회"
+    type: "skeleton"
+    description: "APK 업로드 → Scan 레코드 생성 → 상태 polling/WebSocket 의 최소 왕복."
+    modules:
+      - "upload_api"       # POST /api/scans
+      - "scan_db_sqlite"   # SQLiteScanDB (Phase 1)
+      - "orchestrator_stub"
+      - "frontend_upload_page"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "업로드 API 는 1GB 이하 APK 만 수락"
+      - "스캔 생성 시 scan_id 는 uuid4"
+      - "WebSocket 진행률 이벤트 5종 이상 송출"
+    acceptance_criteria:
+      - "POST /api/scans 에 유효한 APK 업로드 시 202 + scan_id 반환"
+      - "GET /api/scans/{id} 는 status=pending 을 즉시 반환"
+      - "WebSocket /ws/scans/{id} 가 'queued' 이벤트를 수신"
+      - "Upload.tsx 페이지가 drag&drop → 진행률 UI → 결과 링크 이동 성립"
+
+  - id: "F-002"
+    name: "Unpack Agent (Tier 1)"
+    type: "feature"
+    description: "3단계 폴백(jadx+apktool → smali-only → unzip)으로 APK 해제 및 포맷 감지."
+    modules:
+      - "unpack_agent"
+      - "format_detector"
+      - "apktool_runner"
+      - "jadx_runner"
+      - "axml_decoder"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "정상 APK 1단계 성공, 회피(obfuscated) APK 2단계 폴백 성공"
+      - "AAB·APKS·XAPK 3종 포맷 분기 테스트"
+    acceptance_criteria:
+      - "jadx 실패 시 smali-only 경로로 자동 전환"
+      - "axml 바이너리 manifest 를 txt 로 디코딩"
+      - "실패 시 ScanDB 에 failed_unpack=true + 원인 로그"
+      - "AgentResult.status 가 {ok, partial, failed} 중 하나로 기록"
+
+  - id: "F-003"
+    name: "Manifest Agent"
+    type: "feature"
+    description: "AndroidManifest 기반 permission·exported·NSC·tapjacking·task hijacking 분석."
+    modules:
+      - "manifest_agent"
+      - "permission_matcher"
+      - "nsc_parser"
+      - "intent_filter_analyzer"
+    test_strategy: "tdd"
+    acceptance_criteria:
+      - "Android 12 기본값(exported) 누락을 high 로 보고"
+      - "debuggable=true / allowBackup=true 탐지"
+      - "custom permission 과 시스템 permission 충돌 탐지"
+      - "InsecureBankv2 의 manifest 관련 must_detect 전량 탐지"
+
+  - id: "F-004"
+    name: "Code Agent (libsast + semgrep + 도구 83개 중 코드 계열)"
+    type: "feature"
+    description: "libsast/semgrep 룰 매칭 + 커스텀 도구 + ICC 추적 + PII registry 적용."
+    modules:
+      - "code_agent"
+      - "libsast_runner"
+      - "semgrep_runner"
+      - "explicit_intent_tracer"
+      - "pii_source_registry"
+      - "pii_sink_registry"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "String constant propagation 으로 난독화 URL 을 복원 가능"
+      - "Intent extras 가 sink 에 닿는 경로를 AgentResult 로 보고"
+    acceptance_criteria:
+      - "libsast/semgrep 에서 보고된 각 finding 은 Vulnerability 로 변환"
+      - "PII source 가 로그 sink 에 도달하면 leak finding 을 생성"
+      - "reflection_heavy 코드는 Heuristic 도구로 escalation_flag=reflective_call 을 기록"
+
+  - id: "F-005"
+    name: "Taint Engine (74 propagation rules)"
+    type: "feature"
+    description: "IntraMethodTaintTracer(smali) + JavaSourceTaintTracer(jadx) + Dual-Engine."
+    modules:
+      - "taint_engine"
+      - "intra_method_taint_tracer"
+      - "java_source_taint_tracer"
+      - "dual_engine_taint_tracer"
+      - "coroutine_detector"
+      - "source_sink_matcher"
+      - "taint_propagation_db"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "Java 우선 추적, smali 비교 검증(Dual-Engine)"
+      - "Kotlin suspend fun 에서 continuation 변수 전이 인지"
+    acceptance_criteria:
+      - "Source→Sink 경로를 propagation_path 로 보고(최소 3단계 이상 지원)"
+      - "InterMethod 전파도 Correlator 가 호출 가능한 API 로 노출"
+      - "coroutine 감지 시 escalation_flag=coroutine_present 기록"
+
+  - id: "F-006"
+    name: "Binary Agent (ELF hardening + Heuristic 35)"
+    type: "feature"
+    description: "YARA + ELF 하드닝(PIE·RELRO·NX·canary) + 네이티브 심층 도구."
+    modules:
+      - "binary_agent"
+      - "yara_runner"
+      - "elf_hardening_checker"
+      - "native_anti_debug_detector"
+    test_strategy: "property"
+    acceptance_criteria:
+      - "모든 .so 에 대해 RELRO/PIE/NX/canary 4축 보고"
+      - "JNI 의심 시그니처 탐지 시 finding 생성"
+      - "난독화 entropy 임계 초과 시 obfuscation finding"
+
+  - id: "F-007"
+    name: "SCA Agent (패키지명 + 메서드 시그니처 핑거프린트)"
+    type: "feature"
+    description: "Top 500 라이브러리 핑거프린트 + CVE DB 매칭. 난독화 내성."
+    modules:
+      - "sca_agent"
+      - "lib_fingerprint_matcher"
+      - "cve_db_client"
+      - "sbom_emitter"
+    test_strategy: "tdd"
+    acceptance_criteria:
+      - "패키지명 매칭 실패해도 method signature 해시로 라이브러리 식별"
+      - "CycloneDX 형식 SBOM 생성"
+      - "CVE 매칭 시 CVSS score 를 Vulnerability.cvss 필드에 채움"
+
+  - id: "F-008"
+    name: "Orchestrator (DAG 상태머신)"
+    type: "feature"
+    description: "Tier 0(Unpack) → Tier 1(Manifest/Code/Binary/SCA 병렬) → Tier 2(Taint) → Tier 3(Correlator/Report) DAG."
+    modules:
+      - "orchestrator"
+      - "execution_dag"
+      - "escalation_router"
+      - "checkpoint_resumer"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "크래시 후 checkpoint 에서 재개 시 중복 에이전트 실행 없음"
+      - "escalation_flag 조건에 따라 L2 단계가 분기"
+    acceptance_criteria:
+      - "DAG 경로가 설정과 일치(정적 검증 테스트)"
+      - "Tier 1 에이전트는 병렬 실행(최소 manifest/code/binary/sca 동시)"
+      - "LLM 호출이 orchestrator 레이어에 없음(정적 검사)"
+
+  - id: "F-009"
+    name: "Correlator (Tier 3) — 13 체인 템플릿 + 그래프 경로"
+    type: "feature"
+    description: "ChainTemplateMatcher + ChainGraphTracer + VulnGrouper + Scorer + Dedup."
+    modules:
+      - "correlator"
+      - "chain_template_matcher"
+      - "chain_graph_tracer"
+      - "vuln_grouper"
+      - "chain_scorer"
+      - "chain_dedup"
+    test_strategy: "tdd"
+    acceptance_criteria:
+      - "InsecureBankv2 6개 공격 체인 중 최소 5개 자동 구성"
+      - "VulnGroup.members 가 최소 2개 이상임을 강제"
+      - "같은 체인 중복 제출 시 하나로 병합"
+
+  - id: "F-010"
+    name: "Self-Evolution Pipeline (Tool 생성 + 승격)"
+    type: "feature"
+    description: "ToolCombiner → RegexGen → LLM 3단계 도구 생성 + 벤치마크 승격."
+    modules:
+      - "self_evolution"
+      - "tool_combiner"
+      - "regex_synthesizer"
+      - "llm_tool_writer"
+      - "benchmark_runner"
+      - "tool_promoter"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "생성 도구가 벤치마크에서 precision < 0.85 이면 승격 거부"
+      - "승격된 도구가 다음 스캔에서 실제로 호출됨"
+    acceptance_criteria:
+      - "experimental → core 승격은 automated, recall 회귀 시 자동 archive"
+      - "ToolRegistry.registry.json 에 status 변경 audit trail 기록"
+
+  - id: "F-011"
+    name: "SaaS Frontend (React SPA + FastAPI)"
+    type: "feature"
+    description: "업로드 / 분석 진행 / 결과 대시보드 / 히스토리 / API Key 관리 / 요금제."
+    modules:
+      - "fastapi_app"
+      - "websocket_progress"
+      - "react_upload_page"
+      - "react_analysis_page"
+      - "react_dashboard_page"
+      - "react_history_page"
+      - "auth_provider"   # Auth0 or Cognito
+      - "billing_gate"
+    test_strategy: "contract"
+    acceptance_criteria:
+      - "3개 핵심 화면(Upload/Analysis/Dashboard)이 동작"
+      - "WebSocket 이벤트로 진행률·로그 실시간 스트림"
+      - "API Key 기반 CI 호출 경로가 Bearer 인증과 공존"
+      - "Free/Pro/Enterprise 요금제별 쿼터 게이트 통과"
+
+  - id: "F-012"
+    name: "L2 LLM Agent (비정형 taint / PoC / 인사이트)"
+    type: "feature"
+    description: "AWS Bedrock(Sonnet 4 / Haiku 4 / Llama 3.1 8B) 모델 라우팅으로 L1 결과 위에 심층 분석."
+    modules:
+      - "l2_agent"
+      - "bedrock_router"
+      - "prompt_templates"
+      - "cost_meter"
+      - "poc_generator"
+    test_strategy: "property"
+    acceptance_criteria:
+      - "L1 escalation_flags 가 있는 scan_id 만 트리거"
+      - "per-scan 비용 상한을 초과하면 downgrade + ScanResult.l2_partial=true"
+      - "모델 선택은 작업 타입에 따라 Sonnet/Haiku/Llama 중 결정"
+
+  - id: "F-013"
+    name: "Report (JSON + SARIF + HTML + PDF)"
+    type: "feature"
+    description: "SummaryTemplateEngine + VulnDescriptionBuilder + WeasyPrint PDF + SARIF exporter."
+    modules:
+      - "report_builder"
+      - "sarif_exporter"
+      - "html_renderer"
+      - "weasyprint_pdf"
+    test_strategy: "contract"
+    acceptance_criteria:
+      - "SARIF 2.1.0 스키마 유효성 통과"
+      - "PDF 내 모든 Vulnerability 는 CWE/OWASP MASVS 링크 포함"
+      - "HTML 은 L2 인사이트 섹션을 조건부 렌더"
+
+constraints:
+  tech_stack:
+    language:
+      backend: "python"
+      frontend: "typescript"
+    runtime:
+      backend: "python-3.11+"
+      frontend: "node-20+"
+    framework:
+      backend: "fastapi"
+      frontend: "react-18+"
+      styling: "tailwindcss"
+    datastore:
+      primary: "sqlite"            # Phase 1
+      migration_target: "aurora_postgres_or_dynamodb"  # Phase 6+ (AWS)
+    llm:
+      provider: "aws_bedrock"
+      models:
+        deep: "claude-sonnet-4"
+        standard: "claude-haiku-4"
+        cheap_fast: "meta.llama-3.1-8b-instruct"
+    graph_lib: "igraph"
+    container: "docker-24+"
+    cli_tools:
+      - "apktool>=2.9.3"
+      - "jadx>=1.5.0"
+      - "baksmali>=2.5.2"
+      - "dex2jar"
+      - "bundletool>=1.15.0"
+  architectural:
+    - "Tool-First: 85~90% 판정은 결정론적 Tool, LLM 은 10~15% 이하"
+    - "Orchestrator 는 LLM 없는 상태머신 + DAG"
+    - "Agent 간 통신은 ScanDB 만 사용 (프롬프트 payload 금지)"
+    - "모든 에이전트 실행은 per-scan Docker + seccomp + cgroup"
+    - "Graph 폴백 필수 — igraph 실패 시에도 F1 > 65% 보장"
+    - "Dual-Engine Taint: Java(jadx) 결과를 smali 결과로 교차검증"
+  compliance:
+    - "OWASP MASVS 프로파일 태깅 (Vulnerability.owasp_masvs)"
+    - "CWE ID 태깅"
+    - "SBOM CycloneDX 출력"
+  prototype_mode: false    # P-9: 이미 성숙한 아키텍처 — prototype_mode 조건 미충족
+
+deliverable:
+  type: "web-service"       # P-10 주의: 내부는 scan worker + tool registry 이지만
+                            # 외부 인터페이스가 SaaS 라는 정체성이 지배적이라 web-service 선택.
+                            # "worker"/"sast-scanner" 정체성은 unrepresentable.md NEW-GAP 참고.
+  platform: "linux-docker"
+  entry_points:
+    - name: "saas-api"
+      kind: "http"
+      binding: "0.0.0.0:8080"
+      health_check:
+        path: "/health"
+        timeout_seconds: 5
+    - name: "scan-worker"
+      kind: "background-job"
+      trigger: "queue"           # Scan 큐 컨슈머 — 내부 엔진
+      health_check:
+        timeout_seconds: 7200    # 딥 스캔 최대 2h
+    - name: "cli"
+      kind: "cli"
+      command: "vapt scan <apk>"
+      notes: "로컬 실행용 — L1 전용, Docker 내부에서 동일 코드 호출"
+
+metadata:
+  source:
+    origin: "planning_doc"      # 원본이 plan.md 가 아닌 architecture.md 이지만 카테고리상 근접
+    format: "markdown"
+    path: "uploads/VAPT_ARCHITECTURE_v4_5.md"
+    revision: "v4.5"
+    maturity: "architecture"    # 비표준 확장 힌트 — 실제 필드는 unrepresentable.md NEW-GAP 참고
+    source_lines:
+      entities:
+        Vulnerability: "§9.1 (@dataclass Vulnerability)"
+        Scan: "§9.3 ScanResult / §14 ScanDB"
+        VulnGroup: "§9.2"
+        AgentResult: "§9.3"
+        Tool: "§5.1 ToolDefinition"
+        EscalationFlag: "§14 ScanDB agent_outputs/escalation_flags"
+      features:
+        F-002_unpack: "§7 Tier 1 Unpack + §27 Phase 2"
+        F-005_taint:  "§7A Taint engine (74 rules)"
+        F-009_correlator: "§7 Tier 3 Correlator + §20 6 chains GT"
+        F-010_self_evolution: "§3 Self-Evolution + Appendix B"
+        F-011_saas: "§24 SaaS 프론트엔드"
+      business_rules:
+        BR-001_L1_no_llm: "§4 L1 Free / §3 Tool-First"
+        BR-003_orchestrator_no_llm: "§7 Orchestrator"
+        BR-004_scandb_only: "§7 ScanDB agent_outputs"
+        BR-005_promotion_gate: "§5 Tool lifecycle + Appendix B"
+        BR-006_sandbox: "§5 4-Layer security"
+  conversion:
+    skill: "spec-conversion"
+    skill_version: "0.2"
+    sample_index: 4
+    converted_at: "2026-04-22"
+    notes_file: "design/samples/vapt-apk-sast/conversion-notes.md"
+    gaps_file: "design/samples/vapt-apk-sast/unrepresentable.md"

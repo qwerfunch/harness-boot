@@ -1,0 +1,212 @@
+# Conversion Goldens Manifest — Phase 2.9 고정 시점
+# 생성: 2026-04-22 (VAPT 변환 직후)
+# 갱신: 2026-04-22 (tzcalc 추가, library 도메인 첫 샘플)
+# 갱신: 2026-04-22 (harness-boot-self 추가, meta 도메인 최초·자기참조 케이스)
+# 갱신: 2026-04-22 (vite-bundle-budget 추가, meta 도메인 비자기참조 2번째 케이스 — 어댑터 v0.0 → v0.1 승격)
+# 갱신: 2026-04-22 (vscode-commit-craft 추가, meta 도메인 에디터확장 3번째 케이스 — 어댑터 v0.1 → v0.2 승격, NEW-36 신규)
+# 갱신: 2026-04-22 (harness-boot-self v2 재변환 등록 — re_conversion_round=2, meta v0.2 적용, ★★★+ 65%→94%)
+# 갱신: 2026-04-23 (vite-bundle-budget v2 + vscode-commit-craft v2 재변환 등록 — Phase 2.11, meta v0.2 교차 적용, ★★★+ 65%→88~94%)
+# 갱신 규칙: edit-wins (/harness:spec --learn) 또는 [goldens-update] PR 수동
+
+schema_version: 1
+skill:
+  name: "spec-conversion"
+  version_at_freeze: "0.4"
+  samples_total: 8                      # distinct samples (v1/v2 variants 는 별도 카운트 안 함)
+  re_conversions: 3                     # harness-boot-self v2 (2026-04-22) + vite-bb v2 (2026-04-23) + vscode-cc v2 (2026-04-23)
+
+samples:
+  # expected 값은 scripts/conversion_diff.py --all 로 측정한 실제치
+  # (주석의 "설계 의도" 수치와 다를 수 있음 — 골든은 실제를 따른다)
+
+  - id: "url-shortener"
+    domain: "web-app"
+    source_maturity: "planning"
+    source_loc: ~200
+    conversion_round: 1
+    converted_at: "2026-04-22"
+    expected:
+      features: 9
+      entities: 4
+      business_rules: 7
+      stakeholders: 5
+      gaps: 10           # G-01~G-10 — 첫 샘플이라 기존 갭 카탈로그 형성
+      deliverable_type: "web-service"
+      prototype_mode: false
+
+  - id: "retro-jumper"
+    domain: "game"
+    source_maturity: "planning"
+    source_loc: ~200
+    conversion_round: 2
+    converted_at: "2026-04-22"
+    expected:
+      features: 8
+      entities: 3
+      business_rules: 4
+      stakeholders: 3
+      gaps: 13            # G-01~G-10 재언급 + G-11/12/13 신규 도입
+      deliverable_type: "web-service"   # P-10 식별 포인트 — 게임이지만 type=web
+      prototype_mode: true
+
+  - id: "price-crawler"
+    domain: "worker"
+    source_maturity: "planning"
+    source_loc: ~200
+    conversion_round: 3
+    converted_at: "2026-04-22"
+    expected:
+      features: 6
+      entities: 5
+      business_rules: 8
+      stakeholders: 4
+      gaps: 16            # G-01~G-16 전부 (이 샘플에서 G-14/15/16 도입)
+      deliverable_type: "worker"
+      prototype_mode: false
+
+  - id: "vapt-apk-sast"
+    domain: "saas-security"
+    source_maturity: "architecture"     # 첫 architecture 성숙도 샘플
+    source_loc: ~1730
+    conversion_round: 4
+    converted_at: "2026-04-22"
+    expected:
+      features: 13
+      entities: 9
+      business_rules: 10
+      stakeholders: 6
+      gaps: 23            # G-01~G-16 (16건 언급, 15 재현) + NEW-17~23 (7 신규)
+      new_gaps: ["NEW-17", "NEW-18", "NEW-19", "NEW-20", "NEW-21", "NEW-22", "NEW-23"]
+      deliverable_type: "web-service"
+      prototype_mode: false
+
+  - id: "tzcalc"
+    domain: "library"                   # 첫 library 도메인 샘플
+    source_maturity: "planning"
+    source_loc: ~175
+    conversion_round: 5
+    converted_at: "2026-04-22"
+    adapter:
+      name: "library"
+      version_used: "0.0"               # draft — 이 변환으로 v0.1 승격됨
+    expected:
+      features: 9
+      entities: 5
+      business_rules: 8
+      stakeholders: 4
+      gaps: 28           # G-01~16 (10 재현, 6 비해당) + NEW-17~23 (2 부분) + NEW-24~27 (4 신규)
+      new_gaps: ["NEW-24", "NEW-25", "NEW-26", "NEW-27"]
+      deliverable_type: "library"       # OQ-1: v2.3.7 스키마 존재 여부 미확인 (v2.3.8 RFC 후보)
+      prototype_mode: false
+
+  - id: "harness-boot-self"
+    domain: "meta"                       # 신설 도메인 (cli-plugin / dev-tool / self-hosting)
+    source_maturity: "architecture"      # VAPT 와 동급
+    source_loc: ~3493                    # 역대 최대 원본 (VAPT 의 2배)
+    conversion_round: 6
+    re_conversion_round: 2               # 2026-04-22 v2 재변환 (skill v0.4 + meta adapter v0.2)
+    converted_at: "2026-04-22"
+    adapter:
+      name: "meta"
+      version_used: "none"               # v1 변환 시점엔 어댑터 부재. 이 변환이 adapters/meta.md v0.0 의 씨앗
+      version_used_v2: "0.2"             # v2 재변환 시점 공식 적용
+    host_subtype: "self-bootstrap"       # meta v0.2 §3.1
+    self_reference: true                 # 이 스펙의 스키마가 곧 이 스펙이 설명하는 그 스키마(v2.3.7)
+    expected:
+      features: 21
+      entities: 20
+      business_rules: 14
+      stakeholders: 5
+      gaps: 34           # v1 기준: 누적 G-01~16 + NEW-17~27 + NEW-28~34 모든 엔트리 언급 (재현 19 + 신규 7 + 비해당 판정 8). conversion_diff.py 는 unrepresentable.md 의 엔트리 총계를 센다
+      gaps_v2: 36        # v2 기준: 위 + NEW-35/36 언급 (해소 9 + 부분 10 + 재현 13 + N/A 13 ≒ unrepresentable-v2.md 엔트리 총계)
+      new_gaps: ["NEW-28", "NEW-29", "NEW-30", "NEW-31", "NEW-32", "NEW-33", "NEW-34"]
+      backlink_quality_star3_plus: "65%"    # v1, 17 리드 섹션 기준
+      backlink_quality_star3_plus_v2: "94%" # v2, 17 리드 기준 (rated 100%, 37 sub 91%) — 사용자 지시 ≥90% 달성
+      deliverable_type: "cli-plugin"     # v2.3.7 스키마 수용 여부 불확실 → NEW-28 과 연동 (v2 에서 metadata.extensions 구조화로 부분 해소)
+      prototype_mode: false
+    v2_artifacts:                        # v2 재변환 산출물 (v1 은 같은 디렉터리 루트)
+      spec: "design/samples/harness-boot-self/v2/spec.yaml"
+      unrepresentable: "design/samples/harness-boot-self/v2/unrepresentable-v2.md"
+      notes: "design/samples/harness-boot-self/v2/conversion-notes-v2.md"
+      backlink: "design/samples/harness-boot-self/v2/backlink-matrix-v2.md"
+
+  - id: "vite-bundle-budget"
+    domain: "meta"                       # meta 두 번째 샘플 (비자기참조, host-plugin 형)
+    source_maturity: "planning"
+    source_loc: ~220
+    conversion_round: 7
+    converted_at: "2026-04-22"
+    re_conversion_round: 2               # 2026-04-23 v2 재변환 (skill v0.4 + meta adapter v0.2)
+    re_converted_at: "2026-04-23"
+    adapter:
+      name: "meta"
+      version_used: "0.0"                # 변환 시작 시 v0.0. 이 변환이 v0.1 승격의 검증 샘플
+      version_used_v2: "0.2"             # v2 재변환 시점 공식 적용
+    host_subtype: "host-plugin-build-tool"  # v0.2 세분화 — editor-extension(vscode-cc) 과 대조
+    self_reference: false                # OQ-5 충족 — 자기참조 없는 meta 샘플
+    expected:
+      features: 10
+      entities: 8
+      business_rules: 10
+      stakeholders: 5
+      gaps: 35           # G-01~16 전부 언급(12 재현 + 4 비해당) + NEW-17~34 전부 언급(7 재현, 11 비해당) + NEW-35 신규
+      gaps_v2: 36        # v2: 해소 6 + 부분 10 + 재현 8 + N/A 12 + NEW-36 추가
+      new_gaps: ["NEW-35"]
+      backlink_quality_star3_plus: "65%"  # 17 lead 섹션 기준 — self(65%) 와 동일, meta 도메인 수렴점
+      backlink_quality_star3_plus_v2: "88%"  # v2, 17-기준 (rated 94%) — skill v0.4 + extensions.* 적용
+      deliverable_type: "cli-plugin"     # 실제는 "vite-plugin" 이 정확 — NEW-35 host_binding 미도입의 증거
+      prototype_mode: false
+    v2_artifacts:
+      spec: "design/samples/vite-bundle-budget/v2/spec.yaml"
+      unrepresentable: "design/samples/vite-bundle-budget/v2/unrepresentable-v2.md"
+      notes: "design/samples/vite-bundle-budget/v2/conversion-notes-v2.md"
+      backlink: "design/samples/vite-bundle-budget/v2/backlink-matrix-v2.md"
+
+  - id: "vscode-commit-craft"
+    domain: "meta"                       # meta 세 번째 샘플 (비자기참조, host-plugin 형, 에디터 확장 계열)
+    source_maturity: "planning"
+    source_loc: ~205
+    conversion_round: 8
+    converted_at: "2026-04-22"
+    re_conversion_round: 2               # 2026-04-23 v2 재변환 (skill v0.4 + meta adapter v0.2)
+    re_converted_at: "2026-04-23"
+    adapter:
+      name: "meta"
+      version_used: "0.1"                # 변환 시작 시 v0.1. 이 변환이 v0.2 승격의 검증 샘플
+      version_used_v2: "0.2"             # v2 재변환 시점 공식 적용
+    self_reference: false                # OQ-5 재확증 — host-plugin 서브타입 2번째 비자기참조 샘플
+    host_subtype: "host-plugin-editor-extension"  # v0.2 신설 — 빌드도구(vite-bb) 와 구분되는 서브타입
+    expected:
+      features: 10
+      entities: 8
+      business_rules: 10
+      stakeholders: 5
+      gaps: 36           # G-01~16 전부 언급(13 재현 + 2 비해당 + 1 부분) + NEW-17~35 전부 언급(10 재현 + 9 비해당) + NEW-36 신규
+      gaps_v2: 36        # v2: 해소 7 + 부분 11 + 재현 6 + N/A 12 (NEW-36 완전 실현, 7 kind 전수)
+      new_gaps: ["NEW-36"]
+      backlink_quality_star3_plus: "65%"  # 17 lead 섹션 기준 — meta 3샘플 동일 수렴 (self=vite-bb=vscode-cc=65%)
+      backlink_quality_star3_plus_v2: "88%"  # v2, 17-기준 (rated 94%) — NEW-35 + NEW-36 동시 도입 효과 (v1 §5 예측 적중)
+      deliverable_type: "cli-plugin"     # 실제는 "vscode-extension" 이 정확 — NEW-35 host_binding 및 NEW-36 미도입의 증거
+      prototype_mode: false
+    v2_artifacts:
+      spec: "design/samples/vscode-commit-craft/v2/spec.yaml"
+      unrepresentable: "design/samples/vscode-commit-craft/v2/unrepresentable-v2.md"
+      notes: "design/samples/vscode-commit-craft/v2/conversion-notes-v2.md"
+      backlink: "design/samples/vscode-commit-craft/v2/backlink-matrix-v2.md"
+
+# 전역 invariants — 회귀 시 즉시 실패해야 하는 경계
+global_invariants:
+  - "각 샘플의 features[0].type 은 반드시 'skeleton'"
+  - "모든 샘플에서 entities 수 ≥ 3"
+  - "G-01/02/05/07/08/09/10 은 도메인 불변 필수 갭 — 8 샘플 모두 재현 (**8/8** 확증)"
+  - "G-04/G-11/G-14/G-15/G-16 은 library · meta 도메인에서 비해당이 정당 — 어댑터가 선언 (단 G-04 는 vscode-cc 에서 부분 재현 발생)"
+  - "회귀 시 사용자 수정 없이 goldens 덮어쓰기 금지"
+  - "domain_adapter 가 지정된 샘플은 adapter_version_used 를 metadata 에 기록 (none 포함)"
+  - "self_reference=true 샘플은 자기 BR 을 스스로 지키는지 conversion-notes 에서 self-consistency 체크 필수. self_reference=false 샘플은 P-22 N/A"
+  - "누적 갭 카탈로그는 G-01~16 + NEW-17~36 = **36 종** (vscode-cc 변환 기준)"
+  - "meta 도메인 불변 필수 NEW-* 갭: NEW-28(command_map) · NEW-33(ambient_files) — self + vite-bb + vscode-cc **3/3 HIT**"
+  - "NEW-35(host_binding) 는 meta 도메인 전체 불변 (self-bootstrap 포함) — self + vite-bb + vscode-cc **3/3 HIT** (self v2 재변환으로 확증)"
+  - "에디터·IDE·브라우저 확장 형 meta 샘플은 NEW-36(contribution_points) 를 반드시 기록 — vscode-cc v2 에서 7 kind(command/keybinding/view/configuration/menus/statusbar/activationEvents) 전수 실현, self v2 부분 해소 (3 kind), vite-bb v2 3 kind(pluginHook/cliSubcommand/configSchema). **서브타입별 kind 매트릭스 확정** (editor-extension=7, build-tool=3, self-bootstrap=3)"
+  - "host-plugin 형 BR/features 비율 ≈ 1.0, self-bootstrap 형 ≈ 0.67 (서브타입 선택 보조 지표)"
+  - "재변환(re_conversion_round≥2) 샘플은 v1 산출물을 보존하고 v2/ 하위에 별도 저장. edit-wins 에 따라 v1 필드는 불변, v2 는 추가만 (P-18 immutability + P-14 안전한 덮어쓰기)"
+  - "self v2 는 `metadata.extensions.*` 하위 9 블록 구조화로 ★★★+ 17-기준 65%→94% 달성 — v2.3.8-rfc 의 승격 후보 4건(command_map/gate_chain/drift_catalog/preamble_contract) 식별"

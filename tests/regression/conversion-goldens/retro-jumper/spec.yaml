@@ -1,0 +1,313 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/qwerfunch/harness-boot/v2.3.7/docs/schemas/spec.schema.json
+# .harness/spec.yaml — Retro Jumper (게임 도메인 샘플)
+version: "2.3.7"
+
+# =====================================================================
+# 🔎 변환 노트
+# Phase 2 — 게임 도메인. URL 단축기 샘플 이후 2번째 수동 변환.
+# 게임 특유 개념(렌더링 루프, 입력 처리, 에셋, FPS, 난이도 곡선)이
+# 현재 스키마에 얼마나 담기는지 측정.
+# =====================================================================
+
+project:
+  name: "retro-jumper"
+  summary: "8비트 픽셀 아트의 무한 러너 점프 게임 (웹 브라우저)"
+  description: |
+    사내 해커톤 데모용 2D 점프 게임. 가입 없이 웹에서 즉시 플레이.
+    Jetpack Joyride 류의 간결한 코어 루프 + 70년대 도트 픽셀 아트.
+    장기적으로 브랜딩 목적의 경량 게임으로 활용 가능한 퀄리티가 목표.
+  vision: |
+    "한 판 10분 안에 경험 전달" 이 유일한 품질 기준. 운영 품질·수익
+    모델·확장성은 명시적 비목표.
+  stakeholders:
+    - role: "hackathon_team"
+      concerns:
+        - "2.5주 안에 발표 가능한 상태"
+        - "주니어 2명의 학습 가치"
+    - role: "designer"
+      concerns:
+        - "16색 고정 팔레트 유지"
+        - "에셋 총량 500KB 이내"
+    - role: "engineering_lead"
+      concerns:
+        - "Phaser 3 vs 직접 엔진 결정이 일정을 좌우"
+        - "저사양 안드로이드 크롬 30 FPS 하한 검증 필요"
+
+domain:
+  overview: |
+    핵심 도메인은 "게임 플레이 세션"과 "점수 제출/랭킹"의 두 축이다.
+    플레이 세션은 로컬(브라우저) 상태이며 서버 권한 아래 있지 않다.
+    서버 권한 범위는 "점수 제출 검증과 리더보드 조회"로 한정된다.
+    따라서 부정 방지는 서버가 받는 최소한의 신호(최소 소요 시간,
+    client_hash 빈도)로 구성되며, 엄격한 anti-cheat 는 비목표다.
+  entities:
+    - name: "PlaySession"
+      description: "한 번의 게임 플레이. 브라우저 내 상태로만 존재."
+      invariants:
+        - "게임 오버 이전에는 점수 제출 불가"
+        - "세션은 단일 플레이어·단일 탭 범위"
+      sensitive: false
+    - name: "Score"
+      description: "게임 오버 시점의 플레이 결과가 서버에 등록된 것."
+      invariants:
+        - "nickname은 정확히 3자"
+        - "score는 양수 정수"
+        - "client_hash는 플레이당 유일(중복 제출 거부 축)"
+        - "play_duration ≥ score / 10 (최소 플레이 시간 하한)"
+      sensitive: false
+    - name: "AbuseLog"
+      description: "부정 제출 감지 시 기록되는 이벤트."
+      invariants:
+        - "IP는 해싱하여 저장"
+        - "reason은 사전 정의된 enum에서 선택"
+      sensitive: true
+      sensitive_reason: "IP 정보 수집 및 차단 근거가 되는 감사 자료"
+  business_rules:
+    - id: "BR-001"
+      statement: "닉네임은 3자 고정, 기본 욕설 필터 통과 시에만 등록"
+      rationale: "옛날 오락실 감성 + 기초적 품질 유지"
+      compliance: []
+    - id: "BR-002"
+      statement: "제출 시 play_duration × 10 보다 score 가 크면 거부"
+      rationale: "최소 플레이 시간 하한으로 단순 매크로 차단"
+      compliance: []
+    - id: "BR-003"
+      statement: "동일 client_hash 1분 내 2회 이상 제출은 차단"
+      rationale: "단발성 반복 공격 완화"
+      compliance: []
+    - id: "BR-004"
+      statement: "미스(장애물 충돌) 시 즉시 게임 오버, 부활 없음"
+      rationale: "세션 길이와 긴장감을 단순하게 유지"
+      compliance: []
+  vocabulary:
+    - term: "HUD"
+      definition: "Heads-Up Display. 점수 등이 표시되는 게임 상단 오버레이."
+    - term: "client_hash"
+      definition: "플레이 세션별 고유 해시 (브라우저 핑거프린트 + 세션 난수)."
+    - term: "tick"
+      definition: "렌더 루프의 한 프레임 (목표 16.6ms, 60FPS 기준)."
+
+constraints:
+  tech_stack:
+    language: "TypeScript"
+    runtime: "Browser + Cloudflare Workers"
+    framework: "Vanilla Canvas 2D (프레임워크 미결정 — OQ-001 참조)"
+    testing: "Vitest (로직) + Playwright (브라우저)"
+  architecture:
+    pattern: "flat"
+    reference: ".harness/architecture.yaml"
+  quality:
+    coverage_threshold: 60    # 해커톤 프로토타입 수준
+    required_gates: [0, 1, 2, 3, 4, 5]
+    prototype_mode: true      # 2.5주 데모 타겟, 스켈레톤 완화 허용
+
+deliverable:
+  type: "web-service"         # ⚠ 게임 전용 type 없음 — '게임은 웹 앱'으로 매핑 (갭)
+  entry_points:
+    - name: "game-client"
+      command: "npm run dev"
+      build_command: "npm run build"
+      health_check:
+        type: "http-200"
+        timeout_seconds: 20
+        expected:
+          url: "http://localhost:5173"
+          status: 200
+    - name: "leaderboard-api"
+      command: "wrangler dev"
+      build_command: "wrangler deploy --dry-run"
+      health_check:
+        type: "http-200"
+        timeout_seconds: 30
+        expected:
+          url: "http://localhost:8787/health"
+          status: 200
+  smoke_scenarios:
+    - id: "SS-001"
+      description: "게임 로딩 후 점프 입력 1회가 시각적으로 반응한다"
+      steps:
+        - "게임 페이지 로드"
+        - "키다운 Space 이벤트 디스패치"
+        - "캐릭터 y 좌표 변화 관찰(렌더 1프레임 내)"
+      success_criteria: "16ms 이내 캐릭터 y 좌표 상승 관측"
+    - id: "SS-002"
+      description: "게임 오버 후 점수 제출이 성공한다"
+      steps:
+        - "무효 장애물에 의도적으로 충돌"
+        - "게임 오버 화면에서 닉네임 3자 입력"
+        - "제출 버튼 클릭"
+      success_criteria: "POST /api/scores 200, GET /api/scores/top?n=10 에 본인 스코어 반영"
+
+features:
+  - id: "F-000"
+    type: "skeleton"
+    title: "Walking Skeleton — 빈 캔버스 렌더 + 스페이스 입력 반응"
+    priority: 1
+    status: "planned"
+    test_strategy: "integration"
+    test_strategy_reason: "렌더 + 입력 + 빌드 파이프라인의 최소 왕복 검증"
+    acceptance_criteria:
+      - "빈 캔버스가 60FPS 로 렌더되는 상태"
+      - "스페이스 키 입력 시 사각형 하나가 일시 상승"
+      - "health_check(HTTP 200) 통과"
+    tdd_focus: []
+    depends_on: []
+    modules: ["renderer", "input"]
+    doc_sync: []
+
+  - id: "F-001"
+    title: "메인 게임 루프 — 자동 전진, 장애물, 점프, 충돌, 게임 오버"
+    priority: 2
+    status: "planned"
+    test_strategy: "state-verification"
+    test_strategy_reason: "상태 전이(플레이→게임오버)와 점수 누적이 결정적으로 검증 가능"
+    acceptance_criteria:
+      - "캐릭터는 좌측 고정, 배경/장애물이 우측→좌측 스크롤"
+      - "스페이스/탭 입력으로 점프, 중력에 따른 낙하"
+      - "장애물 AABB 충돌 시 즉시 게임 오버"
+      - "점수: 경과 시간 × 10 으로 실시간 증가"
+    tdd_focus:
+      - "충돌 판정 AABB 정확성"
+      - "중력·점프 속도 수치 튜닝 테이블"
+    depends_on: ["F-000"]
+    modules: ["gameplay", "physics", "renderer"]
+    doc_sync: []
+
+  - id: "F-002"
+    title: "난이도 곡선 — 시간 경과에 따른 스크롤 가속"
+    priority: 3
+    status: "planned"
+    test_strategy: "tdd"
+    test_strategy_reason: "가속 공식과 경계값이 게임성의 핵심"
+    acceptance_criteria:
+      - "기본 스크롤 속도 s0, t초 후 속도 s0 × (1 + k·t)"
+      - "k 계수는 설정 파일에서 튜닝 가능 (초기 후보 k=0.01)"
+      - "초당 증가폭이 사용자 입력 지연을 16ms 이내로 유지하는 수치여야 함"
+    tdd_focus:
+      - "속도 공식의 단조 증가"
+      - "상한 clamp(과속 방지)"
+    depends_on: ["F-001"]
+    modules: ["gameplay"]
+    doc_sync: []
+
+  - id: "F-003"
+    title: "코인 수집 아이템"
+    priority: 4
+    status: "planned"
+    test_strategy: "state-verification"
+    test_strategy_reason: "코인 수집 시 점수 증가·효과음 트리거가 상태 전이"
+    acceptance_criteria:
+      - "코인은 점프 궤적 위에 배치되어 스폰"
+      - "수집 시 점수 +50, 효과음 재생"
+      - "한 화면 내 코인 최대 N개(N은 튜닝값)"
+    tdd_focus: []
+    depends_on: ["F-001"]
+    modules: ["gameplay", "audio"]
+    doc_sync: []
+
+  - id: "F-004"
+    title: "사운드 — BGM + SFX 3종"
+    priority: 5
+    status: "planned"
+    test_strategy: "lean-tdd"
+    test_strategy_reason: "오디오 API 래퍼 수준"
+    acceptance_criteria:
+      - "BGM 루프(30초 이내) 재생, 게임 오버 시 정지"
+      - "SFX: 점프/수집/게임오버"
+      - "음소거 토글 — 세션 내 유지"
+    tdd_focus: []
+    depends_on: ["F-000"]
+    modules: ["audio"]
+    doc_sync: []
+
+  - id: "F-005"
+    title: "리더보드 — 제출/조회/본인 근처"
+    priority: 6
+    status: "planned"
+    test_strategy: "integration"
+    test_strategy_reason: "클라이언트-서버 왕복 + 부정 방지 분기 검증"
+    acceptance_criteria:
+      - "게임 오버 후 닉네임 3자 입력 → 서버 제출"
+      - "Top 10 조회 API"
+      - "본인 점수 ±5 범위 조회 API"
+      - "client_hash 1분 2회 초과 제출 차단"
+      - "play_duration × 10 < score 시 거부"
+      - "닉네임 욕설 필터 통과 필요"
+    tdd_focus:
+      - "제출 검증 분기(시간 하한, 해시 빈도)"
+      - "욕설 필터 매칭"
+    depends_on: ["F-001", "F-003"]
+    modules: ["leaderboard-api", "scores", "abuse-log", "game-ui"]
+    doc_sync: []
+
+  - id: "F-006"
+    title: "파워업 — 일시 무적(3초)"
+    priority: 7
+    status: "planned"
+    test_strategy: "tdd"
+    test_strategy_reason: "무적 상태 중 충돌 무시 로직은 회귀가 자주 발생하는 영역"
+    acceptance_criteria:
+      - "무적 아이템 수집 시 3초간 장애물 충돌 무시"
+      - "시각적 깜빡임 피드백"
+      - "v1 범위에서는 무적 1종만, 추가 파워업은 v1.5 이후"
+    tdd_focus:
+      - "무적 타이머 시작/종료 경계"
+      - "중첩 수집 시 타이머 갱신 규칙"
+    depends_on: ["F-001"]
+    modules: ["gameplay"]
+    doc_sync: []
+
+  - id: "F-007"
+    title: "설정 — 음소거"
+    priority: 8
+    status: "planned"
+    test_strategy: "lean-tdd"
+    test_strategy_reason: "상태 토글 수준"
+    acceptance_criteria:
+      - "타이틀 화면에서 음소거 토글 버튼"
+      - "설정은 세션 내에서만 유지 (영속화는 v1 범위 밖)"
+    tdd_focus: []
+    depends_on: ["F-004"]
+    modules: ["game-ui", "audio"]
+    doc_sync: []
+
+metadata:
+  source:
+    origin: "planning_doc"
+    created_at: "2026-04-22T00:00:00Z"
+    refined_at: "2026-04-22T00:00:00Z"
+    source_lines:
+      - field_path: "project.description"
+        source_file: "plan.md"
+        source_range: [11, 15]
+        confidence: "high"
+      - field_path: "domain.entities[1]"
+        source_file: "plan.md"
+        source_range: [90, 99]
+        confidence: "high"
+      - field_path: "features[1]"
+        source_file: "plan.md"
+        source_range: [22, 29]
+        confidence: "high"
+      - field_path: "features[5]"
+        source_file: "plan.md"
+        source_range: [95, 120]
+        confidence: "medium"
+  completeness:
+    domain: "medium"
+    features: "medium"
+    modules: "low"
+
+# =====================================================================
+# 🚨 UNREPRESENTED CONTENT (details in unrepresentable.md)
+# 게임 도메인 특유 갭:
+#   - 렌더링 루프 / tick 시스템 선언 없음 (deliverable.type=game 도 없음)
+#   - FPS 목표(60/30) — NFR 자리 없음 (G-01 재현)
+#   - 입력 지연 16ms — NFR (G-01 재현)
+#   - 스프라이트/오디오 에셋 선언·용량 제약 (신규 갭 G-11)
+#   - 픽셀 팔레트·해상도 같은 아트 제약 (G-11)
+#   - 난이도 튜닝 테이블 / 수치 상수 (신규 갭 G-12)
+#   - "비목표(non-goals)" 명시 (신규 갭 G-13)
+#   - open_questions 5개 — 필드 없음 (G-10 재현)
+#   - 성공 지표(세션/제출율) — 필드 없음 (G-07 재현)
+# =====================================================================

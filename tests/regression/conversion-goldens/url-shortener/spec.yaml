@@ -1,0 +1,372 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/qwerfunch/harness-boot/v2.3.7/docs/schemas/spec.schema.json
+# .harness/spec.yaml — URL 단축기 (sample for schema coverage audit)
+version: "2.3.7"
+
+# =====================================================================
+# 🔎 READER'S NOTE
+# 이 파일은 plan.md → spec.yaml 수동 변환 실험의 산출물입니다.
+# 플랜 문서의 모든 "의미 있는 덩어리"를 현재 스키마에 얼마나 온전히
+# 담을 수 있는가를 측정하기 위해 작성되었습니다.
+# 변환 과정에서 발견된 스키마 갭은 unrepresentable.md에 별도 기록.
+# =====================================================================
+
+project:
+  name: "url-shortener"
+  summary: "자체 브랜드 도메인 URL 단축·리다이렉트·클릭 분석 서비스"
+  description: |
+    마케팅/그로스팀이 공유하는 장문 광고 URL을 `go.ourcompany.com/:code`
+    형태로 단축하고, 외부 유료 단축기(bit.ly)에 대한 의존을 제거한다.
+    자체 도메인 신뢰도, 클릭 로그 내재화(분석팀 접근), 비용 절감의 세
+    가지 문제를 동시에 해결한다.
+  vision: |
+    내부 도구로 시작하되, v2에서 외부 사용자 회원가입을 열어 퍼블릭
+    단축기 제품으로 확장 가능한 구조를 유지한다.
+  stakeholders:
+    - role: "marketing_team"
+      concerns:
+        - "URL이 짧고 브랜드 도메인이어야 캠페인 CTR이 떨어지지 않는다"
+        - "CSV 벌크 업로드로 한 번에 여러 링크 생성"
+        - "외부 도구 대체 의미가 있을 만큼 쉬워야 한다"
+    - role: "growth_team"
+      concerns:
+        - "클릭 통계 원본 데이터 접근"
+        - "시간대·지역·레퍼러별 분포 확인"
+    - role: "security_team"
+      concerns:
+        - "관리자 2FA 필수"
+        - "악성 URL 차단(Google Safe Browsing)"
+        - "로그인 실패 잠금"
+    - role: "legal_team"
+      concerns:
+        - "클릭 로그 IP 저장에 대한 개인정보 이슈 (v1 런칭 전 컨펌 필요)"
+    - role: "devops_team"
+      concerns:
+        - "리다이렉트 p95 50ms 유지"
+        - "99.9% 가용성"
+
+domain:
+  overview: |
+    URL 단축은 개념적으로 단순하지만, "어드민 콘솔 포함 제품"으로
+    설계하면 사용자 권한, 2FA, 초대, 클릭 로그의 TTL·집계 등
+    주변부가 대부분의 작업량이다. 핵심 도메인 엔티티는
+    User / Link / Click / Invitation 네 개이며, 클릭 이벤트가
+    성능·저장 비용의 주 변수다.
+  entities:
+    - name: "User"
+      description: "어드민 콘솔을 사용하는 내부 사용자. 초대 기반 가입."
+      invariants:
+        - "이메일은 유일하다"
+        - "2FA(totp_secret)는 필수다"
+        - "role은 owner/editor/viewer 중 하나"
+      sensitive: true
+      sensitive_reason: "password_hash, totp_secret을 보관하며 인증 주체다"
+    - name: "Link"
+      description: "단축 링크. short_code로 식별되며 원본 URL을 가리킨다."
+      invariants:
+        - "short_code는 전역 유일하다"
+        - "예약어(api, admin, health 등)는 short_code로 사용할 수 없다"
+        - "original_url은 자기 도메인을 가리킬 수 없다(리다이렉트 루프 금지)"
+        - "expires_at이 설정되었을 경우 지난 시점의 리다이렉트는 거부된다"
+      sensitive: false
+    - name: "Click"
+      description: "리다이렉트 이벤트 로그. 분석과 감사에 사용."
+      invariants:
+        - "link_id는 존재하는 Link를 참조"
+        - "clicked_at은 서버 시간 UTC"
+        - "raw 로그는 2년 후 삭제, 이후에는 집계 테이블만 유지"
+      sensitive: true
+      sensitive_reason: "IP 기반 국가 정보 수집 — 개인정보 이슈"
+    - name: "Invitation"
+      description: "어드민 초대 토큰. 일회용, 만료 시간 있음."
+      invariants:
+        - "token은 유일하고 만료되면 무효"
+        - "accepted_at이 설정되면 재사용 불가"
+      sensitive: true
+      sensitive_reason: "토큰이 노출되면 임의 어드민 가입 가능"
+  business_rules:
+    - id: "BR-001"
+      statement: "익명 단축 요청은 rate limit을 적용한다"
+      rationale: "스팸·남용 방지. 초기 N값은 운영하면서 튜닝."
+      compliance: []
+    - id: "BR-002"
+      statement: "단축 시 원본 URL은 Google Safe Browsing으로 검사하고 악성이면 거부한다"
+      rationale: "악성 URL 배포에 악용되지 않도록"
+      compliance: []
+    - id: "BR-003"
+      statement: "어드민은 TOTP 기반 2FA를 설정해야 로그인할 수 있다"
+      rationale: "계정 탈취 시 링크 원본 교체(bait-and-switch) 피해가 크다"
+      compliance: []
+    - id: "BR-004"
+      statement: "로그인 5회 연속 실패 시 15분간 잠금"
+      rationale: "credential stuffing 완화"
+      compliance: []
+    - id: "BR-005"
+      statement: "동일 IP의 1분 내 중복 클릭은 1회로 집계하되 raw 로그에는 모두 남긴다"
+      rationale: "F5 연타로 인한 카운트 왜곡 방지"
+      compliance: []
+    - id: "BR-006"
+      statement: "삭제된 User의 Link는 soft-delete 처리하여 유지한다"
+      rationale: "기존 배포 링크가 갑자기 깨지는 것을 방지"
+      compliance: []
+    - id: "BR-007"
+      statement: "커스텀 short_code가 예약어와 겹치면 거부한다"
+      rationale: "라우팅 충돌 방지"
+      compliance: []
+  vocabulary:
+    - term: "short_code"
+      definition: "6~8자 영문+숫자 식별자. 대소문자 구분."
+    - term: "admin"
+      definition: "어드민 콘솔을 사용하는 내부 User. role≠viewer일 때 쓰기 권한."
+    - term: "owner"
+      definition: "User.role 값. 초대 및 사용자 관리 권한을 가진다."
+    - term: "editor"
+      definition: "User.role 값. 링크 생성·편집·삭제 가능. 사용자 관리 불가."
+    - term: "viewer"
+      definition: "User.role 값. 읽기 전용."
+
+constraints:
+  tech_stack:
+    language: "TypeScript"
+    runtime: "Node.js 20"
+    framework: "Fastify 4"
+    testing: "Vitest"
+  architecture:
+    pattern: "layered"
+    reference: ".harness/architecture.yaml"
+  quality:
+    coverage_threshold: 75
+    required_gates: [0, 1, 2, 3, 4, 5]
+    prototype_mode: false
+
+deliverable:
+  type: "web-service"
+  entry_points:
+    - name: "api-server"
+      command: "node dist/main.js"
+      build_command: "npm run build"
+      health_check:
+        type: "http-200"
+        timeout_seconds: 30
+        expected:
+          url: "http://localhost:3000/health"
+          status: 200
+    - name: "admin-ui"
+      command: "npm --prefix apps/admin run start"
+      build_command: "npm --prefix apps/admin run build"
+      health_check:
+        type: "http-200"
+        timeout_seconds: 45
+        expected:
+          url: "http://localhost:3001"
+          status: 200
+  smoke_scenarios:
+    - id: "SS-001"
+      description: "단축→리다이렉트 왕복이 성공한다"
+      steps:
+        - "POST /api/links body={original_url:'https://example.com'} 로 단축 요청"
+        - "응답에서 short_code 추출"
+        - "GET /:short_code 호출"
+      success_criteria: "302 응답, Location 헤더가 original_url과 일치"
+    - id: "SS-002"
+      description: "어드민 로그인 + 2FA 가 성공한다"
+      steps:
+        - "POST /api/auth/login with {email, password, totp}"
+        - "쿠키 세션 확인"
+      success_criteria: "200 응답 및 /api/links GET 이 인증을 통과"
+
+features:
+  - id: "F-000"
+    type: "skeleton"
+    title: "Walking Skeleton — 최소 단축/리다이렉트 왕복"
+    priority: 1
+    status: "planned"
+    test_strategy: "integration"
+    test_strategy_reason: "엔드투엔드 경로 검증이 스켈레톤 목적"
+    acceptance_criteria:
+      - "단일 원본 URL을 단축하여 short_code를 반환한다"
+      - "해당 short_code 로 302 리다이렉트된다"
+      - "health_check(HTTP 200) 통과"
+    tdd_focus: []
+    depends_on: []
+    modules: ["api", "links", "db"]
+    doc_sync: []
+
+  - id: "F-001"
+    title: "URL 단축"
+    priority: 2
+    status: "planned"
+    test_strategy: "tdd"
+    test_strategy_reason: "short_code 생성·충돌 처리·예약어 검증이 비즈니스 로직의 핵심"
+    acceptance_criteria:
+      - "무작위 6~8자 영문+숫자 short_code 를 생성한다"
+      - "커스텀 코드 입력 시 예약어(api, admin, health) 거부"
+      - "동일 URL 중복 단축 허용 (dedup 없음)"
+      - "충돌 시 5회까지 재시도, 초과 시 500 반환"
+      - "Google Safe Browsing 로 악성 URL 거부"
+      - "expires_at 옵션으로 만료 지정 가능"
+    tdd_focus:
+      - "short_code 생성기의 길이·문자집합·충돌 처리"
+      - "예약어 목록 매칭"
+      - "악성 URL 차단 플로우"
+    depends_on: ["F-000"]
+    modules: ["links", "safe-browsing-client"]
+    doc_sync:
+      - target: "docs/api/links.md"
+        sections: ["#POST-/api/links"]
+        watch: ["src/links/create.ts"]
+        severity: "warn"
+
+  - id: "F-002"
+    title: "리다이렉트"
+    priority: 3
+    status: "planned"
+    test_strategy: "integration"
+    test_strategy_reason: "HTTP 동작·캐시·만료 처리를 실제 스택으로 검증"
+    acceptance_criteria:
+      - "GET /:code 가 302로 원본 URL로 리다이렉트"
+      - "만료된 링크는 전용 안내 페이지로 302(혹은 410 반환 — 결정 필요)"
+      - "존재하지 않는 코드는 404"
+      - "Redis 캐시 hit 시 p95 < 50ms"
+      - "클릭 로그를 비동기 기록(리다이렉트 레이턴시에 영향 없음)"
+    tdd_focus: []
+    depends_on: ["F-001"]
+    modules: ["links", "clicks", "cache"]
+    doc_sync: []
+
+  - id: "F-003"
+    title: "어드민 인증 (로그인·2FA·초대)"
+    priority: 4
+    status: "planned"
+    test_strategy: "tdd"
+    test_strategy_reason: "인증 경로는 sensitive=true 엔티티를 다룬다"
+    acceptance_criteria:
+      - "이메일+비밀번호+TOTP 로그인"
+      - "로그인 실패 5회 시 15분 잠금"
+      - "초대 토큰 기반 가입(기존 owner만 초대)"
+      - "TOTP 분실 시 owner가 재설정"
+    tdd_focus:
+      - "비밀번호 해시 비교(bcrypt/argon2)"
+      - "TOTP 시간 동기 허용폭"
+      - "초대 토큰 만료·일회용 처리"
+      - "실패 횟수·잠금 타이머 계산"
+    depends_on: ["F-000"]
+    modules: ["auth", "users", "invitations", "mail-client"]
+    doc_sync: []
+
+  - id: "F-004"
+    title: "어드민 대시보드 — 링크 목록/검색/필터/정렬"
+    priority: 5
+    status: "planned"
+    test_strategy: "state-verification"
+    test_strategy_reason: "DB 상태와 UI 렌더 결과 매칭 검증"
+    acceptance_criteria:
+      - "로그인한 어드민이 자기가 속한 조직의 링크 목록을 본다"
+      - "검색(q=), 필터(active/expired), 정렬(created_at/click_count) 지원"
+      - "페이지네이션 (limit/offset)"
+    tdd_focus: []
+    depends_on: ["F-003", "F-001"]
+    modules: ["admin-ui", "links"]
+    doc_sync: []
+
+  - id: "F-005"
+    title: "링크 상세 통계"
+    priority: 6
+    status: "planned"
+    test_strategy: "state-verification"
+    test_strategy_reason: "집계 쿼리 결과와 기대값 비교"
+    acceptance_criteria:
+      - "총 클릭 수, 시간대별 그래프(시/일), 국가별 분포, referer top 10"
+      - "기간 필터(from/to) 지원"
+      - "CSV 익스포트"
+    tdd_focus: []
+    depends_on: ["F-002", "F-004"]
+    modules: ["admin-ui", "clicks"]
+    doc_sync: []
+
+  - id: "F-006"
+    title: "링크 편집/삭제/만료 변경"
+    priority: 7
+    status: "planned"
+    test_strategy: "tdd"
+    test_strategy_reason: "original_url 편집은 bait-and-switch 위험 — 정책 로직 견고성 필요"
+    acceptance_criteria:
+      - "original_url 편집 가능 여부는 설정 플래그(allow_origin_edit)로 제어"
+      - "편집 시 감사 로그(who/when/before/after) 기록"
+      - "삭제는 soft-delete, 삭제된 링크는 410 반환"
+      - "만료 변경은 즉시 적용(Redis 캐시 무효화 포함)"
+    tdd_focus:
+      - "allow_origin_edit=false 시 PATCH 거부"
+      - "감사 로그 작성 실패 시 트랜잭션 롤백"
+    depends_on: ["F-001"]
+    modules: ["links", "audit-log"]
+    doc_sync: []
+
+  - id: "F-007"
+    title: "QR 코드 다운로드"
+    priority: 8
+    status: "planned"
+    test_strategy: "lean-tdd"
+    test_strategy_reason: "외부 라이브러리 래핑 수준"
+    acceptance_criteria:
+      - "링크 상세에서 PNG QR 이미지를 다운로드할 수 있다"
+      - "크기 선택 (256/512/1024)"
+    tdd_focus: []
+    depends_on: ["F-005"]
+    modules: ["admin-ui", "qr-generator"]
+    doc_sync: []
+
+  - id: "F-008"
+    title: "CSV 벌크 업로드"
+    priority: 9
+    status: "planned"
+    test_strategy: "integration"
+    test_strategy_reason: "파일 파싱·검증·부분 실패 처리를 실제 플로우로 검증"
+    acceptance_criteria:
+      - "CSV 업로드하여 다수 링크를 한 번에 생성"
+      - "행 단위 검증, 실패한 행은 결과 리포트로 반환"
+    tdd_focus: []
+    depends_on: ["F-001", "F-004"]
+    modules: ["admin-ui", "links", "csv-parser"]
+    doc_sync: []
+
+metadata:
+  source:
+    origin: "planning_doc"
+    created_at: "2026-04-22T00:00:00Z"
+    refined_at: "2026-04-22T00:00:00Z"
+    source_lines:
+      - field_path: "project.description"
+        source_file: "plan.md"
+        source_range: [11, 18]
+        confidence: "high"
+      - field_path: "domain.entities[0]"
+        source_file: "plan.md"
+        source_range: [89, 92]
+        confidence: "high"
+      - field_path: "features[1]"
+        source_file: "plan.md"
+        source_range: [32, 42]
+        confidence: "high"
+      - field_path: "features[3]"
+        source_file: "plan.md"
+        source_range: [56, 64]
+        confidence: "medium"
+  completeness:
+    domain: "medium"
+    features: "medium"
+    modules: "low"
+
+# =====================================================================
+# 🚨 UNREPRESENTED CONTENT (summarized — detail in unrepresentable.md)
+# 아래 plan.md 섹션들은 현재 스키마에 자리가 없어 이 파일에서 누락됨:
+#   - §4 NFR (p95 50ms, 99.9%, 10M links) — 정량 목표의 정식 필드 없음
+#   - §7 데이터 모델 필드 목록 — entities[]에 field/attribute 배열 없음
+#   - §8 API surface 전체 — features 와 deliverable 사이에 API 레벨 없음
+#   - §9 UI 화면 목록 — screens/routes 등의 상위 필드 없음
+#   - §10 엣지 케이스 — edge_cases/exceptions 상위 필드 없음
+#   - §11 외부 의존성 — external_dependencies 상위 필드 없음
+#   - §12 성공 지표 — metrics/kpi 필드 없음
+#   - §13 마일스톤 — milestones/release_plan 필드 없음
+#   - §14 위험/가정 — risks/assumptions 필드 없음
+#   - §15 오픈 이슈 — open_questions 필드 없음
+# =====================================================================

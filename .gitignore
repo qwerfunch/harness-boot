@@ -22,6 +22,12 @@ Thumbs.db
 # Logs
 *.log
 
+# Node toolchain
+node_modules/
+dist/
+coverage/
+.vitest-cache/
+
 # Translation shadow directory (user learning aid, not for commit)
 translations-ko/
 
