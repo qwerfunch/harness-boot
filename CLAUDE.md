@@ -7,22 +7,25 @@
 
 Claude Code 플러그인 `harness-boot` 의 소스. 사용자는 `/harness:init` 로 자기 프로젝트에 `.harness/` 골격을 설치하고, `.harness/spec.yaml` 만 편집하며, 나머지는 플러그인이 파생.
 
-- **현재 릴리즈**: v0.1.0 (2026-04-23 태그 · GitHub Release 발행 · Marketplace PR 은 v0.1.1 과 묶어 제출)
-- **SemVer**: 0.1.0 = 최소 뼈대. v0.2+ 에서 `/harness:sync` · `/harness:work` 합류.
+- **현재 릴리즈**: v0.1.1 (2026-04-23 태그 · GitHub Release 발행). 공식 마켓플레이스 PR 은 안정화 후로 미룸.
+- **설치 경로 (v0.1.1)**: `/plugin marketplace add qwerfunch/harness-boot` → `/plugin install harness@harness-boot`. 공식 claude-plugins-official 마켓 PR 이 머지될 때까지 이 경로가 유일.
+- **SemVer**: 0.1.x = 최소 뼈대 · init 강건성. v0.2+ 에서 `/harness:sync` · `/harness:work` 합류.
 - **라이선스**: MIT · Author: qwerfunch
 
 ## 2. 지금 어디쯤 있나
 
-**v0.1.0 릴리즈 완료** (2026-04-23). 태그 `v0.1.0` (`bfc8b3e`) · GitHub Release · develop 머지 (`d5826dc`) 모두 완결. First-run 체크리스트 §1~§7 실제 Claude Code 2.1.118 세션에서 통과.
+**v0.1.1 릴리즈 완료** (2026-04-23). 태그 `v0.1.1` · GitHub Release · develop `cbb01c3`. v0.1.0 first-run 스모크에서 나온 5 개 이슈 (NEW-37/39/40/42/44/45) 모두 닫힘 — init.md 로직 하드닝 + 자체 marketplace.json 추가.
 
 **다음 Phase 후보**:
-- v0.1.1 init hardening RFC (NEW-37 closed · 39/40/42 pending · 44/45 신규) + marketplace PR 병행
-- v0.2 `/harness:sync` 스펙 착수
+- **v0.1.2 미세 개선** (시간 남을 때): init.md §0 신호 체크를 `ls -d` 로 정리 (현재 `.git` 디렉터리 내용까지 출력됨, 사소한 가독성 이슈).
+- **v0.2 `/harness:sync` 스펙 착수**: 더 큰 피처.
+- **공식 마켓플레이스 PR** (아주 나중에): v0.2~v0.3 안정화 후 anthropic/claude-plugins-official 에 제출.
 
 ## 3. 레포 구조 (실제로 트래킹되는 것만)
 
 ```
-.claude-plugin/plugin.json       # 플러그인 매니페스트
+.claude-plugin/plugin.json       # 플러그인 매니페스트 (name: "harness")
+.claude-plugin/marketplace.json  # 단일 플러그인 마켓플레이스 (v0.1.1~, NEW-45)
 commands/init.md                 # /harness:init (v0.1 유일 명령)
 skills/spec-conversion/          # plan.md → spec.yaml 변환 스킬 v0.5
 docs/
@@ -31,7 +34,7 @@ docs/
 ├── setup/
 │   ├── local-install.md         # 플러그인 설치 스모크
 │   └── first-run-checklist.md   # 첫 실행 10-항목 검증
-└── release/v0.1.0.md            # 태깅·PR 플레이북
+└── release/v0.1.0.md            # 태깅·PR 플레이북 (v0.1.1 에도 동일 적용)
 scripts/
 ├── mode_b_*.py                  # BM25 통계 추출 (Mode B Phase 1)
 ├── upgrade_to_2_3_8.py          # v2.3.x → v2.3.8 마이그레이션
@@ -44,18 +47,22 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (이 파일)
 
 ## 4. 현재 git 상태
 
-- **태그**: `v0.1.0` (`bfc8b3e`) 원격 push 완료
-- **develop HEAD**: `d5826dc` (PR #43 머지 — 4 first-run fix 커밋 포함)
-- **작업 트리**: clean (이 문서 갱신 커밋 전)
-- **브랜치**: `develop` — 다음 작업도 이 브랜치에서 (v0.1.1 시작 시 `feat/v0.1.1-*` 분기)
+- **태그**: `v0.1.0` (`bfc8b3e`) · `v0.1.1` (`cbb01c3`) 원격 push 완료
+- **develop HEAD**: `cbb01c3 docs(changelog): finalize v0.1.1 release date and NEW-39 description`
+- **main**: develop 과 동기화 (default branch — `/plugin marketplace add qwerfunch/harness-boot` 이 fetch 하는 ref)
+- **작업 트리**: clean
+- **다음 분기**: `feat/v0.1.2-*` 또는 `feat/v0.2-*` (develop 에서)
 
 ## 5. 커밋 히스토리 맥락
 
-v0.1.0 릴리즈 경로 핵심 커밋:
-- `d5826dc Merge pull request #43 from qwerfunch/feat/v0.1.0-native-plugin-pivot` (first-run smoke findings)
+v0.1.1 릴리즈 경로 핵심 커밋:
+- `cbb01c3 docs(changelog): finalize v0.1.1 release date and NEW-39 description`
+- `5eac0db fix(init): relax NEW-39 — info-only signal check, no blocking prompt` (재스모크 피드백 반영)
+- `4f186f5 Merge pull request #44 from qwerfunch/feat/v0.1.1-init-hardening` (7 커밋 묶음)
+- `d5826dc Merge pull request #43 from qwerfunch/feat/v0.1.0-native-plugin-pivot` (v0.1.0 first-run smoke findings)
 - `1c3c42a Merge pull request #42` (피벗 커밋 develop 에 합류)
-- `76da3d5 feat: pivot to native Claude Code plugin (v0.1.0)` (TS CLI → 네이티브 플러그인 single squashed commit)
-- `726c128 archive: v0.2.0 TS CLI 재작성 wip` (preserved on `feat/v0.2.0-archive` 브랜치)
+- `76da3d5 feat: pivot to native Claude Code plugin (v0.1.0)` (TS CLI → 네이티브 플러그인)
+- `726c128 archive: v0.2.0 TS CLI 재작성 wip` (`feat/v0.2.0-archive` 브랜치에 보존)
 
 피벗 이전의 TypeScript CLI 히스토리 (`b035331`·`19e125b`·`2ebbbf3` 등) 는 `feat/v0.2.0-archive` 브랜치와 그 parent 로만 접근.
 
@@ -79,29 +86,33 @@ v0.1.0 릴리즈 경로 핵심 커밋:
 - **design/ 는 개인 작업 공간**. 절대 `git add` 하지 마세요. 공개할 가치가 있는 문서는 `docs/` 로 승격.
 - **legacy/ 도 동일**. 트래킹된 기존 파일만 유지, 새 파일은 넣지 않음.
 - **플러그인은 자기 자신에 설치되지 않음**. 이 레포에 `/harness:init` 실행하면 모순. 테스트는 항상 별도 scratch 디렉터리에서 (`~/tmp/harness-*-run/`).
-- **태그는 절대 이동하지 말 것**. v0.1.0 이 깨지면 yank + hotfix (docs/release/v0.1.0.md §5 참조).
+- **태그는 절대 이동하지 말 것**. v0.1.x 가 깨지면 yank + hotfix (docs/release/v0.1.0.md §5 참조).
+- **main 은 default branch**. `/plugin marketplace add qwerfunch/harness-boot` 가 여기서 fetch. develop push 시마다 `git push origin develop:main` 으로 fast-forward 권장.
 
-## 8. 알려진 제한사항 (v0.1.0 릴리즈됨)
+## 8. 알려진 제한사항 (v0.1.1 기준)
 
-**닫힘 (2026-04-23 first-run 스모크로 확정)**
-- **NEW-37**: `$CLAUDE_PLUGIN_ROOT` 는 CC 2.1.x 에서 **미설정**. 실제 경로 해석은 `$PATH` 주입된 `<plugin-root>/bin` 역산. `commands/init.md` 에 반영 (`37bd0a4`).
+**닫힘 (v0.1.0 / v0.1.1 에서 해소)**
+- NEW-37: `$CLAUDE_PLUGIN_ROOT` 는 CC 2.1.x 에서 **미설정**. `$PATH` 주입된 `<plugin-root>/bin` 역산이 실제 메커니즘. `commands/init.md §2` 에 4-전략 체인으로 문서화.
+- NEW-39: 프로젝트 루트 신호 없을 때 info-only 처리 (중단 안 함 · 팁 라인만 추가).
+- NEW-40: 이름 추출 체인 + kebab-case 정규화.
+- NEW-42: `date -u` → python3 → node → prompt fallback.
+- NEW-44: `directory` marketplace `installPath` 미생성 시 `source.path` fallback.
+- NEW-45: `.claude-plugin/marketplace.json` 추가로 `github:` 직접 설치 경로 활성화.
 - `.claude/` 빈 디렉터리 무해성: silently ignore 확인.
 - `CLAUDE.md` 의 미존재 `@import`: silently ignore 확인.
 
-**열림 (v0.1.1 RFC 대상)**
-- **NEW-39**: 루트 판단 실패 시 fallback.
-- **NEW-40**: 프로젝트 이름 추출 엣지케이스 (`package.json.name` 빈 문자열 등).
-- **NEW-42**: Windows PowerShell `date -u` fallback.
-- **NEW-44** (신규): `directory`-type marketplace 의 `installPath` 미생성. 실제 경로는 `source.path` 에서.
-- **NEW-45** (신규): repo 자체의 `marketplace.json` 미존재로 `github:qwerfunch/harness-boot` 직접 설치 불가.
+**열림 (v0.1.2+ 대상)**
+- `ls -d` 정리: init.md §0 신호 체크가 `.git` 디렉터리 내용까지 출력. 사소한 가독성 이슈.
+- 공식 마켓플레이스 PR: anthropic/claude-plugins-official 등록 — 버전업 · 안정화 후.
 
 ## 9. 다음 Phase 후보
 
-**Phase 2.17 완료 (2026-04-23). 다음 작업 후보**:
+**v0.1.1 완료 (2026-04-23). 다음 작업 후보**:
 
-- **v0.1.1 패치** (근일): `docs/rfcs/v0.1.1-init-hardening.md` RFC + marketplace PR (anthropic/claude-plugins-official) + `marketplace.json` repo 추가 (NEW-45).
+- **v0.1.2 미세 개선** (시간 남을 때): `ls -d` 정리 + 기타 가독성.
 - **v0.2 피처 E**: `/harness:sync` 스펙 초안 — spec 변경 후 domain.md · architecture.yaml 파생.
 - **v0.2 피처 F**: `scripts/hash-fixtures.mjs` + session-start-bootstrap 훅 구현.
+- **공식 마켓플레이스 PR** (아주 나중에): v0.2~v0.3 안정화 후.
 
 ## 10. Import
 
