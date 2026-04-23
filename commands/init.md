@@ -123,7 +123,14 @@ mkdir -p .claude/agents .claude/skills
 {"ts":"<ISO8601 UTC>","type":"harness_initialized","plugin_version":"0.1.0","mode":"<team|solo>"}
 ```
 
-타임스탬프는 `Bash: date -u +%Y-%m-%dT%H:%M:%SZ` 로 획득.
+타임스탬프 (UTC ISO8601) 획득은 다음 순서로 시도 — **첫 성공값** 사용:
+
+1. `Bash: date -u +%Y-%m-%dT%H:%M:%SZ` (POSIX `date` — macOS · Linux · Git Bash on Windows).
+2. 실패 시 `Bash: python3 -c 'import datetime; print(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))'` (Python 3 설치 시).
+3. 실패 시 `Bash: node -e 'console.log(new Date().toISOString().replace(/\.\d{3}Z$/, "Z"))'` (Node 설치 시).
+4. 모두 실패 시 사용자에게 현재 UTC 시각 입력 프롬프트 (`YYYY-MM-DDTHH:MM:SSZ` 형식).
+
+또한 `plugin_version` 값은 `.claude-plugin/plugin.json` 의 `version` 필드에서 동적으로 읽되 실패 시 하드코딩 `"0.1.0"` fallback.
 
 ### 6. 최종 보고 (사용자 향)
 
