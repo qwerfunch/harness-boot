@@ -99,6 +99,22 @@ python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --complete --json
 python3 "$PLUGIN_ROOT/scripts/work.py" --current --json
 ```
 
+## 코딩 스타일 (구현 전 숙지)
+
+Python 코드는 **Google Python Style Guide** 를 따름. **spec reference (F-NNN · AC-N · BR-NNN) 는 docstring 또는 주석에만** — 함수/클래스 이름은 도메인 의미로.
+
+```python
+# ✅
+class StrictestRuleTests(unittest.TestCase):
+    """BR-004: 복수 rule 매칭 시 가장 엄격한 max 채택."""
+
+# ❌
+class BR004_StrictestRuleTests(unittest.TestCase): ...
+class AC1_CodeFormatTests(unittest.TestCase): ...
+```
+
+상세: `agents/implementer.md § 코딩 스타일`.
+
 ## 전형 시나리오
 
 피처 1 개의 풀 사이클:

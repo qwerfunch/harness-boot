@@ -128,5 +128,22 @@ class PreambleConventionTests(unittest.TestCase):
             self.assertIn("NO shortcut:", body, f"{name}: missing 'NO shortcut:'")
 
 
+class StyleGuideTests(unittest.TestCase):
+    """Implementer agent 가 Google Python Style + ID-in-docstring 규칙을 문서화해야."""
+
+    def test_implementer_references_google_python_style(self):
+        body = (AGENTS_DIR / "implementer.md").read_text(encoding="utf-8")
+        self.assertIn("Google Python Style Guide", body)
+
+    def test_implementer_documents_id_in_docstring_rule(self):
+        """Spec reference 는 docstring/주석, 이름은 도메인 의미."""
+        body = (AGENTS_DIR / "implementer.md").read_text(encoding="utf-8")
+        # 규칙 문구 존재
+        self.assertIn("docstring", body.lower())
+        # 반례 (금지 패턴) 가 문서화되어 있음
+        self.assertIn("AC1_", body)  # bad-example 로 명시됨
+        self.assertRegex(body, r"(금지|❌|avoid|bad)")
+
+
 if __name__ == "__main__":
     unittest.main()
