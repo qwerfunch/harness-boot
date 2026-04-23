@@ -57,11 +57,12 @@ python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --run-gate gate_0 --project-root ..
 `scripts/gate_runner.py` 가 러너를 자동 감지:
 
 - **gate_0 (tests)**: pyproject+pytest → tests/+unittest → npm test → make test
-- **gate_1 (type check, v0.3.3+)**: pyproject+mypy → pyproject+pyright → tsconfig+tsc → Cargo+cargo check → go.mod+go vet
+- **gate_1 (type check)**: pyproject+mypy → pyproject+pyright → tsconfig+tsc → Cargo+cargo check → go.mod+go vet
+- **gate_2 (lint, v0.3.4+)**: pyproject+ruff → pyproject+flake8 → package.json+eslint → .eslintrc+npx → Cargo+cargo clippy → go.mod+golangci-lint
 
 결과 자동 기록 + pass 시 evidence 자동 추가. Override 우선순위: `--override-command` → `harness.yaml.gate_commands.<gate>` → auto-detect.
 
-**현재 범위**: gate_0 + gate_1 자동화. gate_2~5 는 `skipped` 기록 (v0.3.4+ 순차 확장).
+**현재 범위**: gate_0 + gate_1 + gate_2 자동화. gate_3~5 는 `skipped` 기록 (v0.3.5+ 순차 확장).
 
 ### 증거 추가
 

@@ -8,10 +8,22 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 ## [Unreleased]
 
 - Marketplace PR (anthropic/claude-plugins-official) — 안정화 후 제출 (v0.4 후보)
-- Gate 2~5 자동 실행 (gate_2 lint · gate_3 coverage · gate_5 runtime smoke) — v0.3.4+
-- F-006 확장: Code / Doc / Anchor drift (현재 5/8) — v0.3.4+
-- `/harness:metrics` (F-008) — v0.3.4+
+- Gate 3~5 자동 실행 (gate_3 coverage · gate_4 commit · gate_5 runtime smoke) — v0.3.5+
+- F-006 확장: Code / Doc / Anchor drift (현재 5/8) — v0.3.5+
+- `/harness:metrics` (F-008) — v0.3.5+
 - 템플릿 보강: NEW-51/52/53
+
+## [0.3.4] — 2026-04-23
+
+### Added
+- **Gate 2 (lint) 자동 실행** — `/harness:work --run-gate gate_2` 가 Python (ruff · flake8), TypeScript/JavaScript (eslint · npx eslint), Rust (cargo clippy), Go (golangci-lint) 에 대해 린터 자동 감지 + 실행. 감지 순서: pyproject+ruff → pyproject+flake8 → package.json+eslint → .eslintrc*+npx → Cargo+clippy → go.mod+golangci-lint. pass 시 evidence 자동 기록. 11 신규 테스트.
+
+### Changed
+- `commands/work.md` — gate_2 감지 우선순위 명시.
+
+### Testing
+- 277 → **288 tests** (+ 11 Gate 2 관련).
+- Dogfood: harness-boot-selfhost 에서 F-102 --run-gate gate_2 PASS.
 
 ## [0.3.3] — 2026-04-23
 

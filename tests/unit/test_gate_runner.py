@@ -151,8 +151,12 @@ class DispatchTests(ScratchProjectMixin, unittest.TestCase):
         res = gr.run_gate("gate_1", self.root, override_command=["true"])
         self.assertEqual(res.result, "pass")
 
+    def test_dispatch_gate_2(self):
+        res = gr.run_gate("gate_2", self.root, override_command=["true"])
+        self.assertEqual(res.result, "pass")
+
     def test_dispatch_unsupported_gate_skipped(self):
-        res = gr.run_gate("gate_2", self.root)
+        res = gr.run_gate("gate_3", self.root)
         self.assertEqual(res.result, "skipped")
         self.assertIn("not yet supported", res.reason)
 
@@ -232,6 +236,91 @@ class RunGate1Tests(ScratchProjectMixin, unittest.TestCase):
         res = gr.run_gate_1(self.root)
         self.assertEqual(res.result, "skipped")
         self.assertIn("no type checker", res.reason)
+
+
+class DetectGate2Tests(ScratchProjectMixin, unittest.TestCase):
+    def _with_which(self, which_map: dict):
+        import shutil
+        original = shutil.which
+        shutil.which = lambda cmd: which_map.get(cmd)
+        return original
+
+    def _restore_which(self, original):
+        import shutil
+        shutil.which = original
+
+    def test_pyproject_with_ruff(self):
+        (self.root / "pyproject.toml").write_text("[project]\nname = 'x'\n", encoding="utf-8")
+        orig = self._with_which({"ruff": "/fake/ruff"})
+        try:
+            cmd = gr.detect_gate_2_command(self.root)
+        finally:
+            self._restore_which(orig)
+        self.assertEqual(cmd, ["ruff", "check", "."])
+
+    def test_pyproject_falls_back_to_flake8(self):
+        (self.root / "pyproject.toml").write_text("[project]\nname = 'x'\n", encoding="utf-8")
+        orig = self._with_which({"flake8": "/fake/flake8"})
+        try:
+            cmd = gr.detect_gate_2_command(self.root)
+        finally:
+            self._restore_which(orig)
+        self.assertEqual(cmd, ["flake8"])
+
+    def test_package_json_with_eslint(self):
+        (self.root / "package.json").write_text("{}", encoding="utf-8")
+        orig = self._with_which({"eslint": "/fake/eslint"})
+        try:
+            cmd = gr.detect_gate_2_command(self.root)
+        finally:
+            self._restore_which(orig)
+        self.assertEqual(cmd, ["eslint", "."])
+
+    def test_eslintrc_json_with_npx(self):
+        (self.root / ".eslintrc.json").write_text("{}", encoding="utf-8")
+        orig = self._with_which({"npx": "/fake/npx"})
+        try:
+            cmd = gr.detect_gate_2_command(self.root)
+        finally:
+            self._restore_which(orig)
+        self.assertEqual(cmd, ["npx", "eslint", "."])
+
+    def test_cargo_clippy(self):
+        (self.root / "Cargo.toml").write_text("[package]\nname = 'x'\n", encoding="utf-8")
+        orig = self._with_which({"cargo": "/fake/cargo"})
+        try:
+            cmd = gr.detect_gate_2_command(self.root)
+        finally:
+            self._restore_which(orig)
+        self.assertEqual(cmd, ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"])
+
+    def test_golangci_lint(self):
+        (self.root / "go.mod").write_text("module x\n", encoding="utf-8")
+        orig = self._with_which({"golangci-lint": "/fake/golangci-lint"})
+        try:
+            cmd = gr.detect_gate_2_command(self.root)
+        finally:
+            self._restore_which(orig)
+        self.assertEqual(cmd, ["golangci-lint", "run"])
+
+    def test_no_linter(self):
+        self.assertIsNone(gr.detect_gate_2_command(self.root))
+
+
+class RunGate2Tests(ScratchProjectMixin, unittest.TestCase):
+    def test_pass_with_override(self):
+        res = gr.run_gate_2(self.root, override_command=["true"])
+        self.assertEqual(res.result, "pass")
+        self.assertEqual(res.gate, "gate_2")
+
+    def test_fail_with_override(self):
+        res = gr.run_gate_2(self.root, override_command=["false"])
+        self.assertEqual(res.result, "fail")
+
+    def test_skipped_when_no_detector(self):
+        res = gr.run_gate_2(self.root)
+        self.assertEqual(res.result, "skipped")
+        self.assertIn("no linter", res.reason)
 
 
 class AsDictTests(unittest.TestCase):

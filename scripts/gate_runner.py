@@ -251,6 +251,49 @@ def detect_gate_1_command(project_root: Path) -> list[str] | None:
     return None
 
 
+def detect_gate_2_command(project_root: Path) -> list[str] | None:
+    """Gate 2 린터 자동 감지.
+
+    우선순위:
+      1. Python: pyproject.toml + ruff     → ruff check .
+      2. Python: pyproject.toml + flake8   → flake8 (legacy fallback)
+      3. TypeScript/JS: package.json + eslint → eslint .
+      4. TypeScript/JS: .eslintrc.* + npx  → npx eslint .
+      5. Rust: Cargo.toml + cargo clippy   → cargo clippy --all-targets -- -D warnings
+      6. Go: go.mod + golangci-lint        → golangci-lint run
+      7. 감지 실패 → None
+    """
+    pyproject = project_root / "pyproject.toml"
+    if pyproject.is_file():
+        if shutil.which("ruff"):
+            return ["ruff", "check", "."]
+        if shutil.which("flake8"):
+            return ["flake8"]
+
+    if (project_root / "package.json").is_file():
+        if shutil.which("eslint"):
+            return ["eslint", "."]
+        if shutil.which("npx"):
+            return ["npx", "eslint", "."]
+
+    eslintrc_candidates = [".eslintrc", ".eslintrc.json", ".eslintrc.yml", ".eslintrc.js", "eslint.config.js", "eslint.config.mjs"]
+    if any((project_root / c).is_file() for c in eslintrc_candidates):
+        if shutil.which("eslint"):
+            return ["eslint", "."]
+        if shutil.which("npx"):
+            return ["npx", "eslint", "."]
+
+    if (project_root / "Cargo.toml").is_file():
+        if shutil.which("cargo"):
+            return ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"]
+
+    if (project_root / "go.mod").is_file():
+        if shutil.which("golangci-lint"):
+            return ["golangci-lint", "run"]
+
+    return None
+
+
 def run_gate_0(
     project_root: Path,
     *,
@@ -278,10 +321,7 @@ def run_gate_1(
     harness_dir: Path | None = None,
     timeout_sec: int = 300,
 ) -> GateRunResult:
-    """Gate 1 (type check) 실행. override > harness.yaml > auto-detect.
-
-    v0.3.3 에서 신규. Python/TypeScript/Rust/Go 에 대해 자동 감지.
-    """
+    """Gate 1 (type check) 실행. override > harness.yaml > auto-detect."""
     cmd = _resolve_command(
         "gate_1", project_root, override_command, harness_dir, detect_gate_1_command
     )
@@ -293,6 +333,29 @@ def run_gate_1(
         )
     return _execute("gate_1", cmd, project_root, timeout_sec)
 
+
+def run_gate_2(
+    project_root: Path,
+    *,
+    override_command: list[str] | None = None,
+    harness_dir: Path | None = None,
+    timeout_sec: int = 300,
+) -> GateRunResult:
+    """Gate 2 (lint) 실행. override > harness.yaml > auto-detect.
+
+    v0.3.4 에서 신규. Python (ruff/flake8) · TS/JS (eslint) · Rust (clippy) · Go (golangci-lint).
+    """
+    cmd = _resolve_command(
+        "gate_2", project_root, override_command, harness_dir, detect_gate_2_command
+    )
+    if cmd is None:
+        return GateRunResult(
+            gate="gate_2",
+            result="skipped",
+            reason="no linter detected (pyproject/ruff · package.json/eslint · Cargo/clippy · go.mod/golangci-lint 모두 부재)",
+        )
+    return _execute("gate_2", cmd, project_root, timeout_sec)
+
 def run_gate(
     gate: str,
     project_root: Path,
@@ -301,7 +364,7 @@ def run_gate(
     harness_dir: Path | None = None,
     timeout_sec: int = 300,
 ) -> GateRunResult:
-    """디스패처. 현재는 gate_0 (tests) · gate_1 (type check) 지원."""
+    """디스패처. 현재는 gate_0 (tests) · gate_1 (type check) · gate_2 (lint) 지원."""
     if gate == "gate_0":
         return run_gate_0(
             project_root,
@@ -316,10 +379,17 @@ def run_gate(
             harness_dir=harness_dir,
             timeout_sec=timeout_sec,
         )
+    if gate == "gate_2":
+        return run_gate_2(
+            project_root,
+            override_command=override_command,
+            harness_dir=harness_dir,
+            timeout_sec=timeout_sec,
+        )
     return GateRunResult(
         gate=gate,
         result="skipped",
-        reason=f"{gate} auto-run not yet supported (v0.3.3 shipped gate_0 + gate_1)",
+        reason=f"{gate} auto-run not yet supported (v0.3.4 shipped gate_0 + gate_1 + gate_2)",
     )
 
 
