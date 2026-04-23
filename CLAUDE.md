@@ -108,14 +108,23 @@ v0.1.1 릴리즈 경로 핵심 커밋:
 
 ## 9. 다음 Phase 후보
 
-**v0.1.1 완료 (2026-04-23). 다음 작업 후보**:
+**v0.1.1 완료 (2026-04-23) + v0.2 Phase 0 핵심 구현 완료 (2026-04-23). 다음 작업 후보**:
 
-- **v0.1.2 미세 개선** (시간 남을 때): `ls -d` 정리 + 기타 가독성.
-- **v0.2 피처 설계**: `docs/samples/harness-boot-self/spec.yaml` (v2.3.8, 21 features · 8 commands · 6 gates) 에 v0.2 목표 피처를 먼저 반영. 이후 PR 은 "Implements F-NNN per that spec" 형태로.
-- **v0.2 피처 E**: `/harness:sync` — spec 변경 후 `.harness/domain.md` · `architecture.yaml` 파생. 랜딩하는 순간 `harness-boot-self` spec 으로 첫 self-describe round trip 검증 가능.
-- **v0.2 피처 F**: `scripts/hash-fixtures.mjs` + session-start-bootstrap 훅 구현.
-- **v0.2 피처 G**: `/harness:work` — 피처 단위 TDD/구현 루프. 랜딩 이후부터 harness-boot 자체 개발이 harness-boot 아래에서 돌아감 (repo 밖 워크스페이스).
-- **공식 마켓플레이스 PR** (아주 나중에): v0.2~v0.3 안정화 후.
+### v0.2 Phase 0 현황 (완료)
+- F-003 `/harness:sync` — `scripts/sync.py` + JSONSchema 검증 + 18 tests.
+- F-009 `$include` 엔진 — `scripts/include_expander.py` + 23 tests.
+- F-010 Canonical Hashing — `scripts/canonical_hash.py` + 19 tests.
+- F-002 `/harness:spec` Mode 분류기 + Mode E — `scripts/spec_mode_classifier.py` · `explain_spec.py` + 26 tests.
+- 공통 유틸: `scripts/plugin_root.py`(NEW-37/44 경로 해석, 14 tests) · `scripts/render_domain.py`(18) · `scripts/render_architecture.py`(16) · `scripts/validate_spec.py`(8).
+- **총 142 tests · harness-boot-self 스펙 자기 파생 smoke 통과**.
+
+### 다음 작업
+- **F-002 Modes A/R/B-2 실제 구현** (선택) — Mode classifier 위에 diff 렌더러 + spec-conversion skill 연계. LLM 대화 루프로 해도 충분.
+- **v0.2 태그** — Phase 0 완결 지점. `v0.2.0-alpha` 또는 `v0.2.0`. main 동기화 후.
+- **F-004 `/harness:work`** — 피처 단위 TDD/구현 루프. v0.3 핵심.
+- **F-005 `/harness:status`** · **F-006 `/harness:check`** — read-only 조회/검증.
+- **v0.1.2 미세 개선** (init.md §0 `ls -d`).
+- **공식 마켓플레이스 PR** (아주 나중에).
 
 ## 10. Import
 

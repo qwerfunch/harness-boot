@@ -324,6 +324,10 @@ features:
   - id: "F-002"
     name: "/harness:spec — Mode A/B/R/E 자동 분기"
     type: "feature"
+    status: "partial"           # 2026-04-23: Mode classifier + Mode E 구현 완료.
+                                # Modes A/R (diff 렌더) · B-2 (plan.md 변환) 는
+                                # spec-conversion skill + LLM 대화 드리븐으로 남김.
+    release_target: "v0.2"
     description: "입력 성격·파일 상태에 따라 4 모드로 자동 분기. spec.yaml 신규·추가·정제·설명 각 경로 처리."
     modules:
       - "spec_command"
@@ -1223,10 +1227,15 @@ metadata:
         - "scripts/plugin_root.py + tests/unit/test_plugin_root.py (14 tests)"
         - "scripts/render_domain.py + tests/unit/test_render_domain.py (18 tests)"
         - "scripts/render_architecture.py + tests/unit/test_render_architecture.py (16 tests)"
-        - "scripts/sync.py + tests/unit/test_sync.py (14 tests)"
+        - "scripts/sync.py + tests/unit/test_sync.py (18 tests · validation 통합 포함)"
+        - "scripts/validate_spec.py + tests/unit/test_validate_spec.py (8 tests · JSONSchema Gate 0~1)"
+        - "scripts/spec_mode_classifier.py + tests/unit/test_spec_mode_classifier.py (14 tests · F-002 분류기)"
+        - "scripts/explain_spec.py + tests/unit/test_explain_spec.py (12 tests · F-002 Mode E · CQS)"
         - "commands/sync.md (Phase 0 계약 + scripts/sync.py 위임)"
         - "commands/spec.md (Mode A/B/R/E 계약 stub)"
-      total_tests: 104
+      total_tests: 142
+      self_describe_smoke_ts: "2026-04-23T06:27:02Z"
+      self_describe_smoke_spec_hash: "6971d901749783d29bfe35b06ffd77a48ead97207f268cc3a5719ad626d8849d"
 
     v0.3:
       shipped: false
