@@ -31,13 +31,25 @@ python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --harness-dir "$(pwd)/.harness" --j
 - `planned` → `in_progress` 전이 + `session.active_feature_id` 설정.
 - 이미 `done` 이면 읽기만 (재활성화 거부).
 
-### Gate 결과 기록
+### Gate 결과 기록 (수동)
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --gate gate_0 pass --note "19 unit tests" --json
 ```
 
 결과 ∈ {pass, fail, skipped}. `pass` 면 `session.last_gate_passed` 갱신.
+
+### Gate 자동 실행 (v0.3.1+, Phase 1)
+
+```bash
+python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --run-gate gate_0 --json
+python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --run-gate gate_0 --override-command "pytest tests/unit" --json
+python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --run-gate gate_0 --project-root ../other --timeout 60
+```
+
+`scripts/gate_runner.py` 가 테스트 러너를 자동 감지 (우선순위: override-command → harness.yaml.gate_commands → pyproject/tests/pytest → tests/+unittest → package.json.scripts.test → Makefile `test:`). 결과 자동 기록 + pass 시 evidence 도 자동 추가.
+
+**v0.3.1 범위**: gate_0 만 자동화. gate_1~5 는 `--run-gate gate_X` 호출 시 `skipped` 기록 (후속 patch).
 
 ### 증거 추가
 

@@ -149,6 +149,57 @@ class CurrentTests(HarnessScratch, unittest.TestCase):
         self.assertEqual(res.feature_id, "F-004")
 
 
+class RunAndRecordGateTests(HarnessScratch, unittest.TestCase):
+    """--run-gate flow: gate_runner 실행 + state 자동 기록 + evidence 자동 추가."""
+
+    def test_pass_records_and_adds_evidence(self):
+        res = work.run_and_record_gate(
+            self.harness, "F-010", "gate_0", override_command=["true"]
+        )
+        self.assertEqual(res.action, "gate_auto_run")
+        self.assertIn("gate_0", res.gates_passed)
+        self.assertEqual(res.evidence_count, 1)  # pass 시 자동 evidence
+        self.assertIn("PASS", res.message)
+
+    def test_fail_records_but_no_evidence(self):
+        res = work.run_and_record_gate(
+            self.harness, "F-010", "gate_0", override_command=["false"]
+        )
+        self.assertIn("gate_0", res.gates_failed)
+        self.assertEqual(res.evidence_count, 0)
+
+    def test_skipped_records(self):
+        res = work.run_and_record_gate(
+            self.harness, "F-010", "gate_0", override_command=["__no_such_bin__"]
+        )
+        # skipped 도 gate 기록
+        self.assertEqual(res.evidence_count, 0)
+        # state 에 skipped 결과 기록됨
+        from state import State
+        st = State.load(self.harness)
+        gates = st.get_feature("F-010")["gates"]
+        self.assertEqual(gates["gate_0"]["last_result"], "skipped")
+
+    def test_emits_gate_auto_run_event(self):
+        work.run_and_record_gate(
+            self.harness, "F-010", "gate_0", override_command=["true"]
+        )
+        events = self.read_events()
+        self.assertTrue(any(e["type"] == "gate_auto_run" for e in events))
+
+    def test_unsupported_gate_skipped(self):
+        """gate_1 등은 v0.3.1 에선 skipped."""
+        res = work.run_and_record_gate(
+            self.harness, "F-010", "gate_1"
+        )
+        self.assertEqual(res.current_status, "planned")  # activate 호출 안 했으니
+        # state 에 skipped 결과
+        from state import State
+        st = State.load(self.harness)
+        g1 = st.get_feature("F-010")["gates"].get("gate_1")
+        self.assertEqual(g1["last_result"], "skipped")
+
+
 class FullCycleTests(HarnessScratch, unittest.TestCase):
     """실제 F-004 개발 사이클 end-to-end 시뮬레이션."""
 

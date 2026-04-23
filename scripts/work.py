@@ -46,6 +46,7 @@ _THIS = Path(__file__).resolve().parent
 if str(_THIS) not in sys.path:
     sys.path.insert(0, str(_THIS))
 
+import gate_runner  # noqa: E402
 from state import State, _FEATURE_STATUSES, _GATE_RESULTS  # noqa: E402
 
 
@@ -239,6 +240,69 @@ def current(harness_dir: Path) -> WorkResult | None:
     return res
 
 
+def run_and_record_gate(
+    harness_dir: Path,
+    fid: str,
+    gate_name: str,
+    *,
+    project_root: Path | None = None,
+    override_command: list[str] | None = None,
+    timeout_sec: int = 300,
+    add_evidence_on_pass: bool = True,
+) -> WorkResult:
+    """gate_runner 로 Gate 실행 → 결과 + 요약을 state 에 기록 + events.log append.
+
+    project_root: 테스트 러너가 돌 디렉터리. 기본은 harness_dir 의 부모.
+    """
+    if project_root is None:
+        project_root = harness_dir.parent
+
+    run_result = gate_runner.run_gate(
+        gate_name,
+        project_root,
+        override_command=override_command,
+        harness_dir=harness_dir,
+        timeout_sec=timeout_sec,
+    )
+
+    # skipped 도 state 에 기록 — 진행 중 흔적 남기기
+    state = State.load(harness_dir)
+    state.ensure_feature(fid)
+    note = run_result.reason or ("cmd: " + " ".join(run_result.command) if run_result.command else "")
+    # 'skipped' 는 state 의 GateResult 값 중 하나 — 그대로 pass 가능
+    state.record_gate_result(fid, gate_name, run_result.result, note=note)
+
+    if run_result.result == "pass" and add_evidence_on_pass:
+        summary = f"Gate {gate_name} pass ({run_result.duration_sec:.1f}s)"
+        if run_result.command:
+            summary += " · cmd: " + " ".join(run_result.command)
+        state.add_evidence(fid, kind="gate_run", summary=summary)
+
+    state.save()
+
+    _append_event(
+        harness_dir,
+        {
+            "ts": _now_iso(),
+            "type": "gate_auto_run",
+            "feature": fid,
+            "gate": gate_name,
+            "result": run_result.result,
+            "exit_code": run_result.exit_code,
+            "duration_sec": round(run_result.duration_sec, 3),
+            "reason": run_result.reason,
+        },
+    )
+
+    res = _summarize(state, fid)
+    res.action = "gate_auto_run"
+    res.message = (
+        f"{gate_name} {run_result.result.upper()}"
+        + (f" — {run_result.reason}" if run_result.reason else "")
+    )
+    return res
+
+
 def _result_to_dict(r: WorkResult) -> dict:
     return {
         "feature_id": r.feature_id,
@@ -273,6 +337,24 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--gate", nargs=2, metavar=("NAME", "RESULT"), help="record gate result (pass/fail/skipped)"
     )
+    parser.add_argument(
+        "--run-gate",
+        metavar="NAME",
+        default=None,
+        help="auto-run gate (v0.3.1: gate_0) and record result + evidence",
+    )
+    parser.add_argument(
+        "--project-root",
+        type=Path,
+        default=None,
+        help="cwd for --run-gate (default: harness-dir parent)",
+    )
+    parser.add_argument(
+        "--override-command",
+        default=None,
+        help="override gate command (space-separated)",
+    )
+    parser.add_argument("--timeout", type=int, default=300, help="timeout for --run-gate")
     parser.add_argument("--note", default="", help="note for --gate")
     parser.add_argument(
         "--evidence", default=None, help="add evidence with this summary"
@@ -308,6 +390,19 @@ def main(argv: list[str] | None = None) -> int:
                 return 2
             res = record_gate(
                 args.harness_dir, args.feature, args.gate[0], args.gate[1], note=args.note
+            )
+        elif args.run_gate:
+            if not args.feature:
+                print("error: feature id required with --run-gate", file=sys.stderr)
+                return 2
+            override = args.override_command.split() if args.override_command else None
+            res = run_and_record_gate(
+                args.harness_dir,
+                args.feature,
+                args.run_gate,
+                project_root=args.project_root,
+                override_command=override,
+                timeout_sec=args.timeout,
             )
         elif args.evidence:
             if not args.feature:

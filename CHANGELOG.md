@@ -7,10 +7,24 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
-- Marketplace PR (anthropic/claude-plugins-official) — 안정화 후 제출
-- v0.4: Phase 1 Gate runner (test runner · runtime smoke 자동화)
-- v0.4: F-006 확장 — Code / Doc / Anchor drift (현재 5/8)
-- v0.2.1+ 템플릿 보강: NEW-51 (entry_points health_check) · NEW-52 (domain.md owning_feature backlink) · NEW-53 (feature_graph 정렬 옵션)
+- Marketplace PR (anthropic/claude-plugins-official) — 안정화 후 제출 (v0.4 후보)
+- Gate 1~5 자동 실행 (현재 gate_0 만) — v0.3.2 후보
+- F-006 확장: Code / Doc / Anchor drift (현재 5/8) — v0.3.2~v0.3.3 후보
+- 템플릿 보강: NEW-51/52/53 (entry_points health_check · domain.md backlink · feature_graph sort)
+
+## [0.3.1] — 2026-04-23
+
+### Added
+- **`scripts/gate_runner.py`** — Gate 0 (tests) 자동 실행. pytest → unittest → npm test → make test 자동 감지 + `harness.yaml.gate_commands.<gate>` override + timeout 지원. stdout/stderr 마지막 30 줄 tail 로 요약.
+- **`/harness:work --run-gate <NAME>`** — gate_runner 실행 → state 자동 기록 + pass 시 evidence 자동 추가 + `gate_auto_run` 이벤트 로그. gate_1~5 는 현재 `skipped` 반환 (v0.3.2+).
+- 지원 플래그: `--override-command`, `--project-root`, `--timeout`.
+
+### Testing
+- **261 unit tests** (v0.3.0 의 237 + gate_runner 19 + work run-gate 5).
+- Dogfood: harness-boot 자체 테스트 (261/261) 을 plugin 의 `/harness:work --run-gate gate_0` 로 실행해서 PASS + evidence 자동 기록.
+
+### Versioning policy
+- 이 버전부터 **patch bump 우선** 정책 적용. 새 명령 · 헬퍼 추가는 patch (0.3.X+1). minor/major 는 사용자 확인 후 큰 마일스톤에 예약.
 
 ## [0.3.0] — 2026-04-23
 
