@@ -7,9 +7,27 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
-- v0.1.1 init hardening RFC (NEW-37 closed · 39/40/42 pending · 44/45 신규)
-- `/harness:sync` 스펙 초안
-- Marketplace PR (anthropic/claude-plugins-official) 제출
+- `/harness:sync` 스펙 초안 (v0.2)
+- Marketplace PR (anthropic/claude-plugins-official) — 버전업/안정화 후 제출 (v0.2~v0.3 시점)
+
+## [0.1.1] — 2026-04 (릴리즈 예정)
+
+### Added
+- **`.claude-plugin/marketplace.json`** — single-plugin marketplace. `/plugin marketplace add github:qwerfunch/harness-boot` 경로로 직접 설치 가능 (NEW-45 해소).
+
+### Changed
+- **`/harness:init` 강건성 개선**:
+  - 프로젝트 루트 판단 실패 시 사용자 확인 프롬프트 (NEW-39).
+  - 프로젝트 이름 추출 체인에 empty/whitespace/null 감지 + kebab-case 정규화 추가 (NEW-40).
+  - `date -u` 실패 시 Python/Node fallback + 마지막 수단으로 사용자 프롬프트 (NEW-42, Windows Git Bash 대응).
+  - §2 플러그인 루트 경로 해석을 4-전략 체인 (PATH/registry/marketplace-source/prompt) 으로 확장 (NEW-44).
+
+### Closed (retrospective)
+- **NEW-37** — `$CLAUDE_PLUGIN_ROOT` 은 CC 2.1.x 에서 미설정. 실제 해석은 `$PATH` 주입 `<root>/bin` 역산. v0.1.0 (`37bd0a4`) 에서 이미 문서 패치됨, v0.1.1 RFC 는 closure 만.
+
+### Remaining (v0.1.2+)
+- NEW-39/40/42/44 가 실제 사용자 시나리오에서 정말 해소되는지 재검증 필요 (두 번째 first-run 스모크 대상).
+- 공식 마켓플레이스 PR — 안정화 후.
 
 ## [0.1.0] — 2026-04-23
 
