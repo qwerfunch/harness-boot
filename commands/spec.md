@@ -104,14 +104,24 @@ A 와 R 의 차이: A 는 "새로 추가", R 은 "기존 강화/수정".
 - plan.md 가 있어야 할 Mode B-2 에서 파일 부재 → 대화형 baseline 로 fallback 제안.
 - spec.yaml 이 스키마 위반 → `docs/schemas/spec.schema.json` 기준 path · reason 보고.
 
-## v0.2 스코프 제한
+## v0.2 구현 상태
 
-이 stub 은 모드 분기 계약 · workflow 뼈대만. 다음은 v0.2 구현에서 채워야 함:
+Claude 가 이 명령을 수행할 때 아래 스크립트를 직접 호출 가능 (모두 발행됨):
 
-- **Mode 분류기 (Python)** — `scripts/spec_mode_classifier.py` 신설 예정. 위 표를 코드화 + unit test.
-- **A/R diff renderer** — git diff 가능한 환경이면 git, 아니면 `difflib.unified_diff`.
-- **Mode E CQS 검증** — 명령 실행 전후 target file `mtime` 비교 단위 테스트.
-- **Mode B-1 대화 시나리오 스크립트** — 필수 필드 채우기의 step-by-step 가이드 (한국어).
+- **Mode 분류기**: `scripts/spec_mode_classifier.py --args "..." --spec-exists true|false`
+  → `{"mode": "A|B|R|E", "rationale": "...", "subtype": "..."}` JSON 반환.
+  Claude 는 이 결과로 분기 결정을 preamble 에 기록.
+- **Mode E (read-only)**: `scripts/explain_spec.py <spec.yaml> [--feature F-X | --entity Y] [--json]`
+  → overview / feature / entity 요약. 파일 mtime 불변 (CQS 테스트로 검증됨).
+- **Mode A/R diff**: `scripts/spec_diff.py <old> <new> [--yaml | --stat | --json]` 또는 `spec_diff.py <spec> --git-head` (git HEAD 와 비교).
+  Claude 가 spec 수정 후 사용자에게 diff 제시할 때 사용.
+
+아직 자동화 안 된 부분:
+
+- **Mode B-2 (plan.md → spec)** — `skills/spec-conversion` 스킬 (v0.5) 을 Claude 가 대화로 호출. Python 단일 엔트리포인트 없음 (변환이 여러 판단 단계를 포함하기 때문).
+- **Mode B-1 대화 흐름** — LLM-driven. 템플릿을 뼈대로 시작해서 필수 필드를 하나씩 묻고 채워나감.
+
+두 흐름 모두 Claude 가 스크립트를 읽어들이지 않고 직접 수행하므로 commands/spec.md 의 지시문을 따라 대화형으로 진행.
 
 ## 참조
 
