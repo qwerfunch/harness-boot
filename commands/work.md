@@ -61,10 +61,11 @@ python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --run-gate gate_0 --project-root ..
 - **gate_2 (lint)**: pyproject+ruff → pyproject+flake8 → package.json+eslint → .eslintrc+npx → Cargo+cargo clippy → go.mod+golangci-lint
 - **gate_3 (coverage, v0.3.5+)**: pyproject+pytest-cov → coverage+pytest → package.json.scripts.coverage → npx nyc → Cargo+tarpaulin → Cargo+llvm-cov → go test -cover. threshold 는 도구 자체 설정 (`[tool.coverage]` 등) 을 따름.
 - **gate_4 (commit check, v0.3.6+)**: `git diff --quiet && git diff --cached --quiet` — working tree + staging area 모두 clean 이어야 pass. git repo 아니거나 `git` 바이너리 부재 시 `skipped`.
+- **gate_5 (runtime smoke, v0.3.7+)**: `scripts/smoke.sh` → `tests/smoke/` + pytest → `tests/smoke/` + unittest → Makefile `smoke:` → package.json `scripts.smoke`. runtime smoke 는 프로젝트별 특성이 강하므로 **`harness.yaml.gate_commands.gate_5` override 권장**. 감지 실패 시 `skipped` (reason 에 override 안내 포함). 기본 timeout 600s.
 
 결과 자동 기록 + pass 시 evidence 자동 추가. Override 우선순위: `--override-command` → `harness.yaml.gate_commands.<gate>` → auto-detect.
 
-**현재 범위**: gate_0~4 자동화. gate_5 는 `skipped` 기록 (v0.3.7+).
+**현재 범위**: gate_0~5 **모두** 자동화 완료 (v0.3.7 = BR-004 Iron Law fully automated).
 
 ### 증거 추가
 

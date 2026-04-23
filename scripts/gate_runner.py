@@ -367,6 +367,54 @@ def detect_gate_4_command(project_root: Path) -> list[str] | None:
     ]
 
 
+def detect_gate_5_command(project_root: Path) -> list[str] | None:
+    """Gate 5 (runtime smoke) 자동 감지.
+
+    runtime smoke 는 본질적으로 프로젝트별 경로. 공통 도구가 없으므로
+    override 또는 convention 기반 감지만 제공하고, 미감지 시 skipped.
+
+    우선순위:
+      1. `scripts/smoke.sh` (실행 권한 무관 — sh 로 wrapping)
+      2. `tests/smoke/` 디렉터리 + pytest → `pytest tests/smoke`
+      3. `tests/smoke/` 디렉터리만 → `python -m unittest discover -s tests/smoke`
+      4. `Makefile` 에 `smoke:` 타겟 → `make smoke`
+      5. `package.json.scripts.smoke` → `npm run smoke`
+      6. 감지 실패 → None (사용자는 harness.yaml override 또는 --override-command 사용)
+    """
+    smoke_sh = project_root / "scripts" / "smoke.sh"
+    if smoke_sh.is_file():
+        return ["sh", str(smoke_sh)]
+
+    smoke_dir = project_root / "tests" / "smoke"
+    if smoke_dir.is_dir():
+        if shutil.which("pytest"):
+            return ["pytest", "tests/smoke"]
+        return [sys.executable, "-m", "unittest", "discover", "-s", "tests/smoke"]
+
+    makefile = project_root / "Makefile"
+    if makefile.is_file():
+        try:
+            for line in makefile.read_text(encoding="utf-8").splitlines():
+                if line.strip().startswith("smoke:"):
+                    if shutil.which("make"):
+                        return ["make", "smoke"]
+                    break
+        except OSError:
+            pass
+
+    pkg = project_root / "package.json"
+    if pkg.is_file():
+        try:
+            data = json.loads(pkg.read_text(encoding="utf-8"))
+            scripts = data.get("scripts", {}) if isinstance(data.get("scripts"), dict) else {}
+            if "smoke" in scripts and shutil.which("npm"):
+                return ["npm", "run", "smoke"]
+        except (OSError, json.JSONDecodeError):
+            pass
+
+    return None
+
+
 def run_gate_0(
     project_root: Path,
     *,
@@ -470,6 +518,32 @@ def run_gate_4(
         )
     return _execute("gate_4", cmd, project_root, timeout_sec)
 
+
+def run_gate_5(
+    project_root: Path,
+    *,
+    override_command: list[str] | None = None,
+    harness_dir: Path | None = None,
+    timeout_sec: int = 600,
+) -> GateRunResult:
+    """Gate 5 (runtime smoke) 실행. override > harness.yaml > auto-detect.
+
+    v0.3.7 신규. BR-004 Iron Law 의 gate_5 조건을 자동 실행으로 전환.
+    runtime smoke 는 프로젝트별 특성이 강해 harness.yaml override 가 기대 경로.
+    기본 timeout 600s (서버 기동/외부 호출 대응).
+    """
+    cmd = _resolve_command(
+        "gate_5", project_root, override_command, harness_dir, detect_gate_5_command
+    )
+    if cmd is None:
+        return GateRunResult(
+            gate="gate_5",
+            result="skipped",
+            reason="no runtime smoke detected (scripts/smoke.sh · tests/smoke/ · Makefile smoke · package.json scripts.smoke 모두 부재) — harness.yaml.gate_commands.gate_5 로 설정 필요",
+        )
+    return _execute("gate_5", cmd, project_root, timeout_sec)
+
+
 def run_gate(
     gate: str,
     project_root: Path,
@@ -514,10 +588,17 @@ def run_gate(
             harness_dir=harness_dir,
             timeout_sec=timeout_sec,
         )
+    if gate == "gate_5":
+        return run_gate_5(
+            project_root,
+            override_command=override_command,
+            harness_dir=harness_dir,
+            timeout_sec=timeout_sec,
+        )
     return GateRunResult(
         gate=gate,
         result="skipped",
-        reason=f"{gate} auto-run not yet supported (v0.3.6 shipped gate_0~gate_4)",
+        reason=f"{gate} auto-run not yet supported (v0.3.7 shipped gate_0~gate_5)",
     )
 
 

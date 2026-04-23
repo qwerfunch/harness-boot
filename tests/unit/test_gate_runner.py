@@ -163,8 +163,12 @@ class DispatchTests(ScratchProjectMixin, unittest.TestCase):
         res = gr.run_gate("gate_4", self.root, override_command=["true"])
         self.assertEqual(res.result, "pass")
 
+    def test_dispatch_gate_5(self):
+        res = gr.run_gate("gate_5", self.root, override_command=["true"])
+        self.assertEqual(res.result, "pass")
+
     def test_dispatch_unsupported_gate_skipped(self):
-        res = gr.run_gate("gate_5", self.root)
+        res = gr.run_gate("gate_6", self.root)
         self.assertEqual(res.result, "skipped")
         self.assertIn("not yet supported", res.reason)
 
@@ -500,6 +504,114 @@ class RunGate4Tests(ScratchProjectMixin, unittest.TestCase):
         res = gr.run_gate_4(self.root, override_command=["true"])
         self.assertEqual(res.result, "pass")
         self.assertEqual(res.gate, "gate_4")
+
+
+class DetectGate5Tests(ScratchProjectMixin, unittest.TestCase):
+    def _with_which(self, which_map):
+        import shutil
+        original = shutil.which
+        shutil.which = lambda cmd: which_map.get(cmd)
+        return original
+
+    def _restore(self, original):
+        import shutil
+        shutil.which = original
+
+    def test_scripts_smoke_sh_detected(self):
+        (self.root / "scripts").mkdir()
+        smoke = self.root / "scripts" / "smoke.sh"
+        smoke.write_text("#!/bin/sh\necho ok\n", encoding="utf-8")
+        cmd = gr.detect_gate_5_command(self.root)
+        self.assertEqual(cmd, ["sh", str(smoke)])
+
+    def test_tests_smoke_dir_with_pytest(self):
+        (self.root / "tests" / "smoke").mkdir(parents=True)
+        orig = self._with_which({"pytest": "/fake/pytest"})
+        try:
+            cmd = gr.detect_gate_5_command(self.root)
+        finally:
+            self._restore(orig)
+        self.assertEqual(cmd, ["pytest", "tests/smoke"])
+
+    def test_tests_smoke_dir_fallback_unittest(self):
+        (self.root / "tests" / "smoke").mkdir(parents=True)
+        orig = self._with_which({})
+        try:
+            cmd = gr.detect_gate_5_command(self.root)
+        finally:
+            self._restore(orig)
+        self.assertIsNotNone(cmd)
+        self.assertIn("unittest", cmd)
+        self.assertIn("tests/smoke", cmd)
+
+    def test_makefile_smoke_target(self):
+        (self.root / "Makefile").write_text("smoke:\n\t@echo smoking\n", encoding="utf-8")
+        orig = self._with_which({"make": "/fake/make"})
+        try:
+            cmd = gr.detect_gate_5_command(self.root)
+        finally:
+            self._restore(orig)
+        self.assertEqual(cmd, ["make", "smoke"])
+
+    def test_package_json_smoke_script(self):
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"smoke": "node smoke.js"}}), encoding="utf-8"
+        )
+        orig = self._with_which({"npm": "/fake/npm"})
+        try:
+            cmd = gr.detect_gate_5_command(self.root)
+        finally:
+            self._restore(orig)
+        self.assertEqual(cmd, ["npm", "run", "smoke"])
+
+    def test_no_detection(self):
+        self.assertIsNone(gr.detect_gate_5_command(self.root))
+
+    def test_smoke_sh_takes_priority_over_tests_smoke(self):
+        # scripts/smoke.sh 가 tests/smoke/ 보다 먼저 감지되어야 함
+        (self.root / "scripts").mkdir()
+        smoke = self.root / "scripts" / "smoke.sh"
+        smoke.write_text("#!/bin/sh\n", encoding="utf-8")
+        (self.root / "tests" / "smoke").mkdir(parents=True)
+        orig = self._with_which({"pytest": "/fake/pytest"})
+        try:
+            cmd = gr.detect_gate_5_command(self.root)
+        finally:
+            self._restore(orig)
+        self.assertEqual(cmd, ["sh", str(smoke)])
+
+
+class RunGate5Tests(ScratchProjectMixin, unittest.TestCase):
+    def test_pass_with_override(self):
+        res = gr.run_gate_5(self.root, override_command=["true"])
+        self.assertEqual(res.result, "pass")
+        self.assertEqual(res.gate, "gate_5")
+
+    def test_fail_with_override(self):
+        res = gr.run_gate_5(self.root, override_command=["false"])
+        self.assertEqual(res.result, "fail")
+
+    def test_skipped_when_no_detector(self):
+        res = gr.run_gate_5(self.root)
+        self.assertEqual(res.result, "skipped")
+        self.assertIn("no runtime smoke", res.reason)
+        self.assertIn("harness.yaml", res.reason)
+
+    def test_harness_yaml_override(self):
+        harness = self.root / ".harness"
+        harness.mkdir()
+        (harness / "harness.yaml").write_text(
+            'gate_commands:\n  gate_5: "true"\n', encoding="utf-8"
+        )
+        res = gr.run_gate_5(self.root, harness_dir=harness)
+        self.assertEqual(res.result, "pass", f"got {res.as_dict()}")
+
+    def test_detected_scripts_smoke_sh_runs(self):
+        (self.root / "scripts").mkdir()
+        smoke = self.root / "scripts" / "smoke.sh"
+        smoke.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        res = gr.run_gate_5(self.root)
+        self.assertEqual(res.result, "pass", f"expected pass, got {res.as_dict()}")
 
 
 class AsDictTests(unittest.TestCase):
