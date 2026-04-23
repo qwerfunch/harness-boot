@@ -36,7 +36,15 @@ mkdir -p .claude/agents .claude/skills
 
 ### 2. starter 템플릿 복사 (3개 파일, CLAUDE.md 는 §3)
 
-플러그인 레포의 `docs/templates/starter/` 에서 읽어와 **내용을 사용자 프로젝트** 로 씁니다. 플러그인 루트 경로는 이 슬래시 명령이 속한 플러그인 디렉터리 (Claude Code 가 런타임에 제공) — 환경변수 `$CLAUDE_PLUGIN_ROOT` 로 노출되는 것이 일반적이며, 없으면 `~/.claude/plugins/harness-boot` 를 기본값으로 시도.
+플러그인 레포의 `docs/templates/starter/` 에서 읽어와 **내용을 사용자 프로젝트** 로 씁니다.
+
+**플러그인 루트 경로 해석** (Claude Code 2.1.x 관찰):
+
+1. Claude Code 는 플러그인 루트의 `bin/` 을 세션 `$PATH` 에 주입. `Bash: echo $PATH | tr ':' '\n' | grep -E '/plugins/.*/bin$' | head -1` 로 조각을 잡아 `/bin` 을 제거하면 플러그인 루트.
+2. (1) 실패 시 `~/.claude/plugins/installed_plugins.json` 의 `plugins["harness@<marketplace>"][].installPath` 조회. 단, `directory` 타입 마켓플레이스는 심볼릭 링크를 cache 로 복사하지 않을 수 있으므로 installPath 가 실존 안 할 수 있음 — 이 경우 마켓플레이스 소스 디렉터리 (`source.path`) 를 직접 써야 함.
+3. `$CLAUDE_PLUGIN_ROOT` 환경변수는 2.1.x 에서 **설정되지 않음**. 과거 문서의 fallback 가정은 무효.
+
+위 세 가지로도 해석 실패 시 사용자에게 플러그인 설치 경로 입력 요청. 상세 분석은 v0.1.1 RFC (NEW-37) 로 승격.
 
 템플릿 매핑 (§2 에서 처리하는 3 파일):
 
