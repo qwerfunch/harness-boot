@@ -11,7 +11,9 @@
 
 - `spec.yaml` = `docs/samples/harness-boot-self/spec.yaml` 의 **복사본**. 원본은 후자.
 - 편집은 `docs/samples/harness-boot-self/spec.yaml` 에만. `scripts/self_check.sh` 의 `diff -q` 가 동기성을 강제.
-- `state.yaml` = v0.3.9 기준 seed. **릴리즈 태그 시점에만** status 전이 기록 (/plugin upgrade 노이즈 최소화).
+- `state.yaml` = v0.3.9 기준 seed.
+  - **Phase 1 (v0.3.10, 현재)**: observational · 릴리즈 태그 시점에만 갱신.
+  - **Phase 2 (v0.3.11+)**: 기여자가 `scripts/work.py` / `/harness:work` 실사용 시 feature 전이에 따라 갱신 · feature PR 단위로 커밋.
 - `events.log` · `harness.yaml` · `domain.md` · `architecture.yaml` = gitignored (derived · ephemeral).
 
 ## 검증

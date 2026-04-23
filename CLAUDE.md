@@ -108,7 +108,14 @@ v0.2 핵심 커밋 (Phase 0 · self-describe round trip) · v0.1.0 피벗 (`76da
 - **design/ 는 개인 작업 공간**. 절대 `git add` 하지 마세요. 공개할 가치가 있으면 `docs/` 로 승격.
 - **legacy/ 도 동일**. 트래킹된 기존 파일만 유지, 새 파일 추가 금지.
 - **플러그인은 자기 자신에 설치되지 않음**. 이 레포에 `/harness:init` 실행하면 모순.
-- **자체 도그푸드 (v0.3.10+)**: 레포 루트 `.harness/` 는 **Passive 관측 전용**. `spec.yaml` 은 `docs/samples/harness-boot-self/spec.yaml` 의 **복사본** (symlink 아님), `state.yaml` 은 릴리즈 태그 시점에만 갱신. `events.log` · `harness.yaml` · `domain.md` · `architecture.yaml` 은 gitignored. `bash scripts/self_check.sh` 가 5 단계 검증 (diff · validate · sync · check · commands 규약) → unittest 에 포함 (`tests/unit/test_self_dogfood.py`).
+- **자체 도그푸드 정책** (v0.3.10+ · 2 단계 설계):
+  - **Phase 1 (현재, v0.3.10~)**: 레포 루트 `.harness/` 는 **observational** — `scripts/self_check.sh` 5 단계 검증 (diff · validate · sync · check · commands 규약) 과 `test_self_dogfood` 만 수행. `sync_completed` 외 feature lifecycle 이벤트는 발생하지 않는 게 정상. `state.yaml` 은 릴리즈 태그 시점에만 갱신 (노이즈 최소화).
+  - **Phase 2 (v0.3.11+ 첫 실 피처 진입부터)**: `.harness/` 가 **active workspace** 로 전환 — `scripts/work.py` / `/harness:work` 를 기여자가 자기 feature 사이클에 **실제로** 사용. 피처 activate → gate 실행 → evidence 기록 → complete 전이를 `.harness/state.yaml` 에 기록, `events.log` (gitignored) 에 실 타임라인 누적. `/harness:metrics` 가 비로소 진짜 lead time · gate pass rate 출력. 이 시점부터 state.yaml 커밋은 feature PR 단위로 같이 나감 (릴리즈 시점 제한 해제).
+  - **공통 규칙** (Phase 무관):
+    - `spec.yaml` 은 `docs/samples/harness-boot-self/spec.yaml` 의 **복사본** (symlink 아님). `scripts/self_check.sh` 가 `diff -q` 로 동기성 강제.
+    - `events.log` · `harness.yaml` · `domain.md` · `architecture.yaml` · `chapters/` 는 gitignored.
+    - `/harness:init` 은 이 repo 에서 **절대 실행 금지** (플러그인 소스 자체 덮어씀).
+    - 사용자 충돌 없음: 사용자가 `/harness:*` 실행 시 `$(pwd)/.harness` 만 참조 — 우리 내부 `.harness/` 는 invisible.
 - **슬래시 명령 사용 경로** (2026-04-23 검증):
   - ✅ 작동: `/plugin marketplace add qwerfunch/harness-boot` + `/plugin install harness@harness-boot` → `/harness:*` 8 개 명령 전부 사용 가능. 업그레이드는 `/plugin update harness@harness-boot`.
   - ⚠️ 미확인: `CLAUDE_PLUGIN_ROOT` env 또는 `settings.json plugins[]` 로 **dev checkout 라이브 반영** 시도 → 설치본이 우선하여 작동 안 함 관찰됨.
