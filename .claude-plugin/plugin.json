@@ -13,10 +13,5 @@
     "spec-driven",
     "agent-workflow",
     "walking-skeleton"
-  ],
-  "commands": "./commands",
-  "skills": "./skills",
-  "agents": "./agents",
-  "hooks": "./hooks",
-  "$comment": "디렉터리는 Claude Code 플러그인 컨벤션을 따름. 각 디렉터리의 *.md / *.mjs 가 자동 로드됨. v0.1.0 범위: commands/{init} 최소판 + skills/spec-conversion v0.5 + skeleton 템플릿. v0.2+ 에서 sync/work/status/check 확장 예정."
+  ]
 }
