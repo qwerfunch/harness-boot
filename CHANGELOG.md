@@ -8,9 +8,23 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 ## [Unreleased]
 
 - Marketplace PR (anthropic/claude-plugins-official) — 안정화 후 제출 (v0.4 후보)
-- Gate 1~5 자동 실행 (현재 gate_0 만) — v0.3.3 후보
-- F-006 확장: Code / Doc / Anchor drift (현재 5/8) — v0.3.3+ 후보
-- `/harness:metrics` (F-008) — v0.3.3+
+- Gate 2~5 자동 실행 (gate_2 lint · gate_3 coverage · gate_5 runtime smoke) — v0.3.4+
+- F-006 확장: Code / Doc / Anchor drift (현재 5/8) — v0.3.4+
+- `/harness:metrics` (F-008) — v0.3.4+
+- 템플릿 보강: NEW-51/52/53
+
+## [0.3.3] — 2026-04-23
+
+### Added
+- **Gate 1 (type check) 자동 실행** — `/harness:work --run-gate gate_1` 가 Python · TypeScript · Rust · Go 에 대해 타입 체커 자동 감지 + 실행. 감지 우선순위: pyproject+mypy → pyproject+pyright → tsconfig+tsc → Cargo+cargo check → go.mod+go vet. pass 시 evidence 자동 기록 + `gate_auto_run` 이벤트. 10 신규 테스트 (detect · run · dispatcher).
+
+### Changed
+- **`gate_runner.py` 내부 리팩터** — `_execute()` 공통 subprocess 헬퍼 + `_resolve_command()` 우선순위 해석 헬퍼 추출. 향후 Gate 2~5 추가 시 함수당 ~10 줄로 축소 가능.
+- `commands/work.md` — gate_0/gate_1 감지 우선순위 명시.
+
+### Testing
+- 267 → **277 tests** (+ 10 Gate 1 관련).
+- Dogfood: harness-boot-selfhost 에서 `/harness:work F-101 --run-gate gate_1` 성공.
 
 ## [0.3.2] — 2026-04-23
 
