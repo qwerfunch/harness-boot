@@ -101,11 +101,22 @@ features:
   started_at: null
   completed_at: '2026-04-23T00:00:00Z'
 - id: F-012
-  status: planned
-  gates: {}
-  evidence: []
-  started_at: null
-  completed_at: null
+  status: done
+  gates:
+    gate_5:
+      last_result: pass
+      ts: '2026-04-23T13:36:06Z'
+      note: 권한 매트릭스 문서화 + Permission test 3 pass · Claude Code sub-agents.md 가 tools
+        enforce 명시
+  evidence:
+  - ts: '2026-04-23T13:36:06Z'
+    kind: test
+    summary: 3 agents (orchestrator, implementer, reviewer) 각각 frontmatter.tools allow-list
+      선언 · reviewer {Read,Grep,Glob,Bash} 엄격 read-only · implementer 는 Agent tool
+      금지 · test_agents PermissionMatrixTests 3 건 PASS 로 AC-1 충족. AC-2 (Claude Code
+      런타임 enforce) 는 claude-code-guide 문서로 확증.
+  started_at: '2026-04-23T13:36:06Z'
+  completed_at: '2026-04-23T13:36:06Z'
 - id: F-013
   status: done
   gates:
@@ -274,8 +285,29 @@ features:
       --quiet'
   started_at: '2026-04-23T13:12:00Z'
   completed_at: '2026-04-23T13:14:19Z'
+- id: F-023
+  status: done
+  gates:
+    gate_5:
+      last_result: pass
+      ts: '2026-04-23T13:36:06Z'
+      note: agents/ 디렉터리 + README + 3 agent .md 전부 tracked · 10 tests pass
+  evidence:
+  - ts: '2026-04-23T13:36:06Z'
+    kind: contract
+    summary: agents/ at plugin root 생성 · README 권한 매트릭스 명시 · 3 core agents (orchestrator
+      · implementer · reviewer) 각각 frontmatter (name, description, tools) · 10 신규
+      tests (dir/frontmatter/permission/preamble)
+  started_at: '2026-04-23T13:33:28Z'
+  completed_at: '2026-04-23T13:36:06Z'
+- id: F-024
+  status: planned
+  gates: {}
+  evidence: []
+  started_at: null
+  completed_at: null
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-017
+  last_command: /harness:work F-012
   last_gate_passed: gate_5
   active_feature_id: null

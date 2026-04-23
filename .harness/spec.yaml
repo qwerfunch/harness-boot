@@ -650,6 +650,39 @@ features:
       - "harness-boot 자체에서 override 없이 gate_0 auto-run PASS"
       - "기존 테스트 케이스 (tests/ 디렉터리 + npm + Makefile) 전부 회귀 없음"
 
+  - id: "F-023"
+    name: "agents/ 디렉터리 인프라 (v0.4)"
+    type: "feature"
+    description: "Claude Code 2.1.x 플러그인 규약의 `agents/` 를 plugin root 에 배치. 각 에이전트는 YAML frontmatter (name · description · tools allow-list · model?) + markdown system prompt. F-012 의 전제 인프라."
+    modules:
+      - "agents_directory"
+      - "agent_frontmatter_schema"
+    test_strategy: "contract"
+    tdd_focus:
+      - "agents/ 에 적어도 1 에이전트 .md 존재 · frontmatter 필수 필드 (name, description) 포함"
+      - "agents/README.md 에 권한 매트릭스 명시"
+    acceptance_criteria:
+      - "`/plugin update` 후 Claude Code 가 `@harness:<agent>` 노출 (real-session smoke)"
+      - "frontmatter.tools 선언 없는 에이전트는 기본 허용 전체 — 보수적 설정시 명시 필요"
+
+  - id: "F-024"
+    name: "hooks/hooks.json 인프라 (v0.4, 최소 ship 정책)"
+    type: "feature"
+    description: "Claude Code 2.1.x 플러그인 규약의 `hooks/hooks.json` 을 plugin root 에 배치. 플러그인 훅은 enable 시 모든 사용자 workspace 에서 fire 하므로 **최소한만 ship** (SessionStart banner 만) · 나머지는 사용자 template 으로."
+    modules:
+      - "hooks_directory"
+      - "hooks_json_schema"
+      - "hooks_fail_open_default"
+    test_strategy: "contract"
+    tdd_focus:
+      - "hooks/hooks.json 구조 유효 (JSON parse OK · 스키마 준수)"
+      - "모든 훅 command 는 exit 0 또는 non-2 exit (fail-open 보장)"
+      - "docs/templates/hooks/ 에 opt-in 예시 3~4 종"
+    acceptance_criteria:
+      - "플러그인 install 후 SessionStart hook 이 /harness:status 유도 배너 출력"
+      - "어떤 플러그인 hook 도 exit 2 반환 불가 (fail-open 강제)"
+      - "사용자가 자기 프로젝트 별 훅을 `docs/templates/hooks/` 에서 `.claude/hooks.json` 으로 복사 가능"
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
