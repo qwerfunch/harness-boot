@@ -229,6 +229,69 @@ class ValidationIntegrationTests(SyncScratchMixin, unittest.TestCase):
         self.assertFalse((self.harness / "events.log").is_file())
 
 
+class PluginVersionResolutionTests(SyncScratchMixin, unittest.TestCase):
+    """NEW-50 회귀 — scratch 워크스페이스에서도 plugin_version 해석.
+
+    `_script_repo_version()` 이 실제 repo 의 0.2.x 를 먼저 찾으므로 모든 테스트에서
+    그것을 mock 으로 비활성화. cwd 도 scratch 로 바꿔서 parent search 가
+    예기치 않게 실제 repo 를 타지 않게 격리.
+    """
+
+    def setUp(self) -> None:
+        import os
+        from unittest.mock import patch
+        super().setUp()
+        self._orig_cwd = os.getcwd()
+        os.chdir(self.tmp)
+        self._script_version_patcher = patch.object(sync, "_script_repo_version", return_value=None)
+        self._script_version_patcher.start()
+
+    def tearDown(self) -> None:
+        import os
+        self._script_version_patcher.stop()
+        os.chdir(self._orig_cwd)
+        super().tearDown()
+
+    def test_parent_search_finds_plugin_json(self):
+        """harness_dir 의 parent 에 plugin.json 있으면 그 값을 읽음."""
+        (self.tmp / ".claude-plugin").mkdir()
+        (self.tmp / ".claude-plugin" / "plugin.json").write_text(
+            '{"name": "harness", "version": "9.9.9-test"}', encoding="utf-8"
+        )
+        version = sync._plugin_version(self.harness)
+        self.assertEqual(version, "9.9.9-test")
+
+    def test_falls_back_to_plugin_root_resolve(self):
+        """parent 에 plugin.json 이 없어도 plugin_root.resolve() 로 찾음 (NEW-50)."""
+        import plugin_root as pr
+        from unittest.mock import patch
+
+        self.assertFalse((self.tmp / ".claude-plugin").exists())
+
+        fake_plugin = self.tmp / "fake-plugin"
+        fake_plugin.mkdir()
+        (fake_plugin / ".claude-plugin").mkdir()
+        (fake_plugin / ".claude-plugin" / "plugin.json").write_text(
+            '{"name": "harness", "version": "7.7.7-fb"}', encoding="utf-8"
+        )
+        with patch.object(
+            pr,
+            "resolve",
+            return_value=pr.Resolution(root=fake_plugin, strategy="test"),
+        ):
+            version = sync._plugin_version(self.harness)
+            self.assertEqual(version, "7.7.7-fb")
+
+    def test_returns_unknown_when_all_fail(self):
+        """parent search + plugin_root.resolve() 둘 다 실패 → 'unknown'."""
+        import plugin_root as pr
+        from unittest.mock import patch
+
+        with patch.object(pr, "resolve", side_effect=pr.PluginRootError("test")):
+            version = sync._plugin_version(self.harness)
+            self.assertEqual(version, "unknown")
+
+
 class EditWinsHelperTests(unittest.TestCase):
     """edit_wins() 단일 함수 행동."""
 

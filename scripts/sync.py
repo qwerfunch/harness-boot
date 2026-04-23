@@ -46,6 +46,7 @@ if str(_THIS) not in sys.path:
 
 import canonical_hash as ch  # noqa: E402
 import include_expander as ie  # noqa: E402
+import plugin_root as pr  # noqa: E402
 import render_architecture as ra  # noqa: E402
 import render_domain as rd  # noqa: E402
 import validate_spec as vs  # noqa: E402
@@ -103,9 +104,38 @@ def _append_event(events_log: Path, event: dict) -> None:
         f.write(json.dumps(event, ensure_ascii=False) + "\n")
 
 
+def _script_repo_version() -> str | None:
+    """Strategy 0 — __file__ 기준. 이 sync.py 가 속한 repo 의 plugin.json 조회.
+
+    실제 사용자가 CC 플러그인으로 설치한 버전이 실행할 때도 `__file__` 은
+    설치된 cache 디렉터리를 가리키므로 그 버전이 나옴. Dev 에서 repo 직접 실행 시엔
+    dev 버전이 나옴. 가장 신뢰 높은 fallback 우선순위.
+    """
+    script_repo = Path(__file__).resolve().parent.parent
+    manifest = script_repo / ".claude-plugin" / "plugin.json"
+    if manifest.is_file():
+        try:
+            with manifest.open("r", encoding="utf-8") as f:
+                return json.load(f).get("version")
+        except (OSError, json.JSONDecodeError):
+            pass
+    return None
+
+
 def _plugin_version(harness_dir: Path) -> str:
-    """harness.yaml 에 기록할 plugin_version. 실패 시 'unknown'."""
-    # cwd 기준 repo root 를 추정해서 .claude-plugin/plugin.json 조회
+    """harness.yaml 에 기록할 plugin_version. 실패 시 'unknown'.
+
+    해석 전략 (NEW-50 — 2026-04-23 dogfood 관찰 반영):
+      0. `_script_repo_version()` — __file__ 기준 가장 신뢰 높음.
+      1. cwd · harness_dir.parent 방향으로 .claude-plugin/plugin.json 탐색.
+      2. `plugin_root.resolve()` 4-전략 체인 (NEW-37/44 재사용).
+      3. 모두 실패 시 'unknown'.
+    """
+    v = _script_repo_version()
+    if v:
+        return v
+
+    # 전략 1: parent search
     for parent in [harness_dir.parent, Path.cwd(), *Path.cwd().parents]:
         manifest = parent / ".claude-plugin" / "plugin.json"
         if manifest.is_file():
@@ -114,6 +144,17 @@ def _plugin_version(harness_dir: Path) -> str:
                     return json.load(f).get("version", "unknown")
             except (OSError, json.JSONDecodeError):
                 continue
+
+    # 전략 2: plugin_root fallback
+    try:
+        root = pr.resolve().root
+        manifest = root / ".claude-plugin" / "plugin.json"
+        if manifest.is_file():
+            with manifest.open("r", encoding="utf-8") as f:
+                return json.load(f).get("version", "unknown")
+    except (pr.PluginRootError, OSError, json.JSONDecodeError):
+        pass
+
     return "unknown"
 
 

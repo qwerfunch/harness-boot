@@ -9,7 +9,21 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 - Marketplace PR (anthropic/claude-plugins-official) — 안정화 후 제출
 - v0.3: `/harness:work` (F-004) · `/harness:status` (F-005) · `/harness:check` (F-006)
-- v0.1.2 미세 개선: init.md §0 `ls -d` 사용으로 신호 출력 정리
+- v0.2.1+ 템플릿 보강: NEW-51 (entry_points health_check) · NEW-52 (domain.md owning_feature backlink) · NEW-53 (feature_graph 정렬 옵션)
+
+## [0.2.1] — 2026-04-23
+
+### Fixed
+- **NEW-50**: `_plugin_version` 이 scratch 워크스페이스에서 `"unknown"` 으로 기록되던 문제 해결 — `_script_repo_version()` (strategy 0, `__file__` 기반) + `plugin_root.resolve()` (strategy 2, 4-전략 체인) fallback 추가. events.log 의 `plugin_version` 이 실제 실행 중인 sync.py 의 repo 버전을 정확히 반영.
+
+### Added (test)
+- 3 신규 단위 테스트 (`PluginVersionResolutionTests`) — strategy 0 bypass + parent search hit + plugin_root.resolve fallback + 전체 실패 시 'unknown'.
+
+### Discovered (Phase α dogfood, 2026-04-23)
+- `docs/samples/harness-boot-self/spec.yaml` 을 scratch 워크스페이스에서 `/harness:sync` 돌려 self-describe round trip 검증. `plugin_root_resolver` 모듈이 architecture.yaml 에 정상 노출 (v0.1.1 NEW-37/44 회귀 보호 확인). 발견 갭 NEW-50~55 는 local 노트 (`design/phase-v0.3-dogfood-findings.md`).
+
+### Testing
+- 157 unit tests (0.2.0 의 154 + 3 신규).
 
 ## [0.2.0] — 2026-04-23
 
