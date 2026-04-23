@@ -1,6 +1,8 @@
 # harness-boot
 
-> **자연어로 쓴 기획 의도를 AI 가 따라갈 수 있는 "중간언어" 로 바꾸고, 그 중간언어를 SSoT 로 삼아 개발 결과까지 이끌어내는 Claude Code 플러그인.**
+> **자연어로 쓴 기획 의도를 AI 가 따라갈 수 있는 "중간언어" 로 바꾸고, 그 중간언어를 SSoT 로 삼아 개발 결과까지 이끌어내는 Harness-Boot.**
+>
+> Claude Code 플러그인으로 제공.
 
 [![version](https://img.shields.io/badge/plugin-v0.3.1-blue)](.claude-plugin/plugin.json)
 [![spec](https://img.shields.io/badge/spec-v2.3.8-green)](docs/schemas/spec.schema.json)
