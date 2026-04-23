@@ -58,11 +58,12 @@ python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --run-gate gate_0 --project-root ..
 
 - **gate_0 (tests)**: pyproject+pytest → tests/+unittest → npm test → make test
 - **gate_1 (type check)**: pyproject+mypy → pyproject+pyright → tsconfig+tsc → Cargo+cargo check → go.mod+go vet
-- **gate_2 (lint, v0.3.4+)**: pyproject+ruff → pyproject+flake8 → package.json+eslint → .eslintrc+npx → Cargo+cargo clippy → go.mod+golangci-lint
+- **gate_2 (lint)**: pyproject+ruff → pyproject+flake8 → package.json+eslint → .eslintrc+npx → Cargo+cargo clippy → go.mod+golangci-lint
+- **gate_3 (coverage, v0.3.5+)**: pyproject+pytest-cov → coverage+pytest → package.json.scripts.coverage → npx nyc → Cargo+tarpaulin → Cargo+llvm-cov → go test -cover. threshold 는 도구 자체 설정 (`[tool.coverage]` 등) 을 따름.
 
 결과 자동 기록 + pass 시 evidence 자동 추가. Override 우선순위: `--override-command` → `harness.yaml.gate_commands.<gate>` → auto-detect.
 
-**현재 범위**: gate_0 + gate_1 + gate_2 자동화. gate_3~5 는 `skipped` 기록 (v0.3.5+ 순차 확장).
+**현재 범위**: gate_0~3 자동화. gate_4~5 는 `skipped` 기록 (v0.3.6+).
 
 ### 증거 추가
 

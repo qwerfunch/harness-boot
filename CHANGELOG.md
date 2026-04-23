@@ -8,10 +8,22 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 ## [Unreleased]
 
 - Marketplace PR (anthropic/claude-plugins-official) — 안정화 후 제출 (v0.4 후보)
-- Gate 3~5 자동 실행 (gate_3 coverage · gate_4 commit · gate_5 runtime smoke) — v0.3.5+
-- F-006 확장: Code / Doc / Anchor drift (현재 5/8) — v0.3.5+
-- `/harness:metrics` (F-008) — v0.3.5+
+- Gate 4~5 자동 실행 (gate_4 commit · gate_5 runtime smoke) — v0.3.6+
+- F-006 확장: Code / Doc / Anchor drift (현재 5/8) — v0.3.6+
+- `/harness:metrics` (F-008) — v0.3.6+
 - 템플릿 보강: NEW-51/52/53
+
+## [0.3.5] — 2026-04-23
+
+### Added
+- **Gate 3 (coverage) 자동 실행** — `/harness:work --run-gate gate_3` 가 Python (pytest-cov / coverage+pytest), TypeScript/JavaScript (package.json scripts.coverage / npx nyc), Rust (cargo-tarpaulin / cargo-llvm-cov), Go (go test -cover) 에 대해 커버리지 도구 자동 감지 + 실행. threshold 는 도구 자체 설정 (`[tool.coverage]` · package.json · etc.) 을 따름 — harness 는 tool 선택 · exit code 로 pass/fail. 기본 timeout 600s (테스트 + 커버리지 수집은 더 오래 걸림). 12 신규 테스트.
+
+### Changed
+- `commands/work.md` — gate_3 감지 우선순위 + threshold 정책 명시.
+
+### Testing
+- 288 → **300 tests** (+ 12 Gate 3 관련).
+- Dogfood: harness-boot-selfhost 에서 F-103 --run-gate gate_3 PASS.
 
 ## [0.3.4] — 2026-04-23
 

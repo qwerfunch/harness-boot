@@ -294,6 +294,59 @@ def detect_gate_2_command(project_root: Path) -> list[str] | None:
     return None
 
 
+def detect_gate_3_command(project_root: Path) -> list[str] | None:
+    """Gate 3 커버리지 자동 감지.
+
+    우선순위:
+      1. Python: pyproject.toml + pytest → pytest --cov (pytest-cov 있으면 작동)
+      2. Python: coverage + pytest 각각 → coverage run -m pytest 후 coverage report
+      3. JS/TS: package.json.scripts.coverage → npm run coverage
+      4. JS/TS: package.json + nyc bin → npx nyc npm test
+      5. Rust: Cargo.toml + cargo-tarpaulin → cargo tarpaulin
+      6. Rust: Cargo.toml + cargo-llvm-cov → cargo llvm-cov
+      7. Go: go.mod + go → go test -cover ./...
+      8. 감지 실패 → None
+
+    **threshold**: 도구 자체 설정 (pyproject `[tool.coverage]` · package.json
+    scripts · etc.) 을 따름. harness 는 tool 만 선택 · exit code 로 pass/fail 판정.
+    """
+    pyproject = project_root / "pyproject.toml"
+    if pyproject.is_file():
+        if shutil.which("pytest"):
+            try:
+                text = pyproject.read_text(encoding="utf-8")
+                if "pytest-cov" in text or "[tool.coverage" in text:
+                    return ["pytest", "--cov"]
+            except OSError:
+                pass
+        if shutil.which("coverage") and shutil.which("pytest"):
+            return ["sh", "-c", "coverage run -m pytest && coverage report"]
+
+    pkg = project_root / "package.json"
+    if pkg.is_file():
+        try:
+            data = json.loads(pkg.read_text(encoding="utf-8"))
+            scripts = data.get("scripts", {}) if isinstance(data.get("scripts"), dict) else {}
+            if "coverage" in scripts and shutil.which("npm"):
+                return ["npm", "run", "coverage"]
+        except (OSError, json.JSONDecodeError):
+            pass
+        if shutil.which("npx"):
+            return ["npx", "nyc", "npm", "test"]
+
+    if (project_root / "Cargo.toml").is_file():
+        if shutil.which("cargo-tarpaulin"):
+            return ["cargo", "tarpaulin"]
+        if shutil.which("cargo-llvm-cov"):
+            return ["cargo", "llvm-cov"]
+
+    if (project_root / "go.mod").is_file():
+        if shutil.which("go"):
+            return ["go", "test", "-cover", "./..."]
+
+    return None
+
+
 def run_gate_0(
     project_root: Path,
     *,
@@ -341,10 +394,7 @@ def run_gate_2(
     harness_dir: Path | None = None,
     timeout_sec: int = 300,
 ) -> GateRunResult:
-    """Gate 2 (lint) 실행. override > harness.yaml > auto-detect.
-
-    v0.3.4 에서 신규. Python (ruff/flake8) · TS/JS (eslint) · Rust (clippy) · Go (golangci-lint).
-    """
+    """Gate 2 (lint) 실행. override > harness.yaml > auto-detect."""
     cmd = _resolve_command(
         "gate_2", project_root, override_command, harness_dir, detect_gate_2_command
     )
@@ -355,6 +405,29 @@ def run_gate_2(
             reason="no linter detected (pyproject/ruff · package.json/eslint · Cargo/clippy · go.mod/golangci-lint 모두 부재)",
         )
     return _execute("gate_2", cmd, project_root, timeout_sec)
+
+
+def run_gate_3(
+    project_root: Path,
+    *,
+    override_command: list[str] | None = None,
+    harness_dir: Path | None = None,
+    timeout_sec: int = 600,
+) -> GateRunResult:
+    """Gate 3 (coverage) 실행. override > harness.yaml > auto-detect.
+
+    v0.3.5 에서 신규. 기본 timeout 600s (커버리지 실행이 테스트 실행보다 길 수 있음).
+    """
+    cmd = _resolve_command(
+        "gate_3", project_root, override_command, harness_dir, detect_gate_3_command
+    )
+    if cmd is None:
+        return GateRunResult(
+            gate="gate_3",
+            result="skipped",
+            reason="no coverage tool detected (pytest-cov · nyc · scripts.coverage · tarpaulin · go -cover 모두 부재)",
+        )
+    return _execute("gate_3", cmd, project_root, timeout_sec)
 
 def run_gate(
     gate: str,
@@ -386,10 +459,17 @@ def run_gate(
             harness_dir=harness_dir,
             timeout_sec=timeout_sec,
         )
+    if gate == "gate_3":
+        return run_gate_3(
+            project_root,
+            override_command=override_command,
+            harness_dir=harness_dir,
+            timeout_sec=timeout_sec,
+        )
     return GateRunResult(
         gate=gate,
         result="skipped",
-        reason=f"{gate} auto-run not yet supported (v0.3.4 shipped gate_0 + gate_1 + gate_2)",
+        reason=f"{gate} auto-run not yet supported (v0.3.5 shipped gate_0~gate_3)",
     )
 
 

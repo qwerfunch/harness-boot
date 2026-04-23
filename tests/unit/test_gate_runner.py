@@ -155,8 +155,12 @@ class DispatchTests(ScratchProjectMixin, unittest.TestCase):
         res = gr.run_gate("gate_2", self.root, override_command=["true"])
         self.assertEqual(res.result, "pass")
 
+    def test_dispatch_gate_3(self):
+        res = gr.run_gate("gate_3", self.root, override_command=["true"])
+        self.assertEqual(res.result, "pass")
+
     def test_dispatch_unsupported_gate_skipped(self):
-        res = gr.run_gate("gate_3", self.root)
+        res = gr.run_gate("gate_4", self.root)
         self.assertEqual(res.result, "skipped")
         self.assertIn("not yet supported", res.reason)
 
@@ -321,6 +325,106 @@ class RunGate2Tests(ScratchProjectMixin, unittest.TestCase):
         res = gr.run_gate_2(self.root)
         self.assertEqual(res.result, "skipped")
         self.assertIn("no linter", res.reason)
+
+
+class DetectGate3Tests(ScratchProjectMixin, unittest.TestCase):
+    def _with_which(self, which_map):
+        import shutil
+        original = shutil.which
+        shutil.which = lambda cmd: which_map.get(cmd)
+        return original
+
+    def _restore(self, original):
+        import shutil
+        shutil.which = original
+
+    def test_pyproject_with_pytest_cov(self):
+        (self.root / "pyproject.toml").write_text(
+            "[tool.pytest.ini_options]\naddopts = \"--cov\"\n[project.optional-dependencies]\ntest = [\"pytest-cov\"]\n",
+            encoding="utf-8",
+        )
+        orig = self._with_which({"pytest": "/fake/pytest"})
+        try:
+            cmd = gr.detect_gate_3_command(self.root)
+        finally:
+            self._restore(orig)
+        self.assertEqual(cmd, ["pytest", "--cov"])
+
+    def test_pyproject_fallback_to_coverage(self):
+        # pytest-cov 없으면 coverage + pytest 로 fallback
+        (self.root / "pyproject.toml").write_text("[project]\nname = 'x'\n", encoding="utf-8")
+        orig = self._with_which({"pytest": "/fake/pytest", "coverage": "/fake/coverage"})
+        try:
+            cmd = gr.detect_gate_3_command(self.root)
+        finally:
+            self._restore(orig)
+        self.assertEqual(cmd, ["sh", "-c", "coverage run -m pytest && coverage report"])
+
+    def test_package_json_coverage_script(self):
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"coverage": "jest --coverage"}}), encoding="utf-8"
+        )
+        orig = self._with_which({"npm": "/fake/npm"})
+        try:
+            cmd = gr.detect_gate_3_command(self.root)
+        finally:
+            self._restore(orig)
+        self.assertEqual(cmd, ["npm", "run", "coverage"])
+
+    def test_package_json_nyc_fallback(self):
+        (self.root / "package.json").write_text("{}", encoding="utf-8")
+        orig = self._with_which({"npx": "/fake/npx"})
+        try:
+            cmd = gr.detect_gate_3_command(self.root)
+        finally:
+            self._restore(orig)
+        self.assertEqual(cmd, ["npx", "nyc", "npm", "test"])
+
+    def test_rust_tarpaulin(self):
+        (self.root / "Cargo.toml").write_text("[package]\nname = 'x'\n", encoding="utf-8")
+        orig = self._with_which({"cargo-tarpaulin": "/fake/cargo-tarpaulin"})
+        try:
+            cmd = gr.detect_gate_3_command(self.root)
+        finally:
+            self._restore(orig)
+        self.assertEqual(cmd, ["cargo", "tarpaulin"])
+
+    def test_rust_llvm_cov_fallback(self):
+        (self.root / "Cargo.toml").write_text("[package]\nname = 'x'\n", encoding="utf-8")
+        orig = self._with_which({"cargo-llvm-cov": "/fake/cargo-llvm-cov"})
+        try:
+            cmd = gr.detect_gate_3_command(self.root)
+        finally:
+            self._restore(orig)
+        self.assertEqual(cmd, ["cargo", "llvm-cov"])
+
+    def test_go_cover(self):
+        (self.root / "go.mod").write_text("module x\n", encoding="utf-8")
+        orig = self._with_which({"go": "/fake/go"})
+        try:
+            cmd = gr.detect_gate_3_command(self.root)
+        finally:
+            self._restore(orig)
+        self.assertEqual(cmd, ["go", "test", "-cover", "./..."])
+
+    def test_no_coverage_tool(self):
+        self.assertIsNone(gr.detect_gate_3_command(self.root))
+
+
+class RunGate3Tests(ScratchProjectMixin, unittest.TestCase):
+    def test_pass_with_override(self):
+        res = gr.run_gate_3(self.root, override_command=["true"])
+        self.assertEqual(res.result, "pass")
+        self.assertEqual(res.gate, "gate_3")
+
+    def test_fail_with_override(self):
+        res = gr.run_gate_3(self.root, override_command=["false"])
+        self.assertEqual(res.result, "fail")
+
+    def test_skipped_when_no_detector(self):
+        res = gr.run_gate_3(self.root)
+        self.assertEqual(res.result, "skipped")
+        self.assertIn("no coverage tool", res.reason)
 
 
 class AsDictTests(unittest.TestCase):
