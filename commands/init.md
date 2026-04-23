@@ -41,13 +41,39 @@ mkdir -p .claude/agents .claude/skills
 
 플러그인 레포의 `docs/templates/starter/` 에서 읽어와 **내용을 사용자 프로젝트** 로 씁니다.
 
-**플러그인 루트 경로 해석** (Claude Code 2.1.x 관찰):
+**플러그인 루트 경로 해석** (Claude Code 2.1.x 관찰 — NEW-37 · NEW-44 기반):
 
-1. Claude Code 는 플러그인 루트의 `bin/` 을 세션 `$PATH` 에 주입. `Bash: echo $PATH | tr ':' '\n' | grep -E '/plugins/.*/bin$' | head -1` 로 조각을 잡아 `/bin` 을 제거하면 플러그인 루트.
-2. (1) 실패 시 `~/.claude/plugins/installed_plugins.json` 의 `plugins["harness@<marketplace>"][].installPath` 조회. 단, `directory` 타입 마켓플레이스는 심볼릭 링크를 cache 로 복사하지 않을 수 있으므로 installPath 가 실존 안 할 수 있음 — 이 경우 마켓플레이스 소스 디렉터리 (`source.path`) 를 직접 써야 함.
-3. `$CLAUDE_PLUGIN_ROOT` 환경변수는 2.1.x 에서 **설정되지 않음**. 과거 문서의 fallback 가정은 무효.
+Claude 는 다음 순서로 시도, **첫 성공값** 을 사용:
 
-위 세 가지로도 해석 실패 시 사용자에게 플러그인 설치 경로 입력 요청. 상세 분석은 v0.1.1 RFC (NEW-37) 로 승격.
+**전략 A — `$PATH` 역산** (가장 신뢰 높음):
+```bash
+echo "$PATH" | tr ':' '\n' | grep -E '/plugins/.*/bin$' | while IFS= read -r bin_dir; do
+  root="${bin_dir%/bin}"
+  manifest="$root/.claude-plugin/plugin.json"
+  [ -r "$manifest" ] || continue
+  name=$(jq -r '.name // empty' "$manifest" 2>/dev/null)
+  if [ "$name" = "harness" ]; then
+    printf '%s\n' "$root"; exit 0
+  fi
+done
+```
+
+**전략 B — 레지스트리 `installPath`**:
+```bash
+jq -r '.plugins | to_entries[] | select(.key | startswith("harness@")) | .value[0].installPath // empty' \
+  ~/.claude/plugins/installed_plugins.json
+```
+→ 결과 경로가 실존할 때만 사용 (`[ -d "$path" ]`).
+
+**전략 C — 마켓플레이스 `source.path` fallback** (NEW-44, directory-type 전용):
+- `~/.claude/settings.json` 의 `extraKnownMarketplaces[<marketplace>].source.path` 획득.
+- 해당 경로의 `.claude-plugin/marketplace.json` 을 읽어 `plugins[] | select(.name == "harness") | .source` 의 상대 경로를 marketplace 루트에 결합.
+- `~` 는 `$HOME` 으로 확장. symlink 는 `realpath` 로 해결.
+
+**전략 D — 사용자 프롬프트** (최후 fallback):
+"플러그인 루트 경로를 직접 입력하세요 (예: `~/Developer/harness-boot`):"
+
+**환경변수 주의**: `$CLAUDE_PLUGIN_ROOT` 는 CC 2.1.x 에서 **설정되지 않음** (첫 실행 스모크 2026-04-23 에서 확정). 이 변수에 의존하지 말 것.
 
 템플릿 매핑 (§2 에서 처리하는 3 파일):
 
