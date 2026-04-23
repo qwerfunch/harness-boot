@@ -159,8 +159,12 @@ class DispatchTests(ScratchProjectMixin, unittest.TestCase):
         res = gr.run_gate("gate_3", self.root, override_command=["true"])
         self.assertEqual(res.result, "pass")
 
+    def test_dispatch_gate_4(self):
+        res = gr.run_gate("gate_4", self.root, override_command=["true"])
+        self.assertEqual(res.result, "pass")
+
     def test_dispatch_unsupported_gate_skipped(self):
-        res = gr.run_gate("gate_4", self.root)
+        res = gr.run_gate("gate_5", self.root)
         self.assertEqual(res.result, "skipped")
         self.assertIn("not yet supported", res.reason)
 
@@ -425,6 +429,77 @@ class RunGate3Tests(ScratchProjectMixin, unittest.TestCase):
         res = gr.run_gate_3(self.root)
         self.assertEqual(res.result, "skipped")
         self.assertIn("no coverage tool", res.reason)
+
+
+class DetectGate4Tests(ScratchProjectMixin, unittest.TestCase):
+    def test_no_git_dir(self):
+        self.assertIsNone(gr.detect_gate_4_command(self.root))
+
+    def test_git_dir_exists_with_git_bin(self):
+        (self.root / ".git").mkdir()
+        import shutil
+        original = shutil.which
+        shutil.which = lambda cmd: "/fake/git" if cmd == "git" else None
+        try:
+            cmd = gr.detect_gate_4_command(self.root)
+        finally:
+            shutil.which = original
+        self.assertEqual(
+            cmd,
+            ["sh", "-c", "git diff --quiet && git diff --cached --quiet"],
+        )
+
+    def test_git_dir_but_no_git_bin(self):
+        (self.root / ".git").mkdir()
+        import shutil
+        original = shutil.which
+        shutil.which = lambda cmd: None
+        try:
+            self.assertIsNone(gr.detect_gate_4_command(self.root))
+        finally:
+            shutil.which = original
+
+
+class RunGate4Tests(ScratchProjectMixin, unittest.TestCase):
+    """실제 git repo 에서 clean/dirty 검증."""
+
+    def setUp(self):
+        super().setUp()
+        import subprocess
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        subprocess.run(["git", "config", "user.email", "t@t"], cwd=self.root, check=True)
+        subprocess.run(["git", "config", "user.name", "t"], cwd=self.root, check=True)
+        (self.root / "README.md").write_text("hi", encoding="utf-8")
+        subprocess.run(["git", "add", "."], cwd=self.root, check=True)
+        subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=self.root, check=True)
+
+    def test_clean_tree_pass(self):
+        res = gr.run_gate_4(self.root)
+        self.assertEqual(res.result, "pass", f"expected pass, got {res.as_dict()}")
+
+    def test_unstaged_change_fail(self):
+        (self.root / "README.md").write_text("modified", encoding="utf-8")
+        res = gr.run_gate_4(self.root)
+        self.assertEqual(res.result, "fail")
+
+    def test_staged_change_fail(self):
+        (self.root / "new.md").write_text("new", encoding="utf-8")
+        import subprocess
+        subprocess.run(["git", "add", "new.md"], cwd=self.root, check=True)
+        res = gr.run_gate_4(self.root)
+        self.assertEqual(res.result, "fail")
+
+    def test_no_git_skipped(self):
+        import shutil
+        shutil.rmtree(self.root / ".git")
+        res = gr.run_gate_4(self.root)
+        self.assertEqual(res.result, "skipped")
+        self.assertIn("not a git repo", res.reason)
+
+    def test_pass_with_override(self):
+        res = gr.run_gate_4(self.root, override_command=["true"])
+        self.assertEqual(res.result, "pass")
+        self.assertEqual(res.gate, "gate_4")
 
 
 class AsDictTests(unittest.TestCase):

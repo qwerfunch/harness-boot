@@ -347,6 +347,26 @@ def detect_gate_3_command(project_root: Path) -> list[str] | None:
     return None
 
 
+def detect_gate_4_command(project_root: Path) -> list[str] | None:
+    """Gate 4 (commit) 자동 감지.
+
+    전제: 프로젝트 루트가 git 저장소이고 `git` 바이너리가 PATH 에 있음.
+    검증 방식: `git diff --quiet` AND `git diff --cached --quiet` 모두 성공 → 작업 트리 클린 (커밋됨).
+    미커밋 변경이 있으면 exit 1 → fail.
+
+    해당 안 되는 케이스 → None (skipped).
+    """
+    if not (project_root / ".git").exists():
+        return None
+    if not shutil.which("git"):
+        return None
+    return [
+        "sh",
+        "-c",
+        "git diff --quiet && git diff --cached --quiet",
+    ]
+
+
 def run_gate_0(
     project_root: Path,
     *,
@@ -414,10 +434,7 @@ def run_gate_3(
     harness_dir: Path | None = None,
     timeout_sec: int = 600,
 ) -> GateRunResult:
-    """Gate 3 (coverage) 실행. override > harness.yaml > auto-detect.
-
-    v0.3.5 에서 신규. 기본 timeout 600s (커버리지 실행이 테스트 실행보다 길 수 있음).
-    """
+    """Gate 3 (coverage) 실행. override > harness.yaml > auto-detect. 기본 timeout 600s."""
     cmd = _resolve_command(
         "gate_3", project_root, override_command, harness_dir, detect_gate_3_command
     )
@@ -428,6 +445,30 @@ def run_gate_3(
             reason="no coverage tool detected (pytest-cov · nyc · scripts.coverage · tarpaulin · go -cover 모두 부재)",
         )
     return _execute("gate_3", cmd, project_root, timeout_sec)
+
+
+def run_gate_4(
+    project_root: Path,
+    *,
+    override_command: list[str] | None = None,
+    harness_dir: Path | None = None,
+    timeout_sec: int = 30,
+) -> GateRunResult:
+    """Gate 4 (commit) 실행. override > harness.yaml > auto-detect.
+
+    v0.3.6 에서 신규. git 저장소에서 working tree clean 여부 검증.
+    fail = 미커밋 변경 존재 → 사용자가 commit 필요. 기본 timeout 30s (git 한번).
+    """
+    cmd = _resolve_command(
+        "gate_4", project_root, override_command, harness_dir, detect_gate_4_command
+    )
+    if cmd is None:
+        return GateRunResult(
+            gate="gate_4",
+            result="skipped",
+            reason="not a git repo or git binary 부재 — commit gate 검증 불가",
+        )
+    return _execute("gate_4", cmd, project_root, timeout_sec)
 
 def run_gate(
     gate: str,
@@ -466,10 +507,17 @@ def run_gate(
             harness_dir=harness_dir,
             timeout_sec=timeout_sec,
         )
+    if gate == "gate_4":
+        return run_gate_4(
+            project_root,
+            override_command=override_command,
+            harness_dir=harness_dir,
+            timeout_sec=timeout_sec,
+        )
     return GateRunResult(
         gate=gate,
         result="skipped",
-        reason=f"{gate} auto-run not yet supported (v0.3.5 shipped gate_0~gate_3)",
+        reason=f"{gate} auto-run not yet supported (v0.3.6 shipped gate_0~gate_4)",
     )
 
 

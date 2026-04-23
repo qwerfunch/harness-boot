@@ -60,10 +60,11 @@ python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --run-gate gate_0 --project-root ..
 - **gate_1 (type check)**: pyproject+mypy → pyproject+pyright → tsconfig+tsc → Cargo+cargo check → go.mod+go vet
 - **gate_2 (lint)**: pyproject+ruff → pyproject+flake8 → package.json+eslint → .eslintrc+npx → Cargo+cargo clippy → go.mod+golangci-lint
 - **gate_3 (coverage, v0.3.5+)**: pyproject+pytest-cov → coverage+pytest → package.json.scripts.coverage → npx nyc → Cargo+tarpaulin → Cargo+llvm-cov → go test -cover. threshold 는 도구 자체 설정 (`[tool.coverage]` 등) 을 따름.
+- **gate_4 (commit check, v0.3.6+)**: `git diff --quiet && git diff --cached --quiet` — working tree + staging area 모두 clean 이어야 pass. git repo 아니거나 `git` 바이너리 부재 시 `skipped`.
 
 결과 자동 기록 + pass 시 evidence 자동 추가. Override 우선순위: `--override-command` → `harness.yaml.gate_commands.<gate>` → auto-detect.
 
-**현재 범위**: gate_0~3 자동화. gate_4~5 는 `skipped` 기록 (v0.3.6+).
+**현재 범위**: gate_0~4 자동화. gate_5 는 `skipped` 기록 (v0.3.7+).
 
 ### 증거 추가
 
