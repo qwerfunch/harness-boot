@@ -10,14 +10,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - `/harness:sync` 스펙 초안 (v0.2)
 - Marketplace PR (anthropic/claude-plugins-official) — 버전업/안정화 후 제출 (v0.2~v0.3 시점)
 
-## [0.1.1] — 2026-04 (릴리즈 예정)
+## [0.1.1] — 2026-04-23
 
 ### Added
 - **`.claude-plugin/marketplace.json`** — single-plugin marketplace. `/plugin marketplace add github:qwerfunch/harness-boot` 경로로 직접 설치 가능 (NEW-45 해소).
 
 ### Changed
 - **`/harness:init` 강건성 개선**:
-  - 프로젝트 루트 판단 실패 시 사용자 확인 프롬프트 (NEW-39).
+  - 프로젝트 루트 신호 체크가 **정보성** 으로 동작 — 4 개 신호가 없어도 중단하지 않고, 최종 보고에 `팁: 'git init' 권장` 한 줄만 추가 (NEW-39, re-smoke 피드백으로 y/N 프롬프트를 info-only 로 완화).
   - 프로젝트 이름 추출 체인에 empty/whitespace/null 감지 + kebab-case 정규화 추가 (NEW-40).
   - `date -u` 실패 시 Python/Node fallback + 마지막 수단으로 사용자 프롬프트 (NEW-42, Windows Git Bash 대응).
   - §2 플러그인 루트 경로 해석을 4-전략 체인 (PATH/registry/marketplace-source/prompt) 으로 확장 (NEW-44).
