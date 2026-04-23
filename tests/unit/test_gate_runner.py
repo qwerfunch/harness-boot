@@ -147,10 +147,91 @@ class DispatchTests(ScratchProjectMixin, unittest.TestCase):
         res = gr.run_gate("gate_0", self.root, override_command=["true"])
         self.assertEqual(res.result, "pass")
 
-    def test_dispatch_other_gate_skipped(self):
-        res = gr.run_gate("gate_1", self.root)
+    def test_dispatch_gate_1(self):
+        res = gr.run_gate("gate_1", self.root, override_command=["true"])
+        self.assertEqual(res.result, "pass")
+
+    def test_dispatch_unsupported_gate_skipped(self):
+        res = gr.run_gate("gate_2", self.root)
         self.assertEqual(res.result, "skipped")
         self.assertIn("not yet supported", res.reason)
+
+
+class DetectGate1Tests(ScratchProjectMixin, unittest.TestCase):
+    def test_pyproject_with_mypy(self):
+        (self.root / "pyproject.toml").write_text("[project]\nname = 'x'\n", encoding="utf-8")
+        import shutil
+        original = shutil.which
+        shutil.which = lambda cmd: "/fake/mypy" if cmd == "mypy" else None
+        try:
+            cmd = gr.detect_gate_1_command(self.root)
+        finally:
+            shutil.which = original
+        self.assertEqual(cmd, ["mypy", "--no-incremental", "."])
+
+    def test_pyproject_falls_back_to_pyright(self):
+        (self.root / "pyproject.toml").write_text("[project]\nname = 'x'\n", encoding="utf-8")
+        import shutil
+        original = shutil.which
+        shutil.which = lambda cmd: "/fake/pyright" if cmd == "pyright" else None
+        try:
+            cmd = gr.detect_gate_1_command(self.root)
+        finally:
+            shutil.which = original
+        self.assertEqual(cmd, ["pyright"])
+
+    def test_tsconfig_with_tsc(self):
+        (self.root / "tsconfig.json").write_text("{}", encoding="utf-8")
+        import shutil
+        original = shutil.which
+        shutil.which = lambda cmd: "/fake/tsc" if cmd == "tsc" else None
+        try:
+            cmd = gr.detect_gate_1_command(self.root)
+        finally:
+            shutil.which = original
+        self.assertEqual(cmd, ["tsc", "--noEmit"])
+
+    def test_cargo_detected(self):
+        (self.root / "Cargo.toml").write_text("[package]\nname = 'x'\n", encoding="utf-8")
+        import shutil
+        original = shutil.which
+        shutil.which = lambda cmd: "/fake/cargo" if cmd == "cargo" else None
+        try:
+            cmd = gr.detect_gate_1_command(self.root)
+        finally:
+            shutil.which = original
+        self.assertEqual(cmd, ["cargo", "check"])
+
+    def test_gomod_detected(self):
+        (self.root / "go.mod").write_text("module x\n", encoding="utf-8")
+        import shutil
+        original = shutil.which
+        shutil.which = lambda cmd: "/fake/go" if cmd == "go" else None
+        try:
+            cmd = gr.detect_gate_1_command(self.root)
+        finally:
+            shutil.which = original
+        self.assertEqual(cmd, ["go", "vet", "./..."])
+
+    def test_no_language_detected(self):
+        # 빈 프로젝트 → None
+        self.assertIsNone(gr.detect_gate_1_command(self.root))
+
+
+class RunGate1Tests(ScratchProjectMixin, unittest.TestCase):
+    def test_pass_with_override(self):
+        res = gr.run_gate_1(self.root, override_command=["true"])
+        self.assertEqual(res.result, "pass")
+        self.assertEqual(res.gate, "gate_1")
+
+    def test_fail_with_override(self):
+        res = gr.run_gate_1(self.root, override_command=["false"])
+        self.assertEqual(res.result, "fail")
+
+    def test_skipped_when_no_detector(self):
+        res = gr.run_gate_1(self.root)
+        self.assertEqual(res.result, "skipped")
+        self.assertIn("no type checker", res.reason)
 
 
 class AsDictTests(unittest.TestCase):

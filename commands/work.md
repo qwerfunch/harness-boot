@@ -54,9 +54,14 @@ python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --run-gate gate_0 --override-comman
 python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --run-gate gate_0 --project-root ../other --timeout 60
 ```
 
-`scripts/gate_runner.py` 가 테스트 러너를 자동 감지 (우선순위: override-command → harness.yaml.gate_commands → pyproject/tests/pytest → tests/+unittest → package.json.scripts.test → Makefile `test:`). 결과 자동 기록 + pass 시 evidence 도 자동 추가.
+`scripts/gate_runner.py` 가 러너를 자동 감지:
 
-**v0.3.1 범위**: gate_0 만 자동화. gate_1~5 는 `--run-gate gate_X` 호출 시 `skipped` 기록 (후속 patch).
+- **gate_0 (tests)**: pyproject+pytest → tests/+unittest → npm test → make test
+- **gate_1 (type check, v0.3.3+)**: pyproject+mypy → pyproject+pyright → tsconfig+tsc → Cargo+cargo check → go.mod+go vet
+
+결과 자동 기록 + pass 시 evidence 자동 추가. Override 우선순위: `--override-command` → `harness.yaml.gate_commands.<gate>` → auto-detect.
+
+**현재 범위**: gate_0 + gate_1 자동화. gate_2~5 는 `skipped` 기록 (v0.3.4+ 순차 확장).
 
 ### 증거 추가
 

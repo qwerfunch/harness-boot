@@ -149,27 +149,13 @@ def _harness_yaml_override(harness_dir: Path | None, gate: str) -> list[str] | N
     return None
 
 
-def run_gate_0(
+def _execute(
+    gate: str,
+    cmd: list[str],
     project_root: Path,
-    *,
-    override_command: list[str] | None = None,
-    harness_dir: Path | None = None,
-    timeout_sec: int = 300,
+    timeout_sec: int,
 ) -> GateRunResult:
-    """Gate 0 실행. override > harness.yaml > auto-detect 우선순위."""
-    gate = "gate_0"
-    cmd = override_command
-    if cmd is None:
-        cmd = _harness_yaml_override(harness_dir, gate)
-    if cmd is None:
-        cmd = detect_gate_0_command(project_root)
-    if cmd is None:
-        return GateRunResult(
-            gate=gate,
-            result="skipped",
-            reason="no test command detected (pyproject.toml · tests/ · package.json · Makefile 모두 부재)",
-        )
-
+    """gate 명령을 subprocess 로 실행 + 결과 포장. 공통 헬퍼."""
     import time
     t0 = time.monotonic()
     try:
@@ -212,6 +198,101 @@ def run_gate_0(
     )
 
 
+def _resolve_command(
+    gate: str,
+    project_root: Path,
+    override_command: list[str] | None,
+    harness_dir: Path | None,
+    detect_fn,
+) -> list[str] | None:
+    """우선순위 override → harness.yaml → auto-detect 로 명령 해석."""
+    cmd = override_command
+    if cmd is None:
+        cmd = _harness_yaml_override(harness_dir, gate)
+    if cmd is None:
+        cmd = detect_fn(project_root)
+    return cmd
+
+
+def detect_gate_1_command(project_root: Path) -> list[str] | None:
+    """Gate 1 타입 체커 자동 감지.
+
+    우선순위:
+      1. Python: pyproject.toml + mypy → mypy
+      2. Python: pyproject.toml + pyright → pyright
+      3. TypeScript: tsconfig.json + tsc → tsc --noEmit
+      4. TypeScript: tsconfig.json + npx → npx tsc --noEmit
+      5. Rust: Cargo.toml + cargo → cargo check
+      6. Go: go.mod + go → go vet ./...
+      7. 감지 실패 → None
+    """
+    pyproject = project_root / "pyproject.toml"
+    if pyproject.is_file():
+        if shutil.which("mypy"):
+            return ["mypy", "--no-incremental", "."]
+        if shutil.which("pyright"):
+            return ["pyright"]
+
+    tsconfig = project_root / "tsconfig.json"
+    if tsconfig.is_file():
+        if shutil.which("tsc"):
+            return ["tsc", "--noEmit"]
+        if shutil.which("npx"):
+            return ["npx", "tsc", "--noEmit"]
+
+    if (project_root / "Cargo.toml").is_file():
+        if shutil.which("cargo"):
+            return ["cargo", "check"]
+
+    if (project_root / "go.mod").is_file():
+        if shutil.which("go"):
+            return ["go", "vet", "./..."]
+
+    return None
+
+
+def run_gate_0(
+    project_root: Path,
+    *,
+    override_command: list[str] | None = None,
+    harness_dir: Path | None = None,
+    timeout_sec: int = 300,
+) -> GateRunResult:
+    """Gate 0 (tests) 실행. override > harness.yaml > auto-detect 우선순위."""
+    cmd = _resolve_command(
+        "gate_0", project_root, override_command, harness_dir, detect_gate_0_command
+    )
+    if cmd is None:
+        return GateRunResult(
+            gate="gate_0",
+            result="skipped",
+            reason="no test command detected (pyproject.toml · tests/ · package.json · Makefile 모두 부재)",
+        )
+    return _execute("gate_0", cmd, project_root, timeout_sec)
+
+
+def run_gate_1(
+    project_root: Path,
+    *,
+    override_command: list[str] | None = None,
+    harness_dir: Path | None = None,
+    timeout_sec: int = 300,
+) -> GateRunResult:
+    """Gate 1 (type check) 실행. override > harness.yaml > auto-detect.
+
+    v0.3.3 에서 신규. Python/TypeScript/Rust/Go 에 대해 자동 감지.
+    """
+    cmd = _resolve_command(
+        "gate_1", project_root, override_command, harness_dir, detect_gate_1_command
+    )
+    if cmd is None:
+        return GateRunResult(
+            gate="gate_1",
+            result="skipped",
+            reason="no type checker detected (pyproject.toml · tsconfig.json · Cargo.toml · go.mod 모두 부재 또는 tool 미설치)",
+        )
+    return _execute("gate_1", cmd, project_root, timeout_sec)
+
 def run_gate(
     gate: str,
     project_root: Path,
@@ -220,9 +301,16 @@ def run_gate(
     harness_dir: Path | None = None,
     timeout_sec: int = 300,
 ) -> GateRunResult:
-    """디스패처. 현재는 gate_0 만 — 다른 gate 는 skipped 로 반환."""
+    """디스패처. 현재는 gate_0 (tests) · gate_1 (type check) 지원."""
     if gate == "gate_0":
         return run_gate_0(
+            project_root,
+            override_command=override_command,
+            harness_dir=harness_dir,
+            timeout_sec=timeout_sec,
+        )
+    if gate == "gate_1":
+        return run_gate_1(
             project_root,
             override_command=override_command,
             harness_dir=harness_dir,
@@ -231,7 +319,7 @@ def run_gate(
     return GateRunResult(
         gate=gate,
         result="skipped",
-        reason=f"{gate} auto-run not yet supported (v0.3.1 shipped gate_0 only)",
+        reason=f"{gate} auto-run not yet supported (v0.3.3 shipped gate_0 + gate_1)",
     )
 
 
