@@ -1,12 +1,12 @@
 ---
-description: Drift 탐지 — Generated · Spec · Derived · Include · Evidence · Code · Doc · Anchor 8/8 (v0.3.8+). 읽기 전용 (CQS).
+description: Drift 탐지 — Generated · Spec · Derived · Include · Evidence · Code · Doc · Anchor · Protocol 9/9 (v0.3.13+). 읽기 전용 (CQS).
 allowed-tools: [Read, Bash]
 argument-hint: "[--json] [--project-root DIR]  # 결과에 따라 exit 0 (clean) 또는 6 (drift)"
 ---
 
 # /harness:check — 일관성 검증 (F-006)
 
-**v0.3.8+ 범위** — 8 종 drift **전부** (design 완결):
+**v0.3.13+ 범위** — 9 종 drift:
 
 **Harness 기반 5 종**:
 1. **Generated** — harness.yaml 의 필수 키 존재 검증.
@@ -20,13 +20,16 @@ argument-hint: "[--json] [--project-root DIR]  # 결과에 따라 exit 0 (clean)
 7. **Doc** — `project_root/CLAUDE.md` 의 `@<path>` import 타겟이 실존하는지 + 파생된 `domain.md` · `architecture.yaml` 이 0 byte 가 아닌지.
 8. **Anchor** — `features[].id` 가 `^F-\d+$` 패턴인지 · ID 유일성 · `depends_on: [...]` 참조가 실제 feature 목록 내에 존재하는지.
 
+**Protocol 1 종 (v0.3.13 신규, F-017)**:
+9. **Protocol** — `.harness/protocols/*.md` 각 파일의 frontmatter `protocol_id` 가 파일명 stem 과 일치하는지 (F-017 AC-2). frontmatter 부재 · YAML 파싱 실패 · id 불일치 시 error. `protocols/` 디렉터리 부재는 clean.
+
 **CQS 불변조건**: 파일 수정 없음. spec-drift 를 찾아도 **자동 수정 제안하지 않음** (사용자 개입 필요).
 
 ## Preamble (출력 맨 앞 3 줄)
 
 ```
 🔍 /harness:check · <clean|N findings> · <근거 5~10 단어>
-NO skip: 8 종 drift 각각 실행 (Generated · Derived · Spec · Include · Evidence · Code · Doc · Anchor)
+NO skip: 9 종 drift 각각 실행 (Generated · Derived · Spec · Include · Evidence · Code · Doc · Anchor · Protocol)
 NO shortcut: 자동 수정 금지 — Spec drift 는 반드시 사용자 개입 (BR-012)
 ```
 

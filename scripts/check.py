@@ -9,7 +9,7 @@ check.py — /harness:check (F-006) drift 탐지. Read-only, CQS.
 
 CQS: 파일 수정 없음. Spec 드리프트 발견 시 자동 수정 제안도 없음 (BR 참조).
 
-v0.3.8 범위 — 8/8 드리프트 전부:
+v0.3.13 범위 — 9/9 드리프트:
   1. Generated — harness.yaml 자체가 올바른 구조/버전을 유지하는지
   2. Derived   — domain.md/architecture.yaml 의 output_hash 와 현재 파일 해시 비교
   3. Spec      — spec.yaml 의 canonical hash 와 harness.yaml.generation.spec_hash 비교
@@ -18,6 +18,7 @@ v0.3.8 범위 — 8/8 드리프트 전부:
   6. Code      — features[].modules 에 dict 형태로 `source` 필드가 있으면 그 경로가 존재하는지
   7. Doc       — project_root/CLAUDE.md 의 `@` import 타겟이 실제 존재하는지 + derived 파일 비어있지 않은지
   8. Anchor    — features[].id 포맷/유일성 + depends_on 참조가 존재하는 피처 ID 인지
+  9. Protocol  — .harness/protocols/*.md 각 파일이 frontmatter.protocol_id == 파일명 stem (F-017 AC-2)
 
 종료 코드:
   0 = clean (no drift)
@@ -51,7 +52,7 @@ import include_expander as ie  # noqa: E402
 from state import State  # noqa: E402
 
 
-DriftKind = str  # "Generated" | "Derived" | "Spec" | "Include" | "Evidence" | "Code" | "Doc" | "Anchor"
+DriftKind = str  # "Generated" | "Derived" | "Spec" | "Include" | "Evidence" | "Code" | "Doc" | "Anchor" | "Protocol"
 
 _FEATURE_ID_PATTERN = re.compile(r"^F-\d+$")
 _CLAUDE_IMPORT_PATTERN = re.compile(r"^@([^\s]+)", re.MULTILINE)
@@ -357,6 +358,84 @@ def check_anchor(spec: dict) -> list[DriftFinding]:
     return findings
 
 
+_PROTOCOL_FRONTMATTER = re.compile(r"^---\s*\n(.*?)\n---", re.DOTALL)
+
+
+def check_protocol(harness_dir: Path) -> list[DriftFinding]:
+    """Protocol drift — `.harness/protocols/*.md` 각 파일의 frontmatter.protocol_id 가 파일명 stem 과 일치하는지 (F-017 AC-2).
+
+    protocols 디렉터리 부재 시 no-op (사용자 프로젝트가 protocol 을 사용하지 않는 것은 정상).
+    """
+    findings: list[DriftFinding] = []
+    proto_dir = harness_dir / "protocols"
+    if not proto_dir.is_dir():
+        return findings
+
+    for md in sorted(proto_dir.glob("*.md")):
+        try:
+            text = md.read_text(encoding="utf-8")
+        except OSError:
+            findings.append(
+                DriftFinding("Protocol", str(md.relative_to(harness_dir)), "파일 읽기 실패", "error")
+            )
+            continue
+        match = _PROTOCOL_FRONTMATTER.match(text)
+        if not match:
+            findings.append(
+                DriftFinding(
+                    "Protocol",
+                    str(md.relative_to(harness_dir)),
+                    "YAML frontmatter 부재 — `---` 로 시작/종료되는 블록 필요",
+                    "error",
+                )
+            )
+            continue
+        try:
+            fm = yaml.safe_load(match.group(1)) or {}
+        except yaml.YAMLError as e:
+            findings.append(
+                DriftFinding(
+                    "Protocol",
+                    str(md.relative_to(harness_dir)),
+                    f"frontmatter YAML 파싱 실패: {e}",
+                    "error",
+                )
+            )
+            continue
+        if not isinstance(fm, dict):
+            findings.append(
+                DriftFinding(
+                    "Protocol",
+                    str(md.relative_to(harness_dir)),
+                    "frontmatter 가 mapping 이 아님",
+                    "error",
+                )
+            )
+            continue
+        pid = fm.get("protocol_id")
+        if not isinstance(pid, str) or not pid:
+            findings.append(
+                DriftFinding(
+                    "Protocol",
+                    str(md.relative_to(harness_dir)),
+                    "frontmatter.protocol_id 누락 또는 빈 값",
+                    "error",
+                )
+            )
+            continue
+        expected = md.stem
+        if pid != expected:
+            findings.append(
+                DriftFinding(
+                    "Protocol",
+                    str(md.relative_to(harness_dir)),
+                    f"protocol_id ({pid!r}) 가 파일명 stem ({expected!r}) 과 불일치 — F-017 AC-2 위반",
+                    "error",
+                )
+            )
+    return findings
+
+
 def run_check(harness_dir: Path, project_root: Path | None = None) -> CheckReport:
     report = CheckReport()
     harness_yaml = _load_yaml(harness_dir / "harness.yaml")
@@ -384,6 +463,9 @@ def run_check(harness_dir: Path, project_root: Path | None = None) -> CheckRepor
 
     report.findings.extend(check_doc(harness_dir, project_root))
     report.checked.append("Doc")
+
+    report.findings.extend(check_protocol(harness_dir))
+    report.checked.append("Protocol")
     return report
 
 

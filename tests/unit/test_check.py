@@ -351,6 +351,64 @@ class AnchorDriftTests(HarnessScratch, unittest.TestCase):
         self.assertTrue(any(f.severity == "error" for f in findings))
 
 
+class ProtocolDriftTests(HarnessScratch, unittest.TestCase):
+    """F-017 AC-2: protocol_id 가 파일명 stem 과 일치해야."""
+
+    def _write_proto(self, name: str, body: str) -> None:
+        proto_dir = self.harness / "protocols"
+        proto_dir.mkdir(exist_ok=True)
+        (proto_dir / name).write_text(body, encoding="utf-8")
+
+    def test_no_protocols_dir_is_clean(self):
+        findings = check.check_protocol(self.harness)
+        self.assertEqual(findings, [])
+
+    def test_matching_id_clean(self):
+        self._write_proto(
+            "handoff.md",
+            "---\nprotocol_id: handoff\nversion: \"1\"\n---\n\n# body\n",
+        )
+        findings = check.check_protocol(self.harness)
+        self.assertEqual(findings, [])
+
+    def test_mismatched_id_is_error(self):
+        self._write_proto(
+            "handoff.md",
+            "---\nprotocol_id: different-name\nversion: \"1\"\n---\n",
+        )
+        findings = check.check_protocol(self.harness)
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].severity, "error")
+        self.assertIn("AC-2", findings[0].message)
+
+    def test_missing_frontmatter_is_error(self):
+        self._write_proto("handoff.md", "no frontmatter here\n")
+        findings = check.check_protocol(self.harness)
+        self.assertEqual(len(findings), 1)
+        self.assertIn("frontmatter", findings[0].message)
+
+    def test_missing_protocol_id_is_error(self):
+        self._write_proto(
+            "handoff.md",
+            "---\nversion: \"1\"\n---\n",
+        )
+        findings = check.check_protocol(self.harness)
+        self.assertEqual(len(findings), 1)
+        self.assertIn("protocol_id", findings[0].message)
+
+    def test_invalid_yaml_frontmatter_is_error(self):
+        self._write_proto("handoff.md", "---\n:: invalid :: yaml ::\n---\n")
+        findings = check.check_protocol(self.harness)
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].severity, "error")
+
+    def test_non_dict_frontmatter_is_error(self):
+        self._write_proto("handoff.md", "---\n- just a list\n---\n")
+        findings = check.check_protocol(self.harness)
+        self.assertEqual(len(findings), 1)
+        self.assertIn("mapping", findings[0].message)
+
+
 class IntegrationTests(HarnessScratch, unittest.TestCase):
     def test_clean_run_reports_no_findings(self):
         # 정상 시나리오: harness.yaml 있고 spec 해시 맞고 파생 없음 (미파생 상태지만 해시도 기록 안 된 이상 warn 안 나옴)

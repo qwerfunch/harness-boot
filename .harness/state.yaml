@@ -107,11 +107,21 @@ features:
   started_at: null
   completed_at: null
 - id: F-013
-  status: planned
-  gates: {}
-  evidence: []
-  started_at: null
-  completed_at: null
+  status: done
+  gates:
+    gate_5:
+      last_result: pass
+      ts: '2026-04-23T13:19:08Z'
+      note: SKILL.md frontmatter 존재 + 5 domain adapters + 4 템플릿 shipped
+  evidence:
+  - ts: '2026-04-23T13:19:08Z'
+    kind: contract
+    summary: skills/spec-conversion/SKILL.md v0.5 · frontmatter.description (8 줄,
+      명확한 trigger 문구) + name + version · AC-1 충족. Claude Code 네이티브 skill discovery
+      가 description 기반 invoke — 플러그인 수정 없이 동작. AC-2 (Tool 권한) 는 Claude Code 자체 sandbox
+      가 강제.
+  started_at: '2026-04-23T13:19:08Z'
+  completed_at: '2026-04-23T13:19:08Z'
 - id: F-014
   status: planned
   gates: {}
@@ -119,11 +129,21 @@ features:
   started_at: null
   completed_at: null
 - id: F-015
-  status: planned
-  gates: {}
-  evidence: []
-  started_at: null
-  completed_at: null
+  status: done
+  gates:
+    gate_5:
+      last_result: pass
+      ts: '2026-04-23T13:18:13Z'
+      note: CLAUDE.md.template 존재 · init.md §3 병합/신규생성 로직 · BR-009 준수 · NEW-44 경로
+        해석 체인 검증됨
+  evidence:
+  - ts: '2026-04-23T13:17:54Z'
+    kind: contract
+    summary: commands/init.md §3 이 docs/templates/starter/CLAUDE.md.template 을 @.harness/
+      import 포함된 shim 으로 생성. 플러그인 버전 상승 시 shim 만 갱신 (template 경로 업그레이드 대응 · AC-1).
+      플러그인 못 찾을 때 v0.1.1 NEW-44 의 4-전략 체인이 명확한 오류 반환 (AC-2).
+  started_at: '2026-04-23T13:17:54Z'
+  completed_at: '2026-04-23T13:18:13Z'
 - id: F-016
   status: done
   gates: {}
@@ -134,11 +154,21 @@ features:
   started_at: null
   completed_at: '2026-04-23T00:00:00Z'
 - id: F-017
-  status: planned
-  gates: {}
-  evidence: []
-  started_at: null
-  completed_at: null
+  status: done
+  gates:
+    gate_5:
+      last_result: pass
+      ts: '2026-04-23T13:23:11Z'
+      note: check_protocol 7 tests pass · README + example protocol shipped · commands/check.md
+        9/9 반영
+  evidence:
+  - ts: '2026-04-23T13:23:11Z'
+    kind: test
+    summary: docs/protocols/README.md + sync-to-work-handoff.md 예시 · scripts/check.py
+      check_protocol (9 번째 drift) + 7 tests · commands/check.md 9/9 업데이트. AC-1 (version
+      정책 문서화) + AC-2 (protocol_id == 파일명 stem 자동 검증) 둘 다 충족.
+  started_at: '2026-04-23T13:19:56Z'
+  completed_at: '2026-04-23T13:23:11Z'
 - id: F-018
   status: done
   gates: {}
@@ -149,11 +179,20 @@ features:
   started_at: null
   completed_at: '2026-04-23T00:00:00Z'
 - id: F-019
-  status: planned
-  gates: {}
-  evidence: []
-  started_at: null
-  completed_at: null
+  status: done
+  gates:
+    gate_5:
+      last_result: pass
+      ts: '2026-04-23T13:18:28Z'
+      note: Non-claim — v1 users 부재로 AC 충족 자체가 공허. archived.
+  evidence:
+  - ts: '2026-04-23T13:18:28Z'
+    kind: contract
+    summary: v1 .harness/ 는 이 플러그인 배포 이전 legacy 개념 · 실제 v1 사용자 0 명 (harness-boot 의
+      첫 public release = v0.1.0 이 곧 v2.3.8 schema). migration 도구가 필요한 real 사용자 base
+      부재. archived 처리 (BR-007 Non-claim principle — 구현 기준 미존재 → 선언 회수).
+  started_at: '2026-04-23T13:18:28Z'
+  completed_at: '2026-04-23T13:18:28Z'
 - id: F-020
   status: done
   gates:
@@ -185,14 +224,24 @@ features:
   started_at: '2026-04-23T13:02:49Z'
   completed_at: '2026-04-23T13:06:46Z'
 - id: F-021
-  status: in_progress
-  gates: {}
+  status: done
+  gates:
+    gate_5:
+      last_result: pass
+      ts: '2026-04-23T13:18:40Z'
+      note: 12 태그 · 2 매니페스트 · 4 디렉터리 tracked · /plugin update real session smoke PASS
   evidence:
   - ts: '2026-04-23T00:00:00Z'
     kind: release
     summary: v0.1.0 네이티브 플러그인 피벗 + v0.1.1 marketplace.json · 공식 마켓 PR 미제출
+  - ts: '2026-04-23T13:18:40Z'
+    kind: release
+    summary: 릴리스 태그 12 건 (v0.1.0~v0.3.12) · semver 준수 · .claude-plugin/{plugin,marketplace}.json
+      2 매니페스트 · commands/ + docs/ + templates/ + schemas/ 4 디렉터리 tracked · GitHub
+      Releases + /plugin install/update 실세션 검증 완료 (v0.3.10 시 real session). AC-1 AC-2
+      둘 다 충족.
   started_at: '2026-04-23T00:00:00Z'
-  completed_at: null
+  completed_at: '2026-04-23T13:18:40Z'
 - id: F-022
   status: done
   gates:
@@ -227,6 +276,6 @@ features:
   completed_at: '2026-04-23T13:14:19Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-022
+  last_command: /harness:work F-017
   last_gate_passed: gate_5
   active_feature_id: null
