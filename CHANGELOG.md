@@ -7,11 +7,34 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
-- docs(readme): **design doc §2.1 · §2.3 철학과 정합**. 다이어그램 단순화 (외곽 박스 · 의인화 제거), "왜?" 섹션을 "사고의 글 vs 실행의 글" 중심으로 재작성 (design doc §2.1 원문 인용), 8 기둥을 design doc §2.3 원칙명 (SSoT · Schema-First · User-Minimal Input · Derive-first Respect-edit · Runtime-Verified First · Transparency-by-Preamble · Standard-First) + 사고/실행 의 글 로 재구성, 구현 세부 (Canonical Hashing · CQS · Append-only · Fail-open · Self-hostable) 는 "엔지니어링 보충" 서브섹션으로 분리. 예시의 구체 피처 ID (F-003) → `<피처 ID>` 일반화 + `/harness:status 로 목록 조회` 스텝 추가. "30초 체험" → "전형 사용 흐름".
 - Marketplace PR (anthropic/claude-plugins-official) — 안정화 후 제출 (v0.4 후보)
-- Gate 1~5 자동 실행 (현재 gate_0 만) — v0.3.2 후보
-- F-006 확장: Code / Doc / Anchor drift (현재 5/8) — v0.3.2~v0.3.3 후보
-- 템플릿 보강: NEW-51/52/53 (entry_points health_check · domain.md backlink · feature_graph sort)
+- Gate 1~5 자동 실행 (현재 gate_0 만) — v0.3.3 후보
+- F-006 확장: Code / Doc / Anchor drift (현재 5/8) — v0.3.3+ 후보
+- `/harness:metrics` (F-008) — v0.3.3+
+
+## [0.3.2] — 2026-04-23
+
+v0.3.1 까지 발표된 8 철학 기둥과 실제 구현 · README 주장 간 정합을 감사하고 2 개 선언-only 항목을 강제 enforcement 로 승격 + README over-claim 4 건 톤 조정 + preamble 규약 통일.
+
+### Fixed
+- **Walking Skeleton 스키마 강제** — `docs/schemas/spec.schema.json` 의 `features` 에 `prefixItems[0].type = "skeleton"` + `minItems: 1`. `/harness:sync` Gate 0~1 이 첫 피처 타입 위반을 자동 차단. 이전에는 템플릿 주석으로만 안내되던 규약이 이제 JSONSchema 로 검증됨. 6 신규 테스트 (`WalkingSkeletonEnforcementTests`).
+- **Anti-rationalization 2 행 규약 commands 전체 적용** (BR-014) — `commands/init.md · spec.md · sync.md · work.md · status.md · check.md · events.md` 전부 Preamble 섹션에 "NO skip: ..." / "NO shortcut: ..." 2 행을 command-specific 제약으로 명시. 이전엔 암묵적이었음.
+
+### Changed
+- **README over-claim 톤 조정** — 감사 결과 4 항목 정직화:
+  - Canonical Hashing — cross-language 테스트 벡터는 v0.4+ 로 명시.
+  - Hook fail-open — "⏳ (v0.4+)". `hooks/` 디렉터리 자체가 shipped 안 됨.
+  - Event log rotation — "v0.4+". 코드 없음.
+  - integrator 에이전트 — "⏳ (v0.4+)". `agents/` 디렉터리 부재.
+  - 각 기둥에 ✅ / 🛠 / ⏳ 상태 마커 부착.
+- **Preamble 세부 규약 8 commands 통일** — 이모지 · 명령 · mode/scope · 5~10 단어 근거. 이전엔 init/sync/spec 만 구체, work/status/check/events 는 축약형이었음. + 2-3 줄 anti-rationalization 규약 고정.
+
+### Testing
+- 261 → **267 tests** (+ 6 WalkingSkeletonEnforcement).
+- `harness-boot-self` canonical spec 통과 확인 (features[0] = "skeleton").
+
+### 감사 보고 (세션 내 기록)
+4-way 정합 (design doc · 구현 · README · 테스트). 핵심 결론: 철학 정합 7 → 9/10, 문서-코드 일치 6 → 8/10.
 
 ## [0.3.1] — 2026-04-23
 

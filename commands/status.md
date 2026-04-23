@@ -8,11 +8,18 @@ argument-hint: "[--feature F-ID] [--json]"
 
 **CQS 불변조건**: 파일 수정 없음. mtime 포함 어떤 부작용도 없어야 함 (테스트로 검증됨).
 
-## Preamble
+## Preamble (출력 맨 앞 3 줄)
 
 ```
-📋 /harness:status · <scope>
+📋 /harness:status · <scope=full|feature:F-XXX> · <근거 5~10 단어>
+NO skip: state.yaml + harness.yaml + events.log 세 소스 모두 읽기
+NO shortcut: CQS — 진단 중 파일 mtime 변경 금지 (BR-012)
 ```
+
+**1 줄**: 이모지 · 명령 · scope · 근거.
+**2-3 줄 (Anti-rationalization, BR-014)**: 소스 부분 읽기 · CQS 위반을 명시 거부.
+
+예: `📋 /harness:status · full · 세션 요약 + 전체 피처 카운트`.
 
 ## 실행
 

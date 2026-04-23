@@ -20,11 +20,18 @@ argument-hint: "[--json]  # 결과에 따라 exit 0 (clean) 또는 6 (drift)"
 
 **CQS 불변조건**: 파일 수정 없음. spec-drift 를 찾아도 **자동 수정 제안하지 않음** (사용자 개입 필요).
 
-## Preamble
+## Preamble (출력 맨 앞 3 줄)
 
 ```
-🔍 /harness:check
+🔍 /harness:check · <clean|N findings> · <근거 5~10 단어>
+NO skip: 5 종 drift 각각 실행 (Generated · Spec · Derived · Include · Evidence)
+NO shortcut: 자동 수정 금지 — Spec drift 는 반드시 사용자 개입 (BR-012)
 ```
+
+**1 줄**: 이모지 · 명령 · 결과 요약 · 근거.
+**2-3 줄 (Anti-rationalization, BR-014)**: drift 종류 skip · 자동 수정 유혹을 명시 거부.
+
+예: `🔍 /harness:check · 2 findings · edit-wins 감지 + include 파일 부재`.
 
 ## 실행
 

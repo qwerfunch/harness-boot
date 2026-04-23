@@ -8,13 +8,18 @@ argument-hint: "[--team | --solo]  # (선택) state.yaml 커밋 정책"
 
 이 명령은 **현재 작업 디렉터리에 harness-boot 골격을 생성**합니다. Claude 는 다음 단계를 순서대로 **정확히** 수행하세요. 각 단계 후 간단히 성공/실패를 보고하되, 전체 명령 실행 중 **요약은 마지막에 1회** 만 하세요.
 
-## Preamble (출력 맨 앞)
+## Preamble (출력 맨 앞 3 줄)
 
 ```
-🧰 /harness:init · 설치 · <근거 10단어 이내>
+🧰 /harness:init · <mode=solo|team> · <근거 5~10 단어>
+NO skip: §0-2 기존 .harness/spec.yaml 검사 — 재실행 시 덮어쓰기 금지
+NO shortcut: §5 events.log 에 harness_initialized 이벤트 append
 ```
 
-예: `🧰 /harness:init · 설치 · .harness/ 새로 생성 + CLAUDE.md 병합`
+**1 줄**: 이모지 · 명령 · mode · 근거.
+**2-3 줄 (Anti-rationalization, BR-014)**: 이 명령이 건너뛸 수 없는 제약 2 개를 명시적으로 선언. LLM 이 "이미 됐다" 로 skip 하는 경로 차단.
+
+예: `🧰 /harness:init · solo · 빈 디렉터리에 .harness/ 최초 스캐폴딩`
 
 ## 단계
 

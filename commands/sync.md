@@ -10,13 +10,18 @@ argument-hint: "[--dry-run] [--force]  # --dry-run: 변경 없이 plan · --forc
 
 **v0.2 구현 범위**: Phase 0 (expand + hash + render) 전체. Phase 1 (Gate 0~5 실행) 은 **v0.3 `/harness:work` 로 이관** — sync 는 "파생" 에 집중, work 는 "구동" 에 집중.
 
-## Preamble (출력 맨 앞)
+## Preamble (출력 맨 앞 3 줄)
 
 ```
-🔄 /harness:sync · 파생 · <근거 10단어 이내>
+🔄 /harness:sync · phase-0 · <근거 5~10 단어>
+NO skip: Phase 0.1 JSONSchema 검증 (Gate 0~1 — 실패 시 파생 중단)
+NO shortcut: edit-wins 감지 — output_hash 불일치 시 반드시 skip
 ```
 
-예: `🔄 /harness:sync · 파생 · spec drift 감지 후 domain/arch 재생성`.
+**1 줄**: 이모지 · 명령 · phase · 근거.
+**2-3 줄 (Anti-rationalization, BR-014)**: 스키마 검증 skip · edit-wins 무시를 명시 거부.
+
+예: `🔄 /harness:sync · phase-0 · spec hash 변경으로 domain/architecture 재생성`.
 
 ## 전제 조건
 

@@ -202,9 +202,9 @@ harness = LLM 개발에 걸어놓는 **규율 구조**. 아래는 그 구조를 
 ### 6. Runtime-Verified First
 
 v1.0 에서 "피처는 완료됐는데 앱이 안 켜지는" 문제를 방지. 세 장치:
-- **Walking Skeleton 강제** — `features[0].type = "skeleton"` 은 공허하더라도 엔드-투-엔드 실행되는 최소 뼈대.
-- **integrator 에이전트** — 피처 완료 시 메인 조립 (DI·라우터) 에 wire-up 책임 명시.
-- **Gate 5 필수** — 빌드 + 실행 + smoke scenario 통과 없이는 피처 `done` 불가. BR-004 Iron Law 와 결합해 증거 없는 완료 주장 차단.
+- **Walking Skeleton 강제** — `features[0].type = "skeleton"` 은 공허하더라도 엔드-투-엔드 실행되는 최소 뼈대. v0.3.2 부터 JSONSchema 가 검증 (`features[0].type` enum = `["skeleton"]`).
+- **Gate 5 필수** ✅ — 빌드 + 실행 + smoke scenario 통과 없이는 피처 `done` 불가. `/harness:work --complete` 가 `gate_5=pass + evidence ≥ 1` 없이 거부 (BR-004 Iron Law).
+- **integrator 에이전트** ⏳ (v0.4+) — 피처 완료 시 메인 조립 (DI·라우터) 에 wire-up 책임을 명시한 에이전트. 설계 원칙만 있고 `agents/` 디렉터리는 아직 ship 안 됨.
 
 ### 7. Transparency-by-Preamble
 
@@ -220,11 +220,11 @@ Claude Code 가 요구하는 파일은 Claude Code 규약 위치 (`.claude/agent
 
 8 기둥을 성립시키는 실제 메커니즘:
 
-- **Canonical Hashing** — Canonical YAML → Canonical JSON → SHA-256 Merkle 트리. 주석·키순서·공백 무시, 의미 변경만 감지. 언어 간 (Python · Node) 같은 해시 재현. 세 가지 독립 변경 (spec 편집 / 파생 사용자 수정 / include 파일 교체) 을 구분 추적.
-- **CQS (Command-Query Separation)** — 진단 명령 (`/harness:status` · `:check` · `:events` · `:metrics`) 은 파일 **읽기만**, mtime 불변. 진단 중 의도치 않은 변이 방지.
-- **Append-only event log** (BR-013) — `events.log` JSONL, 기존 레코드 수정·삭제 금지. 감사성 기반.
-- **Hook fail-open** (BR-006) — 훅이 실패해도 사용자 명령은 차단하지 않음. 훅 자체 버그가 흐름을 인질로 잡는 경험 방지.
-- **Self-hostable** — harness-boot 자체도 `docs/samples/harness-boot-self/spec.yaml` 로 표현됨. v0.2 부터 self-describe round trip 가능, v0.3 부터 별도 워크스페이스에서 `/harness:work` 로 자체 개발.
+- **Canonical Hashing** ✅ — Canonical YAML → Canonical JSON → SHA-256 Merkle 트리. 주석·키순서·공백 무시, 의미 변경만 감지. Python 내 결정론 · Unicode · subtree + merkle root 를 19 tests 로 강제. **cross-language 테스트 벡터** (Node/Go 등에서 같은 해시) 는 v0.4+ 예정.
+- **CQS (Command-Query Separation)** ✅ — 진단 명령 (`/harness:status` · `:check` · `:events`) 은 파일 **읽기만**, mtime 불변 테스트로 검증. `/harness:metrics` 는 v0.3.2+.
+- **Append-only event log** ✅ (BR-013) — `events.log` JSONL, 모든 쓰기는 `open(mode="a")`. 로그 회전 (`events.log.YYYYMM` 분할) 은 v0.4+.
+- **Hook fail-open** ⏳ (BR-006) — 원칙만 선언. `hooks/` 디렉터리 자체가 아직 ship 안 됨. 훅이 도입되는 시점 (v0.4+) 부터 enforce 대상.
+- **Self-hostable** ✅ — harness-boot 자체도 `docs/samples/harness-boot-self/spec.yaml` 로 표현됨. v0.2 부터 self-describe round trip, v0.3 부터 별도 워크스페이스에서 `/harness:work` 로 자체 개발.
 
 ---
 

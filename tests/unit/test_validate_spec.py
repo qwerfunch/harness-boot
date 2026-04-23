@@ -85,6 +85,53 @@ class BasicValidationTests(unittest.TestCase):
         self.assertEqual(ctx.exception.path[:2], ["features", 0])
 
 
+class WalkingSkeletonEnforcementTests(unittest.TestCase):
+    """Walking Skeleton — features[0].type == 'skeleton' 스키마 강제 (v0.3.2 추가)."""
+
+    def setUp(self) -> None:
+        if vs.jsonschema is None:
+            self.skipTest("jsonschema not installed")
+
+    def _base_spec(self, features):
+        return {
+            "version": "2.3",
+            "project": {"name": "p", "summary": "test"},
+            "domain": {"entities": [], "business_rules": []},
+            "features": features,
+        }
+
+    def test_empty_features_rejected(self):
+        with self.assertRaises(vs.SpecValidationError) as ctx:
+            vs.validate(self._base_spec([]))
+        self.assertIn("non-empty", ctx.exception.message.lower() + " " + (ctx.exception.reason or "").lower())
+
+    def test_first_feature_must_have_type(self):
+        with self.assertRaises(vs.SpecValidationError) as ctx:
+            vs.validate(self._base_spec([{"id": "F-000"}]))
+        self.assertIn("type", ctx.exception.message)
+
+    def test_first_feature_type_must_be_skeleton(self):
+        with self.assertRaises(vs.SpecValidationError) as ctx:
+            vs.validate(self._base_spec([{"id": "F-000", "type": "feature"}]))
+        self.assertIn("skeleton", ctx.exception.message)
+
+    def test_skeleton_first_passes(self):
+        vs.validate(self._base_spec([{"id": "F-000", "type": "skeleton"}]))
+
+    def test_subsequent_features_can_be_any_type(self):
+        """skeleton 이후 피처는 feature/refactor/research 등 자유."""
+        vs.validate(self._base_spec([
+            {"id": "F-000", "type": "skeleton"},
+            {"id": "F-001", "type": "feature"},
+            {"id": "F-002", "type": "refactor"},
+        ]))
+
+    def test_id_pattern_still_enforced_on_first(self):
+        """prefixItems 로도 id pattern 검증이 살아있는지 확인."""
+        with self.assertRaises(vs.SpecValidationError):
+            vs.validate(self._base_spec([{"id": "not-a-feature-id", "type": "skeleton"}]))
+
+
 class RealSpecTests(unittest.TestCase):
     """실제 harness-boot-self spec 검증 — sanity."""
 

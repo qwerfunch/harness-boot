@@ -10,11 +10,18 @@ argument-hint: "[--kind TYPE] [--feature F-ID] [--since ISO8601] [--all | --limi
 
 **CQS 불변조건**: events.log **읽기만**. mtime 불변.
 
-## Preamble
+## Preamble (출력 맨 앞 3 줄)
 
 ```
-📜 /harness:events · <N events>
+📜 /harness:events · <filter 요약 또는 N events> · <근거 5~10 단어>
+NO skip: 모든 JSONL 줄 파싱 시도 (깨진 줄은 조용히 건너뛰되 전체 순회)
+NO shortcut: events.log 읽기 전용 (CQS · mtime 불변 · BR-012/013)
 ```
+
+**1 줄**: 이모지 · 명령 · filter/count · 근거.
+**2-3 줄 (Anti-rationalization, BR-014)**: 부분 스캔 · 쓰기 시도를 명시 거부.
+
+예: `📜 /harness:events · 4 events · F-099 활성화 ~ done 사이클`.
 
 ## 실행
 

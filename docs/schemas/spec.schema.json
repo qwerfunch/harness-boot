@@ -66,6 +66,7 @@
 
     "features": {
       "type": "array",
+      "minItems": 1,
       "items": {
         "type": "object",
         "required": ["id"],
@@ -74,7 +75,19 @@
           "type": {"type": "string"}
         },
         "additionalProperties": true
-      }
+      },
+      "prefixItems": [
+        {
+          "description": "Walking Skeleton (v2.3 Runtime-Verified First) — features[0] 은 반드시 type='skeleton'. 첫 피처부터 Gate 5 까지 통과하는 end-to-end 실행 뼈대가 있어야 이후 피처가 그 위에 얹힘.",
+          "type": "object",
+          "required": ["id", "type"],
+          "properties": {
+            "id": {"type": "string", "pattern": "^F-\\d+$"},
+            "type": {"const": "skeleton"}
+          },
+          "additionalProperties": true
+        }
+      ]
     },
 
     "constraints": {"type": "object"},

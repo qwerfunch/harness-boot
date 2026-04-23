@@ -12,11 +12,18 @@ argument-hint: "<F-ID> [--gate NAME RESULT] [--evidence SUMMARY] [--complete] [-
 - 실제 테스트 러너 · 커버리지 계산 · Gate 5 runtime smoke 자동화는 **범위 밖** (v0.4+).
 - 이 명령은 result 기록과 상태 전이에 집중.
 
-## Preamble (출력 맨 앞)
+## Preamble (출력 맨 앞 3 줄)
 
 ```
-🛠  /harness:work · <action> · <F-ID>
+🛠 /harness:work · <action on F-ID> · <근거 5~10 단어>
+NO skip: BR-004 Iron Law — gate_5=pass + evidence ≥ 1 없이 done 거부
+NO shortcut: 모든 상태 전이 (activate · gate · evidence · done · block) → events.log append
 ```
+
+**1 줄**: 이모지 · 명령 · <action on F-ID> · 근거.
+**2-3 줄 (Anti-rationalization, BR-014)**: Iron Law 우회 · 이벤트 로그 skip 을 명시 거부.
+
+예: `🛠 /harness:work · activate F-003 · sync 완료 후 spec 변경 대응`.
 
 ## 역할별 서브커맨드
 
