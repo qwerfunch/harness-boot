@@ -134,11 +134,22 @@ features:
   started_at: '2026-04-23T13:19:08Z'
   completed_at: '2026-04-23T13:19:08Z'
 - id: F-014
-  status: planned
-  gates: {}
-  evidence: []
-  started_at: null
-  completed_at: null
+  status: done
+  gates:
+    gate_5:
+      last_result: pass
+      ts: '2026-04-23T13:41:54Z'
+      note: 21 hook tests pass · 각 template pipe-test 검증 · global scope conservatively
+        handled
+  evidence:
+  - ts: '2026-04-23T13:41:54Z'
+    kind: test
+    summary: '6 hooks 정리: 플러그인 루트 hooks/hooks.json 은 SessionStart banner 만 (global
+      scope fail-open). 나머지 5 (security · format · doc-sync · test-runner · coverage-gate)
+      는 docs/templates/hooks/ 에 opt-in. 모든 훅 exit 0 강제 + pipe-test 11 건 PASS. AC-1
+      (6 훅 구조) · AC-2 (fail-open) 둘 다.'
+  started_at: '2026-04-23T13:41:54Z'
+  completed_at: '2026-04-23T13:41:54Z'
 - id: F-015
   status: done
   gates:
@@ -301,13 +312,24 @@ features:
   started_at: '2026-04-23T13:33:28Z'
   completed_at: '2026-04-23T13:36:06Z'
 - id: F-024
-  status: planned
-  gates: {}
-  evidence: []
-  started_at: null
-  completed_at: null
+  status: done
+  gates:
+    gate_5:
+      last_result: pass
+      ts: '2026-04-23T13:41:53Z'
+      note: hooks/ 디렉터리 + hooks.json 유효 · session-bootstrap shebang+executable+exit0
+        검증
+  evidence:
+  - ts: '2026-04-23T13:41:53Z'
+    kind: contract
+    summary: hooks/hooks.json + hooks/session-bootstrap.sh (plugin-wide, SessionStart
+      only · global scope 고려) · docs/templates/hooks/ 5 opt-in templates (security-gate
+      · format · doc-sync-check · test-runner · coverage-gate) · 21 신규 tests (infra
+      5 · templates 5 · pipe 11) · 모두 fail-open 검증
+  started_at: '2026-04-23T13:37:55Z'
+  completed_at: '2026-04-23T13:41:53Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-012
+  last_command: /harness:work F-014
   last_gate_passed: gate_5
   active_feature_id: null
