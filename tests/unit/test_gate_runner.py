@@ -55,6 +55,74 @@ class DetectCommandTests(ScratchProjectMixin, unittest.TestCase):
         self.assertIsNotNone(cmd)
         self.assertIn("unittest", cmd)
 
+    def test_tests_unit_subpackage_prefers_module_path(self):
+        """F-022: tests/unit/test_*.py 가 있으면 `tests.unit` module path 로 discover."""
+        (self.root / "tests" / "unit").mkdir(parents=True)
+        (self.root / "tests" / "unit" / "test_foo.py").write_text(
+            "import unittest\nclass T(unittest.TestCase):\n    def test_x(self): self.assertTrue(True)\n",
+            encoding="utf-8",
+        )
+        import shutil
+        original = shutil.which
+        shutil.which = lambda cmd: None if cmd == "pytest" else original(cmd)
+        try:
+            cmd = gr.detect_gate_0_command(self.root)
+        finally:
+            shutil.which = original
+        self.assertIsNotNone(cmd)
+        self.assertEqual(cmd[-1], "tests.unit")
+        self.assertNotIn("-s", cmd)
+
+    def test_tests_other_subpackage_module_path(self):
+        """F-022: tests/integration/ 만 있어도 module path 형식 사용."""
+        (self.root / "tests" / "integration").mkdir(parents=True)
+        (self.root / "tests" / "integration" / "test_bar.py").write_text(
+            "import unittest\nclass T(unittest.TestCase): pass\n", encoding="utf-8"
+        )
+        import shutil
+        original = shutil.which
+        shutil.which = lambda cmd: None if cmd == "pytest" else original(cmd)
+        try:
+            cmd = gr.detect_gate_0_command(self.root)
+        finally:
+            shutil.which = original
+        self.assertEqual(cmd[-1], "tests.integration")
+
+    def test_tests_unit_prefers_over_other_subpackages(self):
+        """F-022: tests/unit/ 가 있으면 알파벳 순 무시하고 우선 선택."""
+        (self.root / "tests" / "alpha").mkdir(parents=True)
+        (self.root / "tests" / "alpha" / "test_a.py").write_text(
+            "import unittest\nclass T(unittest.TestCase): pass\n", encoding="utf-8"
+        )
+        (self.root / "tests" / "unit").mkdir(parents=True)
+        (self.root / "tests" / "unit" / "test_b.py").write_text(
+            "import unittest\nclass T(unittest.TestCase): pass\n", encoding="utf-8"
+        )
+        import shutil
+        original = shutil.which
+        shutil.which = lambda cmd: None if cmd == "pytest" else original(cmd)
+        try:
+            cmd = gr.detect_gate_0_command(self.root)
+        finally:
+            shutil.which = original
+        self.assertEqual(cmd[-1], "tests.unit")
+
+    def test_tests_flat_layout_falls_back_to_dash_s(self):
+        """F-022 회귀 방지: tests/test_*.py 평면 레이아웃은 `-s tests` 유지."""
+        (self.root / "tests").mkdir()
+        (self.root / "tests" / "test_foo.py").write_text(
+            "import unittest\nclass T(unittest.TestCase): pass\n", encoding="utf-8"
+        )
+        import shutil
+        original = shutil.which
+        shutil.which = lambda cmd: None if cmd == "pytest" else original(cmd)
+        try:
+            cmd = gr.detect_gate_0_command(self.root)
+        finally:
+            shutil.which = original
+        self.assertIn("-s", cmd)
+        self.assertEqual(cmd[-1], "tests")
+
     def test_npm_test_detected(self):
         (self.root / "package.json").write_text(
             json.dumps({"name": "x", "scripts": {"test": "jest"}}), encoding="utf-8"

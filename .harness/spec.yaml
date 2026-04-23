@@ -633,6 +633,23 @@ features:
       - "릴리스 태그는 v2.3.x semver 준수"
       - "commands/ + docs/ + templates/ + schemas/ 4 디렉터리 포함"
 
+  - id: "F-022"
+    name: "gate_runner auto-detect layout heuristics"
+    type: "feature"
+    description: "gate_0 의 unittest fallback 이 tests/<subpackage>/ 레이아웃에서 NO TESTS RAN 을 반환하는 문제 해결. tests/unit/ 존재 시 namespace-package discovery (tests.unit) 를 우선 사용."
+    modules:
+      - "gate_runner"
+      - "detect_gate_0_command"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "tests/unit/ 있고 pytest 부재 시 tests.unit module-path discover 사용"
+      - "tests/__init__.py 있는 기존 레이아웃은 `-s tests` 유지 (회귀 방지)"
+      - "tests/ 직접 test 파일 있는 평면 레이아웃 지원"
+    acceptance_criteria:
+      - "detect_gate_0_command 가 tests/unit/ 존재 시 `python3 -m unittest discover tests.unit` 반환"
+      - "harness-boot 자체에서 override 없이 gate_0 auto-run PASS"
+      - "기존 테스트 케이스 (tests/ 디렉터리 + npm + Makefile) 전부 회귀 없음"
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

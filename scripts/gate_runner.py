@@ -96,6 +96,16 @@ def detect_gate_0_command(project_root: Path) -> list[str] | None:
     if tests_dir.is_dir():
         if shutil.which("pytest"):
             return ["pytest"]
+        # tests/ 가 namespace 패키지 (no __init__.py) 이고 test 파일이 서브디렉터리에
+        # 있는 레이아웃 (예: tests/unit/test_*.py) 을 지원. `-s tests` 는 이 경우
+        # "NO TESTS RAN" 을 반환하므로 module-path form (tests.<sub>) 을 우선 사용.
+        # 우선순위: tests.unit > tests.<기타 sub> (알파벳 순) > 기존 `-s tests` fallback.
+        preferred = tests_dir / "unit"
+        if preferred.is_dir() and any(preferred.glob("test_*.py")):
+            return [sys.executable, "-m", "unittest", "discover", "tests.unit"]
+        for sub in sorted(tests_dir.iterdir()):
+            if sub.is_dir() and any(sub.glob("test_*.py")):
+                return [sys.executable, "-m", "unittest", "discover", f"tests.{sub.name}"]
         return [sys.executable, "-m", "unittest", "discover", "-s", "tests"]
 
     # 4. npm test
