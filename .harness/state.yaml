@@ -194,13 +194,22 @@ features:
   started_at: '2026-04-23T00:00:00Z'
   completed_at: null
 - id: F-022
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
       ts: '2026-04-23T13:12:50Z'
       note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m unittest discover
         tests.unit'
+    gate_4:
+      last_result: pass
+      ts: '2026-04-23T13:14:19Z'
+      note: 'cmd: sh -c git diff --quiet && git diff --cached --quiet'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-23T13:14:19Z'
+      note: gate_0 auto-run override 없이 380 tests 전부 PASS 로 AC-2 검증 · 기존 레이아웃 회귀 없음
+        (test_tests_flat_layout_falls_back_to_dash_s)
   evidence:
   - ts: '2026-04-23T13:12:50Z'
     kind: gate_run
@@ -210,10 +219,14 @@ features:
     kind: test
     summary: detect_gate_0_command 이 tests/unit/ 레이아웃 감지 → tests.unit module-path
       반환 · gate_0 auto-run override 없이 PASS (380 tests) · 4 신규 회귀 테스트
+  - ts: '2026-04-23T13:14:19Z'
+    kind: gate_run
+    summary: 'Gate gate_4 pass (0.0s) · cmd: sh -c git diff --quiet && git diff --cached
+      --quiet'
   started_at: '2026-04-23T13:12:00Z'
-  completed_at: null
+  completed_at: '2026-04-23T13:14:19Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
   last_command: /harness:work F-022
-  last_gate_passed: gate_0
-  active_feature_id: F-022
+  last_gate_passed: gate_5
+  active_feature_id: null
