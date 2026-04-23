@@ -1,0 +1,151 @@
+version: "2.3"
+schema_version: "2.3"
+# harness-boot 자체 도그푸드 state — v0.3.9 기준 seed.
+# 갱신 정책: 릴리즈 태그 시점에만 status 전이 반영 (매 피처 커밋 X).
+# events.log 는 gitignored — 세부 타임라인은 dev 기기 로컬.
+features:
+  - id: F-001
+    status: done
+    gates: {}
+    evidence:
+      - {ts: "2026-04-23T00:00:00Z", kind: release, summary: "v0.1.0 태그 · first-run smoke 통과"}
+    started_at: null
+    completed_at: "2026-04-23T00:00:00Z"
+  - id: F-002
+    status: in_progress
+    gates: {}
+    evidence:
+      - {ts: "2026-04-23T00:00:00Z", kind: partial, summary: "Mode classifier + Mode E shipped · Modes A/R/B-2 LLM-driven"}
+    started_at: "2026-04-23T00:00:00Z"
+    completed_at: null
+  - id: F-003
+    status: done
+    gates: {}
+    evidence:
+      - {ts: "2026-04-23T00:00:00Z", kind: release, summary: "v0.2.0 · scripts/sync.py + 18 tests · self-describe round trip"}
+    started_at: null
+    completed_at: "2026-04-23T00:00:00Z"
+  - id: F-004
+    status: done
+    gates: {}
+    evidence:
+      - {ts: "2026-04-23T00:00:00Z", kind: release, summary: "v0.3.0 shipped · v0.3.1~0.3.7 Gate 자동화 0~5 완결"}
+    started_at: null
+    completed_at: "2026-04-23T00:00:00Z"
+  - id: F-005
+    status: done
+    gates: {}
+    evidence:
+      - {ts: "2026-04-23T00:00:00Z", kind: release, summary: "v0.3.0 · scripts/status.py + 11 CQS tests"}
+    started_at: null
+    completed_at: "2026-04-23T00:00:00Z"
+  - id: F-006
+    status: done
+    gates: {}
+    evidence:
+      - {ts: "2026-04-23T00:00:00Z", kind: release, summary: "v0.3.8 · drift 8/8 완결 (Code · Doc · Anchor 포함)"}
+    started_at: null
+    completed_at: "2026-04-23T00:00:00Z"
+  - id: F-007
+    status: done
+    gates: {}
+    evidence:
+      - {ts: "2026-04-23T00:00:00Z", kind: release, summary: "v0.3.0 · scripts/events.py + 12 tests"}
+    started_at: null
+    completed_at: "2026-04-23T00:00:00Z"
+  - id: F-008
+    status: done
+    gates: {}
+    evidence:
+      - {ts: "2026-04-23T00:00:00Z", kind: release, summary: "v0.3.9 · scripts/metrics.py + 33 tests"}
+    started_at: null
+    completed_at: "2026-04-23T00:00:00Z"
+  - id: F-009
+    status: done
+    gates: {}
+    evidence:
+      - {ts: "2026-04-23T00:00:00Z", kind: release, summary: "v0.2.0 · include_expander.py + 23 tests"}
+    started_at: null
+    completed_at: "2026-04-23T00:00:00Z"
+  - id: F-010
+    status: done
+    gates: {}
+    evidence:
+      - {ts: "2026-04-23T00:00:00Z", kind: release, summary: "v0.2.0 · canonical_hash.py + 19 tests"}
+    started_at: null
+    completed_at: "2026-04-23T00:00:00Z"
+  - id: F-011
+    status: done
+    gates: {}
+    evidence:
+      - {ts: "2026-04-23T00:00:00Z", kind: release, summary: "v0.3.2 · 8 commands 전부 Preamble 3 + Anti-rationalization 2 행 규약 shipped"}
+    started_at: null
+    completed_at: "2026-04-23T00:00:00Z"
+  - id: F-012
+    status: planned
+    gates: {}
+    evidence: []
+    started_at: null
+    completed_at: null
+  - id: F-013
+    status: planned
+    gates: {}
+    evidence: []
+    started_at: null
+    completed_at: null
+  - id: F-014
+    status: planned
+    gates: {}
+    evidence: []
+    started_at: null
+    completed_at: null
+  - id: F-015
+    status: planned
+    gates: {}
+    evidence: []
+    started_at: null
+    completed_at: null
+  - id: F-016
+    status: done
+    gates: {}
+    evidence:
+      - {ts: "2026-04-23T00:00:00Z", kind: release, summary: "v0.2.0 · include_expander 의 depth=1 enforcement · 🔒 field guard"}
+    started_at: null
+    completed_at: "2026-04-23T00:00:00Z"
+  - id: F-017
+    status: planned
+    gates: {}
+    evidence: []
+    started_at: null
+    completed_at: null
+  - id: F-018
+    status: done
+    gates: {}
+    evidence:
+      - {ts: "2026-04-23T00:00:00Z", kind: release, summary: "v0.2.0 · sync.py edit_wins() + 7 tests"}
+    started_at: null
+    completed_at: "2026-04-23T00:00:00Z"
+  - id: F-019
+    status: planned
+    gates: {}
+    evidence: []
+    started_at: null
+    completed_at: null
+  - id: F-020
+    status: planned
+    gates: {}
+    evidence: []
+    started_at: null
+    completed_at: null
+  - id: F-021
+    status: in_progress
+    gates: {}
+    evidence:
+      - {ts: "2026-04-23T00:00:00Z", kind: release, summary: "v0.1.0 네이티브 플러그인 피벗 + v0.1.1 marketplace.json · 공식 마켓 PR 미제출"}
+    started_at: "2026-04-23T00:00:00Z"
+    completed_at: null
+session:
+  started_at: null
+  last_command: ""
+  last_gate_passed: null
+  active_feature_id: null

@@ -42,3 +42,11 @@ design/
 # Archived v0.1.0 tree — already-tracked files remain tracked,
 # but no new local artifacts under legacy/ should enter git
 legacy/
+
+# harness-boot 자체 도그푸드 (.harness/) — derived + 로그는 미추적.
+# spec.yaml · state.yaml · README.md 만 tracked.
+.harness/events.log
+.harness/harness.yaml
+.harness/domain.md
+.harness/architecture.yaml
+.harness/chapters/

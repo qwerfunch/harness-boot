@@ -224,7 +224,7 @@ Claude Code 가 요구하는 파일은 Claude Code 규약 위치 (`.claude/agent
 - **CQS (Command-Query Separation)** ✅ — 진단 명령 (`/harness:status` · `:check` · `:events`) 은 파일 **읽기만**, mtime 불변 테스트로 검증. `/harness:metrics` 는 v0.3.2+.
 - **Append-only event log** ✅ (BR-013) — `events.log` JSONL, 모든 쓰기는 `open(mode="a")`. 로그 회전 (`events.log.YYYYMM` 분할) 은 v0.4+.
 - **Hook fail-open** ⏳ (BR-006) — 원칙만 선언. `hooks/` 디렉터리 자체가 아직 ship 안 됨. 훅이 도입되는 시점 (v0.4+) 부터 enforce 대상.
-- **Self-hostable** ✅ — harness-boot 자체도 `docs/samples/harness-boot-self/spec.yaml` 로 표현됨. v0.2 부터 self-describe round trip, v0.3 부터 별도 워크스페이스에서 `/harness:work` 로 자체 개발.
+- **Self-hostable** ✅ — harness-boot 자체도 `docs/samples/harness-boot-self/spec.yaml` 로 표현됨. v0.2 부터 self-describe round trip. **v0.3.10 부터 레포 루트에 `.harness/` 를 두어 자기 스크립트로 자기 무결성 검증** (`bash scripts/self_check.sh` — 5 단계 diff/validate/sync/check/commands 규약 · unittest 에 포함).
 
 ---
 
