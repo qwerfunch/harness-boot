@@ -189,3 +189,90 @@ v0.1.0 스모크를 통과했다면 실제 프로젝트에서 `.harness/spec.yam
 - [skills/spec-conversion/SKILL.md](../../skills/spec-conversion/SKILL.md) — plan.md 가 있다면 변환 가이드
 
 v0.2.0 에서 `/harness:sync` · `/harness:work` 가 합류하면 자동화가 확대됩니다.
+
+---
+
+## 부록 A — Dev 모드 (v0.3.10+, 플러그인 기여자 전용)
+
+**목적**: harness-boot **자체를 개발하면서** 편집 중인 코드를 `/harness:*` 슬래시 명령으로 즉시 검증. Phase 2 (Active dogfood) 의 전제.
+
+### A.1 언제 필요한가
+
+- `scripts/sync.py` 수정 후 `/harness:sync` 가 실제로 수정된 코드를 쓰는지 확인
+- `commands/work.md` 의 prose 규약이 LLM 에게 제대로 해석되는지 실세션 검증
+- `scripts/work.py` 로 harness-boot 자체 피처 사이클을 기록하고 `/harness:metrics` 로 집계
+
+### A.2 세팅 (택 1)
+
+**방식 A — 환경변수 (세션 단위, 가장 단순)**:
+
+```bash
+export CLAUDE_PLUGIN_ROOT="/Users/you/Developer/work/harness-boot"   # 실제 dev checkout 경로
+claude
+```
+
+**방식 B — `~/.claude/settings.json` (영속)**:
+
+```json
+{
+  "plugins": [
+    {
+      "name": "harness-boot-dev",
+      "path": "/Users/you/Developer/work/harness-boot"
+    }
+  ]
+}
+```
+
+### A.3 검증
+
+1. Claude Code 세션 새로 열기
+2. 프롬프트에 `/harness:` 입력 → 자동완성에 `/harness:init` · `:sync` · `:work` · `:status` · `:check` · `:events` · `:metrics` · `:spec` 8 개 전부 나타남
+3. 테스트 명령 실행: `/harness:status`
+4. 기대 출력: 사용자 cwd 의 `.harness/` (예: 플러그인 repo 자신의 `.harness/` 에서 실행했다면 harness-boot-self 의 21 피처 status)
+
+### A.4 편집 루프 (즉시 반영)
+
+- `scripts/*.py` 편집 → 다음 슬래시 명령 호출부터 **수정된 코드** 사용 (캐시 없음)
+- `commands/*.md` 편집 → LLM 이 매 turn 에 읽으므로 세션 재시작 불필요
+- 따라서 "코드 수정 → `/harness:sync` → 결과 확인" 루프가 TDD 만큼 빠름
+
+### A.5 사용자 released 플러그인과의 전환
+
+released 버전 (`/plugin install harness@harness-boot` 으로 받은 것) 과 dev 모드는 **상호 배타**. 동시 활성 시 Claude Code 가 어느 쪽을 쓸지 우선순위가 불명확.
+
+```bash
+# dev 모드 해제
+unset CLAUDE_PLUGIN_ROOT                   # 방식 A 해제
+# settings.json 에서 "harness-boot-dev" 항목 삭제    # 방식 B 해제
+
+# released 플러그인 재활성
+/plugin install harness@harness-boot       # 이미 설치되어 있으면 skip
+```
+
+### A.6 주의사항
+
+- **dev checkout 내부에서 `/harness:init` 실행 금지** (CLAUDE.md §7). 이 repo 자신이 플러그인 소스 — init 이 `commands/` · `scripts/` 를 덮어쓰려 함.
+- dev 모드에서 `/harness:work F-XXX --complete` 호출 시 **이 repo 의 `.harness/state.yaml`** 이 수정됨. 커밋/push 전 `git status` 확인.
+- `.harness/events.log` 는 gitignored — 개인 로그. 다른 기기 간 공유 안 됨.
+- **stale plugin install 주의**: `~/.claude/plugins/harness-boot/` 에 released 버전이 있으면 방식 A/B 의 경로가 거기로 잘못 해석될 여지. `echo $CLAUDE_PLUGIN_ROOT` 로 현재 경로 확인 필수.
+
+### A.7 자체 무결성 검증 (Phase 1, 항상 가능)
+
+dev 모드 세팅 없이도 `python3 scripts/*.py` 직접 호출은 항상 현재 checkout 코드 사용. 즉 Phase 1 self_check 는 dev 모드 불필요:
+
+```bash
+cd /path/to/harness-boot
+bash scripts/self_check.sh                  # 5 단계 검증 (v0.3.10+)
+python3 -m unittest discover tests.unit     # 374 tests 포함 test_self_dogfood
+```
+
+Phase 2 (슬래시 명령 실사용) 에서만 위 A.1~A.6 세팅 필요.
+
+---
+
+## 부록 B — 참조
+
+- `CLAUDE.md §7` — 작업 규칙 (자체 도그푸드 가이드 포함)
+- `.harness/README.md` — dev-only 도그푸드 안내
+- `scripts/self_check.sh` — Phase 1 5 단계 검증
