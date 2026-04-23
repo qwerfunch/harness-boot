@@ -7,11 +7,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
-- v0.1.1 init hardening RFC (NEW-37/39/40/42 통합)
+- v0.1.1 init hardening RFC (NEW-37 closed · 39/40/42 pending · 44/45 신규)
 - `/harness:sync` 스펙 초안
-- 실제 Claude Code 세션 1 회 실행 (first-run 체크리스트 기반)
+- Marketplace PR (anthropic/claude-plugins-official) 제출
 
-## [0.1.0] — 2026-04 (릴리즈 예정)
+## [0.1.0] — 2026-04-23
 
 ### BREAKING
 - 아키텍처 **피벗**: TypeScript CLI (bin/harness-boot + src/**) 를 전면 폐기하고, Claude Code 네이티브 플러그인으로 재설계. 구 CLI 경로 · 구 commands (`/analyze`, `/spec` 구버전) · `src/**` 코어는 제거됨. 이전 사용자가 있다면 레포 재설치 필요.
@@ -34,13 +34,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - `.claude/agents/**` · `.claude/skills/**` 자동 생성.
 - 6 핵심 훅: security-gate · doc-sync-check · coverage-gate · format · test-runner · session-start-bootstrap.
 
-### Known Limitations (첫 실행에서 확인 예정)
-- `CLAUDE_PLUGIN_ROOT` 경로 주입 방식 (NEW-37) — 실제 Claude Code 런타임 동작 확정 필요.
-- `.claude/agents/` · `.claude/skills/` 빈 디렉터리가 Claude Code 에 무해한지 미검증.
-- `CLAUDE.md` 의 `@.harness/architecture.yaml` · `@.harness/domain.md` import 가 v0.1.0 에서는 타겟 없음 — silently ignore 가정.
+### First-run smoke (2026-04-23, Claude Code 2.1.118)
+
+- §1~§7 전부 통과. NEW-37 메커니즘 확정 — `$CLAUDE_PLUGIN_ROOT` 는 미설정, `$PATH` 주입된 `<plugin-root>/bin` 역산이 실제 경로 해석 방법.
+- `.claude/` 빈 디렉터리 · `@import` 누락은 silently ignore 확인.
+- 관찰 결과에 따라 4 개 fix 커밋 (`db2562b`·`2978fa6`·`057f931`·`37bd0a4`) 을 릴리즈 전 머지.
+
+### Known Limitations (v0.1.1 에서 해소 예정)
+
 - Windows PowerShell 환경의 `date -u` fallback (NEW-42).
 - 루트 판단 실패 시 fallback (NEW-39).
 - 프로젝트 이름 추출 엣지케이스 (NEW-40).
+- `directory`-type marketplace 의 `installPath` 캐시 미생성 (NEW-44, 2026-04-23 관찰).
+- repo 자체의 `.claude-plugin/marketplace.json` 미존재로 직접 `github:` 설치 불가 (NEW-45, 2026-04-23 관찰).
 
 ### Design 근거 (로컬 전용)
 주 설계 문서 (`design/harness-boot-design-2.3.7.md`) 와 RFC·샘플·메모리 파일은 `.gitignore` 로 공개 레포에서 제외. 기여자는 별도 요청. 자동 생성되는 공개 산출물 (스키마 · 스킬 · 템플릿 · 골든) 만 트래킹.
