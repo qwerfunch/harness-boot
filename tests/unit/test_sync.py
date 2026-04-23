@@ -161,6 +161,74 @@ class MissingSpecTests(SyncScratchMixin, unittest.TestCase):
             sync.run(self.harness, timestamp=FIXED_TS)
 
 
+class ValidationIntegrationTests(SyncScratchMixin, unittest.TestCase):
+    """sync 가 스키마 검증을 거치고 실패 시 파생을 만들지 않음."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        import validate_spec as vs
+        if vs.jsonschema is None:
+            self.skipTest("jsonschema not installed")
+
+    def test_invalid_spec_raises_and_no_files_written(self):
+        # features 없이 (top-level required 위반)
+        bad_spec = {
+            "version": "2.3",
+            "project": {"name": "bad", "summary": "x"},
+            "domain": {"entities": [], "business_rules": []},
+            # features 누락
+        }
+        (self.harness / "spec.yaml").write_text(
+            yaml.safe_dump(bad_spec, sort_keys=False), encoding="utf-8"
+        )
+        import validate_spec as vs
+        with self.assertRaises(vs.SpecValidationError):
+            sync.run(self.harness, timestamp=FIXED_TS)
+        # 파생물은 생성되지 않음
+        self.assertFalse((self.harness / "domain.md").is_file())
+        self.assertFalse((self.harness / "architecture.yaml").is_file())
+
+    def test_invalid_spec_logs_sync_failed_event(self):
+        bad_spec = {"version": "2.3", "project": {"name": "x", "summary": "y"}}
+        (self.harness / "spec.yaml").write_text(
+            yaml.safe_dump(bad_spec, sort_keys=False), encoding="utf-8"
+        )
+        import validate_spec as vs
+        with self.assertRaises(vs.SpecValidationError):
+            sync.run(self.harness, timestamp=FIXED_TS)
+        # events.log 에 failure 이벤트 기록
+        events_log = self.harness / "events.log"
+        self.assertTrue(events_log.is_file())
+        line = events_log.read_text(encoding="utf-8").strip()
+        evt = json.loads(line)
+        self.assertEqual(evt["type"], "sync_failed")
+        self.assertEqual(evt["reason"], "schema_validation")
+
+    def test_skip_validation_flag(self):
+        """skip_validation=True 면 invalid spec 도 sync 진행 (테스트 fixture 용)."""
+        bad_spec = {
+            "version": "2.3",
+            "project": {"name": "x", "summary": "y"},
+            # features 없음 — 검증 skip 시 sync 는 빈 features 로 진행
+        }
+        (self.harness / "spec.yaml").write_text(
+            yaml.safe_dump(bad_spec, sort_keys=False), encoding="utf-8"
+        )
+        summary = sync.run(self.harness, timestamp=FIXED_TS, skip_validation=True)
+        self.assertTrue(summary["ok"])
+
+    def test_dry_run_does_not_log_sync_failed(self):
+        """dry-run 중 validation 실패는 events.log 에 기록 안 함 (부작용 회피)."""
+        bad_spec = {"version": "2.3", "project": {"name": "x", "summary": "y"}}
+        (self.harness / "spec.yaml").write_text(
+            yaml.safe_dump(bad_spec, sort_keys=False), encoding="utf-8"
+        )
+        import validate_spec as vs
+        with self.assertRaises(vs.SpecValidationError):
+            sync.run(self.harness, timestamp=FIXED_TS, dry_run=True)
+        self.assertFalse((self.harness / "events.log").is_file())
+
+
 class EditWinsHelperTests(unittest.TestCase):
     """edit_wins() 단일 함수 행동."""
 

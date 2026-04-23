@@ -48,6 +48,7 @@ import canonical_hash as ch  # noqa: E402
 import include_expander as ie  # noqa: E402
 import render_architecture as ra  # noqa: E402
 import render_domain as rd  # noqa: E402
+import validate_spec as vs  # noqa: E402
 
 
 def _now_iso() -> str:
@@ -122,8 +123,13 @@ def run(
     force: bool = False,
     dry_run: bool = False,
     timestamp: str | None = None,
+    skip_validation: bool = False,
+    schema_path: Path | None = None,
 ) -> dict:
-    """Phase 0 전체 실행. 반환값 = 요약 dict (JSON 직렬화 가능)."""
+    """Phase 0 전체 실행. 반환값 = 요약 dict (JSON 직렬화 가능).
+
+    skip_validation=True 면 스키마 검증 건너뜀 (테스트 fixture 가 최소화된 경우).
+    """
     ts = timestamp or _now_iso()
 
     spec_path = harness_dir / "spec.yaml"
@@ -164,8 +170,27 @@ def run(
     else:
         harness_yaml = _load_yaml_file(harness_yaml_path)
 
-    # 1. spec load
+    # 1. spec load + schema validate (Gate 0~1)
     raw_spec = _load_yaml_file(spec_path)
+
+    if not skip_validation:
+        try:
+            vs.validate(raw_spec, schema_path=schema_path)
+        except vs.SpecValidationError as e:
+            # 이벤트 로그에는 실패 기록 남기되, 파생 렌더링은 건너뜀
+            if not dry_run:
+                _append_event(
+                    events_log,
+                    {
+                        "ts": ts,
+                        "type": "sync_failed",
+                        "reason": "schema_validation",
+                        "path": ".".join(str(p) for p in e.path) if e.path else "(root)",
+                        "message": e.message,
+                        "validator": e.reason,
+                    },
+                )
+            raise
 
     # 2. $include expand (depth=1)
     includes_found = ie._find_includes(raw_spec)
@@ -276,6 +301,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--force", action="store_true", help="ignore edit-wins, overwrite")
     parser.add_argument("--json", action="store_true", help="emit JSON summary")
     parser.add_argument("--timestamp", default=None, help="override UTC timestamp (tests)")
+    parser.add_argument("--skip-validation", action="store_true", help="skip JSONSchema check")
+    parser.add_argument("--schema", type=Path, default=None, help="path to spec.schema.json")
     args = parser.parse_args(argv)
 
     if not args.harness_dir.is_dir():
@@ -288,6 +315,8 @@ def main(argv: list[str] | None = None) -> int:
             force=args.force,
             dry_run=args.dry_run,
             timestamp=args.timestamp,
+            skip_validation=args.skip_validation,
+            schema_path=args.schema,
         )
     except FileNotFoundError as e:
         print(f"sync error: {e}", file=sys.stderr)
@@ -295,6 +324,11 @@ def main(argv: list[str] | None = None) -> int:
     except ie.IncludeError as e:
         print(f"include error: {e}", file=sys.stderr)
         return 4
+    except vs.SpecValidationError as e:
+        print(f"schema error at {'.'.join(str(p) for p in e.path) or '(root)'}: {e.message}", file=sys.stderr)
+        if e.reason:
+            print(f"  validator: {e.reason}", file=sys.stderr)
+        return 5
 
     if args.json:
         json.dump(summary, sys.stdout, indent=2, ensure_ascii=False)
