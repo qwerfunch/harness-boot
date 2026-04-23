@@ -28,6 +28,11 @@ dist/
 coverage/
 .vitest-cache/
 
+# Python toolchain
+__pycache__/
+*.pyc
+.pytest_cache/
+
 # Translation shadow directory (user learning aid, not for commit)
 translations-ko/
 
