@@ -19,6 +19,12 @@ project:
   description: ""             # 🗒 한 단락 정도. 길면 $include 권장
   vision: ""                  # 🗒 저자 강조 3축 중 1~2개 문장화
   stakeholders: []            # end-user 제외
+  # brief:                    # v0.5 additive — researcher/product-planner 가 채움
+  #   origin: researcher      # researcher | plan.md | manual
+  #   assumptions: []
+  #   open_questions: []
+  #   competitors_studied: []
+  #   confidence_overall: medium
 
 domain:
   entities: []                # 3~7개 권장. sensitive 엔티티는 자동 제안됨
@@ -40,6 +46,10 @@ features:
     test_strategy: lean-tdd
     acceptance_criteria: []
     modules: []
+    # ui_surface:             # v0.5 additive — UI 있는 피처에만
+    #   present: true
+    #   platforms: [web]      # web | mobile-ios | mobile-android | desktop | game | tui
+    #   has_audio: false      # true 면 audio-designer 소환
 
 metadata:
   source:

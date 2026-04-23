@@ -17,8 +17,21 @@ Claude Code 2.1.x 규약: `agents/<name>.md` at plugin root (not `.claude-plugin
 | Agent | tools (allow-list) | 사용 시점 | 금지 |
 |---|---|---|---|
 | **orchestrator** | 전부 (무제한) | 다단계 작업 조율 · 다른 에이전트에게 delegate | — |
-| **software-engineer** | Read · Write · Edit · Bash · Grep · Glob · NotebookEdit | 스펙 → 코드 → 테스트 · BR-004 사이클 | Git push · 공유 시스템 수정 · 마켓 PR |
+| **software-engineer** | Read · Write · Edit · Bash · Grep · Glob · NotebookEdit | 스펙 → 코드 → 테스트 · BR-004 사이클 (스택 중립 일반 구현) | Git push · 공유 시스템 수정 · 마켓 PR |
 | **reviewer** | Read · Grep · Glob · Bash (읽기 전용) | PR/코드 리뷰 · drift 진단 · evidence 검증 | Edit · Write · 모든 mutation |
+| **researcher** *(v0.5)* | Read · Write · Grep · Glob · Bash · WebFetch · WebSearch | Discovery — 한 줄 아이디어 → brief.md | 결정 행위 · 다른 에이전트 호출 · Edit |
+| **product-planner** *(v0.5)* | Read · Write · Grep · Glob · Bash | Discovery — brief.md → plan.md (Mode B-2 feed) | 탐색 (researcher 영역) · WebFetch · Edit |
+| **ux-architect** *(v0.5)* | Read · Write · Grep · Glob · Bash | Stage X — flows.md · IA · 상태 다이어그램 | 색/타이포 (visual-designer) · 코드 생성 |
+| **visual-designer** *(v0.5)* | Read · Write · Grep · Glob · Bash | Stage X — tokens.yaml + components.yaml | flow 변경 · 코드 생성 · design 산출 수정 |
+| **audio-designer** *(v0.5)* | Read · Write · Grep · Glob · Bash | Stage X — audio.yaml (has_audio 피처만) | BGM 제작 · .wav 바이너리 생성 |
+| **a11y-auditor** *(v0.5)* | Read · Write · Grep · Glob · Bash (read-only) | Stage X — a11y/report.md (read-only 감사) | 모든 파일 수정 · 독단 BLOCK |
+| **frontend-engineer** *(v0.5)* | Read · Write · Edit · Grep · Glob · Bash | Stage E — UI 구현 (design 산출 소비) | design 산출 수정 · 토큰 밖 값 하드코딩 |
+| **backend-engineer** *(v0.5)* | Read · Write · Edit · Grep · Glob · Bash | Stage E — API · DB · service · 도메인 로직 | UI 수정 · destructive migration 독단 |
+| **security-engineer** *(v0.5)* | Read · Write · Edit · Grep · Glob · Bash | Stage E — threat model · authn/z · secrets (sensitive 피처 필수) | prod secret 접근 · UI 작성 · 독단 BLOCK |
+| **performance-engineer** *(v0.5)* | Read · Write · Edit · Grep · Glob · Bash | Stage E — profiling · 예산 (performance_budget 피처) | 대규모 리팩터 · 유리한 벤치 환경 선택 |
+| **qa-engineer** *(v0.5)* | Read · Write · Grep · Glob · Bash | Stage Q — test strategy · risk matrix | 테스트 코드 작성 · spec 수정 |
+| **integrator** *(v0.5)* | Read · Write · Edit · Grep · Glob · Bash | Stage I — DI · config · entry point · CI wire-up | module 내부 로직 재작성 · design 산출 수정 |
+| **tech-writer** *(v0.5)* | Read · Write · Edit · Grep · Glob · Bash | Stage I — docs · CHANGELOG · README (Diátaxis) | 코드/스펙 수정 · 스크린샷 수동 편집 |
 
 Claude Code 가 `tools` 밖 호출 **자동 차단**. 런타임 enforcement.
 

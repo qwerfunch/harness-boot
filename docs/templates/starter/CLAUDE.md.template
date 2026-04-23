@@ -14,9 +14,22 @@
 
 - `.harness/domain.md`, `.harness/architecture.yaml` — spec 파생 뷰
 - `.harness/harness.yaml`, `.harness/state.yaml`, `.harness/events.log` — 도구 관리
+- `.harness/_workspace/{research,plan,design,a11y,security,qa,perf,docs}/**` — 전문가 에이전트 산출 (v0.5+)
 - `.claude/settings.json`, `.claude/agents/**`, `.claude/skills/**` — Claude Code 어댑터
 
-## 3. 명령어 지도
+## 3. 전문가 에이전트 풀 (v0.5)
+
+harness 는 제품 개발 라이프사이클 전반의 13 전문가를 제공합니다. orchestrator 가 피처 shape 에 따라 적재적소로 소환합니다. 수동 @-mention 도 가능:
+
+- **Discovery**: `@harness:researcher` · `@harness:product-planner` — 한 줄 아이디어 → 풍부한 plan.md
+- **eXperience**: `@harness:ux-architect` · `@harness:visual-designer` · `@harness:audio-designer` · `@harness:a11y-auditor`
+- **Engineering**: `@harness:software-engineer` · `@harness:frontend-engineer` · `@harness:backend-engineer` · `@harness:security-engineer` · `@harness:performance-engineer`
+- **Quality / Integration**: `@harness:qa-engineer` · `@harness:integrator` · `@harness:tech-writer` · `@harness:reviewer`
+- **Coordination**: `@harness:orchestrator`
+
+각 에이전트는 `.harness/domain.md` 를 단일 참조점으로 읽어 당신의 제품 도메인에 맞춘 결과를 냅니다. 자세한 산출 규약은 `agents/<name>.md` 참고.
+
+## 4. 명령어 지도
 
 | 명령 | 언제 쓰나 |
 |------|----------|
@@ -27,7 +40,7 @@
 | `/harness:status` | 현재 진행 상태 확인 |
 | `/harness:check` | 일관성 검증 (주 1회) |
 
-## 4. Import
+## 5. Import
 
 @.harness/spec.yaml
 @.harness/architecture.yaml

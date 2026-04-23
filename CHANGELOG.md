@@ -8,11 +8,51 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 ## [Unreleased]
 
 - Marketplace PR (anthropic/claude-plugins-official) — 안정화 후 제출
-- Phase 3 CI — `.github/workflows/self-check.yml` + PR gate (v0.5+)
-- Cross-language hash test vectors (Appendix D.7) — v0.5+
-- Event log rotation (`events.log.YYYYMM`) — v0.5+
-- AC coverage drift (check.py 10 번째 drift) — v0.4.2 후보
-- 템플릿 보강: NEW-51/52/53
+- Phase 3 CI — `.github/workflows/self-check.yml` + PR gate
+- Cross-language hash test vectors (Appendix D.7)
+- Event log rotation (`events.log.YYYYMM`)
+- AC coverage drift (check.py 10 번째 drift)
+- Visual regression gate (gate_6) · a11y gate (gate_7) — v0.6 검토
+- `features[].performance_budget` schema 필드 — v0.6
+- 나머지 10 expert agents fixture — v0.6
+
+## [0.5.0] — 2026-04-24
+
+**전문가 에이전트 풀(14) + Orchestration Routing. 제품 개발 라이프사이클 전반에 최고 수준 전문가가 도메인을 이해하고 동작.**
+
+### BREAKING
+- `agents/implementer.md` → `agents/software-engineer.md` (rename). `@harness:implementer` 사용자는 `@harness:software-engineer` 로 전환.
+- 테스트 내부 변수 `_IMPLEMENTER_FORBIDDEN` → `_SOFTWARE_ENGINEER_FORBIDDEN`.
+- 보존: `ai_implementer` persona role (`project.stakeholders[]`) · CHANGELOG 과거 엔트리 · regression golden fixture.
+
+### Added
+- 13 신규 sub-agent (`agents/*.md`) — 14-agent 포트폴리오 완성:
+  - **Stage D (Discovery)** — `researcher` · `product-planner`
+  - **Stage X (eXperience)** — `ux-architect` (reference) · `visual-designer` · `audio-designer` · `a11y-auditor`
+  - **Stage E (Engineering)** — `frontend-engineer` · `backend-engineer` · `security-engineer` · `performance-engineer`
+  - **Stage Q (Quality)** — `qa-engineer`
+  - **Stage I (Integration & Docs)** — `integrator` · `tech-writer`
+- 각 에이전트는 named framework rubrics 내장: JTBD · Mom Test · Nielsen 10 · 5E · WCAG 2.2 · Atomic Design · Twelve-Factor · DDD · STRIDE · OWASP ASVS · OAuth 2.1 · Web Vitals · USE method · Test Pyramid · Diátaxis 등.
+- **domain.md 단일 참조점** 규약 — Stage X/E/Q/I 는 `spec.yaml` 직접 읽지 않고 `.harness/domain.md` 만 anchor. `test_agents.py` 가 규약 위반 grep 으로 검증.
+- **Discovery 예외** — researcher · product-planner 는 domain.md 없이도 동작 (bootstrap).
+- `docs/schemas/spec.schema.json`: `project.brief` (researcher/planner anchor) + `features[].ui_surface` (orchestrator routing key). 둘 다 additive.
+- `scripts/spec_mode_classifier.py`: `baseline-empty-vague` subtype — 한 줄 아이디어(< 40 단어) → researcher 경로.
+- `scripts/render_domain.py`: `## Stakeholders` 섹션 렌더.
+- `commands/spec.md`: Mode B-1-vague 분기 prose contract (researcher → planner → Mode B-2 chain).
+- `commands/work.md`: **Orchestration Routing** 표 (6 shape-branch × agent chain) + 충돌 조정 규약 + 피처 컨텍스트 payload shape.
+- `tests/unit/test_work_routing.py` (신규) · `tests/fixtures/agent-evals/ux-architect/` (reference fixture).
+- `docs/templates/starter/CLAUDE.md.template` · `spec.yaml.template`: 전문가 풀 섹션 + `brief` · `ui_surface` 필드 seed.
+
+### Changed
+- `agents/README.md` — 권한 매트릭스 14 행.
+- `agents/orchestrator.md` · `reviewer.md` — `implementer` → `software-engineer` 참조 정리.
+- `.claude-plugin/plugin.json` · `marketplace.json` — 0.4.1 → 0.5.0.
+
+### Tests
+459/459 unit tests green (16 skipped). 기존 v0.4.1 의 432 대비 +27 신규.
+
+### Why
+하네스 자체는 충분히 다듬어졌으나, **사용자 프로젝트를 실제로 만드는** 전문가 층이 빈약했다. 한 줄 아이디어만 받으면 stub spec 에서 멈췄고, UX/UI/a11y/audio 는 first-class 가 아니었다. v0.5 는 이 gap 을 한 번에 메우되 domain.md 단일 참조점 + 계약 기반 routing 으로 확장성을 확보한다.
 
 ## [0.4.1] — 2026-04-23
 

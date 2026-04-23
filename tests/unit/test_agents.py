@@ -18,18 +18,21 @@ AGENTS_DIR = REPO_ROOT / "agents"
 # Core agents that must ship with v0.4+
 _REQUIRED_AGENTS = {"orchestrator", "software-engineer", "reviewer"}
 
-# v0.5 expert pool — expand as Stage D/X/E/Q/I agents land.
+# v0.5 expert pool — 13 agents across Stage D/X/E/Q/I.
 _EXPERT_AGENTS = (
+    "researcher",
+    "product-planner",
     "ux-architect",
     "visual-designer",
     "audio-designer",
     "a11y-auditor",
-    "researcher",
-    "product-planner",
     "frontend-engineer",
     "backend-engineer",
     "security-engineer",
     "performance-engineer",
+    "qa-engineer",
+    "integrator",
+    "tech-writer",
 )
 
 # Stage D (Discovery) agents operate before any domain.md exists,
