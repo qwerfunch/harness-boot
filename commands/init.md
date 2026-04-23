@@ -20,7 +20,10 @@ argument-hint: "[--team | --solo]  # (선택) state.yaml 커밋 정책"
 
 ### 0. 전처리 — 기존 설치 확인
 
-1. `Bash: pwd` 로 현재 디렉터리 확인. 사용자 프로젝트 루트가 맞는지 판단 (보통 `package.json` / `pyproject.toml` / `Cargo.toml` / `.git` 이 존재).
+1. `Bash: pwd` 로 현재 디렉터리 확인. 사용자 프로젝트 루트가 맞는지 판단:
+   - `Bash: ls package.json pyproject.toml Cargo.toml .git 2>/dev/null | head` 로 4 개 신호 중 존재하는 것을 수집.
+   - **하나라도 존재**: 정상 — 바로 다음 단계로.
+   - **하나도 없음**: 사용자에게 확인 프롬프트: "이 디렉터리는 프로젝트 루트로 보이지 않습니다 (`package.json` · `pyproject.toml` · `Cargo.toml` · `.git` 모두 부재). 현재 위치 `${PWD}` 에 하네스를 설치할까요? (y/N)". "N" 또는 빈 답변이면 중단. "y" 면 `git init` 을 먼저 하도록 권고 후 진행.
 2. `Glob: .harness/**` 로 기존 하네스 존재 여부 확인.
    - 이미 `.harness/spec.yaml` 가 있으면 **경고 출력 후 중단**: "하네스가 이미 설치되어 있습니다. `.harness/spec.yaml` 을 직접 편집하세요. (v0.2+ 에서 `/harness:spec`·`/harness:check` 활성화 예정)"
 3. 인자 문자열 파싱: 인자에 `--team` 이 포함되면 `mode=team` (state.yaml 을 `.gitignore` 에 추가), `--solo` 이거나 인자 없으면 `mode=solo` (커밋 대상 유지). 이외 인자는 무시 + 말미 보고에 "인식 안 된 인자: X" 경고.
