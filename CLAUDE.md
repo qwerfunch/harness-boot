@@ -75,8 +75,9 @@ v0.1.1 릴리즈 경로 핵심 커밋:
 | 첫 실행 검증 | `docs/setup/first-run-checklist.md` |
 | 태깅·마켓 PR | `docs/release/v0.1.0.md` |
 | v0.1.0 변경 이력 | `CHANGELOG.md` |
-| `/harness:init` 명령 스펙 | `commands/init.md` (Phase 2.16 드라이런 패치 반영됨) |
+| `/harness:init` 명령 스펙 | `commands/init.md` (v0.1.1 re-smoke 피드백 반영) |
 | 스펙 v2.3.8 JSONSchema | `docs/schemas/spec.schema.json` |
+| **self-referential canonical spec** | `docs/samples/harness-boot-self/spec.yaml` — harness-boot 자체를 한 제품으로 본 v2.3.8 스펙 (21 features · 8 commands). v0.2 피처 설계 참조점. |
 | 스킬 v0.5 구현 가이드 | `skills/spec-conversion/SKILL.md` |
 | 드라이런 결과 · 발견 갭 | `design/phase-2.16-e2e-dryrun-report.md` (gitignore) |
 | 로컬 메모리 (사용자 스타일 포함) | `design/.memory/MEMORY.md` (gitignore) |
@@ -110,8 +111,10 @@ v0.1.1 릴리즈 경로 핵심 커밋:
 **v0.1.1 완료 (2026-04-23). 다음 작업 후보**:
 
 - **v0.1.2 미세 개선** (시간 남을 때): `ls -d` 정리 + 기타 가독성.
-- **v0.2 피처 E**: `/harness:sync` 스펙 초안 — spec 변경 후 domain.md · architecture.yaml 파생.
+- **v0.2 피처 설계**: `docs/samples/harness-boot-self/spec.yaml` (v2.3.8, 21 features · 8 commands · 6 gates) 에 v0.2 목표 피처를 먼저 반영. 이후 PR 은 "Implements F-NNN per that spec" 형태로.
+- **v0.2 피처 E**: `/harness:sync` — spec 변경 후 `.harness/domain.md` · `architecture.yaml` 파생. 랜딩하는 순간 `harness-boot-self` spec 으로 첫 self-describe round trip 검증 가능.
 - **v0.2 피처 F**: `scripts/hash-fixtures.mjs` + session-start-bootstrap 훅 구현.
+- **v0.2 피처 G**: `/harness:work` — 피처 단위 TDD/구현 루프. 랜딩 이후부터 harness-boot 자체 개발이 harness-boot 아래에서 돌아감 (repo 밖 워크스페이스).
 - **공식 마켓플레이스 PR** (아주 나중에): v0.2~v0.3 안정화 후.
 
 ## 10. Import
