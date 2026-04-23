@@ -1,0 +1,36 @@
+# .harness/harness.yaml
+# ================================================================
+# harness-boot 구성 계약 + 해시 트리 (도구 관리 — 수동 편집 금지).
+# /harness:sync 가 spec.yaml 변경 시 이 파일을 갱신합니다.
+# ================================================================
+
+version: "2.3"
+
+hash_protocol_version: "1"     # 부록 D canonical hashing v1
+
+generation:
+  # spec.yaml Merkle 해시 트리 (v2.1). 초기엔 비어있음.
+  generated_from:
+    spec_hash: ""              # /harness:sync 가 채움
+    subtrees: {}
+
+  # 파생 파일 edit-wins 추적 (v2.2).
+  derived_from:
+    domain_md:
+      source_hash: ""
+      output_hash: ""
+      user_edit_detected: false
+    architecture_yaml:
+      source_hash: ""
+      output_hash: ""
+      user_edit_detected: false
+
+  # $include 외부 md 참조 (v2.3.7).
+  include_sources: []
+
+  drift_status: clean          # clean | spec_changed | derived_edited | include_changed | generated_edited
+
+policies:
+  prose_polish: false          # domain.md 렌더 시 LLM 보정 (기본 off)
+
+# 에이전트/스킬/훅 로딩 매트릭스는 spec.yaml.features[].test_strategy 에서 추론됨.

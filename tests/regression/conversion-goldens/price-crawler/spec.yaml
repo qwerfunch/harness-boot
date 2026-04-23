@@ -1,0 +1,306 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/qwerfunch/harness-boot/v2.3.7/docs/schemas/spec.schema.json
+# .harness/spec.yaml — Price Crawler (worker 도메인 샘플)
+version: "2.3.7"
+
+# =====================================================================
+# 🔎 변환 노트
+# Phase 2 — worker 도메인 3번째 수동 변환.
+# 스케줄 정책, 재시도, DLQ, 백프레셔 같은 worker 특유 개념이
+# 얼마나 담기는지 측정.
+# =====================================================================
+
+project:
+  name: "price-crawler"
+  summary: "경쟁사 6개 사이트의 SKU 가격을 일 1회 수집하는 내부 워커"
+  description: |
+    커머스 MD팀이 수기로 하던 경쟁사 가격 체크를 자동화. 매일 03:00 KST에
+    k8s CronJob 으로 실행되어 약 1,200개 SKU의 가격을 수집하고, 변동이
+    ±5% 이상이면 Slack 으로 알람. 상용 솔루션(Prisync 등) 대신 커스텀을
+    택한 이유는 우리 SKU 매핑의 복잡도와 일부 경쟁사의 JS 렌더링 필요.
+  vision: |
+    현재는 가격 단일 축이지만 중장기에 재고·리뷰 등으로 확장 가능한 구조.
+    v1은 가격 + 알람만.
+  stakeholders:
+    - role: "md_team"
+      concerns:
+        - "매일 아침 대시보드로 즉시 가격 변동 파악"
+        - "SKU 수동 체크 시간 제거"
+    - role: "data_team"
+      concerns:
+        - "셀렉터 깨짐을 조기 감지하고 유지보수 가능하게"
+        - "DLQ 쌓임을 실시간 인지"
+    - role: "legal_team"
+      concerns:
+        - "robots.txt 준수 및 사이트 약관 위반 없음 — 런칭 전 컨펌 미해결"
+    - role: "infra_team"
+      concerns:
+        - "egress 비용 월 50 USD 이내"
+        - "CronJob 성공률 월 93% 이상"
+
+domain:
+  overview: |
+    핵심은 두 시계열 데이터 — JobRun(수집 실행 이력)과 PriceSnapshot(가격
+    스냅샷). SKU 매핑(TrackedSKU)은 MD팀이 초기 공급 후 반영구. 실패
+    경로는 DeadLetter 로 고정되며, 재시도 정책은 HTTP 상태코드별로 분기.
+  entities:
+    - name: "Competitor"
+      description: "가격을 수집할 경쟁사 사이트."
+      invariants:
+        - "name 과 base_url 은 유일"
+        - "crawler_strategy 는 static_html 또는 js_rendered 중 하나"
+        - "is_active=false 면 해당 사이트는 스킵"
+      sensitive: false
+    - name: "TrackedSKU"
+      description: "우리 내부 SKU ↔ 경쟁사 상품 URL 의 매핑."
+      invariants:
+        - "(internal_sku, competitor_id) 쌍은 유일"
+        - "external_product_url 은 해당 competitor.base_url 도메인 아래여야 함"
+      sensitive: false
+    - name: "PriceSnapshot"
+      description: "한 번의 수집에서 얻어진 SKU별 가격 기록."
+      invariants:
+        - "currency 는 ISO 4217 3글자 코드"
+        - "price ≥ 0"
+        - "raw_html_ref 은 파싱 실패 시에만 채워진다"
+      sensitive: false
+    - name: "JobRun"
+      description: "크롤링 파이프라인 1회 실행의 상태 및 통계."
+      invariants:
+        - "status 는 running → succeeded|failed|partial 로만 전이"
+        - "finished_at 은 status != running 일 때 필수"
+      sensitive: false
+    - name: "DeadLetter"
+      description: "최종 실패한 SKU 수집 시도. 수동 개입 대상."
+      invariants:
+        - "reason 은 사전 정의된 enum"
+        - "payload_json 은 최대 64KB"
+      sensitive: false
+  business_rules:
+    - id: "BR-001"
+      statement: "robots.txt 의 disallow 경로는 수집하지 않는다"
+      rationale: "웹 에티켓 및 법무 리스크 회피"
+      compliance: []
+    - id: "BR-002"
+      statement: "경쟁사별 동시 요청 1개, 요청 간 1초 간격"
+      rationale: "상대 서버 부하 방지 및 IP 밴 회피"
+      compliance: []
+    - id: "BR-003"
+      statement: "HTTP 4xx 응답은 재시도 없이 즉시 DLQ"
+      rationale: "일시 오류가 아니며 재시도로 해결되지 않음"
+      compliance: []
+    - id: "BR-004"
+      statement: "HTTP 5xx / 네트워크 타임아웃은 3회까지 exponential backoff 재시도"
+      rationale: "일시적 장애로 인한 누락 방지"
+      compliance: []
+    - id: "BR-005"
+      statement: "파싱 실패(셀렉터 미매칭) 시 DLQ 에 원본 HTML 함께 보존"
+      rationale: "셀렉터 복구 및 원인 분석을 위해"
+      compliance: []
+    - id: "BR-006"
+      statement: "직전 수집 대비 ±5% 이상 변동 시 Slack #md-team 알람"
+      rationale: "MD 의사결정 트리거 — 변동폭은 v1 고정, 카테고리별 조정은 후속"
+      compliance: []
+    - id: "BR-007"
+      statement: "PriceSnapshot 은 1년 보관, 이후 월별 집계 후 원본 삭제"
+      rationale: "저장 비용 및 의사결정 유효기간"
+      compliance: []
+    - id: "BR-008"
+      statement: "수동 트리거는 owner role 만 실행 가능"
+      rationale: "비용 제어 및 상대 서버 부하 방지"
+      compliance: []
+  vocabulary:
+    - term: "DLQ"
+      definition: "Dead Letter Queue. 최종 실패한 작업을 보관하는 저장소."
+    - term: "tracked_sku"
+      definition: "우리 내부 SKU 와 경쟁사 상품 URL 의 매핑 엔티티."
+    - term: "JobRun"
+      definition: "한 번의 크롤링 파이프라인 실행 단위."
+    - term: "셀렉터 깨짐"
+      definition: "경쟁사 사이트 HTML 구조 변경으로 기존 CSS/XPath 가 더 이상 매칭되지 않는 상태."
+
+constraints:
+  tech_stack:
+    language: "Python"
+    runtime: "Python 3.12"
+    framework: "asyncio + httpx + playwright"
+    testing: "pytest + pytest-asyncio"
+  architecture:
+    pattern: "layered"
+    reference: ".harness/architecture.yaml"
+  quality:
+    coverage_threshold: 75
+    required_gates: [0, 1, 2, 3, 4, 5]
+    prototype_mode: false
+
+deliverable:
+  type: "worker"
+  entry_points:
+    - name: "crawl-job"
+      command: "python -m price_crawler.main"
+      build_command: "pip install -e ."
+      health_check:
+        type: "exit-code-zero"
+        timeout_seconds: 7200        # 2시간 소프트 SLA
+        expected: {}
+    - name: "trigger-api"
+      command: "uvicorn price_crawler.api:app --port 8080"
+      build_command: "pip install -e ."
+      health_check:
+        type: "http-200"
+        timeout_seconds: 20
+        expected:
+          url: "http://localhost:8080/health"
+          status: 200
+  smoke_scenarios:
+    - id: "SS-001"
+      description: "단일 경쟁사 + 10개 SKU 수집이 성공한다"
+      steps:
+        - "테스트용 fixture Competitor 1개, TrackedSKU 10개를 DB에 주입"
+        - "crawl-job 엔트리 실행"
+        - "JobRun.status 종료 확인"
+      success_criteria: "JobRun.status == 'succeeded', PriceSnapshot 10건 생성"
+    - id: "SS-002"
+      description: "실패한 SKU가 DLQ 로 이동한다"
+      steps:
+        - "의도적으로 404 을 반환하는 fixture 경쟁사 URL 사용"
+        - "crawl-job 실행"
+      success_criteria: "DeadLetter 건수 ≥ 1, reason='http_4xx'"
+
+features:
+  - id: "F-000"
+    type: "skeleton"
+    title: "Walking Skeleton — 단일 경쟁사 10 SKU 수집 end-to-end"
+    priority: 1
+    status: "planned"
+    test_strategy: "integration"
+    test_strategy_reason: "DB·HTTP·파서까지의 최소 파이프라인 검증"
+    acceptance_criteria:
+      - "fixture 1 경쟁사 + 10 SKU 를 10분 내 수집 완료"
+      - "PriceSnapshot 10건 생성"
+      - "JobRun.status='succeeded' 로 종료"
+    tdd_focus: []
+    depends_on: []
+    modules: ["runner", "fetcher", "parser", "db"]
+    doc_sync: []
+
+  - id: "F-001"
+    title: "경쟁사 6개 확장 + JS 렌더 지원"
+    priority: 2
+    status: "planned"
+    test_strategy: "integration"
+    test_strategy_reason: "사이트별 파서 동작 검증"
+    acceptance_criteria:
+      - "crawler_strategy=static_html 과 js_rendered 모두 지원"
+      - "경쟁사별 concurrency 1, 요청 간 1초 간격 준수"
+      - "전체 1,200 SKU 수집 1시간 이내 완료(목표)"
+    tdd_focus: []
+    depends_on: ["F-000"]
+    modules: ["fetcher", "parser", "competitor-registry"]
+    doc_sync: []
+
+  - id: "F-002"
+    title: "재시도 및 DLQ"
+    priority: 3
+    status: "planned"
+    test_strategy: "tdd"
+    test_strategy_reason: "상태 코드별 분기 로직은 강한 보호가 필요"
+    acceptance_criteria:
+      - "HTTP 5xx / timeout → 3회 재시도(2^n 초 backoff) 후 DLQ"
+      - "HTTP 4xx → 즉시 DLQ"
+      - "파싱 실패 → DLQ + 원본 HTML 저장"
+      - "DLQ 레코드에 reason, payload_json 구조 기록"
+    tdd_focus:
+      - "상태코드별 분기 매트릭스"
+      - "backoff 계산"
+      - "원본 HTML S3 업로드 실패 시 DLQ 자체 기록 보장"
+    depends_on: ["F-001"]
+    modules: ["retry-policy", "dlq", "fetcher"]
+    doc_sync: []
+
+  - id: "F-003"
+    title: "가격 변동 감지 및 Slack 알람"
+    priority: 4
+    status: "planned"
+    test_strategy: "state-verification"
+    test_strategy_reason: "직전 PriceSnapshot 과의 delta 계산이 결정적"
+    acceptance_criteria:
+      - "직전 수집 대비 ±5% 이상 차이 시 알람 후보로 표시"
+      - "Slack #md-team 메시지에 SKU 링크·가격·변동률 포함"
+      - "v1 에서는 경쟁사별 일괄 요약 메시지 1건, 건별 쓰레드 스팸 금지"
+    tdd_focus:
+      - "delta 계산 (분모 0 방어)"
+      - "새로 추가된 SKU(직전 스냅샷 없음) 처리"
+    depends_on: ["F-001"]
+    modules: ["diff-detector", "slack-client"]
+    doc_sync: []
+
+  - id: "F-004"
+    title: "모니터링 대시보드 (Grafana)"
+    priority: 5
+    status: "planned"
+    test_strategy: "lean-tdd"
+    test_strategy_reason: "메트릭 노출 + 쿼리 검증 수준"
+    acceptance_criteria:
+      - "경쟁사별 수집 성공률 panel"
+      - "SKU별 시계열 가격 차트"
+      - "DLQ 적재량 추이 panel"
+      - "메트릭 소스는 Postgres + Prometheus"
+    tdd_focus: []
+    depends_on: ["F-002", "F-003"]
+    modules: ["metrics-exporter"]
+    doc_sync: []
+
+  - id: "F-005"
+    title: "수동 트리거 API"
+    priority: 6
+    status: "planned"
+    test_strategy: "tdd"
+    test_strategy_reason: "인증·권한 분기"
+    acceptance_criteria:
+      - "POST /api/jobs/trigger 로 즉시 크롤 실행 (owner 역할만)"
+      - "진행중 JobRun 있으면 409 Conflict"
+      - "API 호출은 감사 로그에 기록"
+    tdd_focus:
+      - "권한 검증"
+      - "중복 실행 방지 락"
+    depends_on: ["F-001"]
+    modules: ["trigger-api", "auth", "audit-log"]
+    doc_sync: []
+
+metadata:
+  source:
+    origin: "planning_doc"
+    created_at: "2026-04-22T00:00:00Z"
+    refined_at: "2026-04-22T00:00:00Z"
+    source_lines:
+      - field_path: "project.description"
+        source_file: "plan.md"
+        source_range: [11, 17]
+        confidence: "high"
+      - field_path: "domain.entities[3]"
+        source_file: "plan.md"
+        source_range: [38, 40]
+        confidence: "high"
+      - field_path: "features[2]"
+        source_file: "plan.md"
+        source_range: [70, 77]
+        confidence: "high"
+      - field_path: "domain.business_rules"
+        source_file: "plan.md"
+        source_range: [108, 125]
+        confidence: "medium"
+  completeness:
+    domain: "medium"
+    features: "medium"
+    modules: "low"
+
+# =====================================================================
+# 🚨 UNREPRESENTED CONTENT (detail in unrepresentable.md)
+# worker 도메인 재현/신규 갭:
+#   - 스케줄 정책(매일 03:00 KST, k8s CronJob) — 신규 갭 G-14
+#   - concurrency/rate limit 선언(경쟁사별 1req/sec) — G-14 일부
+#   - 재시도 정책은 BR로 승격, 하지만 구조적 정책 테이블 아님 — G-15 신규
+#   - "실시간 수집은 비목표" — G-13 재현
+#   - egress 50 USD 제약 — G-01 (비기능) 재현
+#   - 법무 컨펌 미해결 — G-09 / G-10 재현
+# =====================================================================

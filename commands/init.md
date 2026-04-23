@@ -1,0 +1,147 @@
+---
+description: harness-boot 플러그인을 현재 프로젝트에 설치 — .harness/ 골격 + CLAUDE.md 편성. 프로젝트당 1회.
+allowed-tools: [Read, Write, Edit, Bash, Glob]
+argument-hint: "[--team | --solo]  # (선택) state.yaml 커밋 정책"
+---
+
+# /harness:init — 하네스 설치
+
+이 명령은 **현재 작업 디렉터리에 harness-boot 골격을 생성**합니다. Claude 는 다음 단계를 순서대로 **정확히** 수행하세요. 각 단계 후 간단히 성공/실패를 보고하되, 전체 명령 실행 중 **요약은 마지막에 1회** 만 하세요.
+
+## Preamble (출력 맨 앞)
+
+```
+🧰 /harness:init · 설치 · <근거 10단어 이내>
+```
+
+예: `🧰 /harness:init · 설치 · .harness/ 새로 생성 + CLAUDE.md 병합`
+
+## 단계
+
+### 0. 전처리 — 기존 설치 확인
+
+1. `Bash: pwd` 로 현재 디렉터리 확인. 사용자 프로젝트 루트가 맞는지 판단 (보통 `package.json` / `pyproject.toml` / `Cargo.toml` / `.git` 이 존재).
+2. `Glob: .harness/**` 로 기존 하네스 존재 여부 확인.
+   - 이미 `.harness/spec.yaml` 가 있으면 **경고 출력 후 중단**: "하네스가 이미 설치되어 있습니다. `.harness/spec.yaml` 을 직접 편집하세요. (v0.2+ 에서 `/harness:spec`·`/harness:check` 활성화 예정)"
+3. 인자 문자열 파싱: 인자에 `--team` 이 포함되면 `mode=team` (state.yaml 을 `.gitignore` 에 추가), `--solo` 이거나 인자 없으면 `mode=solo` (커밋 대상 유지). 이외 인자는 무시 + 말미 보고에 "인식 안 된 인자: X" 경고.
+
+### 1. 디렉터리 생성
+
+`Bash` 로:
+
+```
+mkdir -p .harness .harness/hooks .harness/protocols .harness/_workspace/handoff
+mkdir -p .claude/agents .claude/skills
+```
+
+### 2. starter 템플릿 복사 (3개 파일, CLAUDE.md 는 §3)
+
+플러그인 레포의 `docs/templates/starter/` 에서 읽어와 **내용을 사용자 프로젝트** 로 씁니다. 플러그인 루트 경로는 이 슬래시 명령이 속한 플러그인 디렉터리 (Claude Code 가 런타임에 제공) — 환경변수 `$CLAUDE_PLUGIN_ROOT` 로 노출되는 것이 일반적이며, 없으면 `~/.claude/plugins/harness-boot` 를 기본값으로 시도.
+
+템플릿 매핑 (§2 에서 처리하는 3 파일):
+
+| 원본 (플러그인 내) | 대상 (사용자 프로젝트) |
+|---|---|
+| `docs/templates/starter/spec.yaml.template` | `.harness/spec.yaml` |
+| `docs/templates/starter/harness.yaml.template` | `.harness/harness.yaml` |
+| `docs/templates/starter/state.yaml.template` | `.harness/state.yaml` |
+
+각 파일에 대해:
+1. `Read` 플러그인 내 템플릿.
+2. `Write` 대상 경로 (내용 수정 없음).
+
+`CLAUDE.md` 는 병합 로직이 섞여있으므로 §3 이 전담합니다.
+
+### 3. CLAUDE.md 생성 또는 병합
+
+**신규 생성** 케이스 (CLAUDE.md 가 프로젝트 루트에 없을 때):
+1. `Read` 플러그인 내 `docs/templates/starter/CLAUDE.md.template`.
+2. `{{PROJECT_NAME}}` 을 실제 프로젝트 이름으로 치환. 이름 추출 우선순위:
+   - `package.json` 의 `name` 필드 (비어있으면 다음)
+   - `pyproject.toml` 의 `[project].name` → `[tool.poetry].name` 순
+   - 현재 디렉터리 이름 (`basename $PWD`)
+3. `Write` 대상 `CLAUDE.md`.
+
+**이미 존재** 케이스: 기존 파일 끝에 다음 1줄을 **덧붙이고** (중복이면 스킵):
+
+```
+@.harness/spec.yaml
+```
+
+그리고 별도로 한 단락을 추가:
+
+```
+## harness-boot
+
+이 프로젝트는 harness-boot 플러그인으로 관리됩니다. `/harness:spec` 으로 제품 설명을 편집하세요.
+```
+
+### 4. .gitignore 편성
+
+1. 기존 `.gitignore` 가 없으면 `.gitignore` 를 `Write`.
+2. 다음 엔트리가 없으면 추가 (공백줄 구분):
+
+```
+# harness-boot
+.harness/_workspace/
+.harness/events.log
+.harness.tmp/
+.harness.backup/
+```
+
+3. `--team` 인자면 추가:
+
+```
+.harness/state.yaml
+```
+
+### 5. 초기 이벤트 로그
+
+`.harness/events.log` 를 **신규** 로 작성 (JSON Lines, 1줄):
+
+```json
+{"ts":"<ISO8601 UTC>","type":"harness_initialized","plugin_version":"0.1.0","mode":"<team|solo>"}
+```
+
+타임스탬프는 `Bash: date -u +%Y-%m-%dT%H:%M:%SZ` 로 획득.
+
+### 6. 최종 보고 (사용자 향)
+
+아래 요약을 **한 번만** 출력:
+
+```
+✅ harness-boot 설치 완료 (v0.1.0)
+
+생성된 파일:
+  .harness/spec.yaml          ← 당신이 편집할 유일한 파일
+  .harness/harness.yaml       ← 도구 관리
+  .harness/state.yaml         ← 진행 상태
+  .harness/events.log         ← 이벤트 스트림
+  CLAUDE.md                   ← Claude 세션 컨텍스트 (spec.yaml import 포함)
+  .gitignore                  ← 병합됨
+
+다음 단계 (v0.1.0 기준 — /harness:spec 등은 v0.2+ 예정):
+  1. `.harness/spec.yaml` 을 직접 편집하세요. 예시는 docs/samples/ 참고.
+     이미 `plan.md` 가 있다면: skills/spec-conversion 을 활성화하고 "이 plan.md 를 spec.yaml 로 변환해줘" 요청.
+  2. 편집 완료 후 세션을 재시작하면 CLAUDE.md 의 @ import 가 새 spec 을 로드합니다.
+
+문서: https://github.com/qwerfunch/harness-boot
+v0.2 로드맵: /harness:sync (파생) · /harness:work (구현) · /harness:check (드리프트)
+```
+
+## 실패 조건 (fail-fast)
+
+- 쓰기 권한 없음 → 사용자에게 권한 확인 요청, 다른 단계 진행 중단.
+- `.harness/spec.yaml` 이미 존재 → §0-2 경고로 중단.
+- starter 템플릿 Read 실패 (플러그인 경로 못 찾음) → 사용자에게 플러그인 설치 확인 요청, 수동 경로 입력 프롬프트.
+
+## v0.1.0 범위 제한
+
+이 최소판은 **파일 생성** 까지만 합니다. 다음은 **미구현 — v0.2+**:
+
+- `scripts/hash-fixtures.mjs` 호출로 초기 spec 해시 계산
+- `.claude/settings.json` + `.claude/agents/*.md` + `.claude/skills/*.md` 자동 생성
+- `.harness/hooks/*.mjs` 자동 복사
+- 6개 핵심 훅 (security-gate, doc-sync-check, coverage-gate, format, test-runner, session-start-bootstrap)
+
+v0.1.0 단계에서는 사용자가 spec.yaml 을 채운 후 `/harness:spec` · `/harness:sync` 로 수동 진전하면 됩니다. `.claude/` 는 비어있어도 Claude Code 가 경고하지 않습니다.
