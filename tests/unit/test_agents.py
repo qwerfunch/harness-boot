@@ -18,6 +18,14 @@ AGENTS_DIR = REPO_ROOT / "agents"
 # Core agents that must ship with v0.4+
 _REQUIRED_AGENTS = {"orchestrator", "software-engineer", "reviewer"}
 
+# v0.5 expert pool — expand as Stage D/X/E/Q/I agents land.
+_EXPERT_AGENTS = ("ux-architect",)
+
+# Stage D (Discovery) agents operate before any domain.md exists,
+# so they are exempt from the "domain.md single reference point" rule.
+# Populate as Stage D ships.
+_DISCOVERY_EXEMPT: set[str] = set()
+
 # Permission matrix: allowed tools per agent (F-012 AC-2 contract).
 # reviewer is strictly read-only; software-engineer is restricted from
 # shared-system mutation; orchestrator is broad.
@@ -143,6 +151,93 @@ class StyleGuideTests(unittest.TestCase):
         # 반례 (금지 패턴) 가 문서화되어 있음
         self.assertIn("AC1_", body)  # bad-example 로 명시됨
         self.assertRegex(body, r"(금지|❌|avoid|bad)")
+
+
+class ExpertAgentContractTests(unittest.TestCase):
+    """v0.5 — expert pool 공통 계약 (Stage X/E/Q/I).
+
+    - body 에 `## Context` 블록 + domain.md 단일 참조 문구.
+    - Preamble 3 줄 + anti-rationalization 2 행 (BR-014).
+    - Stage X/E/Q/I 는 spec.yaml 직접 읽기 금지 (Discovery 는 예외).
+    """
+
+    def test_each_expert_file_exists(self):
+        for name in _EXPERT_AGENTS:
+            self.assertTrue(
+                (AGENTS_DIR / f"{name}.md").is_file(),
+                f"missing expert agent: {name}.md",
+            )
+
+    def test_each_expert_has_valid_frontmatter(self):
+        for name in _EXPERT_AGENTS:
+            fm = _load_agent(name)
+            self.assertEqual(fm.get("name"), name)
+            self.assertGreater(len(fm.get("description", "").strip()), 40)
+            self.assertIsInstance(fm.get("tools"), list)
+
+    def test_each_expert_references_domain_md(self):
+        for name in _EXPERT_AGENTS:
+            body = (AGENTS_DIR / f"{name}.md").read_text(encoding="utf-8")
+            self.assertIn("## Context", body, f"{name}: missing Context section")
+            self.assertIn("domain.md", body, f"{name}: must anchor on domain.md")
+
+    def test_each_expert_has_preamble(self):
+        for name in _EXPERT_AGENTS:
+            body = (AGENTS_DIR / f"{name}.md").read_text(encoding="utf-8")
+            self.assertIn("## Preamble", body)
+            self.assertIn("NO skip:", body)
+            self.assertIn("NO shortcut:", body)
+
+    def test_stage_xeqi_experts_forbid_direct_spec_read(self):
+        """Stage X/E/Q/I body 에 `spec.yaml` 직접 참조 금지 규약 문구 필수."""
+        for name in _EXPERT_AGENTS:
+            if name in _DISCOVERY_EXEMPT:
+                continue
+            body = (AGENTS_DIR / f"{name}.md").read_text(encoding="utf-8")
+            self.assertRegex(
+                body,
+                r"`?spec\.yaml`?\s*직접\s*참조\s*금지",
+                f"{name}: must explicitly forbid direct spec.yaml read",
+            )
+
+
+class UxArchitectReferenceFixtureTests(unittest.TestCase):
+    """PR-D-ref — reference agent 의 fixture I/O 계약."""
+
+    FIXTURE_DIR = REPO_ROOT / "tests" / "fixtures" / "agent-evals" / "ux-architect"
+
+    def test_input_md_exists(self):
+        self.assertTrue((self.FIXTURE_DIR / "input.md").is_file())
+
+    def test_expected_structure_yaml_loads(self):
+        data = yaml.safe_load(
+            (self.FIXTURE_DIR / "expected-structure.yaml").read_text(encoding="utf-8")
+        )
+        self.assertEqual(data["agent"], "ux-architect")
+        self.assertEqual(
+            data["output_path"], ".harness/_workspace/design/flows.md"
+        )
+
+    def test_required_sections_complete_and_ordered(self):
+        data = yaml.safe_load(
+            (self.FIXTURE_DIR / "expected-structure.yaml").read_text(encoding="utf-8")
+        )
+        sections = data["required_sections_in_order"]
+        self.assertEqual(len(sections), 6, "ux-architect must declare 6 sections")
+        self.assertEqual(sections[0], "## Jobs-To-Be-Done")
+        self.assertIn("## Heuristic Check", sections)
+        self.assertIn("## a11y Prereq", sections)
+
+    def test_forbidden_phrases_protect_downstream_agents(self):
+        """forbidden_phrases 에 visual-designer 영역 키워드 포함되어야."""
+        data = yaml.safe_load(
+            (self.FIXTURE_DIR / "expected-structure.yaml").read_text(encoding="utf-8")
+        )
+        forbidden = data.get("forbidden_phrases", [])
+        self.assertTrue(
+            any("색" in p or "font-size" in p for p in forbidden),
+            "ux-architect must forbid visual-designer territory words",
+        )
 
 
 if __name__ == "__main__":

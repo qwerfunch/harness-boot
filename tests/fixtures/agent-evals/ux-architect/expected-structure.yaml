@@ -1,0 +1,43 @@
+# Expected structure of ux-architect's flows.md output.
+#
+# This fixture does NOT run the agent — it declares the contract every
+# ux-architect run must satisfy. v0.5: tests parse this file and verify
+# its own shape. v0.6: eval harness may run the agent and diff actual
+# output against these keys.
+
+agent: ux-architect
+output_path: .harness/_workspace/design/flows.md
+
+# Required H2 sections in order. Renderer/reviewer asserts presence.
+required_sections_in_order:
+  - "## Jobs-To-Be-Done"
+  - "## User Flows"
+  - "## Information Architecture"
+  - "## States & Transitions"
+  - "## Heuristic Check"
+  - "## a11y Prereq"
+
+# Required phrases — proves the agent actually invoked each framework,
+# not just echoed section headers.
+required_phrases:
+  - "When "                 # JTBD sentence opener
+  - "```mermaid"            # at least one flowchart/stateDiagram
+  - "Nielsen"               # heuristic check references the 10
+  - "키보드"                 # a11y keyboard coverage (Korean project default)
+
+# Heuristic checklist must touch at least this many of Nielsen's 10.
+min_heuristics_covered: 6
+
+# Anti-patterns — if the output contains these verbatim, reject.
+forbidden_phrases:
+  - "색은 파란색"             # visual-designer territory
+  - "font-size:"            # tokens belong to visual-designer
+  - "TODO"                  # unfinished design leaks to downstream
+
+# Minimum states in the state diagram (loading, empty, success, error
+# all strongly recommended; 4 is the floor).
+min_states: 4
+
+# Preamble contract (BR-014).
+preamble_first_line_prefix: "🎨 @harness:ux-architect"
+preamble_anti_rationalization_lines: 2
