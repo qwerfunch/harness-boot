@@ -1,119 +1,198 @@
 # harness-boot
 
-> **Plan.md 하나로 출발해 Claude Code 에이전트·스킬·훅·프로토콜을 파생·생성·진화시키는 harness 플러그인.**
-> 사용자는 `.harness/spec.yaml` 만 편집하고, 나머지는 도구가 파생합니다.
+> **자연어로 쓴 기획 의도를 AI 가 따라갈 수 있는 "중간언어" 로 바꾸고, 그 중간언어를 SSoT 로 삼아 개발 결과까지 이끌어내는 Claude Code 플러그인.**
 
-[![version](https://img.shields.io/badge/plugin-v0.1.0-blue)](.claude-plugin/plugin.json)
+[![version](https://img.shields.io/badge/plugin-v0.3.1-blue)](.claude-plugin/plugin.json)
 [![spec](https://img.shields.io/badge/spec-v2.3.8-green)](docs/schemas/spec.schema.json)
+[![tests](https://img.shields.io/badge/tests-261%20passing-brightgreen)](tests/unit)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 ---
 
-## 30초 요약
+## 왜?
 
-Plan.md → `.harness/spec.yaml` (v2.3.8) → Walking Skeleton → 기능 반복.
+LLM 에게 "이런 제품을 만들어줘" 라고 자연어로 던지면 출력은 매번 다릅니다. 서두는 멋지지만 피처 6번째쯤에서 문맥이 어긋나고, "됐다" 라고 말하는데 실제로 뭐가 됐는지는 확인할 길이 없습니다.
 
-- **편집 대상은 1개**: `.harness/spec.yaml`. 제품 설명·엔티티·비즈니스 룰·기능·배포 계약을 모두 여기에.
-- **파생은 자동**: `domain.md` · `architecture.yaml` · `.claude/agents/**` · `.claude/skills/**` · hooks.
-- **증거 기반**: 기능마다 `acceptance_criteria` + 커버리지 Gate. Claude 가 조작할 수 없는 수치 증거를 요구.
-- **드리프트 추적**: Merkle 해시 트리로 spec 변경·파생 수정·외부 include 를 각각 구분 검출.
+**harness-boot 가 해결하는 것**: 자연어 기획 의도와 실제 구현 사이에 **구조화된 중간언어 (`spec.yaml`)** 를 심어, AI 가 그것을 SSoT 로 삼아 파생·개발·검증을 자동화하도록 강제합니다. 사용자는 spec.yaml 한 파일만 관리하고, 나머지는 모두 파생물이며, 모든 완료 선언은 증거와 해시로 추적됩니다.
+
+---
+
+## 핵심 흐름
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│ ①  INPUT — 자연어 기획 의도                                            │
+│    · plan.md (마크다운 기획서)                                         │
+│    · 대화 (Mode B-1 empty baseline 대화)                               │
+│    · 기존 코드/문서 (v0.4+ 자동 정찰 예정)                             │
+└─────────────────────────────────┬──────────────────────────────────────┘
+                                  │  /harness:spec
+                                  │  (Mode A 추가 · B 신규 · R 정제 · E 설명)
+                                  │  + spec-conversion skill v0.5
+                                  ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ ②  SSoT — spec.yaml (v2.3.8, JSONSchema draft 2020-12)                 │
+│    AI 가 읽는 "중간언어" · 사용자가 편집하는 유일한 파일               │
+│    ───────────────────────────────────────────────────────────────     │
+│    project · domain (엔티티 · BR) · features[] (acceptance_criteria ·  │
+│    modules · test_strategy · source_ref) · constraints · deliverable · │
+│    metadata (host_binding · command_map · gate_chain · drift_catalog)  │
+└────────┬───────────────────────────────────────────┬───────────────────┘
+         │ /harness:sync                             │ /harness:work <F-ID>
+         │ spec → 파생 · 해시트리 갱신               │ 피처 단위 TDD 루프
+         ▼                                           ▼
+┌─────────────────────────────┐  ┌──────────────────────────────────────┐
+│ ③  PARSED VIEWS (파생)      │  │ ④  DEVELOPMENT (구현 · 증거 기반)    │
+│    domain.md                │  │    · Gate 0 (tests, 자동 실행)       │
+│    architecture.yaml        │  │    · Gate 1~5 (수동 기록 · v0.3.2+)  │
+│    harness.yaml 해시트리    │  │    · evidence 자동 수집 (pass 시)    │
+│    events.log (JSONL)       │  │    · BR-004: 증거 없는 done 거부     │
+│    — edit-wins 사용자 수정  │  │    → state.yaml 갱신 + events.log    │
+│       보존                  │  │       append                         │
+└──────────┬──────────────────┘  └────────────────────────────────────────┘
+           │
+           ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│ ⑤  OBSERVABILITY — CQS read-only                                       │
+│    /harness:status  세션 · 피처 카운트 · drift · 마지막 sync 요약      │
+│    /harness:check   drift 5 종 탐지 (Generated · Spec · Derived ·      │
+│                     Include · Evidence)                                │
+│    /harness:events  events.log 필터 조회 (kind · feature · since)      │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+**핵심 규약 3 가지**:
+
+1. **SSoT** — `.harness/spec.yaml` 이 유일한 사용자 편집 대상. 나머지는 모두 파생.
+2. **Evidence over prose** — 완료 주장 (`status: done`) 은 **Gate 통과 + evidence ≥ 1** 없이 거부됨 (BR-004 Iron Law).
+3. **Hash-tracked drift** — 세 가지 변경 (spec 편집 / 파생 사용자 수정 / include 파일 교체) 을 **독립으로 구분** 해야 정확한 drift 리포트와 재현 가능한 파생 가능. Canonical YAML→JSON→SHA-256 Merkle 트리로 YAML 포맷 변경엔 둔감, 의미 변경만 감지.
+
+---
 
 ## 설치
 
+```
+/plugin marketplace add qwerfunch/harness-boot
+/plugin install harness@harness-boot
+```
+
+Claude Code 재시작 후 `/harness:init` 가 자동완성에 뜨면 성공. 의존성: Python 3.10+, `pyyaml`, `jsonschema` (선택).
+
+---
+
+## 8 개 슬래시 명령
+
+| 명령 | 역할 | 상태 |
+|------|------|:---:|
+| `/harness:init` | `.harness/` 스캐폴딩 + CLAUDE.md 편성. `--solo` / `--team` | ✅ v0.1.0 |
+| `/harness:spec` | spec.yaml 편집 · Mode A 추가 / B 신규 / R 정제 / E 설명 | 🛠 v0.2 (classifier + Mode E 구현, A/R/B LLM 드리븐) |
+| `/harness:sync` | spec → `domain.md` · `architecture.yaml` · `harness.yaml` 파생 + Merkle 해시 갱신 | ✅ v0.2 |
+| `/harness:work` | 피처 단위 개발 사이클 (활성화 · Gate 기록/자동실행 · evidence · done 전이) | ✅ v0.3 (`--run-gate gate_0` 자동) |
+| `/harness:status` | 세션·피처·drift·마지막 sync 요약 (CQS) | ✅ v0.3 |
+| `/harness:check` | drift 5/8 탐지 (Generated · Spec · Derived · Include · Evidence) | 🛠 v0.3 (Code/Doc/Anchor 는 v0.3.2+) |
+| `/harness:events` | events.log 필터 조회 (CQS) | ✅ v0.3 |
+| `/harness:metrics` | 집계 지표 (lead time · gate pass rate · drift 빈도) | ⏳ v0.3.2+ |
+
+✅ full · 🛠 partial · ⏳ planned.
+
+---
+
+## 30 초 체험
+
 ```bash
-# 마켓플레이스 등록 (최초 1회)
-claude plugin marketplace add qwerfunch/harness-boot
-
-# 플러그인 설치
-claude plugin install harness-boot
+# 빈 프로젝트에서 claude 실행 후:
+/harness:init --solo                         # .harness/ · CLAUDE.md 스캐폴딩
+/harness:spec plan.md                        # plan.md 가 있으면 Mode B-2 변환
+/harness:sync                                # spec → domain.md · architecture.yaml 파생
+/harness:work F-003                          # 피처 활성화 (planned → in_progress)
+/harness:work F-003 --run-gate gate_0        # 테스트 자동 실행 + evidence
+/harness:check                               # drift 점검 (read-only)
+/harness:work F-003 --complete               # gate 5 pass + evidence 있어야 done
 ```
 
-> **주의 (v0.1.0 범위)**: 현재 릴리즈는 `/harness:init` + 스킬 `spec-conversion` 만 포함합니다. `/harness:sync` · `/harness:work` · `/harness:status` · `/harness:check` 는 v0.2+ 에서 활성화됩니다.
+---
 
-## 첫 명령
+## plan.md → spec.yaml 변환 (Mode B)
 
-프로젝트 루트에서:
+plan.md 가 이미 있으면 대부분 자동화됩니다.
 
-```text
-/harness:init
-```
+- 4-stage 파이프라인: **정찰** (Mode B 통계 추출) → **저작** (24 원칙 + 5 도메인 어댑터) → **gap** (unrepresentable 카탈로그) → **backlink** (source_ref 매트릭스).
+- 8 golden 샘플 + 회귀 러너로 검증 (recall 0.991 / precision 0.861, BM25 기반).
+- 어댑터: `saas` · `game` · `worker` · `library` · `meta`. self-bootstrap 메타 케이스 포함.
 
-생성 결과:
+**참조**:
+- [`skills/spec-conversion/SKILL.md`](skills/spec-conversion/SKILL.md) — v0.5 스킬 가이드 (24 원칙 · 어댑터)
+- [`tests/regression/conversion-goldens/`](tests/regression/conversion-goldens/) — 8 완성 샘플 + `MANIFEST.yaml`
+- [`docs/samples/harness-boot-self/`](docs/samples/harness-boot-self/) — harness-boot **자신** 을 변환한 canonical spec (self-referential)
 
-```
-.harness/
-  spec.yaml          ← 당신이 편집하는 유일한 파일
-  harness.yaml       ← 도구 관리 (해시 트리)
-  state.yaml         ← 진행 상태
-  events.log         ← 이벤트 스트림 (JSON Lines)
-CLAUDE.md            ← Claude 세션 컨텍스트 (spec.yaml import)
-.gitignore           ← 병합됨
-```
+plan.md 가 없어도 `/harness:spec` 대화로 spec.yaml 을 빈 상태에서 채워나갈 수 있습니다 (Mode B-1).
 
-옵션:
-- `--team` — `state.yaml` 을 `.gitignore` 에 추가 (팀 모드, 개인 머신에만 보관).
-- `--solo` / 생략 — 커밋 대상으로 유지.
-
-## 다음 명령 (v0.2+ 예정)
-
-| 명령 | 역할 |
-|------|------|
-| `/harness:spec` | 제품 설명 편집 (대화형 · Mode A / Mode B 자동 분기) |
-| `/harness:sync` | spec 변경 후 도메인·아키텍처·어댑터 파생 |
-| `/harness:work` | Walking Skeleton → 기능 구현 사이클 |
-| `/harness:status` | 현재 진행 상태 확인 |
-| `/harness:check` | 일관성·드리프트 검증 |
+---
 
 ## 레포 구조
 
 ```
 harness-boot/
-├── .claude-plugin/plugin.json       # Claude Code 플러그인 매니페스트
-├── commands/                        # 슬래시 명령 (v0.1: init 만)
+├── .claude-plugin/
+│   ├── plugin.json              # Claude Code 플러그인 매니페스트
+│   └── marketplace.json         # single-plugin marketplace (v0.1.1+)
+├── commands/                    # 8 슬래시 명령 계약
+│   ├── init.md · spec.md · sync.md · work.md
+│   └── status.md · check.md · events.md · (metrics.md 예정)
+├── scripts/                     # Python 구현체 (pyyaml · jsonschema 의존)
+│   ├── sync.py · include_expander.py · canonical_hash.py · render_*.py
+│   ├── work.py · status.py · check.py · events.py · state.py
+│   ├── spec_mode_classifier.py · explain_spec.py · spec_diff.py
+│   ├── validate_spec.py · plugin_root.py · gate_runner.py
+│   └── mode_b_*.py              # plan.md → spec.yaml 통계 추출
 ├── skills/
-│   └── spec-conversion/SKILL.md     # plan.md → spec.yaml 변환 스킬 v0.5
-├── agents/                          # (v0.2+)
-├── hooks/                           # (v0.2+)
+│   └── spec-conversion/SKILL.md # v0.5 변환 스킬
 ├── docs/
-│   ├── schemas/spec.schema.json     # spec.yaml JSONSchema (draft 2020-12)
-│   ├── templates/starter/           # /harness:init 이 복사하는 템플릿 4종
-│   └── setup/local-install.md       # 로컬 설치 스모크 시나리오
-├── scripts/
-│   ├── mode_b_extract.py            # plan.md → 축별 BM25 추출 (Mode B Phase 1)
-│   ├── mode_b_axes.py               # 12 축 질의 어휘
-│   ├── mode_b_stopwords.py          # EN/KR 불용어 + 조사
-│   └── mode_b_roundtrip.py          # 6 샘플 회귀 러너
+│   ├── schemas/spec.schema.json # spec v2.3.8 JSONSchema
+│   ├── templates/starter/       # /harness:init 템플릿
+│   ├── samples/harness-boot-self/  # self-referential canonical spec
+│   ├── setup/                   # 설치 · first-run 가이드
+│   └── release/                 # 태깅 플레이북
 └── tests/
-    └── regression/conversion-goldens/  # 8 golden 샘플 (url-shortener · retro-jumper · price-crawler · vapt-apk-sast · tzcalc · vite-bundle-budget · vscode-commit-craft · harness-boot-self) + MANIFEST.yaml
+    ├── unit/                    # 261 unit tests (11 modules)
+    └── regression/conversion-goldens/  # 8 golden 변환 샘플
 ```
 
-> **설계 문서는 로컬 전용**: 주 설계 문서(`design/harness-boot-design-2.3.7.md`, ~3,200줄) · Mode B 리포트 · RFC 문서는 `design/` 디렉터리에 보관되며 .gitignore 로 공개 레포에서 제외됩니다. 플러그인 사용에는 필요 없고, 기여자는 별도 요청하세요.
+**로컬 전용 (`.gitignore`)**: `design/` 에 원본 설계 문서 (~3,500 줄) · RFC · 샘플 작업본 · Phase 메모리가 있습니다. 플러그인 사용에는 불필요. 기여자는 별도 요청.
+
+---
+
+## 상태 · 버전
+
+| 릴리즈 | 핵심 내용 |
+|---|---|
+| v0.1.0~0.1.1 | `/harness:init` 스캐폴딩 · first-run hardening |
+| v0.2.0~0.2.1 | `/harness:sync` Phase 0 · self-describe round trip · `plugin_version` 해석 |
+| v0.3.0 | `/harness:work` · `/harness:status` · `/harness:check` · `/harness:events` |
+| **v0.3.1 (current)** | `/harness:work --run-gate gate_0` 테스트 자동 실행 |
+| v0.3.2+ (계획) | Gate 1~5 자동화 · Code/Doc/Anchor drift · `/harness:metrics` |
+| v0.4 (후보) | 공식 마켓플레이스 PR · 실사용 피드백 통합 · 대형 스펙 확장 |
+
+**검증 수준** (v0.3.1 기준):
+- 261 unit tests (11 모듈 · pytest/unittest 호환)
+- self-describe round trip 검증 (harness-boot 스스로를 변환한 spec 으로 sync 실행 → 일관된 domain/architecture 파생)
+- end-to-end work cycle dogfood (F-099 활성화 → gate_5 기록 → evidence → done · BR-004 enforcement 확인)
+
+---
 
 ## 설계 철학
 
-세 가지 축이 균형을 이룹니다.
+1. **Natural → Intermediate → Generated** — 자연어 (plan · 대화) → spec.yaml (구조화 중간언어) → 파생물 · 실행 결과. 각 경계를 해시로 추적.
+2. **SSoT + Evidence** — spec.yaml 하나만 편집, "됐다" 는 Gate 실행 결과로만 증명 (BR-004 Iron Law).
+3. **Walking Skeleton first** — `features[0].type = "skeleton"`. 첫 기능부터 Gate 5 통과하는 end-to-end 상태 유지.
+4. **Self-hostable** — harness-boot 자신이 `docs/samples/harness-boot-self/spec.yaml` 로 표현됨. v0.2 부터 self-describe round trip, v0.3 부터 별도 워크스페이스에서 `/harness:work` 로 자체 개발 가능.
 
-1. **Single source of truth**: `spec.yaml` 이 유일한 사용자 편집 대상. 파생물은 edit-wins 추적으로 사용자 수정을 보호.
-2. **Evidence over prose**: "됐다" 는 주장보다 커버리지·테스트·스모크 시나리오로 증명.
-3. **Walking Skeleton first**: `features[0]` 은 항상 `type: skeleton`. 첫 기능부터 종단간 배포 가능 상태 유지.
+---
 
-자세한 근거는 주 설계 문서 (로컬 전용) 참조.
+## 참여
 
-## Plan.md 가 이미 있다면
-
-`spec-conversion` 스킬이 plan.md → spec.yaml 변환을 자동화합니다. 8 샘플로 회귀 검증된 4-stage 파이프라인 (정찰 → 저작 → gap 카탈로그 → backlink 매트릭스):
-
-- [skills/spec-conversion/SKILL.md](skills/spec-conversion/SKILL.md) — v0.5, 24 원칙 · 5 도메인 어댑터
-- [tests/regression/conversion-goldens/](tests/regression/conversion-goldens/) — 8 완성 샘플 + `MANIFEST.yaml` (plan.md → spec.yaml)
-- Mode B 통계 추출 (BM25 기반, recall 0.991 / precision 0.861) — `scripts/mode_b_*.py`
-
-## 상태
-
-**v0.1.0 (현재)** — 플러그인 뼈대 + `/harness:init` 최소판 + `spec-conversion` 스킬.
-
-**v0.2.0 (예정)** — `/harness:sync`, `scripts/hash-fixtures.mjs`, `.claude/agents/**` · `.claude/skills/**` 자동 생성, 6 핵심 훅 (security-gate · doc-sync-check · coverage-gate · format · test-runner · session-start-bootstrap).
-
-**v0.3.0+ (구상)** — `/harness:work` 구현 사이클, `/harness:check` 드리프트 감지, spec v2.4.0 스키마 확장.
+- [CHANGELOG.md](CHANGELOG.md) · [CLAUDE.md](CLAUDE.md) · [docs/schemas/spec.schema.json](docs/schemas/spec.schema.json)
+- 로컬 설계 문서 · RFC · 샘플 작업본 요청: issue 혹은 [GitHub 저장소](https://github.com/qwerfunch/harness-boot) 연락.
 
 ## 라이선스
 
