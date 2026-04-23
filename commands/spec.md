@@ -50,45 +50,140 @@ Claude 는 인자 · 파일 상태를 보고 다음 순서로 모드 결정:
 3. 각 답변 후 `scripts/canonical_hash.py` 로 해시 기록하며 진척 확인.
 
 ### B-2: plan.md → spec
-1. `Read <plan.md>`.
-2. `skills/spec-conversion/SKILL.md` v0.5 의 4-stage 파이프라인 호출:
-   - Stage 1 정찰 (Mode B 통계 추출 — `scripts/mode_b_extract.py`).
-   - Stage 2 저작 (24 원칙 적용, 도메인 어댑터 선택).
-   - Stage 3 gap (unrepresentable 감지).
-   - Stage 4 backlink (source_ref · chapter 링크).
-3. 결과 spec 을 `.harness/spec.yaml` 로 write.
-4. gap 카탈로그는 `.harness/_workspace/handoff/unrepresentable.md` 에 별도 저장.
+
+**Activation trigger**: `/harness:spec --from plan.md` 또는 사용자 인자가 `.md` 확장자 + spec 부재.
+
+#### LLM prompt template
+
+```
+1. Read <plan.md>
+2. `skills/spec-conversion` SKILL.md v0.5 invocation:
+   Stage 1 정찰 — Bash python3 scripts/mode_b_extract.py <plan.md>
+     → BM25 통계 + 도메인 힌트
+   Stage 2 저작 — 24 원칙 + 도메인 어댑터 (skills/spec-conversion/adapters/<kind>.md)
+     로 features · entities · BR 초안 구성
+   Stage 3 gap — source 에서 spec 으로 표현 불가능한 부분 식별
+     → `.harness/_workspace/handoff/unrepresentable.md` 별도 저장
+   Stage 4 backlink — 각 feature/BR 에 source_ref (plan.md 라인 번호 범위) 주입
+3. Schema 검증: `python3 scripts/validate_spec.py <new-spec>`
+   실패 시 §Stage 2 로 복귀
+```
+
+#### Approval checkpoint
+
+최종 초안을 사용자에게 **전체 보여주고** 승인 받기:
+```
+"<plan.md> 에서 변환된 초안 spec 입니다:
+
+<full spec yaml>
+
+1. 예 · .harness/spec.yaml 로 저장
+2. 특정 섹션 재작성 요청
+3. 취소"
+```
+
+- gap 카탈로그 (unrepresentable.md) 는 승인과 무관하게 **항상 보여주고** 사용자 판단 유도 (손실 투명성)
+
+#### 결정론 보장
+- 같은 plan.md → (거의) 같은 초안 (LLM 랜덤성 최소화 위해 adapters 선택은 classifier 기반)
+- 재실행 시 기존 `.harness/spec.yaml` 덮어쓰기 전 **먼저 diff 확인**
 
 ---
 
 ## Mode A — Addition (기존 spec 에 섹션/피처 추가)
 
-1. `.harness/spec.yaml` 현재 상태 파악 (해시 기록).
-2. 추가 요청에 해당하는 영역 식별 (`features[]`, `domain.entities[]`, `business_rules[]` 등).
-3. 최소 침습 diff 로 삽입.
-4. `git diff .harness/spec.yaml` 로 사용자에게 리뷰 제공 (— 없으면 `diff <old> <new>`).
-5. `--dry-run` 시 write 생략.
-6. 성공 시 `/harness:sync` 실행 안내.
+**Activation trigger**: spec.yaml 존재 + 사용자 요청이 "~ 추가 / 신규 F-NNN / entity 추가 / BR 추가" 패턴.
+
+### LLM prompt template
+
+Mode A 활성화 시 Claude 는 **순서대로** 아래 단계를 실행:
+
+```
+1. Read .harness/spec.yaml (현재 상태 · 해시 기록)
+2. 추가 대상 영역 식별:
+   - features[] (신규 F-NNN · 최대 F-ID +1 사용)
+   - domain.entities[] (신규 entity)
+   - domain.business_rules[] (신규 BR-NNN)
+   - constraints.* (보강)
+3. 최소 침습 diff 작성 (기존 필드 건드리지 않음)
+4. `scripts/spec_diff.py <old> <new> --yaml` 로 diff 렌더
+```
+
+### Approval checkpoint (중단 · 재개 지점)
+
+diff 렌더 직후 **사용자에게 명시적으로 묻고** 응답을 기다림:
+
+```
+"다음 diff 를 .harness/spec.yaml 에 적용할까요?
+
+<rendered diff>
+
+1. 예 · 적용
+2. 아니오 · 수정 제안
+3. 취소"
+```
+
+사용자가 "1" 응답 전까지 Edit/Write 금지. "2" 면 다시 §3~§4 반복. `--dry-run` 인자는 이 checkpoint 를 자동 "3 취소" 로 처리.
+
+### 성공 경로
+적용 후 `git diff .harness/spec.yaml` 재출력 + 후속 안내 (§후속 단계).
 
 ---
 
 ## Mode R — Refine (기존 spec 정제)
 
-1. 대상 필드 지정 (예: "F-003 의 acceptance_criteria 강화").
-2. 원본 읽고 + 개선 제안.
-3. 사용자 승인 후 edit.
-4. `git diff` 출력.
-5. `--dry-run` 지원.
+**Activation trigger**: spec.yaml 존재 + 사용자 요청이 "강화 / 수정 / 정제 / refactor / 표현 개선 / 중복 제거" 패턴.
 
-A 와 R 의 차이: A 는 "새로 추가", R 은 "기존 강화/수정".
+### LLM prompt template
+
+```
+1. 대상 필드 지정 받기 (예: "F-003 acceptance_criteria")
+2. Read 해당 블록
+3. 개선 제안 (3 축 우선):
+   - 정합성 (BR-NNN 형식 · F-NNN 형식 통일)
+   - 명확성 (애매한 description 구체화)
+   - 간결성 (중복 표현 병합)
+4. `scripts/spec_diff.py` diff 렌더
+```
+
+### Approval checkpoint
+
+Mode A 와 동일한 3-옵션 prompt 구조. 사용자 "1" 전 Edit 금지.
+
+### A 와의 차이
+- **A**: 새 항목 (features · entities · BR) 추가 → spec 확장
+- **R**: 기존 항목 속성 변경 → spec 정제 (new entity 추가 안 함)
+
+분류기가 모호한 경우 (예: "F-003 에 tdd_focus 추가") 는 A 로 간주 (기존 블록에 sub-array 추가 = 구조 확장).
 
 ---
 
-## Mode E — Explain (read-only)
+## Mode E — Explain (read-only · CQS 엄수)
 
-1. 대상: 전체 spec 또는 특정 필드 (`/harness:spec --explain features[F-003]`).
-2. 요약 출력만. **파일 수정 0, `mtime` 불변** (CQS 검사).
-3. 포맷: markdown, 섹션별 1 단락.
+**Activation trigger**: `--explain` 플래그 · 또는 사용자 요청이 "설명해줘 / 읽어줘 / 뭐야 / 보여줘" 읽기 패턴.
+
+### LLM prompt template
+
+```
+1. 대상 범위 파싱:
+   - 전체: scripts/explain_spec.py <spec.yaml>
+   - 피처: scripts/explain_spec.py <spec.yaml> --feature F-003
+   - 엔티티: scripts/explain_spec.py <spec.yaml> --entity User
+2. Bash 실행 결과를 markdown 으로 렌더
+3. 섹션별 1 단락 요약
+```
+
+### CQS 엄수 (BR-012 절대 조건)
+
+- Edit · Write 도구 호출 **금지** (Mode E 전 구간)
+- `.harness/spec.yaml` 의 `mtime` **불변** 보장
+- 사용자가 Mode E 안에서 "근데 이거 수정 해줘" 요청 시 → **일단 완결한 뒤 Mode A/R 재분기 제안** (Mode E 안에서 수정 금지)
+- tests/unit/test_explain_spec.py 가 mtime 불변 검증
+
+### 출력 포맷
+- H1: 대상 식별 (피처 이름 또는 "스펙 전체")
+- H2+본문: 섹션별 1 단락 (description · modules · AC · 관련 BR)
+- 마지막 줄: 관련 명령 제안 (e.g., "연관: /harness:work F-003")
 
 ---
 
@@ -109,24 +204,27 @@ A 와 R 의 차이: A 는 "새로 추가", R 은 "기존 강화/수정".
 - plan.md 가 있어야 할 Mode B-2 에서 파일 부재 → 대화형 baseline 로 fallback 제안.
 - spec.yaml 이 스키마 위반 → `docs/schemas/spec.schema.json` 기준 path · reason 보고.
 
-## v0.2 구현 상태
+## v0.4 구현 상태 (shipped)
 
-Claude 가 이 명령을 수행할 때 아래 스크립트를 직접 호출 가능 (모두 발행됨):
+Claude 가 이 명령을 수행할 때 아래 스크립트를 직접 호출:
 
-- **Mode 분류기**: `scripts/spec_mode_classifier.py --args "..." --spec-exists true|false`
-  → `{"mode": "A|B|R|E", "rationale": "...", "subtype": "..."}` JSON 반환.
-  Claude 는 이 결과로 분기 결정을 preamble 에 기록.
+- **Mode 분류기** (결정론): `scripts/spec_mode_classifier.py --args "..." --spec-exists true|false`
+  → `{"mode": "A|B|R|E", "rationale": "...", "subtype": "..."}` JSON 반환
 - **Mode E (read-only)**: `scripts/explain_spec.py <spec.yaml> [--feature F-X | --entity Y] [--json]`
-  → overview / feature / entity 요약. 파일 mtime 불변 (CQS 테스트로 검증됨).
-- **Mode A/R diff**: `scripts/spec_diff.py <old> <new> [--yaml | --stat | --json]` 또는 `spec_diff.py <spec> --git-head` (git HEAD 와 비교).
-  Claude 가 spec 수정 후 사용자에게 diff 제시할 때 사용.
+  → overview / feature / entity 요약 · `mtime` 불변 (CQS 테스트 검증)
+- **Mode A/R diff**: `scripts/spec_diff.py <old> <new> [--yaml | --stat | --json]` 또는 `spec_diff.py <spec> --git-head`
+  → Claude 가 spec 수정 후 사용자에게 diff 제시할 때 사용
 
-아직 자동화 안 된 부분:
+**Modes A/R/B-2 의 LLM prose contract** (v0.4 확정, F-002 AC-3):
+- 각 모드는 위 "Mode X" 섹션의 **LLM prompt template + Approval checkpoint** 를 따름
+- Approval checkpoint 전에 Edit/Write 호출 금지 (사용자 "1 · 예" 응답 필수)
+- `--dry-run` 인자는 checkpoint 를 자동 "3 · 취소" 로 해석 (diff 보여주고 종료)
+- `tests/unit/test_spec_modes.py` 가 prose contract 의 필수 구성요소 grep 검증
 
-- **Mode B-2 (plan.md → spec)** — `skills/spec-conversion` 스킬 (v0.5) 을 Claude 가 대화로 호출. Python 단일 엔트리포인트 없음 (변환이 여러 판단 단계를 포함하기 때문).
-- **Mode B-1 대화 흐름** — LLM-driven. 템플릿을 뼈대로 시작해서 필수 필드를 하나씩 묻고 채워나감.
-
-두 흐름 모두 Claude 가 스크립트를 읽어들이지 않고 직접 수행하므로 commands/spec.md 의 지시문을 따라 대화형으로 진행.
+**아직 자동화 안 된 부분** (의도적):
+- Mode B-2 의 실 변환 로직은 skill-driven (여러 LLM 판단 단계 포함) · Python 단일 엔트리 부재
+- Mode B-1 의 필수 필드 대화 루프도 LLM-driven · prose contract 만 명시
+- 이 두 흐름 모두 Claude 가 commands/spec.md §§Mode B / Mode A / Mode R 의 지시를 **읽어서 수행** (meta-contract 기반, 자동 Python 없음)
 
 ## 참조
 

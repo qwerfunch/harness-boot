@@ -11,14 +11,25 @@ features:
   started_at: null
   completed_at: '2026-04-23T00:00:00Z'
 - id: F-002
-  status: in_progress
-  gates: {}
+  status: done
+  gates:
+    gate_5:
+      last_result: pass
+      ts: '2026-04-23T13:46:12Z'
+      note: 12 prose contract tests + 기존 classifier/explain/diff unit tests (26+)
+        모두 green
   evidence:
   - ts: '2026-04-23T00:00:00Z'
     kind: partial
     summary: Mode classifier + Mode E shipped · Modes A/R/B-2 LLM-driven
+  - ts: '2026-04-23T13:46:12Z'
+    kind: test
+    summary: 'commands/spec.md 에 Modes A/R/B-2 의 LLM prose contract 구체화: Activation
+      trigger · LLM prompt template · Approval checkpoint · dry-run 의미론 · 결정론 보장.
+      v0.2 → v0.4 구현 상태 섹션 갱신. 12 신규 test_spec_modes.py 가 prose contract grep 검증.
+      AC-1 (결정론 분기), AC-2 (diff + dry-run), AC-3 (mode 행 preamble 표시) 모두.'
   started_at: '2026-04-23T00:00:00Z'
-  completed_at: null
+  completed_at: '2026-04-23T13:46:12Z'
 - id: F-003
   status: done
   gates: {}
