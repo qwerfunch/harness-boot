@@ -19,12 +19,13 @@ AGENTS_DIR = REPO_ROOT / "agents"
 _REQUIRED_AGENTS = {"orchestrator", "software-engineer", "reviewer"}
 
 # v0.5 expert pool — expand as Stage D/X/E/Q/I agents land.
-_EXPERT_AGENTS = ("ux-architect",)
+_EXPERT_AGENTS = ("ux-architect", "researcher", "product-planner")
 
 # Stage D (Discovery) agents operate before any domain.md exists,
-# so they are exempt from the "domain.md single reference point" rule.
-# Populate as Stage D ships.
-_DISCOVERY_EXEMPT: set[str] = set()
+# so they are exempt from the "spec.yaml direct-read ban" (there IS no
+# spec.yaml yet when they run). They still mention domain.md because
+# they gracefully read it in update/refine mode.
+_DISCOVERY_EXEMPT: set[str] = {"researcher", "product-planner"}
 
 # Permission matrix: allowed tools per agent (F-012 AC-2 contract).
 # reviewer is strictly read-only; software-engineer is restricted from

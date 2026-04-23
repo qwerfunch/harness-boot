@@ -49,6 +49,31 @@ Claude 는 인자 · 파일 상태를 보고 다음 순서로 모드 결정:
 2. 필수 필드 — `project.name`, `domain.entities`, `features` — 를 하나씩 대화로 채움.
 3. 각 답변 후 `scripts/canonical_hash.py` 로 해시 기록하며 진척 확인.
 
+### B-1-vague: 한 줄 아이디어 → researcher → planner → B-2 (v0.5)
+
+**Activation trigger**: classifier 가 `subtype: baseline-empty-vague` 를 반환한 경우 (spec 부재 + plan.md 인자 없음 + 사용자 intent 40 단어 미만).
+
+이 분기는 B-1 의 3 문항 대화 대신 **전문가 체인**을 타서 풍부한 spec 을 얻는다:
+
+```
+사용자 의도 (한 문장) →
+  @harness:researcher
+    → `.harness/_workspace/research/brief.md` 작성
+    → 사용자에게 brief 보여주고 승인 요청 (1. 예 · 2. 수정 · 3. 취소)
+  @harness:product-planner (승인 후)
+    → `.harness/_workspace/plan/plan.md` 작성
+    → 사용자에게 plan 보여주고 승인 요청
+  /harness:spec .harness/_workspace/plan/plan.md  (승인 후, B-2 로 자동 진입)
+    → classifier 가 `.md` arg 감지 → subtype: baseline-from-plan → 기존 B-2 파이프라인
+    → spec.yaml preview → 사용자 최종 승인 → `.harness/spec.yaml` 저장
+```
+
+**규약**:
+- orchestrator 가 체인 책임. researcher · product-planner 는 서로 직접 호출 금지.
+- 각 단계마다 사용자 승인 checkpoint. 수정 요청 시 해당 에이전트 재실행 (researcher 는 orchestrator 가 추가 context 주입 후 재소환).
+- plan.md 경로는 **고정**: `.harness/_workspace/plan/plan.md`. B-2 classifier 는 `.md` 인자 감지로 동작하므로 별도 코드 변경 불필요.
+- Discovery 단계이므로 두 에이전트는 `domain.md` 없이 동작 (Discovery 예외 — agents/researcher.md · agents/product-planner.md `## Context` 참고).
+
 ### B-2: plan.md → spec
 
 **Activation trigger**: `/harness:spec --from plan.md` 또는 사용자 인자가 `.md` 확장자 + spec 부재.
