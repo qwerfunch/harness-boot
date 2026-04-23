@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/qwerfunch/harness-boot/main/docs/schemas/spec.schema.json
 # .harness/spec.yaml
 # ================================================================
 # harness-boot v2.3.8 · 사용자가 편집하는 **유일한** 구조화 입력.
@@ -5,6 +6,10 @@
 #
 # 더 완전한 예시: `design/samples/url-shortener/spec.yaml` 참고.
 # 9 블록 네이티브 배치: `metadata.*` 에 직접 (v2.3.8 승격 완료).
+#
+# IDE 지원 (F-020, v0.3.11+): 위 첫 줄의 $schema 주석으로
+# VSCode/IntelliJ 의 YAML Language Server 가 자동완성·검증·에러
+# 하이라이팅을 제공합니다. VSCode 확장: redhat.vscode-yaml.
 # ================================================================
 
 version: "2.3"
