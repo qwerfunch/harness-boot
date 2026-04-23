@@ -8,8 +8,33 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 ## [Unreleased]
 
 - Marketplace PR (anthropic/claude-plugins-official) — 안정화 후 제출
-- v0.3: `/harness:work` (F-004) · `/harness:status` (F-005) · `/harness:check` (F-006)
+- v0.4: Phase 1 Gate runner (test runner · runtime smoke 자동화)
+- v0.4: F-006 확장 — Code / Doc / Anchor drift (현재 5/8)
 - v0.2.1+ 템플릿 보강: NEW-51 (entry_points health_check) · NEW-52 (domain.md owning_feature backlink) · NEW-53 (feature_graph 정렬 옵션)
+
+## [0.3.0] — 2026-04-23
+
+### Added — Development loop closed
+
+4 신규 슬래시 명령 + 1 공통 유틸:
+
+- **`/harness:work`** (F-004) — 피처 단위 개발 사이클 상태 관리. 활성화 · Gate 기록 · 증거 수집 · `done` 전이. BR-004 (Iron Law) 준수 — gate_5=pass + evidence≥1 없으면 done 거부. `scripts/work.py` + 17 tests.
+- **`/harness:status`** (F-005) — 세션 · 피처 카운트 · drift · 마지막 sync · active 피처 요약 (CQS read-only). `scripts/status.py` + 11 tests (mtime 불변 검증).
+- **`/harness:check`** (F-006, partial) — 5/8 drift 탐지 (Generated · Spec · Derived · Include · Evidence). Code/Doc/Anchor 는 v0.4+. `scripts/check.py` + 23 tests.
+- **`/harness:events`** (F-007) — events.log 조회 with kind/feature/since 필터 (CQS). `scripts/events.py` + 12 tests.
+- **공통 유틸** `scripts/state.py` (17 tests) — state.yaml 의 read/save/lifecycle helper. 모든 v0.3 명령이 공유.
+
+### Testing
+- 총 **237 unit tests** (v0.2.1 의 157 + 80 신규).
+- F-004 end-to-end full-cycle 테스트: activate → 6 gate pass → evidence → complete. 9 events 정확한 순서 검증.
+
+### Closed issues from Phase α dogfood
+- (이미 v0.2.1 에서) NEW-50 — plugin_version resolution fallback.
+
+### Known remaining
+- Phase 1 Gate 자동 실행 (test runner · runtime smoke) 은 v0.4.
+- Code · Doc · Anchor drift 는 v0.4.
+- Modes A/R/B-1/B-2 실제 interactive 흐름은 여전히 LLM 드리븐 (classifier + diff 도구는 있음).
 
 ## [0.2.1] — 2026-04-23
 

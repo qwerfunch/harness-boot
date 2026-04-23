@@ -377,6 +377,9 @@ features:
   - id: "F-004"
     name: "/harness:work — 피처 개발 사이클"
     type: "feature"
+    status: "done"              # 2026-04-23: scripts/work.py + 17 tests.
+                                # Phase 1 Gate 실행 자체는 v0.4+ (test runner · runtime smoke 자동화).
+    release_target: "v0.3"
     description: "선택 피처에 대한 TDD 사이클: red → green → refactor → Gate 0~5."
     modules:
       - "work_command"
@@ -393,6 +396,8 @@ features:
   - id: "F-005"
     name: "/harness:status (read-only) — v2.3.3 순수 조회"
     type: "feature"
+    status: "done"              # 2026-04-23: scripts/status.py + 11 tests (CQS 검증).
+    release_target: "v0.3"
     description: "현재 하네스·피처·게이트·드리프트 요약. 수정 없음."
     modules:
       - "status_command"
@@ -406,6 +411,9 @@ features:
   - id: "F-006"
     name: "/harness:check — 8종 드리프트 탐지"
     type: "feature"
+    status: "partial"           # 2026-04-23: 5/8 drift 구현 (Generated · Spec · Derived · Include · Evidence).
+                                # Code · Doc · Anchor drift 는 v0.4+ (스펙-코드-앵커 교차 검증).
+    release_target: "v0.3"
     description: "Spec/Code/Doc/Derived/Generated/Evidence/Anchor/Include 드리프트 전종 스캔 + 리포트."
     modules:
       - "check_command"
@@ -421,6 +429,8 @@ features:
   - id: "F-007"
     name: "/harness:events — 이벤트 로그 조회 (tail/filter)"
     type: "feature"
+    status: "done"              # 2026-04-23: scripts/events.py + 12 tests (CQS 검증).
+    release_target: "v0.3"
     description: "events.log 의 JSONL 레코드를 시간/종류/스코프로 필터하여 출력."
     modules:
       - "events_command"
@@ -1238,14 +1248,23 @@ metadata:
       self_describe_smoke_spec_hash: "6971d901749783d29bfe35b06ffd77a48ead97207f268cc3a5719ad626d8849d"
 
     v0.3:
-      shipped: false
+      shipped: partial          # 2026-04-23: F-004/F-005/F-007 done · F-006 partial (5/8 drift).
+      shipped_at: "2026-04-23"
       target: "Development loop closed — /harness:work + 조회/검증 명령."
       rationale: "v0.2 로 spec↔파생이 닫히면, 이제 피처 단위 TDD 루프를 자동화. 이 시점부터 harness-boot 자체가 별도 워크스페이스에서 harness-boot 으로 개발됨 (진짜 dogfood)."
       features:
-        - "F-004"    # /harness:work
-        - "F-005"    # /harness:status
-        - "F-006"    # /harness:check
-        - "F-007"    # /harness:events
+        - "F-004"    # /harness:work — DONE
+        - "F-005"    # /harness:status — DONE
+        - "F-006"    # /harness:check — partial (Code/Doc/Anchor drift 는 v0.4+)
+        - "F-007"    # /harness:events — DONE
+      implementation_artifacts:
+        - "scripts/state.py + tests/unit/test_state.py (17 tests)"
+        - "scripts/work.py + tests/unit/test_work.py (17 tests)"
+        - "scripts/status.py + tests/unit/test_status.py (11 tests · CQS 검증)"
+        - "scripts/check.py + tests/unit/test_check.py (23 tests · 5/8 drift)"
+        - "scripts/events.py + tests/unit/test_events.py (12 tests · CQS 검증)"
+        - "commands/work.md · status.md · check.md · events.md"
+      total_tests: 237
 
     later:
       shipped: false
