@@ -109,7 +109,11 @@ v0.2 핵심 커밋 (Phase 0 · self-describe round trip) · v0.1.0 피벗 (`76da
 - **legacy/ 도 동일**. 트래킹된 기존 파일만 유지, 새 파일 추가 금지.
 - **플러그인은 자기 자신에 설치되지 않음**. 이 레포에 `/harness:init` 실행하면 모순.
 - **자체 도그푸드 (v0.3.10+)**: 레포 루트 `.harness/` 는 **Passive 관측 전용**. `spec.yaml` 은 `docs/samples/harness-boot-self/spec.yaml` 의 **복사본** (symlink 아님), `state.yaml` 은 릴리즈 태그 시점에만 갱신. `events.log` · `harness.yaml` · `domain.md` · `architecture.yaml` 은 gitignored. `bash scripts/self_check.sh` 가 5 단계 검증 (diff · validate · sync · check · commands 규약) → unittest 에 포함 (`tests/unit/test_self_dogfood.py`).
-- **슬래시 명령으로 자기 개발** (Phase 2, v0.3.11+): `CLAUDE_PLUGIN_ROOT=/path/to/this/repo` 등록 시 `/harness:work F-XXX` 등이 이 repo 의 현재 코드를 사용. 그 전까지는 `python3 scripts/*.py` 직접 호출로 도그푸드. 세팅 상세: `docs/setup/local-install.md` 부록 A.
+- **슬래시 명령 사용 경로** (2026-04-23 검증):
+  - ✅ 작동: `/plugin marketplace add qwerfunch/harness-boot` + `/plugin install harness@harness-boot` → `/harness:*` 8 개 명령 전부 사용 가능. 업그레이드는 `/plugin update harness@harness-boot`.
+  - ⚠️ 미확인: `CLAUDE_PLUGIN_ROOT` env 또는 `settings.json plugins[]` 로 **dev checkout 라이브 반영** 시도 → 설치본이 우선하여 작동 안 함 관찰됨.
+  - 결론: 편집 즉시 슬래시 명령 반영은 **현재 불가**. 스크립트 수정 → 커밋 → 릴리즈 → `/plugin update` 의 루프만 동작. 편집-검증 빠르게 하려면 `python3 scripts/*.py` 직접 호출.
+  - 상세 경로: `docs/setup/local-install.md` §2 + 부록 A.
 - **사용자 충돌 없음 보장**: 사용자가 `/harness:*` 실행 시 항상 `$(pwd)/.harness` 만 참조 — 우리 내부 `.harness/` 는 invisible.
 - **태그는 절대 이동 금지**. 깨진 버전은 yank + hotfix (docs/release/v0.1.0.md §5).
 - **main 은 default branch**. 각 릴리즈마다 `git checkout main && git merge --ff-only develop && git push origin main` 으로 fast-forward. `/plugin marketplace add qwerfunch/harness-boot` 가 여기서 fetch.
