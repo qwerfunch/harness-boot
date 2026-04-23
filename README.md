@@ -13,43 +13,46 @@
 
 ## 왜?
 
-LLM 에게 "이런 제품을 만들어줘" 라고 자연어로 던지면 출력은 매번 다릅니다. 서두는 멋지지만 피처 6번째쯤에서 문맥이 어긋나고, "됐다" 라고 말하는데 실제로 뭐가 됐는지는 확인할 길이 없습니다.
+LLM 에게 "이런 제품을 만들어줘" 라고 자연어로 던지면 **사고의 글** (서사·의도·맥락) 과 **실행의 글** (실제로 돌아가야 할 계약) 이 한 프롬프트 안에 섞입니다. 어디까지가 아이디어고 어디부터가 계약인지 LLM 이 판별 못 하니 피처 6번째쯤에서 문맥이 어긋나고, "됐다" 라고 말해도 실제 흔적은 없습니다.
 
-**Harness-Boot 가 해결하는 것**: 자연어 기획 의도와 실제 구현 사이에 **구조화된 중간언어 (`spec.yaml`)** 를 심어, AI 가 그것을 SSoT 로 삼아 파생·개발·검증을 자동화하도록 강제합니다. 사용자는 spec.yaml 한 파일만 관리하고, 나머지는 모두 파생물이며, 모든 완료 선언은 증거와 해시로 추적됩니다.
+**Harness-Boot 의 답** — 이 두 글을 한 파일 (`spec.yaml`) 안에서 **스키마로 분리** 하고, 두 글이 어긋나거나 실행 결과와 차이가 나면 알려주는 **규율 구조 (harness)** 를 LLM 개발에 걸어둡니다. AI 는 그 구조 안에서 움직이며, 모든 진전은 해시와 이벤트로 추적됩니다.
+
+> 사고의 글은 자유로워야 하고, 실행의 글은 구조화되어야 합니다.
+> 두 글이 어긋날 때 알려주는 것이 **harness 의 일** 입니다.
+> — `design/harness-boot-design-2.3.7.md` §2.1
 
 ---
 
 ## 핵심 흐름
 
-하네스는 각 단계의 **동사 자체** — 변환 · 파생 · 개발 · 관찰 모두 `/harness:*` 가 수행.
+사용자가 관리하는 파일은 `spec.yaml` **단 하나** (design doc §3.2). 그 안에 `🗒 자유 텍스트` (사고의 글) 와 `🔒 구조적 필드` (실행의 글) 가 스키마 경계로 공존합니다. 나머지 단계는 이 SSoT 에서 파생·실행·관찰.
 
 ```
- ① 자연어 기획           ─ /harness:spec   ─▶  spec.yaml (AI 중간언어 · SSoT)
-    plan.md · 대화             하네스가 변환·편집·정제
-    · 기존 코드
+ ① 자연어 기획            ─ /harness:init  ─▶  .harness/ 스캐폴딩
+    plan.md · 대화                               spec.yaml · harness.yaml
+    · 아이디어                                   state.yaml · events.log
 
- ② spec.yaml             ─ /harness:sync   ─▶  파생 뷰 · 해시트리
-                              하네스가 재생성              domain.md · architecture.yaml
-                                                           harness.yaml (Merkle 해시)
+ ②  spec.yaml 작성·편집   ─ /harness:spec  ─▶  🗒 사고의 글 + 🔒 실행의 글
+    (사용자 직접 편집 or                         공존 (스키마 경계 강제)
+    /harness:spec Mode A/B/R/E)
 
- ③ spec.yaml + 피처 ID   ─ /harness:work   ─▶  코드 + 감사 이력
-                              하네스가 개발 사이클 구동    테스트 통과 · 커버리지
-                              · Gate 0~5 (gate_0 자동)      · Gate 증거 · done 전이
-                              · evidence 수집               → state.yaml · events.log
-                              · BR-004 done 차단
+ ③ spec.yaml              ─ /harness:sync  ─▶  파생 뷰 · 해시트리
+                                                domain.md · architecture.yaml
+                                                harness.yaml (Merkle 해시)
 
- ④ 현재 상태             ─ /harness:status ─▶  세션 · 피처 · drift 요약
-    일관성 점검          ─ /harness:check  ─▶  drift 리포트 (5 종)  (CQS read-only)
-    이벤트 조회          ─ /harness:events ─▶  필터된 JSONL
+ ④ spec.yaml + 피처 ID    ─ /harness:work  ─▶  코드 + 감사 이력
+                             Gate 0~5                  테스트 통과 · 커버리지
+                             (gate_0 자동 실행)        · Gate 증거 · done 전이
+                             evidence 수집             · state.yaml · events.log
+                             BR-004 Iron Law
+
+ ⑤ 관찰 (read-only · CQS)
+    /harness:status  세션 · 피처 · drift 요약
+    /harness:check   drift 리포트 (spec · derived · include · ...)
+    /harness:events  events.log 필터 조회
 ```
 
-**핵심**: ③ 의 `/harness:work` 가 "개발은 하네스를 통해 한다" 의 실제 구현점. 사용자가 "테스트 pass 됐다" 를 손으로 선언 못함 — 하네스가 직접 테스트 러너 호출해서 결과 기록, 증거 없이 `done` 전이 거부.
-
-**3 가지 불변조건**:
-
-1. **SSoT via tool** — `.harness/spec.yaml` 이 유일한 SSoT. 직접 편집도 가능하나, 실사용 경로는 `/harness:spec` (Mode A 추가 / B 신규 / R 정제 / E 설명) 및 `spec-conversion` 스킬로 **하네스 경유**. 사용자가 YAML 구조를 외울 필요 없음.
-2. **Evidence over prose** — 완료 주장 (`status: done`) 은 **Gate 통과 + evidence ≥ 1** 없이 거부됨 (BR-004 Iron Law). 주장 → 증거 변환도 하네스가 수행 (`--run-gate` 로 테스트 러너 자동 호출 → pass 시 evidence 자동 기록).
-3. **Hash-tracked drift** — spec 편집 / 파생 사용자 수정 / include 파일 교체 **세 가지 변경을 독립으로 구분** 해야 정확한 drift 리포트와 재현 가능한 파생이 가능. Canonical YAML → JSON → SHA-256 Merkle 트리로 YAML 포맷 변경엔 둔감, 의미 변경만 감지.
+어긋남을 찾는 지점 3 곳: **②** 스키마 검증으로 실행의 글 형식 불일치, **③** 해시 비교로 파생 drift, **④** Gate 실행 결과로 증거 없는 done 주장 차단.
 
 ---
 
@@ -168,44 +171,56 @@ harness-boot/
 
 ---
 
-## 하네스 엔지니어링 · 철학
+## 하네스 엔지니어링 — 8 기둥
 
-LLM 을 다루는 엔지니어링 문제 중 하네스가 직접 답하는 것들. 각 항목은 **무엇** 과 **왜 필요** 한지.
+harness = LLM 개발에 걸어놓는 **규율 구조**. 아래는 그 구조를 지탱하는 원칙들 (design doc §2.1 + §2.3 기반).
 
-### 1. 사고의 글 vs 실행의 글 — 중간언어의 필연성
+### 1. 사고의 글 vs 실행의 글 (§2.1)
 
-자연어는 해상도가 낮음 → LLM 이 매번 재해석. 기계 구조 (YAML 스키마) 는 사람에게 부담 → 기획이 시작 안 됨. **중간언어 `spec.yaml`** 이 둘을 다리 — 기획자는 `/harness:spec` 으로 대화·변환하고, 도구와 AI 는 그 구조를 SSoT 로 일관되게 참조.
+두 글은 물리적으로 분리된 파일이 아니라 `spec.yaml` 안에 공존. 분리는 파일이 아닌 **필드의 성격** 으로 이루어짐. 🗒 는 자유 서술 (description · rationale · vision), 🔒 는 enum·ID·숫자 (features[].id · coverage_threshold). 스키마가 경계를 강제하니 사용자는 구조를 외울 필요 없이 "필드가 묻는 것" 만 답하면 됨.
 
-### 2. SSoT + Evidence over prose — BR-004 Iron Law
+### 2. Single Source of Truth (§2.3)
 
-AI 가 "됐다" 라고 말해도 파일엔 흔적이 없을 수 있음. 증거가 있어야 done. 완료 주장은 Gate 실행 결과 (테스트 · 스모크) + `evidence[]` ≥ 1 없이는 `/harness:work --complete` 가 거부.
+모든 정보는 `.harness/` 에 한 곳. `.claude/` 아래 파일들은 이 원천에서 **생성된 어댑터**. 파생 파일 (`domain.md` · `architecture.yaml`) 은 뷰이지 원천 아님.
 
-### 3. Transparency-by-Preamble + Anti-rationalization
+### 3. Schema-First (§2.3)
 
-모든 `/harness:*` 명령은 실행 직후 stdout 에 3 줄 preamble (mode · scope · next) + anti-rationalization 2 행을 출력 — **LLM 이 과정을 skip 하면서 그럴듯하게 합리화하는 경로를 막음**. 80 자 이내 고정 포맷 → 로그 스크레이핑 · 감사 가능.
+구조화된 데이터는 JSONSchema 로 검증. v2.2 이후 사용자가 직접 편집하는 구조화 파일은 `spec.yaml` 하나지만, 파생 파일도 모두 명시적 스키마 보유 → `/harness:check` 대상. 스키마 위반은 sync 를 차단.
 
-### 4. Canonical Hashing · 재현 가능한 파생
+### 4. User-Minimal Input (§2.3)
 
-자연어 → YAML → JSON 으로 내려가면서 **주석 · 키 순서 · 공백은 의미 아님**. Canonical YAML → Canonical JSON → SHA-256 Merkle 트리로 "의미가 바뀐 것" 만 해시가 바뀜. 언어 간 (Python · Node · etc.) 동일 spec 을 같은 해시로 재현 — 부록 D.7 테스트 벡터로 강제.
+사용자가 직접 편집하는 파일은 `spec.yaml` **단 하나**. `/harness:spec` (Mode A/B/R/E · spec-conversion 스킬) 로 대화·변환 경로도 제공 — 원칙은 직접 편집, 도구는 도움. 파일 하나만 알면 되는 인지 부담 감소.
 
-### 5. Edit-wins · Fail-open · CQS
+### 5. Derive-first, Respect-edit (§2.3)
 
-세 가지 안전 규약:
-- **Edit-wins**: 파생 파일 (`domain.md` · `architecture.yaml`) 을 사용자가 수정하면 재생성이 덮지 않음 — 대신 `/harness:check` 가 drift 로 리포트.
-- **Hook fail-open**: `.harness/hooks/` 는 훅 실패해도 사용자 명령을 차단하지 않음 — 대신 `hook_failed` 이벤트 기록.
-- **CQS (Command-Query Separation)**: `/harness:status` · `:check` · `:events` 는 파일 **읽기만**, mtime 불변 — 진단 중 의도치 않은 변이 방지.
+파생 파일은 원칙적으로 편집 대상 아님 (뷰). 드문 예외 (architecture.yaml 수동 규칙 등) 를 위해 **edit-wins 안전망** 유지. 해시 불일치 감지 시 재생성 건너뛰고 `/harness:check` 가 drift 로 리포트 — 덮어쓰기 금지.
 
-### 6. Append-only event log
+### 6. Runtime-Verified First (§2.3)
 
-`.harness/events.log` 는 JSONL, 기존 레코드 수정·삭제 금지 (BR-013). "왜 이렇게 됐지?" 를 추적할 수 있어야 harness 의 핵심 가치 (감사성) 가 성립. 회전은 `events.log.YYYYMM` 으로 분할.
+v1.0 에서 "피처는 완료됐는데 앱이 안 켜지는" 문제를 방지. 세 장치:
+- **Walking Skeleton 강제** — `features[0].type = "skeleton"` 은 공허하더라도 엔드-투-엔드 실행되는 최소 뼈대.
+- **integrator 에이전트** — 피처 완료 시 메인 조립 (DI·라우터) 에 wire-up 책임 명시.
+- **Gate 5 필수** — 빌드 + 실행 + smoke scenario 통과 없이는 피처 `done` 불가. BR-004 Iron Law 와 결합해 증거 없는 완료 주장 차단.
 
-### 7. Walking Skeleton first
+### 7. Transparency-by-Preamble (§2.3)
 
-`features[0].type = "skeleton"`. **계획 페이퍼웨어 방지** — 첫 피처부터 Gate 5 (runtime smoke) 까지 통과해야 함. "배포 가능한 최소" 가 먼저, 확장은 그 위에.
+모든 `/harness:*` 명령은 stdout 첫 3 줄에 `<이모지> <command> · <mode> · <근거>` 형식 preamble + anti-rationalization 2 행. LLM 이 모드 자동 판별을 이유 없이 수행하면서 "건너뛴 걸 합리화" 하는 경로 차단. 80 자 고정 포맷 → 로그 스크레이핑·감사 가능. 이벤트 로그에 `auto_mode_selected` 로 사후 추적.
 
-### 8. Self-hostable
+### 8. Standard-First (§2.3)
 
-harness-boot 자신이 `docs/samples/harness-boot-self/spec.yaml` 로 표현됨. v0.2 부터 self-describe round trip (자기 스펙 → sync → 파생 검증), v0.3 부터 별도 워크스페이스에서 `/harness:work` 로 자체 개발 가능. **도구를 쓰는 엔지니어가 그 도구로 도구 자신을 만들 수 있어야 진짜 쓸 만함**.
+Claude Code 가 요구하는 파일은 Claude Code 규약 위치 (`.claude/agents/`, `.claude/skills/`, `.claude/settings.json`). 우리만의 자산은 `.harness/` 에만. 규약을 거스르지 않음.
+
+---
+
+### 엔지니어링 보충 (구현 세부)
+
+design doc 에서 원칙으로 선언되진 않았지만 위 8 기둥을 성립시키는 실제 메커니즘:
+
+- **Canonical Hashing** (부록 D) — Canonical YAML → Canonical JSON → SHA-256 Merkle 트리. 주석·키순서·공백 무시, 의미 변경만 감지. 언어 간 (Python · Node) 같은 해시 재현. 세 가지 독립 변경 (spec 편집 / 파생 사용자 수정 / include 파일 교체) 을 구분 추적.
+- **CQS (Command-Query Separation)** — 진단 명령 (`/harness:status` · `:check` · `:events` · `:metrics`) 은 파일 **읽기만**, mtime 불변. 진단 중 의도치 않은 변이 방지.
+- **Append-only event log** (BR-013) — `events.log` JSONL, 기존 레코드 수정·삭제 금지. 감사성 기반.
+- **Hook fail-open** (BR-006) — 훅이 실패해도 사용자 명령은 차단하지 않음. 훅 자체 버그가 흐름을 인질로 잡는 경험 방지.
+- **Self-hostable** — harness-boot 자체도 `docs/samples/harness-boot-self/spec.yaml` 로 표현됨. v0.2 부터 self-describe round trip 가능, v0.3 부터 별도 워크스페이스에서 `/harness:work` 로 자체 개발.
 
 ---
 

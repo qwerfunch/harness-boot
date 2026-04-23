@@ -7,7 +7,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
-- docs(readme): 핵심 흐름 다이어그램에 **Harness-Boot 외곽 박스** 추가 (입력 → 하네스 → 출력 명시적 구분) + "spec.yaml 을 사용자가 직접 편집" 표현을 "/harness:spec 도구 경유" 로 바로잡음 + 예시의 구체 피처 ID (F-003) → `<피처 ID>` 일반화 + `/harness:status 로 목록 조회` 스텝 추가 + "30초 체험" → "전형 사용 흐름" + 설계 철학 4 항목 → **하네스 엔지니어링 · 철학 8 기둥** (Transparency-by-Preamble · Canonical Hashing · Edit-wins/Fail-open/CQS · Append-only log · Walking Skeleton · Self-hostable 등).
+- docs(readme): **design doc §2.1 · §2.3 철학과 정합**. 다이어그램 단순화 (외곽 박스 · 의인화 제거), "왜?" 섹션을 "사고의 글 vs 실행의 글" 중심으로 재작성 (design doc §2.1 원문 인용), 8 기둥을 design doc §2.3 원칙명 (SSoT · Schema-First · User-Minimal Input · Derive-first Respect-edit · Runtime-Verified First · Transparency-by-Preamble · Standard-First) + 사고/실행 의 글 로 재구성, 구현 세부 (Canonical Hashing · CQS · Append-only · Fail-open · Self-hostable) 는 "엔지니어링 보충" 서브섹션으로 분리. 예시의 구체 피처 ID (F-003) → `<피처 ID>` 일반화 + `/harness:status 로 목록 조회` 스텝 추가. "30초 체험" → "전형 사용 흐름".
 - Marketplace PR (anthropic/claude-plugins-official) — 안정화 후 제출 (v0.4 후보)
 - Gate 1~5 자동 실행 (현재 gate_0 만) — v0.3.2 후보
 - F-006 확장: Code / Doc / Anchor drift (현재 5/8) — v0.3.2~v0.3.3 후보
