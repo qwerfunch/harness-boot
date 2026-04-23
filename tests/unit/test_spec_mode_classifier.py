@@ -86,6 +86,42 @@ class ExplicitModeFlagTests(unittest.TestCase):
         self.assertEqual(r.mode, smc.Mode.REFINE)
 
 
+class VagueBaselineTests(unittest.TestCase):
+    """v0.5 — 한 줄 아이디어(40 words 미만) + spec 부재 → baseline-empty-vague.
+
+    Why: researcher 에이전트가 이 분기에서 자동 소환되어야.
+    """
+
+    def test_one_sentence_idea_routes_vague(self):
+        r = smc.classify(
+            args=[],
+            spec_exists=False,
+            intent_text="Pomodoro timer app for musicians",
+        )
+        self.assertEqual(r.mode, smc.Mode.BASELINE)
+        self.assertEqual(r.subtype, "baseline-empty-vague")
+
+    def test_short_paragraph_still_vague(self):
+        short = "Pomodoro timer for musicians. Solo practice. 25 min cycles."
+        r = smc.classify(args=[], spec_exists=False, intent_text=short)
+        self.assertEqual(r.subtype, "baseline-empty-vague")
+
+    def test_empty_intent_keeps_empty_subtype(self):
+        r = smc.classify(args=[], spec_exists=False, intent_text="")
+        self.assertEqual(r.subtype, "baseline-empty")
+
+    def test_long_intent_uses_empty_not_vague(self):
+        long_intent = "word " * 45
+        r = smc.classify(args=[], spec_exists=False, intent_text=long_intent)
+        self.assertEqual(r.subtype, "baseline-empty")
+
+    def test_plan_md_wins_over_vague(self):
+        r = smc.classify(
+            args=["plan.md"], spec_exists=False, intent_text="short idea"
+        )
+        self.assertEqual(r.subtype, "baseline-from-plan")
+
+
 class DeterminismTests(unittest.TestCase):
     """같은 입력 → 같은 결과 (F-002 AC)."""
 

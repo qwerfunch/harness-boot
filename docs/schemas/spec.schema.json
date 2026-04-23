@@ -35,6 +35,34 @@
               "interest": {"type": "string"}
             }
           }
+        },
+        "brief": {
+          "type": "object",
+          "description": "v0.5 additive — researcher/product-planner 산출 anchor. 한 줄 아이디어에서 derived 된 brief.md 의 정규화된 스냅샷.",
+          "properties": {
+            "origin": {
+              "type": "string",
+              "enum": ["researcher", "plan.md", "manual"]
+            },
+            "input_sentence": {"type": "string"},
+            "assumptions": {
+              "type": "array",
+              "items": {"type": "object"}
+            },
+            "open_questions": {
+              "type": "array",
+              "items": {"type": "object"}
+            },
+            "competitors_studied": {
+              "type": "array",
+              "items": {"type": "object"}
+            },
+            "confidence_overall": {
+              "type": "string",
+              "enum": ["high", "medium", "low"]
+            }
+          },
+          "additionalProperties": true
         }
       },
       "additionalProperties": true
@@ -72,7 +100,23 @@
         "required": ["id"],
         "properties": {
           "id": {"type": "string", "pattern": "^F-\\d+$"},
-          "type": {"type": "string"}
+          "type": {"type": "string"},
+          "ui_surface": {
+            "type": "object",
+            "description": "v0.5 additive — UI 표면 선언. orchestrator 가 ux-architect→visual-designer(+audio-designer)→a11y-auditor→frontend-engineer 체인 라우팅 키로 사용.",
+            "properties": {
+              "present": {"type": "boolean"},
+              "platforms": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "description": "web / mobile-ios / mobile-android / desktop / game / tui 등 open-string"
+                }
+              },
+              "has_audio": {"type": "boolean", "default": false}
+            },
+            "additionalProperties": true
+          }
         },
         "additionalProperties": true
       },

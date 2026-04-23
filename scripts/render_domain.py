@@ -63,6 +63,7 @@ def render(spec: dict, *, timestamp: str | None = None) -> str:
     project_summary = _get(spec, "project.summary", "")
     project_description = _get(spec, "project.description", "")
     project_vision = _get(spec, "project.vision", "")
+    stakeholders = _get(spec, "project.stakeholders", []) or []
 
     entities = _get(spec, "domain.entities", []) or []
     business_rules = _get(spec, "domain.business_rules", []) or []
@@ -93,6 +94,38 @@ def render(spec: dict, *, timestamp: str | None = None) -> str:
         lines.append("")
         lines.append(_multiline(project_vision).rstrip())
         lines.append("")
+
+    # Stakeholders — v0.5 expert agent pool 의 단일 참조점 (domain.md SSoT).
+    lines.append(f"## Stakeholders ({len(stakeholders)})")
+    lines.append("")
+    if not stakeholders:
+        lines.append("_(정의된 stakeholder 없음 — `spec.yaml` 의 `project.stakeholders[]` 채우기.)_")
+        lines.append("")
+    else:
+        for sh in stakeholders:
+            if not isinstance(sh, dict):
+                continue
+            role = sh.get("role") or sh.get("id") or "(unnamed)"
+            count = sh.get("count")
+            heading = f"### {role}"
+            if count:
+                heading += f" ({count})"
+            lines.append(heading)
+            lines.append("")
+            desc = sh.get("description") or sh.get("interest")
+            if desc:
+                lines.append(_multiline(desc).rstrip())
+                lines.append("")
+            for list_key, label in (("concerns", "Concerns"), ("wants", "Wants"), ("needs", "Needs")):
+                items = sh.get(list_key)
+                if items:
+                    lines.append(f"**{label}**:")
+                    for item in items:
+                        if isinstance(item, dict):
+                            lines.append(f"- {item.get('text') or item.get('statement') or str(item)}")
+                        else:
+                            lines.append(f"- {item}")
+                    lines.append("")
 
     # Entities
     lines.append(f"## Entities ({len(entities)})")

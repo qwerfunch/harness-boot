@@ -115,6 +115,15 @@ def classify(
                 subtype="baseline-from-plan",
                 args=tuple(args),
             )
+        # v0.5: 한 줄 아이디어 (intent 40 words 미만) → researcher 경로.
+        intent_words = len((intent_text or "").split())
+        if 0 < intent_words < 40:
+            return Result(
+                mode=Mode.BASELINE,
+                rationale=f"spec missing; 빈약 intent ({intent_words} words < 40) → researcher",
+                subtype="baseline-empty-vague",
+                args=tuple(args),
+            )
         return Result(
             mode=Mode.BASELINE,
             rationale="spec missing; 대화형 empty baseline",

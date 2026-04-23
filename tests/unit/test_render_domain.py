@@ -183,6 +183,77 @@ class BusinessRulesTests(unittest.TestCase):
         self.assertIn("naked string rule", out)
 
 
+class StakeholdersTests(unittest.TestCase):
+    """v0.5 — render_domain 이 project.stakeholders[] 를 domain.md 에 렌더해야.
+
+    Why: 14 expert agent 가 domain.md 만 참조하도록 하려면 페르소나가 여기 있어야.
+    """
+
+    def test_empty_shows_hint(self):
+        spec = {"project": {"name": "x"}, "domain": {}}
+        out = rd.render(spec, timestamp=FIXED_TS)
+        self.assertIn("## Stakeholders (0)", out)
+        self.assertIn("정의된 stakeholder 없음", out)
+
+    def test_role_and_description_rendered(self):
+        spec = {
+            "project": {
+                "name": "x",
+                "stakeholders": [
+                    {"role": "project_initiator", "description": "재현성 · 감사성 · upgrade-safe"}
+                ],
+            },
+            "domain": {},
+        }
+        out = rd.render(spec, timestamp=FIXED_TS)
+        self.assertIn("## Stakeholders (1)", out)
+        self.assertIn("### project_initiator", out)
+        self.assertIn("재현성 · 감사성", out)
+
+    def test_concerns_list_rendered(self):
+        spec = {
+            "project": {
+                "name": "x",
+                "stakeholders": [
+                    {
+                        "role": "ai_implementer",
+                        "concerns": ["preamble 3 lines", "tool matrix enforced"],
+                    }
+                ],
+            },
+            "domain": {},
+        }
+        out = rd.render(spec, timestamp=FIXED_TS)
+        self.assertIn("### ai_implementer", out)
+        self.assertIn("**Concerns**:", out)
+        self.assertIn("- preamble 3 lines", out)
+        self.assertIn("- tool matrix enforced", out)
+
+    def test_unnamed_stakeholder_fallback(self):
+        spec = {
+            "project": {"name": "x", "stakeholders": [{"description": "anon"}]},
+            "domain": {},
+        }
+        out = rd.render(spec, timestamp=FIXED_TS)
+        self.assertIn("### (unnamed)", out)
+
+    def test_self_spec_has_five_personas(self):
+        spec_path = REPO_ROOT / "docs" / "samples" / "harness-boot-self" / "spec.yaml"
+        if not spec_path.is_file():
+            self.skipTest(f"{spec_path} absent")
+        spec = rd.load_spec(spec_path)
+        out = rd.render(spec, timestamp=FIXED_TS)
+        self.assertIn("## Stakeholders (5)", out)
+        for role in (
+            "project_initiator",
+            "ai_implementer",
+            "future_user",
+            "plugin_developer",
+            "downstream_tooling",
+        ):
+            self.assertIn(f"### {role}", out)
+
+
 class RealSpecSmokeTests(unittest.TestCase):
     SPEC = REPO_ROOT / "docs" / "samples" / "harness-boot-self" / "spec.yaml"
 
