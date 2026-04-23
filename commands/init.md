@@ -67,10 +67,19 @@ mkdir -p .claude/agents .claude/skills
 
 **신규 생성** 케이스 (CLAUDE.md 가 프로젝트 루트에 없을 때):
 1. `Read` 플러그인 내 `docs/templates/starter/CLAUDE.md.template`.
-2. `{{PROJECT_NAME}}` 을 실제 프로젝트 이름으로 치환. 이름 추출 우선순위:
-   - `package.json` 의 `name` 필드 (비어있으면 다음)
-   - `pyproject.toml` 의 `[project].name` → `[tool.poetry].name` 순
-   - 현재 디렉터리 이름 (`basename $PWD`)
+2. `{{PROJECT_NAME}}` 을 실제 프로젝트 이름으로 치환. 다음 순서로 **첫 유효값** 을 사용 (유효 = 비어있지 않고 공백만도 아닌 문자열):
+   - `package.json` 의 `name` 필드 (존재 + 유효 시)
+   - `pyproject.toml` 의 `[project].name` (존재 + 유효 시)
+   - `pyproject.toml` 의 `[tool.poetry].name` (존재 + 유효 시)
+   - 현재 디렉터리 이름 (`basename "$PWD"`) — 결과가 `.` · 공백 포함 · 빈 문자열이면 건너뜀
+   - 위 모두 실패 시 사용자에게 프롬프트: "프로젝트 이름을 입력하세요 (kebab-case 권장):"
+
+   추출된 이름을 **kebab-case 로 정규화**:
+   - 공백 · `_` · `.` → `-`
+   - 연속 `-` → 단일 `-`
+   - 앞뒤 `-` 제거
+   - 소문자 변환
+   - 정규화 후 빈 문자열이면 사용자 프롬프트로 fallback
 3. `Write` 대상 `CLAUDE.md`.
 
 **이미 존재** 케이스: 기존 파일 끝에 다음 1줄을 **덧붙이고** (중복이면 스킵):
