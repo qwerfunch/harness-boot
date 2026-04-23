@@ -7,8 +7,33 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
-- `/harness:sync` 스펙 초안 (v0.2)
-- Marketplace PR (anthropic/claude-plugins-official) — 버전업/안정화 후 제출 (v0.2~v0.3 시점)
+- Marketplace PR (anthropic/claude-plugins-official) — 안정화 후 제출
+- v0.3: `/harness:work` (F-004) · `/harness:status` (F-005) · `/harness:check` (F-006)
+- v0.1.2 미세 개선: init.md §0 `ls -d` 사용으로 신호 출력 정리
+
+## [0.2.0] — 2026-04-23
+
+### Added — Self-describe round trip
+- **`/harness:sync`** (F-003) — Phase 0 완성. `spec.yaml` 에서 `domain.md` · `architecture.yaml` · `harness.yaml` 해시트리 · `events.log` 파생. edit-wins 보호 + `--dry-run` / `--force`. 구현: `scripts/sync.py` + `commands/sync.md`.
+- **`/harness:spec`** (F-002, partial) — Mode A/B/R/E 자동 분기. Mode E (read-only explain) + classifier + diff 렌더러는 Python 구현. Modes A/R/B-1/B-2 는 Claude LLM 대화 드리븐 (spec-conversion skill v0.5 와 연계).
+- **$include 전개 엔진** (F-009) — `scripts/include_expander.py`. Depth=1 강제 · 🔒 필드 차단 · chapters 디렉터리 escape 방지.
+- **Canonical Hashing — Merkle 3층** (F-010) — `scripts/canonical_hash.py`. Canonical JSON → SHA-256. subtree 해시 + merkle_root 결합.
+- **JSONSchema 검증** (Gate 0~1) — `scripts/validate_spec.py`. sync 가 파생 전 스키마 검증. 실패 시 `sync_failed` 이벤트.
+- **플러그인 루트 해석 유틸** — `scripts/plugin_root.py`. NEW-37/44 4-전략 체인을 재사용 가능 모듈로.
+- **Self-referential canonical spec** — `docs/samples/harness-boot-self/spec.yaml` · `README.md`. harness-boot 자체를 한 제품으로 보고 변환한 21 features 스펙. v0.2 의 round-trip 실증 입력.
+
+### Changed
+- `.claude-plugin/plugin.json.version` → `"0.2.0"`.
+- `.claude-plugin/marketplace.json` plugin entry version → `"0.2.0"`.
+- `commands/sync.md` 가 `scripts/sync.py` 에 위임.
+- `commands/spec.md` 가 신규 Python 스크립트 (`spec_mode_classifier.py` · `explain_spec.py` · `spec_diff.py`) 를 CLI 로 호출.
+
+### Testing
+- 총 **154 unit tests** (v0.1.1 의 0 → v0.2.0 의 154). 모든 파생 빌딩블록 커버.
+- **Self-describe smoke** — `harness-boot-self/spec.yaml` → `domain.md` (~11 KB) · `architecture.yaml` (~10.7 KB) · 6 subtree 해시 · merkle_root. `spec_hash = 6971d901...`.
+
+### Dependencies
+- Python 3.10+ · `pyyaml` 필수 · `jsonschema` 선택 (설치 시 structural validation 활성).
 
 ## [0.1.1] — 2026-04-23
 
