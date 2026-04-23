@@ -1,22 +1,19 @@
 {
-  "name": "harness-boot",
-  "version": "0.1.0",
-  "description": "Plan.md 하나로 출발해 Claude Code 에이전트·스킬·훅·프로토콜을 파생·생성·진화시키는 harness 플러그인. spec.yaml(v2.3.8) 을 단일 사용자 편집 대상으로 유지하며 나머지는 자동 생성.",
+  "name": "harness",
+  "version": "0.2.0",
+  "description": "Spec-driven development harness for Claude Code — single `spec.yaml` derives `.claude/**` adapters and `.harness/**` views, self-hosted via dogfooding.",
   "author": {
-    "name": "qwerfunch"
+    "name": "qwerfunch",
+    "email": "jungsoo.kim@doverunner.com"
   },
-  "license": "MIT",
   "homepage": "https://github.com/qwerfunch/harness-boot",
+  "repository": "https://github.com/qwerfunch/harness-boot",
+  "license": "Apache-2.0",
   "keywords": [
     "claude-code",
-    "harness",
-    "spec-driven",
-    "agent-workflow",
-    "walking-skeleton"
-  ],
-  "commands": "./commands",
-  "skills": "./skills",
-  "agents": "./agents",
-  "hooks": "./hooks",
-  "$comment": "디렉터리는 Claude Code 플러그인 컨벤션을 따름. 각 디렉터리의 *.md / *.mjs 가 자동 로드됨. v0.1.0 범위: commands/{init} 최소판 + skills/spec-conversion v0.5 + skeleton 템플릿. v0.2+ 에서 sync/work/status/check 확장 예정."
+    "spec-driven-development",
+    "tdd",
+    "plugin",
+    "harness"
+  ]
 }

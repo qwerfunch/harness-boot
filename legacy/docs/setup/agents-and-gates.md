@@ -1,0 +1,309 @@
+# Agent Definitions and Quality Gates
+
+## Agent Definitions
+
+### Subagent Dispatch Execution & Architecture Patterns
+
+> Patterns adapted from [revfactory/harness](https://github.com/revfactory/harness) (Apache-2.0). Full reference: `docs/references/agent-design-patterns.md`. Divergence rationale: `docs/references/execution-model-divergence.md`.
+
+#### Subagent Dispatch Execution
+
+harness-boot uses a single execution model: **Subagent Dispatch**. The orchestrator dispatches module-specific implementers, reviewer, and optional qa-agent via `Agent(subagent_type=<slug>, prompt=...)`. Parallel work uses multiple `Agent` tool_use blocks in a single orchestrator response; coordination is expressed as file envelopes under `_workspace/handoff/`. The dispatch surface is uniform regardless of project size — single-module projects dispatch one implementer + reviewer, just sequentially instead of in parallel.
+
+This model is universally available in Claude Code (no experimental flag). `TeamCreate` / `SendMessage` / `TaskCreate` / `TaskUpdate` are not used. See `execution-model-divergence.md` for the full rationale and mapping from the upstream Agent Team model.
+
+#### Architecture Patterns
+
+Choose an architecture pattern based on module structure:
+
+| Pattern | Use When | Example |
+|---------|----------|---------|
+| **Fan-out/Fan-in** | Independent modules, parallel work | Frontend + Backend + Infra implementers dispatched together |
+| **Pipeline** | Sequential dependencies | Architect -> Implementer -> Reviewer chain |
+| **Supervisor** | Dynamic work assignment needed | Orchestrator reads feature-list and dispatches per wave |
+| **Producer-Reviewer** | Quality assurance critical | Implementer -> handoff file -> Reviewer -> verdict file |
+
+> Full pattern descriptions with composite patterns: `docs/references/agent-design-patterns.md`
+
+#### Data Transfer Channels
+
+| Channel | Location | Best When |
+|---------|----------|-----------|
+| **Artifact files** | `_workspace/{phase}_{agent}_{artifact}.{ext}` | Work products per dispatch |
+| **Handoff envelopes** | `_workspace/handoff/{from}->{to}.md` | Directed agent-to-agent signals (verdicts, coordination, escalation) |
+| **Progress state** | `PROGRESS.md` + `feature-list.json` | Per-feature progress consulted by orchestrator only |
+
+TDD / BDD leaf agents (`tdd-test-writer`, `tdd-implementer`, `tdd-refactorer`, `bdd-writer`) are invoked via `Agent` inside an implementer's execution — they are leaves, not coordination participants, and their outputs flow back to the implementer inline.
+
+File transfer rules:
+- `_workspace/` folder for intermediate outputs
+- Artifact naming: `{phase}_{agent}_{artifact}.{ext}`
+- Handoff naming: `{from}->{to}.md` under `_workspace/handoff/`
+- Final outputs only to user-specified paths; preserve `_workspace/` for audit trail
+
+#### QA Agent Integration
+
+> Full guide: `docs/references/qa-agent-guide.md`
+
+When the plan has 3+ modules with integration points, generate a QA agent:
+- **Model**: opus (boundary verification requires judgment)
+- **Type**: `general-purpose` (needs to run verification scripts, not read-only)
+- **Core method**: "Read Both Sides Simultaneously" — cross-compare producer output with consumer input at every boundary
+- **Timing**: Incremental after each module completion, not just at the end
+- **Dispatch position**: Orchestrator invokes `Agent(subagent_type="qa-agent", ...)` after each module's implementer returns, reading `_workspace/02_impl_<module>_*.md` + producer/consumer sides of every boundary. The qa-agent writes its report to `_workspace/03_qa_*.md` and a handoff envelope if findings warrant re-dispatch.
+
+Add to the generated harness:
+- `.claude/agents/qa-agent.md`
+- QA step in orchestrator workflow (after module TDD completes, before Gate 2 review)
+- Boundary mismatches classified as Critical severity in Gate 2
+
+#### Handoff Protocol for Agents
+
+**Only agents that exchange handoff envelopes** add a `## Handoff Protocol` section: `orchestrator`, module-specific implementers, `reviewer`, and `qa-agent` (when included). `architect`, `debugger`, `tester`, `bdd-writer`, and the `tdd-*` leaves (test-writer / implementer / refactorer) **omit the section** — they are invoked as leaves via the `Agent` tool and return results to their caller inline or via a single output artifact, so no envelope schema applies.
+
+For agents that include the section, it must specify:
+- **Reads from**: Which `_workspace/handoff/*->{this-agent}.md` envelopes trigger dispatch
+- **Writes to**: Which `_workspace/handoff/{this-agent}->*.md` envelopes this agent emits
+- **Re-dispatch triggers**: Which envelope kinds cause the orchestrator to re-invoke this agent
+
+> Orchestrator template: `docs/references/orchestrator-template.md`
+
+#### Orchestrator Agent Frontmatter
+
+```yaml
+---
+name: orchestrator
+description: >
+  Orchestrates the development workflow. Wave planning, subagent dispatch,
+  TDD enforcement, quality gate coordination.
+tools: Read, Glob, Grep, Write, Edit, Bash, Agent
+model: opus
+---
+```
+
+### Common Input/Output
+
+```jsonc
+// Input
+{ "task_id": "", "type": "feature|bugfix|refactor|test", "description": "",
+  "target_files": [], "acceptance_test": [],
+  "tdd_focus": [], "doc_sync_targets": [], "feature_id": "FEAT-XXX",
+  "domain_context": { "entities": [], "rules": [], "vocabulary": {} } }
+
+// Output
+{ "task_id": "", "status": "success|failure|partial|blocked", "iteration_count": 0,
+  "changes": { "code": [], "tests": [], "docs": [] },
+  "test_results": { "total": 0, "passed": 0, "failed": 0, "coverage": "" },
+  "feature_passes": false, "blockers": [], "notes": "" }
+```
+
+### Agent Roles
+
+Model assignment per agent is defined once in `model-routing.md`. This table covers role and domain-view only.
+
+| Agent | Core Role | Domain View |
+|-------|-----------|-------------|
+| **orchestrator** | Initializer/Coding mode switching, task decomposition, tdd_focus/doc_sync assignment, one-at-a-time | Full persona (reads domain-persona.md) |
+| **implementer** | Sequential TDD sub-agent calls, convergence loop management (max 5), single commit | Feature-scoped entities + rules (from orchestrator prompt) |
+| **reviewer** | 3-stage review: (1) TDD compliance (2) Code quality (3) Doc sync. REJECT if docs missing | Entities + Rules + Vocabulary (inlined in agent MD) |
+| **tester** | Core function selection, feedback with expected vs actual values | Success criteria + rules (agent MD section) |
+| **architect** | ADR writing, impact doc listing, schema changes require migration + docs together | Full persona (reads domain-persona.md) |
+| **debugger** | Root cause analysis, minimal fix, mandatory regression test | Full persona (reads domain-persona.md) |
+| **tdd-test-writer** (conditional) | Red phase for `tdd` / State-Test phase for `state-verification`. Does not read implementation code. Generated only when feature-list.json contains at least one `"test_strategy": "tdd"` entry, OR any `"state-verification"` entry | Feature-scoped entities + invariants (from implementer prompt) |
+| **tdd-implementer** | Implement / Green phase (all strategies). Minimal implementation; MUST NOT write tests | Feature-scoped entities + rules (from implementer prompt) |
+| **tdd-refactorer** | Refactor phase (all strategies). No behavior changes | Vocabulary only (from implementer prompt) |
+| **bdd-writer** | BDD-Verify phase for `lean-tdd` features. Reads acceptance_test + type headers only; implementation code is forbidden. Writes one Given/When/Then scenario per acceptance_test item to `{test-dir}/{feature_id}.bdd.{ext}`. Always generated (lean-tdd is the default strategy) | Feature-scoped acceptance_test + vocabulary (from implementer prompt) |
+| **intent-verifier** | Gate 2.5 plan-fidelity judge. Reads `.claude/plan-source.md` + feature entry + BDD/test files + staged diff; verifies implementation fulfills the plan's stated intent (not just the LLM-derived acceptance_test). Emits Critical/Major/Minor findings. Always generated | Plan MD as external oracle + feature entry (from orchestrator prompt) |
+
+### Agent Rationalization Defense
+
+Each generated agent MD must include a "Common Rationalizations" section (minimum 2 rows, matching the Skill requirement in `skills-anatomy.md`). Domain-specific rebuttals only — do not pad with generic filler. Examples:
+
+| Agent | Excuse | Rebuttal |
+|-------|--------|----------|
+| **orchestrator** | "This feature is simple, skip TDD" | All features with tdd_focus use TDD, no exceptions |
+| **reviewer** | "Minor change, quick approval" | All changes get full 3-stage review regardless of size |
+| **implementer** | "Tests are passing, skip refactor phase" | Refactor is mandatory even if no changes result |
+| **debugger** | "I know the fix, skip root cause analysis" | Root cause must be documented; symptom fixes recur |
+| **bdd-writer** | "Let me peek at the implementation so my scenarios are realistic" | Reading implementation leaks internals into the BDD surface; scenarios must be written from `acceptance_test` alone. Ask the implementer for a type header if the public shape is unclear. |
+| **bdd-writer** | "One Given/When/Then block can cover two scenarios" | Gate 0 (lean-tdd) counts blocks against `acceptance_test` length — one block per scenario, no folding. |
+| **intent-verifier** | "Plan is ambiguous, trust the acceptance_test" | acceptance_test was drafted by an LLM from the same plan. You are the only external oracle. Ambiguity → `spec-gap` Minor; never silently adopt the LLM interpretation. |
+| **intent-verifier** | "This Major is more like Minor — user won't notice" | Major = asserting the wrong thing. "User won't notice" is the test suite's job and that's what's failing now. Downgrade forbidden. |
+
+---
+
+## Quality Gates
+
+> "Looks good" is not a passing criterion. Every gate requires **evidence**.
+
+| Gate | Check | Evidence | Rationalization Defense |
+|------|-------|----------|------------------------|
+| **0: TDD** (prerequisite) | Tests exist for tdd_focus. Behavior varies by `test_strategy` (see below) | Test files, call order logs | "Too simple to need tests" → if tdd_focus specified, no exceptions |
+| **1: Implementation** | 0 compile errors, 0 lint errors, all tests pass, docs changes included | tsc/eslint/test output, git diff | "Docs later" → hook blocks commit |
+| **2: Review** | 0 Critical/Major issues + **Comment Rules compliance** (see `code-style.md#comment-rules`) | Reviewer feedback (file/line/severity) | "Trivial change, skip review" → all changes are reviewed |
+| **2.5: Intent Verification** (conditional) | 0 Critical/Major findings against `.claude/plan-source.md`. Gated by `intent_verifier_enabled` flag in `.claude/environment.md` (default `true`) | intent-verifier report at `_workspace/gate2_5_intent-verifier_{feature_id}.md` | "Acceptance_test passes, intent must be met" → acceptance_test is LLM-derived; plan MD is the external oracle |
+| **3: Testing** | Coverage per `test_strategy` (see below); overall project coverage: no regression | Coverage report, execution logs | — |
+| **4: Deploy** | Gates 0-3 pass, feature passes: true, rollback procedure ready | sync-docs pass log | "Worked in staging" → check environment differences |
+
+> Gate 0 not met → Gates 1-4 cannot proceed.
+
+### Gate Behavior by `test_strategy`
+
+| Gate | `lean-tdd` (default) | `tdd` (safety-critical opt-in) | `state-verification` | `integration` |
+|------|----------------------|--------------------------------|---------------------|---------------|
+| **Gate 0** | BDD file exists at `{test-dir}/{feature_id}.bdd.{ext}`; Given/When/Then block count >= `acceptance_test` length; BDD suite passes | Full: test files exist, Red → Green order evidence from 3-agent cycle, happy/boundary/error cases | Relaxed: test files exist, tests pass, state assertions present | Relaxed: integration test file exists, tests pass |
+| **Gate 3** | BDD scenario count >= `acceptance_test` count (no line-coverage measurement) | tdd_focus functions: >= 70% line coverage | Test files exist for module (no per-function coverage) | Overall file coverage >= 60% |
+
+### Gate 0 Enforcement
+
+The **implementer agent** checks Gate 0 before proceeding to Gate 1:
+1. **If `test_strategy` = `"lean-tdd"`**: Verify `{test-dir}/{feature_id}.bdd.{ext}` exists, Given/When/Then block count >= `acceptance_test.length`, BDD suite exits 0.
+2. **If `test_strategy` = `"tdd"`**: Verify test files exist for each `tdd_focus` item, then verify Red phase produced failing tests (evidence: test runner output with failures), then Green phase made them pass.
+3. **If `test_strategy` = `"state-verification"`**: Verify test files exist and include state assertions (not pixel-level rendering checks).
+4. **If `test_strategy` = `"integration"`**: Verify integration test file exists and passes.
+
+If Gate 0 fails: return to the appropriate phase (BDD-Verify / Implement for lean-tdd; Red/Green for tdd). This counts toward the 5-iteration convergence limit.
+The **reviewer agent** independently re-checks Gate 0 compliance during Gate 2.
+
+### Gate 2: Comment Rules Compliance
+
+The **reviewer agent** checks Comment Rules (see `code-style.md#comment-rules`) as part of Gate 2:
+- **File headers**: Every new source file must have a file header block (purpose, dependencies, related docs)
+- **Public function JSDoc**: All exported functions must have JSDoc with parameter descriptions and business logic notes
+- **Key constants/types**: Non-obvious constants and type definitions must have explanatory comments
+- **Why-comments**: Complex logic, gotchas, and workarounds must have inline "why" comments
+
+Missing comments → Severity: **Major** (does not block commit, but reviewer flags for correction before Gate 2 passes).
+
+### Gate 2: Cross-Module Review Stage <!-- anchor: cross-module-review -->
+
+When a feature's `tdd_focus` or `doc_sync` paths span **two or more module directories** (as defined in `.claude/context-map.md`), the **reviewer agent** runs an additional Cross-Module Review stage as part of Gate 2. This stage is distinct from the per-file code-quality pass and is required in addition to it.
+
+**Inputs:**
+- The implementer's artifact bundle at `_workspace/gate2_implementer-<slug>_{feature_id}-*.md`
+- Any `qa-report` written by `qa-agent` to `_workspace/qa_qa-agent_{module}-{feature_id}.md` (when qa-agent is included per `commands/setup.md` Step 1.6)
+- Both sides of every integration boundary touched by the feature (producer module source + consumer module source, read simultaneously)
+
+**Procedure:**
+1. Enumerate every integration boundary the feature touches. A boundary is any symbol or file path where a producer module in one directory is consumed by another module.
+2. For each boundary, read the producer and consumer sides in parallel (never sequentially — sequential reads miss the comparison).
+3. Compare in order: **shape → type → semantics → error paths**. Fold all findings from the `qa-report` (if present) into this comparison — do not treat qa-report as an independent artifact.
+4. Classify each mismatch by severity:
+   - **Critical** — shape or type divergence, missing error path, boundary-crossing invariant violation. Blocks Gate 2.
+   - **Major** — semantic ambiguity (e.g., both sides interpret "active" differently), partially handled error path. Must be resolved before commit.
+   - **Minor** — naming inconsistency without runtime impact. Logged for follow-up, does not block.
+
+**Outputs:**
+- Findings written to `_workspace/gate2_reviewer_{feature_id}-cross-module.md`
+- Any Critical finding returns the feature to the implementer with `review-result: critical-reject` (per `docs/templates/protocols/message-format.md#coordinate-round-trip`); this counts toward the 5-iteration convergence limit.
+
+**Rationale:** The reviewer's per-file code-quality pass catches internal mistakes; the Cross-Module Review stage catches **seam** mistakes that only appear when both sides are read together. Without this stage, boundary drift survives Gate 2 and surfaces as integration bugs at runtime.
+
+### Gate 2.5: Intent Verification <!-- anchor: intent-verification-gate -->
+
+**Problem this gate solves:** Gates 0-2 verify procedural evidence — BDD block counts, coverage percentages, code quality, boundary consistency. None of them verify whether the implementation actually fulfills the user's stated intent. `acceptance_test` is drafted by an LLM from the plan MD, BDD is drafted by another LLM from `acceptance_test`, and implementation is written by the same LLM family. If the first extraction drifts from the plan, every downstream artifact drifts with it — and all gates still pass.
+
+Gate 2.5 adds a **single external oracle**: the `intent-verifier` agent is the only judge that reads `.claude/plan-source.md` (the verbatim copy of the user's plan MD captured during `/setup` Phase 1). Every other agent sees only LLM-derived artifacts.
+
+This gate runs after Gate 2 (code quality + cross-module boundary) and before Gate 3 (coverage) — spec-diverged code should not burn coverage iterations. The Gate 2 axis (code quality / seam correctness) and the Gate 2.5 axis (plan fidelity) are orthogonal, so the two stages never conflict.
+
+#### intent-verifier Agent Frontmatter
+
+```yaml
+---
+name: intent-verifier
+description: >
+  Gate 2.5 plan-fidelity judge. Reads .claude/plan-source.md + feature entry
+  + BDD/test files + staged diff. Emits Critical/Major/Minor findings. The
+  only agent that reads the user's original plan MD.
+tools: Read, Glob, Grep, Bash
+model: opus
+---
+```
+
+#### Inputs
+
+The orchestrator dispatches the intent-verifier with:
+1. `feature_id`
+2. Path to `.claude/plan-source.md`
+3. The feature entry from `feature-list.json` (description, acceptance_test, tdd_focus, doc_sync)
+4. BDD/test file paths discovered via `git ls-files '*{feature_id}.bdd.*' '*{feature_id}.test.*'`
+5. Staged diff via `git diff --cached`
+
+#### Process
+
+1. **Locate the feature section in `plan-source.md`.** Grep for the `feature_id` anchor first; if absent, fall back to fuzzy-match on `category` + `description`. If no section is found, emit `plan-reference-unclear` at Minor severity and continue with the feature entry alone.
+2. **Extract the observable outcomes the plan promises.** User-visible behavior, error paths, edge cases. Ignore internal architecture commentary.
+3. **Cross-check `acceptance_test` against the plan outcomes.** Any outcome or error path present in the plan but absent from `acceptance_test` is a `spec-gap`.
+4. **Inspect BDD/test blocks for trivial assertions.** `expect(true)`, empty bodies, self-equality, constant-only checks are Critical (tautology).
+5. **Trace test input → production code → assertion in the staged diff.** At least one successful trace is required; otherwise the implementation is disconnected from its test.
+6. **Classify and emit findings.**
+
+#### Severity Contract
+
+| Severity | Trigger | Action |
+|----------|---------|--------|
+| **Critical** | Implementation doesn't achieve the plan's stated outcome / trivial assertion / plan-mandated error path missing | Block commit, **iteration++** (re-dispatch implementer) |
+| **Major** | Structure correct but asserts internal state instead of user-visible outcome / plan edge case absent from BDD | Block commit, **iteration unchanged** (single free revision) |
+| **Minor** | `plan-reference-unclear`, naming drift, non-critical `spec-gap` | Non-blocking, record in `PROGRESS.md ## Incidents` |
+
+#### Output
+
+- **Artifact**: `_workspace/gate2_5_intent-verifier_{feature_id}.md` (Rule 8 naming: `{phase}_{agent}_{artifact}.{ext}`)
+- **Handoff envelope**: `_workspace/handoff/intent-verifier->orchestrator.md` with `kind: intent-report`, `status: passed | blocked`, severity counts, and findings list. Follows the schema in `docs/templates/protocols/message-format.md`.
+
+#### Handoff Protocol
+
+- **Reads from**: orchestrator dispatch prompt (no envelope trigger — Gate 2.5 fires unconditionally after Gate 2 passes)
+- **Writes to**: `_workspace/handoff/intent-verifier->orchestrator.md`
+- **Re-dispatch triggers**: Critical → orchestrator re-dispatches the module's implementer with iteration++. Major → orchestrator re-dispatches the same implementer with iteration unchanged. Minor → orchestrator logs and proceeds to Gate 3.
+
+#### Flag Control
+
+Gate 2.5 is controlled by `intent_verifier_enabled` in `.claude/environment.md` (default `true`). When `false`, the orchestrator skips Gate 2.5 with a one-line note in `PROGRESS.md` and proceeds directly to Gate 3. No other flow changes.
+
+### Rollback Procedure (Gate 4 Requirement)
+
+Before marking a feature as `passes: true`, verify:
+1. All changes are in a single commit (enables `git revert <sha>`)
+2. If a DB migration exists: a corresponding down-migration file must exist
+3. If config changes exist: previous values are documented in the commit message
+
+The rollback procedure is: `git revert <feature-commit-sha>` + run down-migrations if applicable.
+
+### Gate 5: Runtime Smoke (session-terminal, conditional) <!-- anchor: runtime-smoke-gate -->
+
+Runs at session-terminal time, after the session-end QA sweep (`commands/start.md` anchor `qa-invocation-timing`) passes. **Trigger conditions** (ALL must hold; otherwise Gate 5 skips with a banner):
+1. At least one feature with `test_strategy: "integration"` has `passes: true` (the entry point is built)
+2. `.claude/environment.md` records non-null `build_command` AND non-null `run_command` (see `docs/setup/cross-session-state.md` anchor `runtime-smoke-configuration`)
+3. `feature-list.json` queue is currently fully `passes: true`
+
+**Stages** (each capable of failing into the resurrect-or-create pipeline):
+
+1. **Build stage** — orchestrator runs `build_command` via Bash with a 120-second hard timeout. Capture combined stdout/stderr to `_workspace/gate5_build_{timestamp}.log`.
+   - Exit 0 within 120s → PASS; proceed to Run stage.
+   - Non-zero exit, timeout, or missing command → **FAIL**.
+
+2. **Run stage** — orchestrator launches `run_command` as a background process with a wrapper that enforces `ready_signal.timeout_seconds`. Capture combined stdout/stderr to `_workspace/gate5_run_{timestamp}.log`.
+   - `ready_signal.type: log-match` — pattern matched in captured output before timeout → PASS.
+   - `ready_signal.type: port-listen` — `127.0.0.1:<port>` accepts a connection before timeout → PASS.
+   - `ready_signal.type: process-alive` — process is still running at timeout with exit code null AND no line in stderr matches `/error|panic|fatal|exception/i` → PASS.
+   - `ready_signal.type: timeout-success` — process exits with code 0 before timeout → PASS.
+   - Any other outcome (non-zero exit, panic in logs, log-match/port-listen not seen within timeout) → **FAIL**.
+
+   After the Run stage resolves (PASS or FAIL), the orchestrator MUST terminate the process (SIGTERM then SIGKILL after 5 seconds). No runaway process survives Gate 5.
+
+**FAIL routing** (Build or Run stage): identical to the session-end QA Critical pipeline. The orchestrator invokes the `debugger` agent with the captured log path as the QA artifact substitute. The debugger decides:
+1. **Resurrect** — the entry point (`integration` feature) or one of its `depends_on` owns the failure → flip that feature's `passes` back to `false`, preserve its iteration counter (a recurring Gate 5 failure on the same feature is divergence and the 5-cap must catch it).
+2. **Create** — no existing feature owns the failure (e.g., a dependency-wiring bug that spans multiple modules) → append a `FEAT-FIX-BUILD-<slug>` (for Build-stage failures) or `FEAT-FIX-RUNTIME-<slug>` (for Run-stage failures) entry with `test_strategy: "integration"`, `tdd_focus: [<files cited in the log>]`, `depends_on: [<integration feature id>]`.
+
+After the update, auto-pilot re-enters naturally (the queue is no longer fully `passes: true`) and the session-terminal sweep reruns after the next queue drain. Termination is a fixed point: queue empty AND (QA clean OR no findings) AND (Gate 5 passed OR skipped). Convergence across these sweep-driven loops is guaranteed only by the per-feature 5-iteration cap (`commands/start.md` anchor `iteration-tracking`).
+
+**Skip banner** (when any trigger condition fails):
+```
+Gate 5 skipped — no runnable entry point detected
+  Reason: {missing integration feature | build_command null | run_command null | queue not drained}
+  Proceeding to session termination.
+```
+
+**Explicit non-goals**: Gate 5 is smoke-only. It is NOT an end-to-end test suite, NOT a performance check, NOT a visual regression check. E2E coverage is the responsibility of individual features' `integration` test strategy at Gate 0.

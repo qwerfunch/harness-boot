@@ -1,0 +1,8 @@
+{
+  "name": "harness-boot",
+  "description": "Convert detailed plan MDs into executable multi-agent harnesses (9+ agents, 8 skills, 6 hooks, 5 protocols) with TDD sub-agent isolation, coverage gate enforcement, and Subagent Dispatch execution (parallel Agent tool_use blocks + _workspace/handoff/ envelopes).",
+  "version": "0.1.0",
+  "author": {
+    "name": "qwerfunch"
+  }
+}
