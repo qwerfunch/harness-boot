@@ -32,8 +32,8 @@ from pathlib import Path
 
 # Allow running from repo root without install.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from mode_b_stopwords import STOP_EN, STOP_KR, KR_PARTICLES_SUFFIX  # noqa: E402
-from mode_b_axes import AXES  # noqa: E402
+from spec.mode_b.stopwords import STOP_EN, STOP_KR, KR_PARTICLES_SUFFIX  # noqa: E402
+from spec.mode_b.axes import AXES  # noqa: E402
 
 
 # ---------------------------------------------------------------------------

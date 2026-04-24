@@ -49,7 +49,7 @@ if str(_THIS) not in sys.path:
     sys.path.insert(0, str(_THIS))
 
 import canonical_hash as ch  # noqa: E402
-import include_expander as ie  # noqa: E402
+from spec import include_expander as ie  # noqa: E402
 from state import State  # noqa: E402
 
 

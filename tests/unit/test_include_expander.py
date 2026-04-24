@@ -1,4 +1,4 @@
-"""Tests for scripts/include_expander.py (F-009)."""
+"""Tests for scripts/spec/include_expander.py (F-009; v0.7.5 relocated)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-import include_expander as ie  # noqa: E402
+from spec import include_expander as ie  # noqa: E402
 
 
 class ScratchDirMixin:

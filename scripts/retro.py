@@ -1,12 +1,33 @@
 #!/usr/bin/env python3
-"""retro.py — v0.6 retrospective ceremony template + events.log analysis.
+"""Retrospective ceremony template generator (v0.6 + v0.7 auto-wire).
 
-Fires after `/harness:work F-N --complete` succeeds. Analyzes events.log
-to auto-populate machine-extractable sections, leaves Reviewer Reflection
-+ Copy Polish for orchestrator (reviewer → tech-writer prose chain).
+Fires after ``/harness:work F-N --complete`` succeeds and writes
+``.harness/_workspace/retro/F-N.md``.
+
+Responsibility split:
+
+- **Machine-extractable sections** (What Shipped, First Gate to Fail,
+  Ceremonies summary) are filled here by scanning ``events.log``.
+- **Prose sections** (Risks Materialized, Decisions Revised, Kickoff
+  Predictions Right/Wrong, Reviewer Reflection, Copy Polish) are left
+  as ``_(pending)_`` placeholders. Orchestrator then invokes
+  ``@harness:reviewer`` → ``@harness:tech-writer`` in sequence to fill
+  them. reviewer returns prose (CQS — BR-012), orchestrator writes it
+  into the Reviewer Reflection section, tech-writer edits the Copy
+  Polish section directly.
+
+Event schema contract (must match ``scripts.work`` canonical emitter):
+
+- feature id key is ``feature`` (not ``feature_id``)
+- completion type is ``feature_done`` (not ``feature_completed``)
+
+A ``feature_retro_written`` event is appended on success.
 
 Usage:
     python3 scripts/retro.py --harness-dir .harness --feature F-N
+
+See ``commands/work.md`` §Retrospective Ceremony for the full
+orchestrator protocol.
 """
 
 from __future__ import annotations

@@ -1,6 +1,17 @@
-"""Stopword lists for Mode B BM25 tokenizer.
+"""Stopword lists for the Mode B BM25 tokenizer.
 
-Keep lists compact — full NLTK imports not required for Phase 1.
+Three frozensets are exported:
+
+- ``STOP_EN`` — English filler words + spec-conversion meta-noise
+  (``plan``/``section``/``figure`` and similar structural tokens).
+- ``STOP_KR`` — Korean particles, pronouns, and common fillers.
+- ``KR_PARTICLES_SUFFIX`` — terminal particles stripped by the Porter-lite
+  Korean tokenizer before BM25 scoring.
+
+Lists are deliberately compact. Bringing in ``nltk`` or a morphological
+analyzer was rejected for Phase 1 to keep the Mode B pipeline zero-dep.
+Upgrade path: a KoNLPy-backed tokenizer slot-in at
+``scripts.spec.mode_b.extract`` with the same ``tokenize()`` contract.
 """
 
 from __future__ import annotations
