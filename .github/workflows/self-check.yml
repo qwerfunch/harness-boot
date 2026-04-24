@@ -32,10 +32,10 @@ jobs:
       - name: Install runtime dependencies
         run: |
           python -m pip install --upgrade pip
-          # pyyaml is required. jsonschema is optional (validate_spec prints
-          # a warning and skips structural validation when missing) but we
-          # install it in CI so the full matrix is covered.
-          python -m pip install pyyaml jsonschema
+          # requirements-dev.txt is the SSoT — local devs + CI install the
+          # same set. A mismatch was what hid the v0.8.4 schema-path bug
+          # locally (jsonschema missing → 12 tests skipped silently).
+          python -m pip install -r requirements-dev.txt
 
       - name: Unit tests
         run: python -m unittest discover tests/unit --verbose

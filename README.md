@@ -31,7 +31,17 @@
 /harness:work F-0 activate
 ```
 
-의존성: Python 3.10+ · `pyyaml` · `jsonschema` (선택).
+의존성: Python 3.10+ · `pyyaml` (필수) · `jsonschema` (스키마 검증용 권장).
+
+로컬 개발/기여 시:
+
+```bash
+python -m pip install --user -r requirements-dev.txt   # 또는 --break-system-packages
+python -m unittest discover tests/unit                  # 617 tests · CI 와 동일 환경
+bash scripts/self_check.sh                              # SSoT · validate · sync · check · commands 5 단계
+```
+
+CI (`.github/workflows/self-check.yml`) 도 같은 `requirements-dev.txt` 를 설치해 matrix (py 3.10~3.13) 실행.
 
 ---
 
