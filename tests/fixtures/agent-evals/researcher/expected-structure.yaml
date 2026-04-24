@@ -1,0 +1,27 @@
+# Contract for researcher output.
+
+agent: researcher
+output_path: .harness/_workspace/research/brief.md
+
+required_sections_in_order:
+  - "## Input Sentence"
+  - "## Users & Jobs-To-Be-Done"
+  - "## Prior Art"
+  - "## Assumptions"
+  - "## Open Questions"
+
+# Phrases proving the research was substantive.
+required_phrases:
+  - "JTBD"            # Jobs-To-Be-Done vocabulary (or "When ... I want ...")
+  - "When "           # JTBD sentence opener
+  - "OQ-"             # at least one numbered open question (OQ-1, OQ-2, ...)
+
+# Structural minimums.
+min_open_questions: 3
+min_prior_art_entries: 3
+
+forbidden_phrases:
+  - "TODO"            # discovery should propose, not defer
+  - "F-0"             # feature IDs are product-planner territory, not researcher
+  - "AC-"             # acceptance criteria belong downstream
+  - "ADR-"            # ADRs belong to product-planner

@@ -12,9 +12,30 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - Cross-language hash test vectors (Appendix D.7)
 - Event log rotation (`events.log.YYYYMM`)
 - AC coverage drift (check.py 10 번째 drift)
-- Agent eval fixture — 15 agents × 3 대표 입력 회귀 (v0.7 PR-β 예정)
+- Agent eval fixture expansion — remaining 10 agents, + YAML/code-producing fixture schema (v0.7.3+)
 - Design review auto-wire (v0.8+ — ux-architect flows.md save 훅 모호성)
-- ADR supersedes 자동 전이 (v0.7 PR-β)
+- ADR supersedes 자동 전이 (v0.7.3)
+- performance_budget × gate_runner 연동 (v0.7.3)
+- Design 계층 tech_stack 접근 — visual-designer/a11y-auditor Tier (v0.7.4)
+
+## [0.7.2] — 2026-04-24
+
+**Agent eval fixture expansion + skipped_agents state API.**
+
+### Added
+
+- `tests/fixtures/agent-evals/{researcher,product-planner,a11y-auditor,tech-writer}/` — 4 new fixture directories. Each ships `input.md` (representative brief) + `expected-structure.yaml` (required sections, phrases, forbidden phrases). Now 5 agents covered (+ existing ux-architect).
+- `tests/unit/test_agent_fixtures.py` — parametric schema check. Auto-discovers any directory under `tests/fixtures/agent-evals/` and validates required keys, section H2/H3 form, agent name ↔ directory match. Future fixtures: drop a directory, tests pick it up.
+- `scripts/state.py::add_skipped_agent(fid, agent, reason)` + `get_skipped_agents(fid)` — v0.5 routing policy had documented `skipped_agents[]` but state.py never implemented the write API. Silent skip policy remains orchestrator business; state now has the substrate. Refuses empty reason (audit-trail integrity).
+- `tests/unit/test_state.py::SkippedAgentsTests` — 6 tests covering add/read, order, empty-input refusal, save/load round-trip.
+
+### Scope pivot
+
+Original v0.7 PR-β scope listed "15 agents × 3 대표 입력 회귀". Reduced to 4 new markdown-producing agents: engineers (frontend/software) and visual-designer emit code/YAML, which the current markdown-section schema does not fit. v0.7.3+ will extend the schema for those agent classes.
+
+### Tests
+
+581/581 green (566 + 15). self_check 5/5 PASS.
 
 ## [0.7.1] — 2026-04-24
 

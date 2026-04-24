@@ -1,0 +1,28 @@
+# Contract for tech-writer output.
+#
+# tech-writer is multi-target (README · CHANGELOG · docs/). This fixture
+# scopes the assertion to a CHANGELOG.md addition — the most structured
+# output shape. The agent's output is the markdown patch fragment added
+# under ## [Unreleased].
+
+agent: tech-writer
+output_path: CHANGELOG.md
+
+# The patch must introduce these H3 subsections under [Unreleased],
+# matching Keep a Changelog.
+required_sections_in_order:
+  - "## [Unreleased]"
+  - "### Added"
+
+required_phrases:
+  - "F-003"              # feature id reference
+  - "세션"                # user-facing vocabulary (solo_musician stakeholder)
+
+# Stakeholder-facing language requirement — avoid implementation jargon.
+forbidden_phrases:
+  - "TODO"
+  - "refactor"           # internal-only; not a user-visible change
+  - "lint"               # gate vocabulary, not stakeholder vocabulary
+  - "Vitest"             # tool name leaks; stakeholders don't care
+  - "🎉"                 # emoji ban per CHANGELOG convention
+  - "🚀"

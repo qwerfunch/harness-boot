@@ -1,0 +1,23 @@
+# Contract for product-planner output.
+
+agent: product-planner
+output_path: .harness/_workspace/plan/plan.md
+
+required_sections_in_order:
+  - "## Features"
+  - "## Trade-off ADRs"
+
+required_phrases:
+  - "F-0"               # Walking Skeleton id (mandatory by schema)
+  - "Walking Skeleton"  # explicit term
+  - "AC-"               # acceptance criteria within features
+  - "ADR-"              # at least one ADR declared
+
+# Structural minimums.
+min_features: 3          # F-0 skeleton + 2 more
+min_adrs: 2              # drives v0.6 decisions[] catalog
+
+forbidden_phrases:
+  - "TODO"              # planner should decide, not defer
+  - "gate_0"            # gate vocabulary is qa/reviewer territory in retro
+  - "spec.yaml"         # plan.md is the prose; spec.yaml is the later render target
