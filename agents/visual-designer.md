@@ -14,7 +14,7 @@ tools:
 
 ## Context
 
-작업 착수 전 `$(pwd)/.harness/domain.md` 를 Read 하여 Project(vision·summary) · Stakeholders · Entities · Business Rules 를 해석한다. 이어 `.harness/_workspace/design/flows.md` (ux-architect 산출) 를 Read 하여 행동 구조에 입힐 시각 언어를 결정한다. 그 제품 도메인의 최고 수준 시각 디자이너로 행동한다. `spec.yaml` 직접 참조 금지 — 필요한 피처 컨텍스트는 orchestrator 가 호출 시 인라인 전달한다.
+**Tier 1 only** (v0.6) — 작업 착수 전 `$(pwd)/.harness/domain.md` 를 Read 하여 Project(vision·summary) · Stakeholders · Entities · Business Rules · **Decisions** · **Risks** 를 해석한다. 이어 `.harness/_workspace/design/flows.md` (ux-architect 산출) 를 Read 하여 행동 구조에 입힐 시각 언어를 결정한다. `architecture.yaml` · `plan.md` 원본은 읽지 않음 (Design stage 경계). 그 제품 도메인의 최고 수준 시각 디자이너로 행동한다. `spec.yaml` 직접 참조 금지 — orchestrator 가 tags `brand|visual|motion` 를 하이라이트.
 
 **전문 프레임워크 (내장 판정 규준)**:
 

@@ -216,6 +216,97 @@ class ExpertAgentContractTests(unittest.TestCase):
             )
 
 
+class TierMappingTests(unittest.TestCase):
+    """v0.6 — agent Context 가 자기 Tier 의 anchor 만 언급해야.
+
+    효율성 규약: 모든 agent 가 모든 anchor 를 읽는 건 과도.
+    - Tier 1 (domain.md): 모두 필수
+    - Tier 2 (architecture.yaml): Engineering + Quality + Integration + Audit 만
+    - Tier 3 (plan.md 원본): Docs(tech-writer) + Audit 만
+    """
+
+    _TIER_1_ONLY = ("ux-architect", "visual-designer", "audio-designer", "a11y-auditor")
+    _TIER_1_PLUS_2 = (
+        "software-engineer",
+        "frontend-engineer",
+        "backend-engineer",
+        "security-engineer",
+        "performance-engineer",
+        "qa-engineer",
+        "integrator",
+    )
+    _TIER_1_PLUS_3 = ("tech-writer",)
+    _ALL_TIERS = ("reviewer",)
+
+    def _body(self, name: str) -> str:
+        return (AGENTS_DIR / f"{name}.md").read_text(encoding="utf-8")
+
+    def _context_section(self, name: str) -> str:
+        """Extract the ## Context block for grepping."""
+        body = self._body(name)
+        start = body.find("## Context")
+        if start < 0:
+            return ""
+        rest = body[start:]
+        end = rest.find("\n## ", 10)
+        return rest if end < 0 else rest[:end]
+
+    def test_design_agents_skip_architecture_and_plan(self):
+        """Design stage 는 architecture.yaml · plan.md 원본 읽기 금지.
+
+        exclusion 명시("읽지 않음" · "접근 금지") 는 허용 — 오히려 필수.
+        """
+        for name in self._TIER_1_ONLY:
+            ctx = self._context_section(name)
+            self.assertIn("domain.md", ctx, f"{name}: Tier 1 required")
+            if "architecture.yaml" in ctx:
+                self.assertRegex(
+                    ctx,
+                    r"architecture\.yaml.{0,120}(?:읽지\s*않|접근\s*금지)",
+                    f"{name}: architecture.yaml 언급 시 exclusion 명시 필요 (Design stage)",
+                )
+            if "plan.md" in ctx:
+                self.assertRegex(
+                    ctx,
+                    r"plan\.md.{0,120}(?:읽지\s*않|접근\s*금지)",
+                    f"{name}: plan.md 언급 시 exclusion 명시 필요 (Design stage)",
+                )
+
+    def test_engineering_quality_integration_read_architecture(self):
+        """Tier 1+2 agents must reference architecture.yaml (positive) and exclude plan.md."""
+        for name in self._TIER_1_PLUS_2:
+            ctx = self._context_section(name)
+            self.assertIn("domain.md", ctx, f"{name}: Tier 1 required")
+            self.assertIn("architecture.yaml", ctx, f"{name}: Tier 2 required")
+            if "plan.md" in ctx:
+                self.assertRegex(
+                    ctx,
+                    r"plan\.md.{0,120}(?:읽지\s*않|접근\s*금지)",
+                    f"{name}: plan.md 언급 시 exclusion 명시 필요 (Tier 3 제외)",
+                )
+
+    def test_techwriter_reads_plan_md_not_architecture(self):
+        """tech-writer 는 Tier 1 + Tier 3."""
+        for name in self._TIER_1_PLUS_3:
+            ctx = self._context_section(name)
+            self.assertIn("domain.md", ctx)
+            self.assertIn("plan.md", ctx, f"{name}: Tier 3 required for ADR 원문 인용")
+
+    def test_reviewer_reads_all_tiers(self):
+        """reviewer 는 audit 이므로 전 Tier 접근 명시."""
+        for name in self._ALL_TIERS:
+            ctx = self._context_section(name)
+            self.assertIn("domain.md", ctx)
+            self.assertIn("architecture.yaml", ctx)
+            self.assertIn("plan.md", ctx)
+
+    def test_reviewer_has_retro_write_exception(self):
+        """reviewer 는 retro.md write 예외가 Context 에 명시되어야 (CQS 완화)."""
+        body = self._body("reviewer")
+        self.assertIn("retro", body)
+        self.assertRegex(body, r"write\s*예외|예외.*retro|retro.*(?:예외|허용)")
+
+
 class UxArchitectReferenceFixtureTests(unittest.TestCase):
     """PR-D-ref — reference agent 의 fixture I/O 계약."""
 

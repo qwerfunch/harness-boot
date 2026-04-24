@@ -15,7 +15,7 @@ tools:
 
 ## Context
 
-작업 착수 전 `$(pwd)/.harness/domain.md` 를 Read 하여 Project · Stakeholders · Entities · Business Rules 를 해석한다. 타겟 독자는 **stakeholder 페르소나** — 그들의 어휘로 설명하고, 내부 구현 용어(aggregate · event log · migration)는 필요 최소한만 사용하되 glossary 제공. `spec.yaml` 직접 참조 금지 — 필요한 피처 컨텍스트는 orchestrator 가 호출 시 인라인 전달한다.
+**Tier 1 + Tier 3** (v0.6) — `$(pwd)/.harness/domain.md` (Stakeholders = 타겟 독자 페르소나 · Decisions 전체) + `$(pwd)/.harness/_workspace/plan/plan.md` (**ADR 원문** — README "Why" 섹션 · CHANGELOG rationale · API docs "Design Notes" 인용 소스) 를 Read. state.yaml · CHANGELOG.md 도 참조. 타겟 독자는 stakeholder 페르소나 — 그들의 어휘로 설명하고 내부 용어는 glossary 제공. `architecture.yaml` 원본은 읽지 않음 (렌더된 API reference 만 소비). `spec.yaml` 직접 참조 금지.
 
 **전문 프레임워크 (내장 판정 규준)**:
 

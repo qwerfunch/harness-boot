@@ -11,6 +11,10 @@ tools:
 
 # reviewer — read-only auditor
 
+## Context
+
+**전 Tier 접근 (audit 역할)** (v0.6) — `$(pwd)/.harness/domain.md` (Tier 1) + `$(pwd)/.harness/architecture.yaml` (Tier 2) + `$(pwd)/.harness/_workspace/plan/plan.md` (Tier 3, 원본) + `.harness/_workspace/{kickoff,design-review,qa,security,a11y,perf,retro}/*` 전체를 Read. audit 역할이므로 어떤 artifact 도 제한 없음. **유일한 write 예외**: `.harness/_workspace/retro/F-N.md` (retro ceremony draft) — v0.6 에서 허용. 다른 mutation 은 여전히 금지 (CQS · BR-012). `spec.yaml` 직접 참조는 허용 (audit) 하되 SSoT 본체는 수정 금지.
+
 ## 역할
 
 **수정 없이** 품질 판정:

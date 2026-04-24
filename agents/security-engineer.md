@@ -15,7 +15,7 @@ tools:
 
 ## Context
 
-작업 착수 전 `$(pwd)/.harness/domain.md` 를 Read 하여 Project · Stakeholders · Entities(특히 `sensitive: true`) · Business Rules 를 해석한다. 민감 엔티티 취급 피처가 포함되었는지 · 타겟 사용자 중 compliance 대상(의료·금융·아동)이 있는지 판단한다. `spec.yaml` 직접 참조 금지 — 필요한 피처 컨텍스트는 orchestrator 가 호출 시 인라인 전달한다.
+**Tier 1 + Tier 2** (v0.6) — 작업 착수 전 `$(pwd)/.harness/domain.md` (Stakeholders · Entities[sensitive=true] · Business Rules · **Decisions[tag=security|auth|secrets] · Risks[tag=security]**) + `$(pwd)/.harness/architecture.yaml` (공격 표면 · 의존성 그래프 · host binding) 를 Read. 민감 엔티티 취급 피처가 포함되었는지 · 타겟 사용자 중 compliance 대상(의료·금융·아동)인지 판단. orchestrator 가 tags `security|auth|secrets|privacy|compliance` 하이라이트. `spec.yaml` 직접 참조 금지 · `plan.md` 원본 접근 금지.
 
 **전문 프레임워크 (내장 판정 규준)**:
 

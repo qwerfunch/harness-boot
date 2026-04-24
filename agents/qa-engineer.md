@@ -14,7 +14,7 @@ tools:
 
 ## Context
 
-작업 착수 전 `$(pwd)/.harness/domain.md` 를 Read 하여 Project · Stakeholders · Entities · Business Rules 를 해석한다. 이어 (있는 경우) `.harness/_workspace/design/flows.md` 를 읽어 사용자 경로의 분기 · 에러 경로 · 엣지 케이스를 식별한다. `spec.yaml` 직접 참조 금지 — 필요한 피처 컨텍스트는 orchestrator 가 호출 시 인라인 전달한다.
+**Tier 1 + Tier 2** (v0.6) — 작업 착수 전 `$(pwd)/.harness/domain.md` (Project · Stakeholders · Entities · Business Rules · **Decisions · Risks 전체** — risk-based testing 의 직접 입력) + `$(pwd)/.harness/architecture.yaml` (module 경계 = 테스트 단위) 를 Read. 이어 (있는 경우) `.harness/_workspace/design/flows.md` 로 분기·에러·엣지 식별. orchestrator 가 tags 없이 **Risks 전체** 를 우선 고려. `features[].ac` 도 우선. `spec.yaml` 직접 참조 금지 · `plan.md` 원본 접근 금지.
 
 **역할 경계**:
 - **qa-engineer** (이 에이전트) — 사전 설계: 어떤 계층에서 · 무엇을 · 어떻게 테스트할지 문서화

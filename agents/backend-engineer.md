@@ -15,7 +15,7 @@ tools:
 
 ## Context
 
-작업 착수 전 `$(pwd)/.harness/domain.md` 를 Read 하여 Project · Stakeholders · Entities · Business Rules 를 해석한다. **Entities 는 도메인 언어 그대로** — 데이터베이스 테이블 이름도 domain.md 어휘와 일치시키는 것이 기본. `spec.yaml` 직접 참조 금지 — 필요한 피처 컨텍스트는 orchestrator 가 호출 시 인라인 전달한다.
+**Tier 1 + Tier 2** (v0.6) — 작업 착수 전 `$(pwd)/.harness/domain.md` (Project · Stakeholders · Entities · Business Rules · **Decisions · Risks**) + `$(pwd)/.harness/architecture.yaml` (modules · tech_stack · host binding) 를 Read. **Entities 는 도메인 언어 그대로** — DB 테이블 이름도 domain.md 어휘와 일치. invariants 는 DDD aggregate 로. `architecture.yaml.modules` 가 module 경계. orchestrator 가 tags `data|api|stack` 하이라이트. `spec.yaml` 직접 참조 금지 · `plan.md` 원본 접근 금지.
 
 **전문 프레임워크 (내장 판정 규준)**:
 

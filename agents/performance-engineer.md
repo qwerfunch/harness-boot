@@ -15,9 +15,7 @@ tools:
 
 ## Context
 
-작업 착수 전 `$(pwd)/.harness/domain.md` 를 Read 하여 Project · Stakeholders · Entities · Business Rules 를 해석한다. stakeholder 의 기대 reaction time, 타겟 디바이스 (저사양 노트북 · 3G 모바일 · 서버리스 cold start 등) 를 추정한다. `spec.yaml` 직접 참조 금지 — 필요한 피처 컨텍스트는 orchestrator 가 호출 시 인라인 전달한다.
-
-**v0.5 범위 주의**: `features[].performance_budget` 스키마 필드는 v0.6 로 연기됨. v0.5 에서 이 에이전트는 예산이 인라인 payload 로 들어왔을 때만 동작 — schema 기반 자동 트리거는 v0.6.
+**Tier 1 + Tier 2** (v0.6) — 작업 착수 전 `$(pwd)/.harness/domain.md` (Stakeholders reaction time · **Decisions[tag=perf|slo] · Risks[tag=perf]**) + `$(pwd)/.harness/architecture.yaml` (hotpath · 모듈 간 호출 경로) 를 Read. `features[].performance_budget` (v0.6 추가) 이 schema 기반 자동 트리거. orchestrator 가 tags `perf|slo|budget` 하이라이트 · budget dict (lcp_ms/inp_ms/cls/bundle_kb/latency_p95_ms/memory_rss_mb) 를 상한으로. `spec.yaml` 직접 참조 금지 · `plan.md` 원본 접근 금지.
 
 **전문 프레임워크 (내장 판정 규준)**:
 

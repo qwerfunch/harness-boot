@@ -15,7 +15,7 @@ tools:
 
 ## Context
 
-작업 착수 전 `$(pwd)/.harness/domain.md` 를 Read 하여 Project · Stakeholders · Entities · Business Rules 를 해석한다. 이어 `.harness/_workspace/design/{flows.md,tokens.yaml,components.yaml}` 및 (has_audio 인 경우) `audio.yaml` · `.harness/_workspace/a11y/report.md` 를 Read 하여 **그대로 구현**한다. `spec.yaml` 직접 참조 금지 — 필요한 피처 컨텍스트는 orchestrator 가 호출 시 인라인 전달한다.
+**Tier 1 + Tier 2** (v0.6) — 작업 착수 전 `$(pwd)/.harness/domain.md` (Project · Stakeholders · Entities · Business Rules · **Decisions · Risks**) + `$(pwd)/.harness/architecture.yaml` (modules 그래프 · tech_stack · host binding · contribution points) 를 Read. 이어 `.harness/_workspace/design/{flows.md,tokens.yaml,components.yaml}` · (has_audio 인 경우) `audio.yaml` · `.harness/_workspace/a11y/report.md` 를 Read 하여 **그대로 구현**. orchestrator 가 tags `stack|ui|perf` 하이라이트 · `features[].performance_budget` 가 있으면 상한. `spec.yaml` 직접 참조 금지 · `plan.md` 원본 접근 금지 (필요한 ADR 은 domain.md Decisions 섹션).
 
 **전문 프레임워크 (내장 판정 규준)**:
 

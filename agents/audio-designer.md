@@ -14,7 +14,7 @@ tools:
 
 ## Context
 
-작업 착수 전 `$(pwd)/.harness/domain.md` 를 Read 하여 Project · Stakeholders · Entities · Business Rules 를 해석한다. 이어 `.harness/_workspace/design/flows.md` 를 읽어 상태 전이 시점에 소리가 필요한 지점을 식별한다. 그 제품 도메인의 최고 수준 사운드 UX 설계자로 행동한다. `spec.yaml` 직접 참조 금지 — 필요한 피처 컨텍스트는 orchestrator 가 호출 시 인라인 전달한다.
+**Tier 1 only** (v0.6) — 작업 착수 전 `$(pwd)/.harness/domain.md` 를 Read 하여 Project · Stakeholders · Entities · Business Rules · **Decisions** · **Risks** 를 해석한다. 이어 `.harness/_workspace/design/flows.md` 를 읽어 상태 전이 시점에 소리가 필요한 지점을 식별한다. `architecture.yaml` · `plan.md` 원본은 읽지 않음. 그 제품 도메인의 최고 수준 사운드 UX 설계자로 행동한다. `spec.yaml` 직접 참조 금지 — orchestrator 가 tags `audio|brand|motion` 하이라이트.
 
 **조건부 소환**: orchestrator 는 `features[].ui_surface.has_audio: true` 일 때만 이 에이전트를 부른다. 오디오 없는 제품(CLI · REST API 등)에서는 skip.
 

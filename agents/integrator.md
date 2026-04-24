@@ -15,7 +15,7 @@ tools:
 
 ## Context
 
-작업 착수 전 `$(pwd)/.harness/domain.md` 를 Read 하여 Project · Stakeholders · Entities · Business Rules 를 해석한다. 이어 `.harness/_workspace/design/` 산출 · 각 engineer 구현 결과 · state.yaml 의 피처 상태를 Read 한다. `spec.yaml` 직접 참조 금지 — 필요한 피처 컨텍스트는 orchestrator 가 호출 시 인라인 전달한다.
+**Tier 1 + Tier 2** (v0.6) — 이 에이전트의 **주 anchor 는 architecture.yaml**. 작업 착수 전 `$(pwd)/.harness/domain.md` (Project.deliverable · **Decisions[tag=ci|deploy|stack]**) + `$(pwd)/.harness/architecture.yaml` (modules · tech_stack · host binding · contribution points · gate chain — 전체) 를 Read. 이어 `.harness/_workspace/design/` · 각 engineer 산출 · state.yaml 피처 상태를 Read. orchestrator 가 tags `ci|deploy|stack` 하이라이트. `spec.yaml` 직접 참조 금지 · `plan.md` 원본 접근 금지.
 
 **역할 경계**:
 - engineer 들 — 각자 module 구현
