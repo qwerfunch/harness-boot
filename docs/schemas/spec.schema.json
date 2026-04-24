@@ -116,6 +116,31 @@
               "has_audio": {"type": "boolean", "default": false}
             },
             "additionalProperties": true
+          },
+          "performance_budget": {
+            "type": "object",
+            "description": "v0.6 additive — 피처별 성능 예산. performance-engineer routing key 로 사용.",
+            "properties": {
+              "lcp_ms": {"type": "integer", "minimum": 0, "description": "Largest Contentful Paint (Web Vitals)"},
+              "inp_ms": {"type": "integer", "minimum": 0, "description": "Interaction to Next Paint"},
+              "cls": {"type": "number", "minimum": 0, "description": "Cumulative Layout Shift"},
+              "bundle_kb": {"type": "integer", "minimum": 0, "description": "Bundle size budget (gzip KB)"},
+              "latency_p95_ms": {"type": "integer", "minimum": 0, "description": "Backend latency p95"},
+              "memory_rss_mb": {"type": "integer", "minimum": 0, "description": "Memory ceiling"},
+              "custom": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["metric", "budget"],
+                  "properties": {
+                    "metric": {"type": "string"},
+                    "budget": {"type": ["number", "string"]}
+                  },
+                  "additionalProperties": true
+                }
+              }
+            },
+            "additionalProperties": true
           }
         },
         "additionalProperties": true
@@ -134,7 +159,125 @@
       ]
     },
 
-    "constraints": {"type": "object"},
+    "constraints": {
+      "type": "object",
+      "description": "v0.6 구조화 — tech_stack 하위 필드 정의. 다른 제약은 additionalProperties 로 자유.",
+      "properties": {
+        "tech_stack": {
+          "type": "object",
+          "description": "v0.6 additive — runtime/language/test/build 구조화. gate_runner pre-flight check 에서 소비.",
+          "properties": {
+            "runtime": {
+              "type": "string",
+              "description": "node | python | browser | deno | bun | ..."
+            },
+            "min_version": {
+              "type": "string",
+              "description": "semver 또는 주요 버전 (예: '20', '3.11')"
+            },
+            "language": {
+              "type": "string",
+              "description": "javascript | typescript | python | go | rust | ..."
+            },
+            "test": {
+              "type": "string",
+              "description": "node:test | pytest | vitest | jest | ..."
+            },
+            "build": {
+              "type": "string",
+              "description": "none | vite | webpack | rollup | esbuild | setuptools | ..."
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+
+    "decisions": {
+      "type": "array",
+      "description": "v0.6 additive — Architecture Decision Records. product-planner 가 plan.md 에 쓰고 Mode B-2 가 여기로 변환. render_domain.py 가 domain.md ## Decisions 섹션으로 렌더.",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "decision"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^ADR-\\d+$",
+            "description": "ADR-NNN"
+          },
+          "title": {"type": "string"},
+          "context": {"type": "string", "description": "왜 이 결정이 필요한가 — 배경"},
+          "decision": {"type": "string", "description": "무엇을 결정했는가"},
+          "consequences": {"type": "string", "description": "결정의 긍정·부정 결과"},
+          "status": {
+            "type": "string",
+            "enum": ["proposed", "accepted", "deprecated", "superseded"],
+            "default": "accepted"
+          },
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "security · auth · ui · brand · stack · perf · data · api · a11y · ci · deploy 등 open-string"
+          },
+          "related_features": {
+            "type": "array",
+            "items": {"type": "string", "pattern": "^F-\\d+$"}
+          },
+          "supersedes": {
+            "type": "array",
+            "items": {"type": "string", "pattern": "^ADR-\\d+$"},
+            "description": "이 ADR 이 대체한 이전 ADR ids. 대체된 ADR 는 status=superseded 로 자동 전이."
+          },
+          "superseded_by": {
+            "type": "string",
+            "pattern": "^ADR-\\d+$",
+            "description": "이 ADR 을 대체한 ADR id (있을 때). Mode B-2 가 supersedes 역방향으로 채움."
+          },
+          "source_ref": {"type": "string"}
+        },
+        "additionalProperties": true
+      }
+    },
+
+    "risks": {
+      "type": "array",
+      "description": "v0.6 additive — 리스크 카탈로그. product-planner 가 plan.md 에 쓰고 Mode B-2 가 변환. qa-engineer 의 risk-based testing 직접 입력.",
+      "items": {
+        "type": "object",
+        "required": ["id", "statement", "likelihood", "impact"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^R-\\d+$"
+          },
+          "statement": {"type": "string"},
+          "likelihood": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          },
+          "impact": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          },
+          "mitigation": {"type": "string"},
+          "tags": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "related_features": {
+            "type": "array",
+            "items": {"type": "string", "pattern": "^F-\\d+$"}
+          },
+          "status": {
+            "type": "string",
+            "enum": ["open", "mitigated", "materialized", "closed"],
+            "default": "open"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
 
     "deliverable": {
       "type": "object",
