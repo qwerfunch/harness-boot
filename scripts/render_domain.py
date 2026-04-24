@@ -67,6 +67,8 @@ def render(spec: dict, *, timestamp: str | None = None) -> str:
 
     entities = _get(spec, "domain.entities", []) or []
     business_rules = _get(spec, "domain.business_rules", []) or []
+    decisions = _get(spec, "decisions", []) or []
+    risks = _get(spec, "risks", []) or []
 
     lines: list[str] = []
 
@@ -188,6 +190,81 @@ def render(spec: dict, *, timestamp: str | None = None) -> str:
                     lines.append("")
             else:
                 lines.append(f"- BR-{i:03d}: {br}")
+                lines.append("")
+
+    # Decisions — v0.6 additive. product-planner 의 plan.md ADR 이 여기로 흘러옴.
+    lines.append(f"## Decisions ({len(decisions)})")
+    lines.append("")
+    if not decisions:
+        lines.append("_(정의된 ADR 없음 — `spec.yaml` 의 `decisions[]` 또는 plan.md 를 경유해 채우기.)_")
+        lines.append("")
+    else:
+        for d in decisions:
+            if not isinstance(d, dict):
+                continue
+            adr_id = d.get("id", "ADR-???")
+            title = d.get("title", "(untitled)")
+            status = d.get("status", "accepted")
+            tags = d.get("tags") or []
+            tag_str = f" · tags: {', '.join(tags)}" if tags else ""
+            lines.append(f"### {adr_id} — {title}")
+            lines.append("")
+            lines.append(f"**Status**: {status}{tag_str}")
+            lines.append("")
+            context = d.get("context", "")
+            decision = d.get("decision", "")
+            consequences = d.get("consequences", "")
+            if context:
+                lines.append("**Context**:")
+                lines.append("")
+                lines.append(_multiline(context).rstrip())
+                lines.append("")
+            if decision:
+                lines.append("**Decision**:")
+                lines.append("")
+                lines.append(_multiline(decision).rstrip())
+                lines.append("")
+            if consequences:
+                lines.append("**Consequences**:")
+                lines.append("")
+                lines.append(_multiline(consequences).rstrip())
+                lines.append("")
+            supersedes = d.get("supersedes") or []
+            superseded_by = d.get("superseded_by", "")
+            if supersedes:
+                lines.append(f"**Supersedes**: {', '.join(supersedes)}")
+                lines.append("")
+            if superseded_by:
+                lines.append(f"**Superseded by**: {superseded_by}")
+                lines.append("")
+
+    # Risks — v0.6 additive. qa-engineer risk-based testing 의 직접 입력.
+    lines.append(f"## Risks ({len(risks)})")
+    lines.append("")
+    if not risks:
+        lines.append("_(정의된 risk 없음 — `spec.yaml` 의 `risks[]` 또는 plan.md 를 경유해 채우기.)_")
+        lines.append("")
+    else:
+        for r in risks:
+            if not isinstance(r, dict):
+                continue
+            risk_id = r.get("id", "R-???")
+            statement = r.get("statement", "")
+            likelihood = r.get("likelihood", "?")
+            impact = r.get("impact", "?")
+            mitigation = r.get("mitigation", "")
+            status = r.get("status", "open")
+            tags = r.get("tags") or []
+            tag_str = f" · tags: {', '.join(tags)}" if tags else ""
+            lines.append(f"### {risk_id}")
+            lines.append("")
+            if statement:
+                lines.append(f"**Statement**: {statement}")
+                lines.append("")
+            lines.append(f"**Likelihood × Impact**: {likelihood} × {impact} · status: {status}{tag_str}")
+            lines.append("")
+            if mitigation:
+                lines.append(f"**Mitigation**: {mitigation}")
                 lines.append("")
 
     return "\n".join(lines).rstrip() + "\n"

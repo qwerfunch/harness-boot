@@ -180,6 +180,10 @@ MAY = 도메인 특수적
 | H-7 | 스켈레톤 | `features[0].type=skeleton`, AC 는 최소 왕복만 |
 | H-8 | 공개 API 심볼 (library) | unrepresentable → `public_api[]` 후보 |
 | H-9 | 벤치마크·Ground Truth | unrepresentable → `benchmarks` (NEW-22) |
+| H-10 *(v0.6)* | plan.md `## Trade-off ADRs` 섹션 | `decisions[]` (id=ADR-NNN, context/decision/consequences 분리, tags[] 필수 — security/ui/stack/perf/data 등) |
+| H-11 *(v0.6)* | plan.md `## Risks` 섹션 | `risks[]` (id=R-NNN, likelihood/impact enum {low,medium,high}, mitigation 필수, tags[] 권장) |
+| H-12 *(v0.6)* | ADR 의 "대체" 언급 (supersedes, "old-xyz 는 더 이상") | `decisions[].supersedes[]` 에 이전 ADR id 배열. 대체된 ADR 는 status=superseded 로 자동 전이 · superseded_by 로 역참조 |
+| H-13 *(v0.6)* | plan.md 의 "성능 예산·appetite·LCP/INP/p95" | `features[].performance_budget` (lcp_ms/inp_ms/cls/bundle_kb/latency_p95_ms/memory_rss_mb). 수치 없으면 omit — unrepresentable 금지. |
 
 ---
 
@@ -223,6 +227,7 @@ MAY = 도메인 특수적
 
 - [ ] `features[0].type == skeleton` 이며 AC 가 최소 왕복만 (P-1, R-1)
 - [ ] plan.md 의 모든 섹션이 (a) spec 에 매핑, (b) unrepresentable.md 에 기록, (c) 의도적 생략 근거 기록 — 무명 누락 없음 (Stage 4, P-1)
+- [ ] **plan.md 의 `## Trade-off ADRs` → `decisions[]` (H-10) · `## Risks` → `risks[]` (H-11) — v0.6 부터 unrepresentable 경로 금지, 반드시 구조화 필드로 변환.**
 - [ ] 구조적 안전 불변식이 `safety_constraints`/`invariants` 로 분리됨 (P-15)
 - [ ] `metadata.source.maturity` 기입 (P-16)
 - [ ] 저자 강조 축 3개가 vision + BR.rationale 에 반영 (P-21)

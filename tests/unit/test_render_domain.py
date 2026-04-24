@@ -254,6 +254,112 @@ class StakeholdersTests(unittest.TestCase):
             self.assertIn(f"### {role}", out)
 
 
+class DecisionsRisksTests(unittest.TestCase):
+    """v0.6 — render_domain 이 decisions[] · risks[] 를 domain.md 에 렌더해야.
+
+    plan.md → Mode B-2 → spec.yaml.decisions/risks → domain.md Decisions/Risks 섹션.
+    """
+
+    def test_empty_decisions_shows_hint(self):
+        spec = {"project": {"name": "x"}, "domain": {}}
+        out = rd.render(spec, timestamp=FIXED_TS)
+        self.assertIn("## Decisions (0)", out)
+        self.assertIn("정의된 ADR 없음", out)
+
+    def test_empty_risks_shows_hint(self):
+        spec = {"project": {"name": "x"}, "domain": {}}
+        out = rd.render(spec, timestamp=FIXED_TS)
+        self.assertIn("## Risks (0)", out)
+        self.assertIn("정의된 risk 없음", out)
+
+    def test_decision_rendered_with_all_fields(self):
+        spec = {
+            "project": {"name": "x"},
+            "domain": {},
+            "decisions": [
+                {
+                    "id": "ADR-001",
+                    "title": "Matter.js over Rapier",
+                    "status": "accepted",
+                    "tags": ["stack", "perf"],
+                    "context": "물리 엔진 선택 필요.",
+                    "decision": "Matter.js 0.20 사용.",
+                    "consequences": "CDN 의존 ·Rapier 보다 성능 소폭 낮음.",
+                }
+            ],
+        }
+        out = rd.render(spec, timestamp=FIXED_TS)
+        self.assertIn("## Decisions (1)", out)
+        self.assertIn("### ADR-001 — Matter.js over Rapier", out)
+        self.assertIn("**Status**: accepted", out)
+        self.assertIn("stack, perf", out)
+        self.assertIn("**Context**:", out)
+        self.assertIn("**Decision**:", out)
+        self.assertIn("**Consequences**:", out)
+
+    def test_decision_supersedes_rendered(self):
+        spec = {
+            "project": {"name": "x"},
+            "domain": {},
+            "decisions": [
+                {
+                    "id": "ADR-002",
+                    "title": "Switch to Rapier",
+                    "decision": "Rapier 로 migration.",
+                    "supersedes": ["ADR-001"],
+                },
+                {
+                    "id": "ADR-001",
+                    "title": "Use Matter.js",
+                    "decision": "Matter.js.",
+                    "status": "superseded",
+                    "superseded_by": "ADR-002",
+                },
+            ],
+        }
+        out = rd.render(spec, timestamp=FIXED_TS)
+        self.assertIn("**Supersedes**: ADR-001", out)
+        self.assertIn("**Superseded by**: ADR-002", out)
+
+    def test_risk_rendered_likelihood_impact(self):
+        spec = {
+            "project": {"name": "x"},
+            "domain": {},
+            "risks": [
+                {
+                    "id": "R-001",
+                    "statement": "CDN 장애 시 게임 로드 실패",
+                    "likelihood": "low",
+                    "impact": "medium",
+                    "mitigation": "local vendor + SRI",
+                    "tags": ["stack"],
+                }
+            ],
+        }
+        out = rd.render(spec, timestamp=FIXED_TS)
+        self.assertIn("## Risks (1)", out)
+        self.assertIn("### R-001", out)
+        self.assertIn("**Statement**: CDN 장애 시 게임 로드 실패", out)
+        self.assertIn("low × medium", out)
+        self.assertIn("**Mitigation**: local vendor + SRI", out)
+
+    def test_risk_status_default_open(self):
+        spec = {
+            "project": {"name": "x"},
+            "domain": {},
+            "risks": [
+                {
+                    "id": "R-002",
+                    "statement": "test",
+                    "likelihood": "high",
+                    "impact": "high",
+                }
+            ],
+        }
+        out = rd.render(spec, timestamp=FIXED_TS)
+        self.assertIn("status: open", out)
+
+
 class RealSpecSmokeTests(unittest.TestCase):
     SPEC = REPO_ROOT / "docs" / "samples" / "harness-boot-self" / "spec.yaml"
 
