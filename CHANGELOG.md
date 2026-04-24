@@ -7,14 +7,27 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
-- Marketplace PR (anthropic/claude-plugins-official) — 안정화 후 제출
+**v1.0 릴리즈 체크리스트 (post-1.0 = 공식 마켓 PR 타이밍)**:
+
+- Marketplace PR (anthropic/claude-plugins-official) — **v1.0 릴리즈 후** 제출 (사전 제출 없음)
+- v1.0 readiness: design-review auto-wire · 나머지 8 agent fixtures · Known Issues 0 · migration guide · README polish
+
+**v0.8 범위 후보**:
+
+- Design review auto-wire — ux-architect flows.md save 훅 (v0.6 부터 미해결)
+- 나머지 agent fixtures (backend/security/performance/audio/qa/integrator/orchestrator/reviewer)
+
+**v0.9 범위 후보 (novel axis)**:
+
+- URL → design seed: `/harness:clone <url>` 또는 별도 `harness-seed` 플러그인. `.harness/_workspace/design/{flows,tokens,components}.md|yaml` 를 자동 시드 · visual-designer/ux-architect 는 refine 역할로 전환. (2026-04-24 검토 — scope 크고 IP 경계 주의 필요)
+- gate_perf auto-detect heuristics (lighthouse.config.js · k6 · wrk 설정 감지)
+
+**기타 backlog**:
+
 - Phase 3 CI — `.github/workflows/self-check.yml` + PR gate
 - Cross-language hash test vectors (Appendix D.7)
 - Event log rotation (`events.log.YYYYMM`)
 - AC coverage drift (check.py 11 번째 drift 후보)
-- 나머지 agent fixtures (backend/security/performance/audio/qa/integrator/orchestrator/reviewer) — v0.7.6+
-- Design review auto-wire (v0.8+ — ux-architect flows.md save 훅 모호성)
-- gate_perf auto-detect heuristics (lighthouse.config.js · k6 · wrk 설정 감지) — v0.8+
 
 ## [0.7.6] — 2026-04-24
 
