@@ -11,3 +11,5 @@
 
 pyyaml
 jsonschema
+pytest       # v0.8.10 — required by tests/unit/test_gate_runner.py::PytestCommandDetectionTests
+coverage     # v0.8.10 — enables gate_3 coverage detection tests via pytest-cov path

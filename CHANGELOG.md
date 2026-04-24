@@ -29,6 +29,27 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - ~~Event log rotation (`events.log.YYYYMM`)~~ ✅ v0.8.6
 - AC coverage drift (check.py 11 번째 drift 후보)
 
+## [0.8.10] — 2026-04-24
+
+**CI hotfix — pytest + coverage added to requirements-dev.txt. v0.8.8's `PytestCommandDetectionTests` failed on CI because the matrix only had pyyaml + jsonschema.**
+
+### Problem
+
+v0.8.8 introduced `_pytest_command()` with two new tests assuming pytest is importable. requirements-dev.txt (v0.8.5 SSoT) only listed pyyaml + jsonschema, so CI matrix on py3.10–3.13 ran without pytest and both tests hit `AssertionError: unexpectedly None`. CI failed on all 4 Python minors.
+
+### Fixed
+
+- **`requirements-dev.txt`** — pytest + coverage added. Comments point to v0.8.10 as the release that added each dep.
+- No code changes — just dev dependency widening. CI matrix now installs pytest, so `_pytest_command()` binary-or-module detection succeeds and both tests PASS.
+
+### Lesson captured (again)
+
+This is the second time a test assumption (pytest installed) diverged from the CI environment. v0.8.4 was the first (jsonschema missing). The pattern: when a helper uses a capability, the test asserting the helper's behavior must have that capability guaranteed by requirements-dev.txt. Reviewer checklist entry candidate.
+
+### Tests
+
+CI re-run expected green across py3.10-3.13. Local: 637/637 green (no new tests).
+
 ## [0.8.9] — 2026-04-24
 
 **Starter `.gitignore` + `conftest.py` templates — closes the third v0.8.6 e2e finding. Onboarding friction removed.**
