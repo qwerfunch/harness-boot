@@ -29,6 +29,55 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - ~~Event log rotation (`events.log.YYYYMM`)~~ ✅ v0.8.6
 - AC coverage drift (check.py 11 번째 drift 후보)
 
+## [0.9.0] — 2026-04-24
+
+**UX re-architecture · 첫 단계. Plugin namespace rename + command surface 8 → 2 collapse. 내부 엔진 변화 없음 · slash command 재조직만.**
+
+### Breaking change — 재설치 필요
+
+Plugin name `harness` → **`harness-boot`** (프로젝트 이름과 일치). 기존 설치는 자동 승계 안 됨:
+
+```
+/plugin uninstall harness@harness-boot
+/plugin install harness-boot@harness-boot
+```
+
+`.harness/` 디렉터리 · spec.yaml · state.yaml · 사용자 작업물 전부 보존 (plugin 이름 무관).
+
+### Changed
+
+- **Slash command 8 → 2**:
+  - `/harness-boot:init` — 최초 셋업 (기존 `/harness:init`)
+  - `/harness-boot:work` — 일상 (기존 `/harness:work` 가 새 인터페이스로 재구성될 예정 · 현재 기능은 v0.8.10 과 동일)
+- **삭제**: `commands/{spec,sync,status,check,events,metrics}.md` (6 파일). 이 기능들은 v0.9.2+ 에서 `/harness-boot:work` 자연어 라우팅으로 흡수 예정. 이번 릴리즈는 파일 삭제만.
+- **`commands/init.md`** 상단 재설계 — 자연어 직접 진입 (A · 권장) + 3 옵션 메뉴 (B · fallback) 2 경로:
+  - `/harness-boot:init 트위터 같은 거 만들래` → 옵션 1 + 레퍼런스 맥락 주입
+  - `/harness-boot:init 빨리 대충 프로토타입` → 옵션 1 + mode hint
+  - `/harness-boot:init plan.md 있어` → 옵션 2 (기획 문서)
+  - `/harness-boot:init 이미 만들던 코드` → 옵션 3 (기존 프로젝트)
+  - 빈 호출 → 3 옵션 메뉴 fallback
+- **`plugin.json` + `marketplace.json`**: plugin name `harness` → `harness-boot`.
+- **README** 빠른 시작 섹션 재작성 — 2 command + 자연어 중심.
+
+### Removed
+
+- `tests/unit/test_spec_modes.py` — 삭제된 `commands/spec.md` 의 Mode A/B/R/E 계약 검증. v0.9.2 에서 `/harness-boot:work` 자연어 라우팅 re-implementation 후 새 테스트로 대체 예정.
+
+### v0.9.x 로드맵 (예고)
+
+| 버전 | 내용 |
+|---|---|
+| v0.9.1 | `scripts/ui/feature_resolver.py` · title fuzzy match · `@F-N` escape |
+| v0.9.2 | `/harness-boot:work` 빈 호출 → 대시보드 · 자연어 → intent 라우팅 · Plan+Y/n UX |
+| v0.9.3 | Iron Law D — 누적 declared evidence (prototype 1 · product 3 · hotfix override) |
+| v0.9.4 | 시나리오 매핑 integration test · README "어떻게 말해도 됩니다" |
+| v0.9.5 | `project.mode: prototype/product` 축 · 의례 경량화 |
+| v0.10.0 | (미정) · v0.9.x 완주 후 재검토 |
+
+### Tests
+
+625/625 green (이전 637 − 12: test_spec_modes 삭제분). self_check 5/5 PASS.
+
 ## [0.8.10] — 2026-04-24
 
 **CI hotfix — pytest + coverage added to requirements-dev.txt. v0.8.8's `PytestCommandDetectionTests` failed on CI because the matrix only had pyyaml + jsonschema.**
