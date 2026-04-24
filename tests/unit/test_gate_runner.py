@@ -682,6 +682,44 @@ class RunGate5Tests(ScratchProjectMixin, unittest.TestCase):
         self.assertEqual(res.result, "pass", f"expected pass, got {res.as_dict()}")
 
 
+class RunGatePerfTests(ScratchProjectMixin, unittest.TestCase):
+    """v0.7.3 — gate_perf: performance_budget 기반 성능 게이트.
+
+    Auto-detect 없음 (perf 도구 다양성). override_command 또는 harness.yaml 만 수용.
+    budget 정보는 caller 책임으로 command 에 환경 변수 등으로 전달.
+    """
+
+    def test_pass_with_override(self):
+        res = gr.run_gate_perf(self.root, override_command=["true"])
+        self.assertEqual(res.result, "pass")
+        self.assertEqual(res.gate, "gate_perf")
+
+    def test_fail_with_override(self):
+        res = gr.run_gate_perf(self.root, override_command=["false"])
+        self.assertEqual(res.result, "fail")
+
+    def test_skipped_without_override(self):
+        """No auto-detect — perf tools vary too much."""
+        res = gr.run_gate_perf(self.root)
+        self.assertEqual(res.result, "skipped")
+        self.assertIn("no perf", res.reason.lower())
+        self.assertIn("harness.yaml", res.reason)
+
+    def test_harness_yaml_override(self):
+        harness = self.root / ".harness"
+        harness.mkdir()
+        (harness / "harness.yaml").write_text(
+            'gate_commands:\n  gate_perf: "true"\n', encoding="utf-8"
+        )
+        res = gr.run_gate_perf(self.root, harness_dir=harness)
+        self.assertEqual(res.result, "pass", f"got {res.as_dict()}")
+
+    def test_dispatcher_recognizes_gate_perf(self):
+        res = gr.run_gate("gate_perf", self.root, override_command=["true"])
+        self.assertEqual(res.gate, "gate_perf")
+        self.assertEqual(res.result, "pass")
+
+
 class AsDictTests(unittest.TestCase):
     def test_as_dict_round_trips(self):
         r = gr.GateRunResult(gate="gate_0", result="pass", duration_sec=1.234567)

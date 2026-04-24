@@ -243,6 +243,75 @@ class ActivateAutowireTests(ScratchHarness, unittest.TestCase):
         self.assertIn("product-planner", body)
 
 
+class PerfGateBudgetIntegrationTests(ScratchHarness, unittest.TestCase):
+    """v0.7.3 — gate_perf pass 시 feature.performance_budget 이 evidence summary 에 주입."""
+
+    _SPEC_WITH_BUDGET = textwrap.dedent(
+        """\
+        version: "2.3.8"
+        project:
+          name: "demo"
+        features:
+          - id: F-0
+            type: skeleton
+            title: "Perf-sensitive"
+            ui_surface:
+              present: true
+            performance_budget:
+              lcp_ms: 2500
+              inp_ms: 200
+              bundle_kb: 180
+              custom:
+                - metric: "api_startup_ms"
+                  budget: 300
+            acceptance_criteria:
+              - "AC-1: boots"
+            modules:
+              - src/main.ts
+        """
+    )
+
+    def test_budget_appears_in_pass_evidence(self):
+        self._write_spec(self._SPEC_WITH_BUDGET)
+        work.activate(self.harness, "F-0")
+        res = work.run_and_record_gate(
+            self.harness,
+            "F-0",
+            "gate_perf",
+            project_root=self.tmp,
+            override_command=["true"],
+        )
+        self.assertEqual(res.message.split()[1], "PASS")
+        # Find the gate_run evidence entry
+        from state import State as _State
+        st = _State.load(self.harness)
+        ev = st.get_feature("F-0").get("evidence", [])
+        gate_ev = [e for e in ev if e["kind"] == "gate_run"]
+        self.assertEqual(len(gate_ev), 1)
+        summary = gate_ev[0]["summary"]
+        self.assertIn("budget:", summary)
+        self.assertIn("lcp_ms=2500", summary)
+        self.assertIn("api_startup_ms=300", summary)
+
+    def test_non_perf_gate_has_no_budget_suffix(self):
+        self._write_spec(self._SPEC_WITH_BUDGET)
+        work.activate(self.harness, "F-0")
+        res = work.run_and_record_gate(
+            self.harness,
+            "F-0",
+            "gate_0",
+            project_root=self.tmp,
+            override_command=["true"],
+        )
+        from state import State as _State
+        st = _State.load(self.harness)
+        ev = st.get_feature("F-0").get("evidence", [])
+        # The most recent gate_run for gate_0 should not include "budget:"
+        gate_ev = [e for e in ev if e["kind"] == "gate_run"]
+        self.assertTrue(gate_ev)
+        self.assertNotIn("budget:", gate_ev[-1]["summary"])
+
+
 class CompleteAutowireTests(ScratchHarness, unittest.TestCase):
     def _seed_done_precondition(self, fid: str) -> None:
         """Satisfy Iron Law: gate_5 pass + evidence ≥ 1."""

@@ -9,7 +9,7 @@ check.py — /harness:check (F-006) drift 탐지. Read-only, CQS.
 
 CQS: 파일 수정 없음. Spec 드리프트 발견 시 자동 수정 제안도 없음 (BR 참조).
 
-v0.3.13 범위 — 9/9 드리프트:
+v0.7.3 범위 — 10/10 드리프트:
   1. Generated — harness.yaml 자체가 올바른 구조/버전을 유지하는지
   2. Derived   — domain.md/architecture.yaml 의 output_hash 와 현재 파일 해시 비교
   3. Spec      — spec.yaml 의 canonical hash 와 harness.yaml.generation.spec_hash 비교
@@ -19,6 +19,7 @@ v0.3.13 범위 — 9/9 드리프트:
   7. Doc       — project_root/CLAUDE.md 의 `@` import 타겟이 실제 존재하는지 + derived 파일 비어있지 않은지
   8. Anchor    — features[].id 포맷/유일성 + depends_on 참조가 존재하는 피처 ID 인지
   9. Protocol  — .harness/protocols/*.md 각 파일이 frontmatter.protocol_id == 파일명 stem (F-017 AC-2)
+  10. Adr      — decisions[].supersedes 가 가리키는 ADR 의 status 가 'superseded' 인지 (v0.7.3)
 
 종료 코드:
   0 = clean (no drift)
@@ -358,6 +359,62 @@ def check_anchor(spec: dict) -> list[DriftFinding]:
     return findings
 
 
+def check_adr_supersedes(spec: dict) -> list[DriftFinding]:
+    """Adr drift — decisions[].supersedes chain consistency.
+
+    When ADR-B lists ADR-A under `supersedes`, ADR-A's status must be
+    `superseded`. Otherwise domain.md renders two "accepted" decisions on
+    the same topic (reader has no way to know which applies).
+
+    Also flags supersedes entries that point at ADR ids missing from the
+    catalog — those are dangling references.
+    """
+    findings: list[DriftFinding] = []
+    decisions = spec.get("decisions") or []
+    if not isinstance(decisions, list) or not decisions:
+        return findings
+
+    by_id: dict[str, dict] = {}
+    for d in decisions:
+        if isinstance(d, dict):
+            did = d.get("id")
+            if isinstance(did, str):
+                by_id[did] = d
+
+    for d in decisions:
+        if not isinstance(d, dict):
+            continue
+        new_id = d.get("id") or "?"
+        supersedes = d.get("supersedes") or []
+        if not isinstance(supersedes, list):
+            continue
+        for target in supersedes:
+            if not isinstance(target, str):
+                continue
+            target_d = by_id.get(target)
+            if target_d is None:
+                findings.append(
+                    DriftFinding(
+                        "Adr",
+                        new_id,
+                        f"supersedes 에 존재하지 않는 ADR 참조: {target} (decisions[] 에 없음)",
+                        "warn",
+                    )
+                )
+                continue
+            status = target_d.get("status")
+            if status != "superseded":
+                findings.append(
+                    DriftFinding(
+                        "Adr",
+                        target,
+                        f"{new_id} 가 {target} 를 supersedes 하나 {target}.status={status!r} — 'superseded' 로 갱신 필요",
+                        "warn",
+                    )
+                )
+    return findings
+
+
 _PROTOCOL_FRONTMATTER = re.compile(r"^---\s*\n(.*?)\n---", re.DOTALL)
 
 
@@ -460,6 +517,8 @@ def run_check(harness_dir: Path, project_root: Path | None = None) -> CheckRepor
         report.checked.append("Code")
         report.findings.extend(check_anchor(spec_yaml))
         report.checked.append("Anchor")
+        report.findings.extend(check_adr_supersedes(spec_yaml))
+        report.checked.append("Adr")
 
     report.findings.extend(check_doc(harness_dir, project_root))
     report.checked.append("Doc")
