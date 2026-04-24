@@ -29,6 +29,35 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - ~~Event log rotation (`events.log.YYYYMM`)~~ ✅ v0.8.6
 - AC coverage drift (check.py 11 번째 drift 후보)
 
+## [0.8.7] — 2026-04-24
+
+**Complete + retro idempotency — closes the third instance of the "ceremony writes unconditionally" pattern. Surfaced by v0.8.6 end-to-end smoke run.**
+
+### Problem
+
+During the live e2e verification (smoke project: `greet-e2e` CLI), `--complete` was called twice on the same `done` feature. Observed: duplicate `feature_done` event, `retro/F-0.md` overwritten, duplicate `feature_retro_written` event. Exact mirror of the kickoff bug fixed in v0.8.2. 3 ceremonies auto-wired × 3 flavors of the same defect → third patch.
+
+### Fixed
+
+- **`scripts/work.py::complete(harness_dir, fid)`** — early return with `action=queried`, message "already done — no re-completion" when feature's status is already `done`. No event emission, no retro autowire.
+- **`scripts/ceremonies/retro.py::generate_retro`** gains `force: bool = False`. When `retro/F-N.md` exists and `force=False`: return path without write or event.
+- **`scripts/work.py::_autowire_retro`** propagates `force` kwarg (defaults False on automatic calls).
+- **New `--retro` CLI flag** forces regeneration (mirrors `--kickoff` and `--design-review`). Emits fresh `feature_retro_written` event and yields `action=retro_refreshed`.
+
+### Ceremony idempotency — now unified across all 3
+
+| Ceremony | Patch | Force flag |
+|---|---|---|
+| Kickoff | v0.8.2 | `--kickoff` |
+| Design Review | v0.8.0 (native) | `--design-review` |
+| Retrospective | **v0.8.7** | `--retro` |
+
+The three auto-wired ceremonies now obey the same write-once-then-preserve rule. Consistency contract verified by 4 new tests.
+
+### Tests
+
+631/631 green (627 + 4 new: `CompleteIdempotencyTests` × 2, `RetroForceRefreshTests` × 2). self_check 5/5 PASS.
+
 ## [0.8.6] — 2026-04-24
 
 **Phase 2 scale readiness · first step — `events.log` monthly rotation.**

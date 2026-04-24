@@ -384,6 +384,95 @@ class KickoffIdempotencyTests(ScratchHarness, unittest.TestCase):
         self.assertEqual(len(opens), 1)
 
 
+class CompleteIdempotencyTests(ScratchHarness, unittest.TestCase):
+    """v0.8.7 — complete must not re-emit events or re-fire retro on done feature.
+
+    Surfaced by the v0.8.6 e2e smoke run: re-calling `--complete` on a
+    feature already in `done` state emitted a duplicate feature_done event
+    and overwrote the retro.md. Mirrors the v0.8.2 kickoff fix — same
+    pattern, different ceremony.
+    """
+
+    def _seed_done(self, fid: str) -> None:
+        work.activate(self.harness, fid)
+        work.record_gate(self.harness, fid, "gate_5", "pass")
+        work.add_evidence(self.harness, fid, "test", "ok")
+
+    def test_second_complete_does_not_re_emit(self):
+        self._write_spec(_SPEC_UI)
+        self._seed_done("F-0")
+        r1 = work.complete(self.harness, "F-0")
+        self.assertEqual(r1.action, "completed")
+
+        events_before = [e for e in self._events() if e["type"] == "feature_done"]
+        self.assertEqual(len(events_before), 1)
+
+        r2 = work.complete(self.harness, "F-0")
+        self.assertEqual(r2.action, "queried")
+        self.assertIn("done", r2.message.lower())
+        events_after = [e for e in self._events() if e["type"] == "feature_done"]
+        self.assertEqual(len(events_after), 1, "feature_done must not duplicate")
+
+    def test_second_complete_does_not_re_fire_retro(self):
+        self._write_spec(_SPEC_UI)
+        self._seed_done("F-0")
+        work.complete(self.harness, "F-0")
+        retro_path = self.harness / "_workspace" / "retro" / "F-0.md"
+        self.assertTrue(retro_path.is_file())
+        mtime_before = retro_path.stat().st_mtime_ns
+
+        # User curates the retro — marker that must survive the re-complete
+        retro_path.write_text("CURATED_RETRO\n", encoding="utf-8")
+
+        work.complete(self.harness, "F-0")
+        self.assertEqual(retro_path.read_text("utf-8"), "CURATED_RETRO\n")
+
+        retro_events = [e for e in self._events() if e["type"] == "feature_retro_written"]
+        self.assertEqual(len(retro_events), 1, "retro must fire at most once per feature")
+
+
+class RetroForceRefreshTests(ScratchHarness, unittest.TestCase):
+    """v0.8.7 — --retro flag overrides retro idempotency (mirrors --kickoff/--design-review)."""
+
+    def _seed_done(self, fid: str) -> None:
+        work.activate(self.harness, fid)
+        work.record_gate(self.harness, fid, "gate_5", "pass")
+        work.add_evidence(self.harness, fid, "test", "ok")
+
+    def test_retro_flag_overwrites_existing(self):
+        self._write_spec(_SPEC_UI)
+        self._seed_done("F-0")
+        work.complete(self.harness, "F-0")
+        retro_path = self.harness / "_workspace" / "retro" / "F-0.md"
+        retro_path.write_text("STALE_RETRO\n", encoding="utf-8")
+
+        rc = work.main([
+            "F-0",
+            "--harness-dir", str(self.harness),
+            "--retro",
+            "--json",
+        ])
+        self.assertEqual(rc, 0)
+        body = retro_path.read_text("utf-8")
+        self.assertNotIn("STALE_RETRO", body)
+        self.assertIn("Retrospective", body)
+
+    def test_retro_flag_emits_second_feature_retro_written_event(self):
+        self._write_spec(_SPEC_UI)
+        self._seed_done("F-0")
+        work.complete(self.harness, "F-0")
+        # After complete: 1 event. --retro flag forces → 2
+        rc = work.main([
+            "F-0",
+            "--harness-dir", str(self.harness),
+            "--retro",
+            "--json",
+        ])
+        self.assertEqual(rc, 0)
+        retro_events = [e for e in self._events() if e["type"] == "feature_retro_written"]
+        self.assertEqual(len(retro_events), 2)
+
+
 class KickoffForceRefreshTests(ScratchHarness, unittest.TestCase):
     """v0.8.2 — --kickoff CLI flag overrides idempotency."""
 

@@ -208,14 +208,27 @@ def generate_retro(
     *,
     feature_id: str,
     timestamp: str | None = None,
+    force: bool = False,
 ) -> Path:
+    """Create retro template + event. Returns path to the retro.md.
+
+    Idempotency (v0.8.7): if ``retro/F-N.md`` already exists, no file write
+    or event emission happens unless ``force=True``. This mirrors the
+    kickoff/design-review pattern and preserves user-curated prose that
+    orchestrator filled after ``reviewer → tech-writer`` chain.
+    """
     if timestamp is None:
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    events = _read_events(harness_dir)
-    analysis = analyze(events, feature_id)
     retro_dir = harness_dir / "_workspace" / "retro"
     retro_dir.mkdir(parents=True, exist_ok=True)
     path = retro_dir / f"{feature_id}.md"
+
+    # Idempotent skip — preserve user-curated headings unless force=True
+    if path.is_file() and not force:
+        return path
+
+    events = _read_events(harness_dir)
+    analysis = analyze(events, feature_id)
     path.write_text(_template(feature_id, analysis, timestamp), encoding="utf-8")
     _append_event(
         harness_dir,
