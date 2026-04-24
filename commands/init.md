@@ -1,17 +1,85 @@
 ---
-description: harness-boot 플러그인을 현재 프로젝트에 설치 — .harness/ 골격 + CLAUDE.md 편성. 프로젝트당 1회.
+description: harness-boot 플러그인을 현재 프로젝트에 설치 — .harness/ 골격 + CLAUDE.md 편성. 프로젝트당 1회. 자연어 또는 3 옵션 메뉴로 진입.
 allowed-tools: [Read, Write, Edit, Bash, Glob]
-argument-hint: "[--team | --solo]  # (선택) state.yaml 커밋 정책"
+argument-hint: "[자연어 설명 또는 빈 호출 (메뉴)]  # 예: 트위터 같은 거 만들래 · 대충 프로토타입 · plan.md 있어"
 ---
 
-# /harness:init — 하네스 설치
+# /harness-boot:init — 하네스 설치 (v0.9)
 
-이 명령은 **현재 작업 디렉터리에 harness-boot 골격을 생성**합니다. Claude 는 다음 단계를 순서대로 **정확히** 수행하세요. 각 단계 후 간단히 성공/실패를 보고하되, 전체 명령 실행 중 **요약은 마지막에 1회** 만 하세요.
+이 명령은 **현재 작업 디렉터리에 harness-boot 골격을 생성**합니다. **한 프로젝트에 평생 1 회** 실행.
+
+## 진입 2 방식
+
+**A · 자연어 직접 (권장)**
+
+```
+/harness-boot:init 솔로 음악인 연습용 포모도로 타이머
+/harness-boot:init 트위터 같은 거 만들래
+/harness-boot:init 빨리 대충 프로토타입
+/harness-boot:init plan.md 기반으로 시작
+/harness-boot:init 이미 만들던 코드에 적용
+```
+
+Claude 는 자연어를 읽어 **3 옵션 중 하나로 라우팅** + 필요한 힌트 주입. 라우팅 결과를 사용자에게 plan 으로 공개 → Y/n → 진행.
+
+### 자연어 → 라우팅 규칙
+
+| 사용자 말 | 라우팅 |
+|---|---|
+| 단순 아이디어 | 옵션 1 (아이디어만) |
+| "~~~ 같은 거" · "~~~ 처럼" · 참고 제품 언급 | 옵션 1 + 레퍼런스 맥락 주입 |
+| "대충" · "빨리" · "프로토타입" · "실험" | 옵션 1 + `project.mode: prototype` hint |
+| "제대로" · "크게" · "장기" · "정식" | 옵션 1 + `project.mode: product` (default) 명시 |
+| "plan.md" · "기획 문서" · "기획서" · "요구사항" | 옵션 2 |
+| "기존 코드" · "이미 만들던" · "기존 프로젝트" | 옵션 3 |
+| (모호 · 다의적) | 3 옵션 메뉴 fallback |
+
+**Plan 공개 예**:
+
+```
+사용자: /harness-boot:init 트위터 같은 거 만들래
+
+Claude 해석:
+  • 아이디어 있음 + 레퍼런스 언급 (Twitter)
+  • → 옵션 1 (아이디어부터) + 레퍼런스 맥락 주입
+
+실행 계획:
+  1. .harness/ 골격 생성
+  2. researcher 에게 "Twitter 참고 · MVP 축소" context 주입
+  3. 배경 조사 → 로드맵 → 첫 피처 준비
+
+이 해석 맞나요?
+  Y = 그대로 진행
+  n = 다시 설명해 주세요
+  다른 자연어 = Claude 가 재해석
+```
+
+**B · 빈 호출 → 3 옵션 메뉴 (fallback)**
+
+자연어 없이 `/harness-boot:init` 만 실행 · 또는 라우팅 모호 시:
+
+```
+🚀 harness-boot 을 이 프로젝트에 처음 적용합니다
+
+어떤 상황이세요?
+
+  1) 아이디어만 있어요
+     → 함께 기획부터 · 대화로 진행
+
+  2) 기획 문서가 이미 있어요
+     → 문서 기반으로 빠르게 설계 만들기
+
+  3) 이미 코드가 있는 프로젝트에 적용
+     → 현재 상태부터 정리 · 앞으로의 로드맵
+
+  0) 어떤 차이인지 잘 모르겠어요
+     → 각 옵션 간단 설명
+```
 
 ## Preamble (출력 맨 앞 3 줄)
 
 ```
-🧰 /harness:init · <mode=solo|team> · <근거 5~10 단어>
+🧰 /harness-boot:init · <mode=solo|team> · <근거 5~10 단어>
 NO skip: §0-2 기존 .harness/spec.yaml 검사 — 재실행 시 덮어쓰기 금지
 NO shortcut: §5 events.log 에 harness_initialized 이벤트 append
 ```
@@ -19,18 +87,18 @@ NO shortcut: §5 events.log 에 harness_initialized 이벤트 append
 **1 줄**: 이모지 · 명령 · mode · 근거.
 **2-3 줄 (Anti-rationalization, BR-014)**: 이 명령이 건너뛸 수 없는 제약 2 개를 명시적으로 선언. LLM 이 "이미 됐다" 로 skip 하는 경로 차단.
 
-예: `🧰 /harness:init · solo · 빈 디렉터리에 .harness/ 최초 스캐폴딩`
+예: `🧰 /harness-boot:init · solo · 빈 디렉터리에 .harness/ 최초 스캐폴딩`
 
 ## 단계
 
 ### 0. 전처리 — 기존 설치 확인
 
 1. `Bash: pwd` 로 현재 디렉터리 확인.
-2. `Bash: ls package.json pyproject.toml Cargo.toml .git 2>/dev/null` 로 프로젝트 루트 신호 4 종 중 존재하는 것을 수집 — **정보성만**. 판정 결과에 따라 중단하지 않음 (사용자가 `/harness:init` 을 명시적으로 호출한 이상 현재 디렉터리 설치 의도로 간주).
+2. `Bash: ls package.json pyproject.toml Cargo.toml .git 2>/dev/null` 로 프로젝트 루트 신호 4 종 중 존재하는 것을 수집 — **정보성만**. 판정 결과에 따라 중단하지 않음 (사용자가 `/harness-boot:init` 을 명시적으로 호출한 이상 현재 디렉터리 설치 의도로 간주).
    - 하나라도 존재: 최종 보고의 "모드" 라인 앞에 `프로젝트 신호: <감지된 파일 목록>` 한 줄 추가.
    - 하나도 없음: 최종 보고의 끝에 **한 줄 권고** 만 추가 — `팁: 'git init' 로 저장소 초기화를 권장합니다.` (중단 없음, 바로 다음 단계로 진행).
 3. `Glob: .harness/**` 로 기존 하네스 존재 여부 확인.
-   - 이미 `.harness/spec.yaml` 가 있으면 **경고 출력 후 중단**: "하네스가 이미 설치되어 있습니다. `.harness/spec.yaml` 을 직접 편집하세요. (v0.2+ 에서 `/harness:spec`·`/harness:check` 활성화 예정)"
+   - 이미 `.harness/spec.yaml` 가 있으면 **경고 출력 후 중단**: "하네스가 이미 설치되어 있습니다. `.harness/spec.yaml` 을 직접 편집하세요. (v0.2+ 에서 `/harness-boot:work`·`/harness-boot:work` 활성화 예정)"
 4. 인자 문자열 파싱: 인자에 `--team` 이 포함되면 `mode=team` (state.yaml 을 `.gitignore` 에 추가), `--solo` 이거나 인자 없으면 `mode=solo` (커밋 대상 유지). 이외 인자는 무시 + 말미 보고에 "인식 안 된 인자: X" 경고.
 
 ### 1. 디렉터리 생성
@@ -96,7 +164,7 @@ jq -r '.plugins | to_entries[] | select(.key | startswith("harness@")) | .value[
 
 ### 2.5. 선택 파일 — `.gitignore` + `conftest.py` (v0.8.9)
 
-**`.gitignore`** — 프로젝트 루트. `.harness/` 안의 파생물 (events.log · state.yaml · harness.yaml · domain.md · architecture.yaml · _workspace/) 과 로테이션된 `events.log.YYYYMM*` 를 무시하는 설정 포함. 이게 없으면 `/harness:work --run-gate gate_4` 가 매번 dirty working tree 로 fail — v0.8.6 e2e 실증에서 확인된 gap.
+**`.gitignore`** — 프로젝트 루트. `.harness/` 안의 파생물 (events.log · state.yaml · harness.yaml · domain.md · architecture.yaml · _workspace/) 과 로테이션된 `events.log.YYYYMM*` 를 무시하는 설정 포함. 이게 없으면 `/harness-boot:work --run-gate gate_4` 가 매번 dirty working tree 로 fail — v0.8.6 e2e 실증에서 확인된 gap.
 
 - 대상: 프로젝트 루트 `.gitignore`
 - 원본: `docs/templates/starter/.gitignore.template`
@@ -109,7 +177,7 @@ jq -r '.plugins | to_entries[] | select(.key | startswith("harness@")) | .value[
 - **이미 `conftest.py` 가 있으면 사용자에게 병합 여부 확인 후 manual merge** (자동 병합 금지 — pytest 설정은 프로젝트마다 민감).
 - `src/` 디렉터리가 없는 프로젝트에는 복사하지 않음 (flat layout 은 필요 없음).
 
-이 섹션을 건너뛰면 나중에 수동으로 복사해도 됨. `/harness:init --solo` 같은 라이트 모드에서는 기본 skip.
+이 섹션을 건너뛰면 나중에 수동으로 복사해도 됨. `/harness-boot:init --solo` 같은 라이트 모드에서는 기본 skip.
 
 ### 3. CLAUDE.md 생성 또는 병합
 
@@ -141,7 +209,7 @@ jq -r '.plugins | to_entries[] | select(.key | startswith("harness@")) | .value[
 ```
 ## harness-boot
 
-이 프로젝트는 harness-boot 플러그인으로 관리됩니다. `/harness:spec` 으로 제품 설명을 편집하세요.
+이 프로젝트는 harness-boot 플러그인으로 관리됩니다. `/harness-boot:work` 으로 제품 설명을 편집하세요.
 ```
 
 ### 4. .gitignore 편성
@@ -195,13 +263,13 @@ jq -r '.plugins | to_entries[] | select(.key | startswith("harness@")) | .value[
   CLAUDE.md                   ← Claude 세션 컨텍스트 (spec.yaml import 포함)
   .gitignore                  ← 병합됨
 
-다음 단계 (v0.1.0 기준 — /harness:spec 등은 v0.2+ 예정):
+다음 단계 (v0.1.0 기준 — /harness-boot:work 등은 v0.2+ 예정):
   1. `.harness/spec.yaml` 을 직접 편집하세요. 예시는 docs/samples/ 참고.
      이미 `plan.md` 가 있다면: skills/spec-conversion 을 활성화하고 "이 plan.md 를 spec.yaml 로 변환해줘" 요청.
   2. 편집 완료 후 세션을 재시작하면 CLAUDE.md 의 @ import 가 새 spec 을 로드합니다.
 
 문서: https://github.com/qwerfunch/harness-boot
-v0.2 로드맵: /harness:sync (파생) · /harness:work (구현) · /harness:check (드리프트)
+v0.2 로드맵: /harness-boot:work (파생) · /harness-boot:work (구현) · /harness-boot:work (드리프트)
 ```
 
 ## 실패 조건 (fail-fast)
@@ -219,4 +287,4 @@ v0.2 로드맵: /harness:sync (파생) · /harness:work (구현) · /harness:che
 - `.harness/hooks/*.mjs` 자동 복사
 - 6개 핵심 훅 (security-gate, doc-sync-check, coverage-gate, format, test-runner, session-start-bootstrap)
 
-v0.1.0 단계에서는 사용자가 spec.yaml 을 채운 후 `/harness:spec` · `/harness:sync` 로 수동 진전하면 됩니다. `.claude/` 는 비어있어도 Claude Code 가 경고하지 않습니다.
+v0.1.0 단계에서는 사용자가 spec.yaml 을 채운 후 `/harness-boot:work` · `/harness-boot:work` 로 수동 진전하면 됩니다. `.claude/` 는 비어있어도 Claude Code 가 경고하지 않습니다.
