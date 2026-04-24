@@ -1,4 +1,4 @@
-"""Tests for scripts/render_architecture.py."""
+"""Tests for scripts/render/architecture.py (v0.7.5 relocated from scripts/render_architecture.py)."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ except ImportError:
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-import render_architecture as ra  # noqa: E402
+from render import architecture as ra  # noqa: E402
 
 
 FIXED_TS = "2026-04-23T05:00:00Z"

@@ -1,18 +1,39 @@
 #!/usr/bin/env python3
-"""
-render_domain.py — spec → domain.md 렌더러 (F-003 §0.4)
+"""Render ``spec.yaml`` to ``.harness/domain.md`` (F-003 §0.4).
 
-사용:
-  python3 scripts/render_domain.py <spec.yaml>                # stdout
-  python3 scripts/render_domain.py <spec.yaml> -o domain.md   # write
+Public API:
 
-규칙:
-  - 입력: 이미 $include 전개된 spec (include_expander 로 preprocess 권장).
-  - 출력: `.harness/domain.md` 에 쓸 markdown 한 페이지.
-  - 구성: 1) 헤더 + 생성 시각, 2) Project 섹션, 3) Entities, 4) Business Rules.
-  - 렌더러는 **순서 결정론적** — 같은 입력 → 같은 바이트. (edit-wins 감지 안정성)
+    render(spec: dict, *, timestamp: str | None = None) -> str
+    load_spec(path: Path) -> dict
 
-외부 의존: pyyaml.
+Rendered section order (stable — do not reorder without a version bump,
+``check.py`` Derived drift relies on byte equality):
+
+1. Header + generation timestamp
+2. ``## Project`` — summary · description · vision
+3. ``## Platform`` — ``constraints.tech_stack`` (v0.7.4 additive; omitted
+   when ``tech_stack`` is absent or empty)
+4. ``## Stakeholders``
+5. ``## Entities``
+6. ``## Business Rules``
+7. ``## Decisions`` — decisions[] ADR catalog (v0.6 additive)
+8. ``## Risks`` — risks[] catalog (v0.6 additive)
+
+Input contract:
+
+- The spec passed in is expected to be **already $include-expanded**
+  (use ``scripts.spec.include_expander`` as a preprocess step).
+- Output is deterministic byte-for-byte across runs given identical
+  input — this property is what ``/harness:check`` Derived drift
+  depends on. If you add non-determinism (timestamps outside the header,
+  dict iteration order, set ordering) tests will flag it.
+
+CLI:
+
+    python3 scripts/render_domain.py <spec.yaml>                 # stdout
+    python3 scripts/render_domain.py <spec.yaml> -o domain.md    # write
+
+External dep: pyyaml.
 """
 
 from __future__ import annotations

@@ -12,9 +12,42 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - Cross-language hash test vectors (Appendix D.7)
 - Event log rotation (`events.log.YYYYMM`)
 - AC coverage drift (check.py 11 번째 drift 후보)
-- 나머지 agent fixtures (backend/security/performance/audio/qa/integrator/orchestrator/reviewer) — v0.7.5+
+- 나머지 agent fixtures (backend/security/performance/audio/qa/integrator/orchestrator/reviewer) — v0.7.6+
 - Design review auto-wire (v0.8+ — ux-architect flows.md save 훅 모호성)
 - gate_perf auto-detect heuristics (lighthouse.config.js · k6 · wrk 설정 감지) — v0.8+
+
+## [0.7.5] — 2026-04-24
+
+**Internal refactor — scripts/ directory organization + professional docstrings. No user-facing behavior change.**
+
+### Refactored
+
+- **scripts/ 디렉터리 정리** — 내부 전용 모듈 8 개를 서브패키지로 이동. 공개 CLI 경로 (commands/*.md 가 참조하는 `scripts/<name>.py`) 는 **전부 그대로** — `/harness:*` 동작에 영향 없음.
+  - `render_domain.py` → `render/domain.py`
+  - `render_architecture.py` → `render/architecture.py`
+  - `include_expander.py` → `spec/include_expander.py`
+  - `conversion_diff.py` → `spec/conversion_diff.py`
+  - `upgrade_to_2_3_8.py` → `spec/upgrade_to_2_3_8.py`
+  - `mode_b_axes.py` → `spec/mode_b/axes.py`
+  - `mode_b_roundtrip.py` → `spec/mode_b/roundtrip.py`
+  - `mode_b_stopwords.py` → `spec/mode_b/stopwords.py`
+- 각 서브패키지에 `__init__.py` + module docstring (책임 경계 · 호출 방향 명시).
+- 소비자 import 경로 업데이트 (sync · check · mode_b_extract · 3 test 파일) — `import X` → `from <pkg> import X`.
+
+### Added
+
+- `scripts/README.md` — 29 파일 인벤토리 · 의존 방향 다이어그램 · 공개 vs 내부 표시 · 테스트/버전 정책. 새 기여자가 "어디에 코드 추가할지" 즉시 파악 가능.
+- 전문 수준 module docstring 보강 (`retro.py` · `render/domain.py` · `render/architecture.py` · `spec/mode_b/stopwords.py` · `spec/mode_b/axes.py`): 공개 API · 섹션 순서 · 결정론 계약 · 이벤트 스키마 계약 · CLI 사용법 · 업그레이드 경로 명시.
+
+### Version policy 확립
+
+- **공개 CLI 경로** (`scripts/<name>.py`) 변경은 **major bump** (v1.0+) 대상. commands/*.md 가 직접 참조하므로.
+- **내부 서브패키지** (`scripts/render/*`, `scripts/spec/*`, `scripts/spec/mode_b/*`) 는 자유 재편.
+- 이 규약은 `scripts/README.md` §"버전 정책" 에 고정.
+
+### Tests
+
+602/602 green (baseline 동일, 변경된 테스트는 3 파일의 import 경로 뿐). self_check 5/5 PASS.
 
 ## [0.7.4] — 2026-04-24
 

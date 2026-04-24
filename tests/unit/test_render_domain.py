@@ -1,4 +1,4 @@
-"""Tests for scripts/render_domain.py."""
+"""Tests for scripts/render/domain.py (v0.7.5 relocated from scripts/render_domain.py)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-import render_domain as rd  # noqa: E402
+from render import domain as rd  # noqa: E402
 
 
 FIXED_TS = "2026-04-23T05:00:00Z"

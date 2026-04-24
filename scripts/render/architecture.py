@@ -1,28 +1,37 @@
 #!/usr/bin/env python3
-"""
-render_architecture.py — spec → architecture.yaml 렌더러 (F-003 §0.5)
+"""Render ``spec.yaml`` to ``.harness/architecture.yaml`` (F-003 §0.5).
 
-사용:
-  python3 scripts/render_architecture.py <spec.yaml>                     # stdout
-  python3 scripts/render_architecture.py <spec.yaml> -o architecture.yaml # write
+Public API mirrors :mod:`scripts.render.domain`:
 
-출력 구조:
-  version: "2.3"
-  generated_at: <timestamp>
-  from_spec: <path>
-  tech_stack: { ...spec.constraints.tech_stack }
-  deliverable: { ...spec.deliverable }
-  modules:
-    - name: <module_name>
-      owners: [<feature_id>, ...]     # 이 모듈을 참조하는 features[]
-  contribution_points: [...metadata.contribution_points]  # 있을 때
-  host_binding: {...metadata.host_binding}                # 있을 때
-  feature_graph:
+    render(spec: dict, *, timestamp: str | None = None) -> str
+    load_spec(path: Path) -> dict
+
+Output structure::
+
+    version: "2.3"
+    generated_at: <timestamp>
+    from_spec: <path>
+    tech_stack: { ...spec.constraints.tech_stack }
+    deliverable: { ...spec.deliverable }
+    modules:
+      - name: <module_name>
+        owners: [<feature_id>, ...]     # features[] referring to this module
+    contribution_points: [...metadata.contribution_points]  # optional
+    host_binding: {...metadata.host_binding}                # optional
+    feature_graph:
     - id: <feature_id>
       modules: [...]
-      depends_on: [...]               # 있을 때
+      depends_on: [...]               # optional
 
-외부 의존: pyyaml.
+Determinism guarantees match render.domain — same input produces identical
+byte output so ``/harness:check`` Derived drift stays meaningful.
+
+CLI:
+
+    python3 scripts/render_architecture.py <spec.yaml>
+    python3 scripts/render_architecture.py <spec.yaml> -o architecture.yaml
+
+External dep: pyyaml.
 """
 
 from __future__ import annotations

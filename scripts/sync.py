@@ -45,11 +45,11 @@ if str(_THIS) not in sys.path:
     sys.path.insert(0, str(_THIS))
 
 import canonical_hash as ch  # noqa: E402
-import include_expander as ie  # noqa: E402
 import plugin_root as pr  # noqa: E402
-import render_architecture as ra  # noqa: E402
-import render_domain as rd  # noqa: E402
 import validate_spec as vs  # noqa: E402
+from render import architecture as ra  # noqa: E402
+from render import domain as rd  # noqa: E402
+from spec import include_expander as ie  # noqa: E402
 
 
 def _now_iso() -> str:

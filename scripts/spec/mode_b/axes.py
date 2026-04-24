@@ -1,8 +1,20 @@
-"""Axis query vocabularies for Mode B BM25.
+"""Axis query vocabularies for the Mode B BM25 classifier.
 
-Each axis = a list of tokens that typically appear when a plan.md section
-belongs to that spec axis. Keep tokens *already normalized* (lowercase, NFC).
-Korean particles are NOT included (they get stripped by the tokenizer).
+``AXES`` is a mapping ``axis_name -> [query_token, ...]``. Each axis key
+corresponds to a top-level concept in ``spec.yaml`` (``feature``,
+``entity``, ``business_rule``, ``non_functional``, etc.). Mode B scores a
+candidate plan.md section against every axis and routes it to the top
+scorer.
+
+Token hygiene:
+
+- Already normalized (lowercase, NFC). Tokens in this file should match
+  the output of ``scripts.mode_b_extract.tokenize`` verbatim.
+- Korean particles are **not** listed here — the tokenizer's
+  ``KR_PARTICLES_SUFFIX`` stripping runs before lookup, so ``기능`` (not
+  ``기능을``) is the match key.
+- Add domain-specific jargon via config later (v0.8+), not by editing
+  this file per-project.
 """
 
 from __future__ import annotations
