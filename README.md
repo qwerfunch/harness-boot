@@ -1,21 +1,25 @@
 # harness-boot
 
-> 자연어 아이디어를 **스펙으로 굳히고**, 전문가 에이전트 팀이 **역할별로 협업해** 실제 돌아가는 코드까지 이끌어내는 **AI 개발 하네스 프레임워크**.
+> **2 개의 명령어**로 자연어 한 줄부터 운영 가능한 코드까지. spec.yaml 을 SSoT 로, AI 협업을 규율있게.
 
-[![version](https://img.shields.io/badge/plugin-v0.6.1-blue)](.claude-plugin/plugin.json)
+[![version](https://img.shields.io/badge/plugin-v0.9.4-blue)](.claude-plugin/plugin.json)
 [![spec](https://img.shields.io/badge/spec-v2.3.8-green)](docs/schemas/spec.schema.json)
-[![tests](https://img.shields.io/badge/tests-535%20passing-brightgreen)](tests/unit)
+[![tests](https://img.shields.io/badge/tests-742%20passing-brightgreen)](tests)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 ---
 
-## 30 초 요약
+## 한 줄 요약
 
-- **무엇**: AI 와 함께 제품을 만들 때 "사고의 글 ↔ 실행의 글 혼재 · 결정 근거 증발 · 증거 없는 완료" 를 구조로 막는 규율 도구.
-- **누구**: AI 코딩 에이전트 (현재 Claude Code · 추후 확장 가능) 로 제품을 만드는 개발자.
-- **어떻게**: `spec.yaml` 한 파일에 기획·계약·결정을 적고, 도구가 파생 뷰·전문가 에이전트·협업 루틴을 얹어준다.
-- **왜**: "됐다" 는 AI 의 말을 테스트·스모크·감사 이력으로 매 피처마다 검증. 여섯 번째 피처에서 무너지지 않는다.
-- **현재 제공**: Claude Code 2.1+ 플러그인 (`/plugin install harness-boot@harness-boot`). 내부 설계는 AI 에이전트 프로토콜 · SSoT · 해시 트리 · 이벤트 로그 같은 일반 개념이라 다른 에이전트 호스트로 이식 가능.
+Claude Code 에서 **`/harness-boot:init` + `/harness-boot:work`** 2 개 명령어로 자연어 아이디어 → 설계 → 구현 → 완료 사이클을 돌린다. 사용자가 외울 건 **명령 이름 2 개뿐** — 나머지는 자연어로 말하고 Claude 가 해석해 제안 · Y/n 실행.
+
+**왜 이 도구가 필요한가**
+
+- **"됐다"는 말에 증거를 요구한다** — Iron Law D (누적 declared evidence ≥ 3) 를 넘지 못하면 완료 거부.
+- **파생 파일이 원천과 어긋나면 감지한다** — spec.yaml ↔ domain.md ↔ architecture.yaml ↔ code 10-way drift.
+- **모든 결정이 events.log 에 남는다** — LLM 이 제안한 것 · 사용자가 고른 것 · 실제 실행된 것을 체인으로.
+
+---
 
 ## 빠른 시작
 
@@ -27,308 +31,180 @@
 # 새 프로젝트 디렉터리에서 — 한 줄이면 됩니다
 /harness-boot:init 솔로 음악인 연습용 포모도로 타이머
 
-# 이후 모든 일상은 work 하나로
-/harness-boot:work               # 대시보드 + 다음 추천
-/harness-boot:work 돌려봐         # 검증
-/harness-boot:work 됐어           # 완료
+# 이후 일상은 work 하나로
+/harness-boot:work                 # 대시보드 + 다음 할 일
 ```
 
-**외우는 건 slash command 2 개** (`init` + `work`) · 인자는 자연어. Claude 가 의도 읽어 제안 → Y/n → 실행.
-
-의존성: Python 3.10+ · `pyyaml` (필수) · `jsonschema` (스키마 검증용 권장).
-
-로컬 개발/기여 시:
-
-```bash
-python -m pip install --user -r requirements-dev.txt   # 또는 --break-system-packages
-python -m unittest discover tests/unit                  # 617 tests · CI 와 동일 환경
-bash scripts/self_check.sh                              # SSoT · validate · sync · check · commands 5 단계
-```
-
-CI (`.github/workflows/self-check.yml`) 도 같은 `requirements-dev.txt` 를 설치해 matrix (py 3.10~3.13) 실행.
+의존성: Python 3.10+ · `pyyaml` (필수) · `jsonschema` (권장).
 
 ---
 
-## 왜?
+## 어떻게 말해도 됩니다
 
-자연어로 "이런 제품 만들어줘" 를 던지면 세 가지가 동시에 무너진다:
+자연어로 말하면 Claude 가 의도를 해석 → Plan 으로 공개 → Y/n 로 실행. 아래는 **정식 계약 테이블** (README ↔ [`scripts/ui/scenarios.py`](scripts/ui/scenarios.py) ↔ [`tests/integration/test_scenario_mappings.py`](tests/integration/test_scenario_mappings.py) 가 같은 소스로 동기).
 
-1. **"직관적이어야 한다" 와 "POST /users returns 201" 이 한 문단에 섞인다** — AI 가 어디부터 자유 영역이고 어디부터 계약인지 판단 못 함.
-2. **기획 단계 결정이 다음 단계로 전달되지 않는다** — ADR · 위험 요소 · 트레이드오프가 기획자 이후로 사라진다.
-3. **"됐다" 는 선언만 있고 증거가 없다** — 테스트 통과·실행 확인·드리프트 검증 흔적 없이 피처가 `완료` 로 찍힌다.
+### 일상
 
-**harness-boot 의 답**:
-
-- 두 글을 `spec.yaml` 안에서 **스키마로 분리한다** → AI 는 필드가 묻는 것만 답한다.
-- 기획 결정을 `domain.md` 에 **렌더해 모든 에이전트에 공유한다** → 근거가 사라지지 않는다.
-- 완료 선언에 **철칙을 건다 (BR-004 Iron Law)** → `gate_5 통과 + 증거 1건 이상` 없이는 `done` 거부.
-
-> 사고의 글은 자유롭게, 실행의 글은 구조화해서. 두 글이 어긋나거나 실행 결과와 다르면 harness 가 알려준다.
-
----
-
-## 비전 — 적은 인원 × 큰 시스템
-
-전통적 "대규모 개발" 은 인원 추가로 풀었다. 결과는 Brooks's Law — 인원이 늘수록 소통 비용이 기하급수로 폭증한다. 역할 전문성 (frontend · backend · security · a11y · qa · docs) 을 분산하려면 최소 수십 명이 필요했다.
-
-**AI 에이전트는 이 방정식을 뒤집는다.** 1~3 인이 **설계·판단·방향** 을 잡고, 전문가 에이전트 팀이 **구현·검증·문서** 를 병렬 실행한다. 여기서 harness-boot 가 거는 규율:
-
-| 전통적 병목 | harness-boot 의 해법 |
+| 이렇게 말하면 | 이렇게 해석합니다 |
 |---|---|
-| 역할 전문성 분산 | 16 + α 에이전트 · 역할별 계층 읽기 |
-| 소통 비용 (인원² 증가) | 단일 원천 spec + Tier 차등 + Q&A 파일 드롭 |
-| 맥락 이해 한계 | `domain.md` 한 문서로 cross-role 공유 |
-| 수작업 검증 | qa · reviewer · tech-writer 자동화 + Iron Law 게이트 |
-| 결정 이력 소실 | events.log + domain.md Decisions 섹션 |
+| `/harness-boot:work` (빈 호출) | 현재 상태 + 다음 할 일 추천 1~3 안 |
+| "돌려봐" · "확인해줘" · "테스트" · "검증" | 모든 검증 자동 실행 (gate_0~5) |
+| "됐어" · "끝났어" · "완료" · "done" | 완료 전이 — Iron Law D 누적 근거 체크 |
+| "막혔어" · "보류" · "나중에" · "block" | 보류 상태로 전환 + 사유 기록 |
+| "다른 거 먼저" · "잠깐 딴 거" · "deactivate" | 현 작업 포인터 해제 — 피처 상태는 유지 |
 
-**목표 스케일** — 수십 피처에서 시작해 점차 수백·수천 규모로 · 장기 운영까지. 구조 · SSoT · 감사 이력이 **인원이 아닌 에이전트로 스케일** 하도록 설계됐다.
+### 시작 · 전환
 
-> 이 도구는 "소규모 팀을 위한 작은 도구" 가 아니다. **작은 팀이 큰 시스템을 만들기 위한 레버리지 도구** 다.
+| 이렇게 말하면 | 이렇게 해석합니다 |
+|---|---|
+| "로그인 흐름" · "@F-3" · "F-3 시작" | 피처 활성화 — 제목 substring · `@F-N` · 평문 `F-N` |
+| "이어서" · "계속" · "재개" | 대시보드 추천이 가리키는 피처로 복귀 |
 
-**단, 이 비전의 중후반 도달 (Phase 3 이상) 은 LLM 비용 최적화 · 에이전트 품질 상승 · 커뮤니티 참여 같은 외부 조건에 의존한다.** 현재 스코프에서는 Phase 2 까지를 실용 목표로, Phase 3+ 는 탐색 단계로 본다. 상세는 [현재 제약 & 확장 로드맵](#현재-제약--확장-로드맵) 참조.
+### 근거 · 정리
+
+| 이렇게 말하면 | 이렇게 해석합니다 |
+|---|---|
+| "확인했어" · "수동 확인" · "리뷰 받았어" | declared evidence 추가 (Iron Law D 카운트) |
+| "이건 빼자" · "취소해줘" · "없던 걸로" | planned 피처 삭제 (done 피처는 보호) |
+
+파워 유저는 **`@F-N` prefix** 또는 **`python3 scripts/*.py` 직접 호출** 경로를 영구 유지. CI 에서도 같은 경로 사용.
 
 ---
 
-## 핵심 흐름
+## 2 개 명령어의 구조
 
-사용자가 편집하는 파일은 `spec.yaml` 하나. 모든 것이 여기서 출발한다.
+### `/harness-boot:init` — 최초 1 회
+
+프로젝트 부팅. 자연어 직접 진입 또는 3 옵션 메뉴:
+
+- **1) 아이디어만** → researcher → product-planner → 설계 변환 (대화형 티키타카)
+- **2) 기획 문서 있음** (`plan.md`) → 변환 루프 직행
+- **3) 이미 코드 있음** → 현 상태 분석 → 로드맵 초안
+
+각 단계는 **초안 제시 → Y / 수정 / 질문 / 되돌리기 / 다시** 5 옵션 루프. Artifact 는 `v1 · v2 · v3` 로 버전 관리.
+
+### `/harness-boot:work` — 일상
+
+빈 호출 → 대시보드 + 다음 할 일. 자연어 입력 → 의도 해석 → 실행.
+
+**대시보드 출력 예시**:
 
 ```
-        자연어 기획 (plan.md · 대화 · 한 줄 아이디어)
-                       │
-                       │  /harness-boot:init          (최초 1회)
-                       ▼
-         ╔══════════════════════════════════════╗
-         ║          spec.yaml  (단일 원천)      ║  ←  /harness-boot:work
-         ║    🗒 사고의 글    · 자유 서술        ║     (편집 · 변환)
-         ║    🔒 실행의 글    · 스키마 검증      ║
-         ║    decisions[] · risks[]             ║
-         ╚══════════╤══════════════════╤════════╝
-                    │                  │
-             /harness-boot:work      /harness-boot:work  <F-N>
-                    │                  │
-                    ▼                  ▼
-      ┌───────────────────┐   ┌────────────────────────────┐
-      │  파생 뷰          │   │  개발 사이클 + 협업 루틴    │
-      │  · domain.md      │   │  · Gate 0~5 · BR-004       │
-      │    + 결정 · 위험  │   │  · 역할별 에이전트 소환     │
-      │  · architecture   │   │  · 킥오프 · 디자인 리뷰     │
-      │  · 해시 트리      │   │  · 비동기 Q&A · 회고       │
-      └───────────────────┘   └────────────────────────────┘
+📊 harness-boot
 
-      관찰 (읽기 전용):
-         /harness-boot:work   세션·피처·드리프트 요약
-         /harness-boot:work    드리프트 8 종 탐지
-         /harness-boot:work   이벤트 로그 조회
-         /harness-boot:work  lead time · gate pass · drift 빈도
+작업 중: "로그인 흐름"
+  진행: 검증 3/6 통과 · 근거 2 개
+  차단: 접근성 · Space 키 동작 미정
+
+진행 중 (다른):
+  "대시보드"
+
+대기: "로그아웃" · "설정"
+
+다음 할 일:
+  (1) 검증 실행: gate_3 (추천)
+  (2) 다른 작업으로 전환
+
+Enter = 1 (추천)
 ```
 
-**불일치를 찾는 세 지점**:
+---
 
-| 지점 | 무엇을 | 어떻게 |
+## 품질 불변량 (절대 손상 없음)
+
+- **Iron Law D** (BR-004 강화 · v0.9.3) — 완료 조건:
+  - `gate_5` (runtime smoke) pass
+  - 최근 7 일 **declared evidence** (kind ≠ `gate_run` · `gate_auto_run`) ≥ N
+  - `product` 모드: N=3 (default) · `prototype` 모드: N=1
+  - `--hotfix-reason "..."` 긴급 override: product 도 N=1, 사유를 audit trail 에 자동 기록
+- **Drift 10/10** — spec · derived · include · evidence · code · doc · anchor · generated · SSoT · link 전 방향 감지. 자동 수정 없음 (사용자 의도 존중).
+- **CQS 읽기 전용** — 대시보드 · status · check · events · metrics 는 mtime 까지 불변.
+- **Events.log 투명 audit** — 모든 LLM 제안 · 사용자 선택 · 실행 결과 체인 기록.
+- **결정론 경로 보존** — Gate · Drift · Iron Law 판정은 `scripts/` · LLM 은 라우팅만.
+
+---
+
+## 전문가 에이전트 팀 (16 역할)
+
+피처 `shape` (UI 여부 · 민감 데이터 · 성능 예산 등) 에 따라 orchestrator 가 자동 라우팅. `@harness:<이름>` 으로 직접 호출도 가능.
+
+| 단계 | 에이전트 |
+|---|---|
+| Discovery | researcher · product-planner |
+| eXperience | ux-architect · visual-designer · audio-designer · a11y-auditor |
+| Engineering | software · frontend · backend · security · performance-engineer |
+| Quality | qa-engineer |
+| Integration | integrator · tech-writer |
+| Coordination | orchestrator |
+| Audit | reviewer (read-only) |
+
+각 에이전트는 `agents/<이름>.md` 에 자기가 읽을 3 계층 (`domain.md` / `architecture.yaml` / `plan.md`) 을 선언. frontmatter `tools:` 로 권한 강제.
+
+상세: [`agents/README.md`](agents/README.md) · [`commands/work.md` § Orchestration Routing`](commands/work.md).
+
+---
+
+## 4 개 협업 루틴 (자동 발화)
+
+실제 팀에서 쓰는 루틴을 LLM 워크플로에 이식. 각 산출은 `.harness/_workspace/` 에 파일로 남아 `grep` · `git` 으로 추적.
+
+| 루틴 | 트리거 | 산출 |
 |---|---|---|
-| `spec.yaml` | 실행의 글 형식 오류 | 스키마 검증 |
-| `/harness-boot:work` | 파생 뷰가 원천에서 벗어남 | 해시 비교 |
-| `/harness-boot:work` | 증거 없는 `done` 선언 | 게이트 실행 + 증거 수 확인 |
+| **Kickoff** | `/harness-boot:work F-N` activate 직후 | `_workspace/kickoff/F-N.md` · 에이전트별 우려 3 bullet |
+| **Design Review** | ux-architect 가 flows 저장 후 | `_workspace/design-review/F-N.md` · 병렬 concerns 수집 |
+| **Q&A (file-drop)** | 에이전트가 불명확 발견 | `_workspace/questions/F-N--from--to.md` · 파일 기반 polling |
+| **Retrospective** | `/harness-boot:work F-N --complete` 직후 | `_workspace/retro/F-N.md` · reviewer → tech-writer 순차 |
 
----
-
-## 슬래시 명령
-
-| 명령 | 역할 |
-|---|---|
-| `/harness-boot:init` | `.harness/` 골격 + `CLAUDE.md` 편성 (`--solo` / `--team`) |
-| `/harness-boot:work` | 스펙 편집 · 기존 수정 (A/R/E) · 신규 작성 (B-1 대화형 / B-1-vague 한 줄 아이디어 / B-2 plan.md 변환) |
-| `/harness-boot:work` | 스펙 → `domain.md` · `architecture.yaml` · `harness.yaml` 파생 + 해시 트리 갱신 |
-| `/harness-boot:work` | 피처 사이클 (활성화 · 게이트 기록/자동실행 · 증거 · 완료) |
-| `/harness-boot:work` | 세션 · 피처 · 드리프트 · 마지막 sync 요약 |
-| `/harness-boot:work` | 드리프트 8 종 탐지 (생성물·스펙·파생·include·증거·코드·문서·앵커) |
-| `/harness-boot:work` | 이벤트 로그 필터 조회 |
-| `/harness-boot:work` | lead time · 게이트 통과율 · 드리프트 빈도 |
-
-진단 계열 (`status` · `check` · `events` · `metrics`) 은 파일을 수정하지 않는다 (읽기/쓰기 분리).
-
----
-
-## 전형 사용 흐름
-
-```bash
-/harness-boot:init --solo                   # .harness/ 스캐폴딩
-/harness-boot:work plan.md                  # 또는: /harness-boot:work "한 줄 아이디어"
-                                       #   40 단어 미만이면 researcher → planner → 자동 변환
-/harness-boot:work                          # spec → domain/architecture/harness.yaml
-/harness-boot:work                        # 생성된 피처 목록 · ID 확인 (F-0, F-1, ...)
-/harness-boot:work F-0 activate             # 첫 피처 활성화 → 킥오프 루틴 기동
-# ... 피처 shape 에 매칭된 에이전트만 순차 소환
-/harness-boot:work F-0 --run-gate gate_0    # 테스트 · 타입 · 린트 · 커버리지 · 스모크 자동 실행
-/harness-boot:work F-0 --evidence "17/17"   # 증거 기록
-/harness-boot:work F-0 --complete           # BR-004 통과 확인 후 done → 회고 루틴 자동 생성
-/harness-boot:work                         # 드리프트 점검 (읽기 전용)
-```
-
----
-
-## 전문가 에이전트 팀
-
-`@harness:<이름>` 으로 직접 호출하거나, orchestrator 가 피처의 shape (UI 여부 · 민감 데이터 · 성능 예산 등) 을 보고 자동 라우팅한다.
-
-### 역할별 구성
-
-| 단계 | 에이전트 | 주요 산출 |
-|---|---|---|
-| **Discovery** (기획) | researcher · product-planner | `brief.md` · `plan.md` |
-| **eXperience** (설계) | ux-architect · visual-designer · audio-designer · a11y-auditor | flows · 디자인 토큰 · 컴포넌트 · 오디오 · 접근성 리포트 |
-| **Engineering** (구현) | software-engineer · frontend-engineer · backend-engineer · security-engineer · performance-engineer | `src/` 코드 · 테스트 · 보안·성능 리포트 |
-| **Quality** (품질) | qa-engineer | 테스트 전략 문서 |
-| **Integration** (통합) | integrator · tech-writer | DI 배선 · README · CHANGELOG |
-| **Coordination** (조율) | orchestrator | 루틴 파일 · 에이전트 소환 |
-| **Audit** (감사) | reviewer | 드리프트 리포트 · 회고 초안 (읽기 전용) |
-
-각 에이전트는 `agents/<이름>.md` 에 **자기가 읽을 계층**을 선언한다. frontmatter 의 `tools:` 가 권한을 실제로 강제한다 (예: reviewer 는 `Read·Grep·Glob·Bash` 만 — 파일을 수정할 수 없음).
-
-### 피처 shape 별 라우팅
-
-orchestrator 는 `commands/work.md` 라우팅 표와 `scripts/kickoff.py` 매핑 상수를 같은 소스로 쓴다 (둘이 어긋나지 않도록 정합성 테스트로 강제).
-
-| shape | 에이전트 체인 |
-|---|---|
-| `baseline-empty-vague` (한 줄 아이디어) | researcher → product-planner → 자동 변환 |
-| `ui_surface.present` (UI 있음) | ux-architect → visual (+ audio) → a11y → frontend (+ software) |
-| `sensitive_or_auth` (민감 데이터/인증) | security-engineer ∥ reviewer (security 가 BLOCK 시 veto) |
-| `performance_budget` (성능 예산) | performance-engineer |
-| `pure_domain_logic` (순수 도메인) | backend-engineer (+ software) |
-| `feature_completion` (완료 직전) | qa → 엔지니어(테스트) → integrator → tech-writer → reviewer |
-
----
-
-## 3 계층 참조 — 역할별 차등 읽기
-
-**전원이 전부 읽는** 방식은 토큰 비용·집중력·역할 경계를 모두 해친다. 3 계층으로 나눈다:
-
-| 계층 | 파일 | 내용 | 읽는 에이전트 |
-|---|---|---|---|
-| **Tier 1** | `.harness/domain.md` | 프로젝트 · 이해관계자 · 엔티티 · 비즈니스 규칙 · **결정 · 위험** | 전원 필수 |
-| **Tier 2** | `.harness/architecture.yaml` | 모듈 · 기술 스택 · 호스트 바인딩 · 게이트 체인 | Engineering · Quality · Integration · Audit |
-| **Tier 3** | `.harness/_workspace/plan/plan.md` | ADR 원문 · 우선순위 점수 · 일정 · 열린 질문 | tech-writer · reviewer · orchestrator |
-
-규약:
-
-- `spec.yaml` 은 **누구도 직접 참조하지 않는다** — 원천 파일을 격리해 스키마 변경이 에이전트들을 깨뜨리지 않게.
-- Design 계열은 Tier 1 만 — 행동·시각·청각 설계에 집중, 모듈 그래프 몰라도 됨.
-- Engineering 계열은 Tier 1 + 2 — 모듈 경계와 기술 스택 맥락 필요.
-- Docs 는 Tier 1 + 3 — ADR 원문을 "왜" 섹션에 인용.
-- Audit (reviewer) 만 전 계층 접근 — 감사 역할이라 제한 없되 여전히 읽기 전용.
-
-**역할 간 공유 맥락**은 `domain.md` 의 결정 · 위험 섹션으로 확보한다. 예를 들어 visual-designer 도 "민감 엔티티" 표시나 "보안 결정" 섹션을 볼 수 있어 개인정보를 노출하는 UI 요소 같은 사고를 예방한다.
-
----
-
-## 팀 협업 루틴
-
-실제 엔지니어링 팀에서 쓰는 네 가지 루틴 — **킥오프 · 디자인 리뷰 · Q&A · 회고** — 을 LLM 워크플로에 그대로 옮겼다. 각 산출은 `.harness/_workspace/` 에 파일로 남아 `grep` · `git` 으로 이력 추적 가능.
-
-| 루틴 | 트리거 | Python 역할 | Orchestrator 역할 | 산출 |
-|---|---|---|---|---|
-| **킥오프** | `/harness-boot:work F-N activate` 직후 | 템플릿 생성 · `kickoff_started` 이벤트 기록 | 매칭된 에이전트에 "80 단어 내 우려 3 bullet" 요청 → 파일에 추가 | `_workspace/kickoff/F-N.md` |
-| **디자인 리뷰** | ux-architect 가 flows 저장 후 | 리뷰어 (visual · frontend · a11y + 조건부 audio) 템플릿 생성 | 병렬 호출해 concerns 수집 → 판정 섹션 작성 | `_workspace/design-review/F-N.md` |
-| **Q&A (파일 기반)** | 에이전트가 불명확한 점 발견 | `scripts/inbox.py` 가 열린 질문 폴링 | `questions/F-N--<보낸이>--<받는이>.md` 에 Answer 섹션 추가 | `_workspace/questions/` |
-| **회고** | `/harness-boot:work F-N --complete` 직후 | 이벤트 로그 분석해 "배포 내용 · 첫 실패 게이트 · 루틴 요약" 자동 채움 | reviewer 로부터 초안 문자열 받아 파일에 쓰고, 이어 tech-writer 가 다듬음 | `_workspace/retro/F-N.md` |
-
-**원칙**: Python 스크립트는 **템플릿 + 이벤트 로그 기록**만 담당한다. 실제 지능 작업 (에이전트 호출 · 파일 쓰기) 은 orchestrator 의 LLM 책임. Claude Code 의 서브에이전트 호출 모델과 정합.
+세 루틴 (kickoff · design-review · retro) 은 idempotent — 사용자 curation 이 재실행으로 덮이지 않음. `--kickoff` · `--design-review` · `--retro` flag 로 강제 재생성.
 
 ---
 
 ## plan.md → spec.yaml 자동 변환
 
-`plan.md` 가 이미 있으면 대부분 자동화된다:
+`plan.md` 가 있으면 4 단계 파이프라인으로 거의 자동:
 
-- 4 단계 파이프라인: **정찰** (키워드·통계 추출) → **저작** (24 원칙 + 5 도메인 어댑터) → **갭 기록** (스펙으로 표현 불가능한 부분 카탈로그) → **백링크** (각 스펙 필드를 `plan.md` 행 번호로 연결).
-- 8 개 골든 샘플 + 회귀 러너로 검증 (recall 0.991 · precision 0.861).
-- 어댑터: `saas` · `game` · `worker` · `library` · `meta`.
-- **ADR/Risk 매핑 규약**: `plan.md` 의 "트레이드오프 ADR" 섹션을 `spec.decisions[]` 로, "위험" 섹션을 `spec.risks[]` 로 매핑. 변환 중 누락되지 않고 downstream 에 전달.
+1. **정찰** — BM25 키워드·통계 추출
+2. **저작** — 24 원칙 + 5 도메인 어댑터 (saas · game · worker · library · meta)
+3. **갭 기록** — 스펙으로 표현 불가능한 부분 카탈로그
+4. **백링크** — 각 스펙 필드를 `plan.md` 행 번호로 연결
 
-`plan.md` 가 없으면 `/harness-boot:work` 을 그냥 호출 (대화형). 한 줄 아이디어만 있으면 researcher 체인이 알아서 채운다.
+8 개 골든 샘플 회귀 러너로 검증 (recall 0.991 · precision 0.861).
 
-상세: [`skills/spec-conversion/SKILL.md`](skills/spec-conversion/SKILL.md) · [`tests/regression/conversion-goldens/`](tests/regression/conversion-goldens/) · [`docs/samples/harness-boot-self/`](docs/samples/harness-boot-self/).
-
----
-
-## 설계 원칙 (8 기둥)
-
-harness 는 LLM 개발 루프에 걸어두는 **규율 구조**.
-
-1. **사고의 글 vs 실행의 글** — 🗒 (자유 서술) 와 🔒 (ID·enum·수치) 를 필드 성격으로 분리. 스키마가 경계를 강제한다.
-2. **단일 원천** — `.harness/` 에만 원천. `.claude/` 아래는 어댑터. 파생 파일은 뷰일 뿐.
-3. **스키마 우선** — JSONSchema 로 실행의 글 필드 검증. 위반 시 sync 차단.
-4. **사용자 최소 입력** — 사용자가 직접 편집하는 파일은 `spec.yaml` **하나**.
-5. **파생 우선 · 사용자 수정 존중** — 파생 파일은 원칙적으로 편집 대상 아니지만, 사용자가 수정하면 해시 비교로 감지해 덮어쓰지 않는다.
-6. **실행 우선 검증** — 첫 피처는 반드시 `skeleton` 타입 (걸어다니는 최소 뼈대) · 게이트 5 (실행 스모크) · integrator 로 "실제로 켜지는 코드" 강제.
-7. **Preamble 투명성** — 모든 명령이 3 줄짜리 상태 표시 + 2 줄짜리 근거/우회 거부 선언.
-8. **표준 위치 존중** — Claude Code 규약 경로 (`.claude/agents/` · `.claude/skills/`) 를 그대로 사용.
-
-### 구현 상태
-
-- ✅ 표준 해시 트리 · 읽기/쓰기 분리 · 추가 전용 이벤트 로그 · BR-004 Iron Law · 자체 검증 (self_check)
-- 🛠 훅 fail-open: 인프라는 있으나 세션 부트스트랩 외 5 개 훅은 선택 설치
+상세: [`skills/spec-conversion/SKILL.md`](skills/spec-conversion/SKILL.md) · [`docs/samples/harness-boot-self/`](docs/samples/harness-boot-self/).
 
 ---
 
-## 검증 수준
+## 설계 원칙
 
-- 수백 단위 테스트 · `self_check 5/5 통과`
-- 자기 표현 왕복: harness-boot 자신을 변환한 스펙으로 sync 실행 → 일관된 파생물
-- End-to-end 사이클: 피처 활성화 → 게이트 5 → 증거 → done → BR-004 enforcement 확인
-- **외부 도그푸드**: `suika-web` — 수박게임 웹 완성형 프로토타입. 전체 에이전트 워크플로 + 협업 루틴 스크립트 실증.
-
-릴리즈 이력 · 현재 버전 번호 · 정확한 테스트 카운트는 [`CHANGELOG.md`](CHANGELOG.md) 와 [뱃지](#) 참조.
-
----
-
-## 현재 제약 & 확장 로드맵
-
-비전의 최종 지점까지 가는 길. **뼈대는 완성**되었고 각 단계 (Phase) 가 스케일을 한 단계씩 올린다. 버전 번호는 바뀔 수 있으므로 **도달 스케일** 중심으로 표기.
-
-### 현재 제약 — 다음 단계 (Phase 1) 에서 해소 예정
-
-설계는 있지만 구현 미완 영역:
-
-- 협업 루틴 자동 연동 — 현재는 orchestrator 수동 호출
-- ADR `supersedes` 자동 전이 · 렌더만 됨
-- `skipped_agents[]` 이력 기록 — 스키마만 있음
-- `performance_budget` 게이트 연동 — 스키마만 있음
-- Design 계층 에이전트의 플랫폼 맥락 접근 — 현재 Tier 1 만
-
-이 다섯이 해소되면 **일상적 규모에서 마찰 없이 동작** (Phase 1 완료).
-
-### Phase 로드맵
-
-| Phase | 초점 |
+| 원칙 | 의미 |
 |---|---|
-| **1 · 단기 확장** | 루틴 자동 연동 · 에이전트 평가 · 스펙 모듈화 |
-| **2 · 규모 확장** | 이벤트 DB 백엔드 · 멀티 프로젝트 · 에이전트 품질 회귀 |
-| **3 · 수평 확장** | orchestrator 수평 확장 · LLM 비용·속도 최적화 |
-| **4 · 탐색** | 프로덕션 통합 · 규제 · 관측성 |
-
-Phase 2 까지는 현재 스코프에서 실용 목표. **Phase 3 는 LLM 비용 구조 개선에 달린 영역**, **Phase 4 는 외부 조건 (커뮤니티 · 후원 등) 충족 시 탐색할 영역.** 각 단계 완료 범위는 [`CHANGELOG.md`](CHANGELOG.md).
+| **사고의 글 vs 실행의 글** | 🗒 자유 서술 ↔ 🔒 ID·enum·수치. 스키마로 경계 강제. |
+| **단일 원천** | 사용자 편집 대상은 `spec.yaml` 하나. 나머지 전부 파생. |
+| **파생 우선 · 사용자 수정 존중** | 사용자가 파생 파일 직접 수정하면 해시 비교로 감지 · 덮어쓰지 않음. |
+| **실행 우선 검증** | 첫 피처는 반드시 `skeleton` 타입 + gate_5 (runtime smoke). |
+| **Preamble 투명성** | 모든 명령이 3 줄 상태 표시 + 2 줄 근거/우회 거부 선언 (BR-014). |
+| **표준 위치 존중** | `.claude/agents/` · `.claude/skills/` — Claude Code 규약 그대로. |
 
 ---
 
-## FAQ
+## 현재 상태
 
-**Q. 이미 Linear/Jira 로 프로젝트 관리하는데 이게 필요한가요?**
-이건 사람 팀 조율 도구가 아니라 **AI 개발 루프의 규율 도구**입니다. Jira 는 사람을 조율하고, harness-boot 는 AI 에게 스펙·결정·증거를 제공합니다. 공존합니다.
+**v0.9.4** 기준:
 
-**Q. 작은 프로젝트엔 과하지 않나요?**
-피처 3 개 미만의 토이 프로젝트에는 오버킬일 수 있습니다. `/harness-boot:init` + `/harness-boot:work` 만 쓰고 전문가 에이전트·루틴은 소환 안 해도 됩니다. 10~15 피처 이상의 실제 제품부터 규율의 가치가 비용을 넘어서기 시작하며, 규모가 커질수록 전문가 에이전트·협업 루틴·감사 이력의 효용이 커집니다.
+- ✅ Claude Code 플러그인 · 2-command UX 완결
+- ✅ Iron Law D (누적 declared evidence · hotfix override)
+- ✅ Drift 10/10 · CQS 불변 · events.log 체인 기록
+- ✅ 16 전문가 에이전트 · 4 협업 루틴 auto-wire (kickoff · design-review · retro · Q&A polling)
+- ✅ spec-conversion 스킬 + 8 golden samples · 742 tests · self_check 5/5 PASS
 
-**Q. spec.yaml 을 직접 편집해야 하나요?**
-대부분은 `/harness-boot:work` 이 대화로 채워줍니다. `plan.md` 가 있으면 거의 자동 변환되고, 한 줄 아이디어만 줘도 researcher → product-planner 가 풍부한 `plan.md` 를 만든 뒤 스펙으로 변환합니다.
+**열린 작업** (v0.9.5+):
 
-**Q. 언제 프로덕션에 도입해도 안전한가요?**
-현재 릴리즈는 **자체 검증 (수백 단위 테스트 · self_check)** 을 통과한 안정판으로, 규율 · 스펙 · 게이트 · 감사 이력 계층은 지금 당장 프로덕션 개발에 사용 가능합니다. 대규모 에이전트 연쇄 호출 (전 에이전트를 한 피처에서 소환) · 수백 피처 병렬 처리는 Phase 2~3 의 확장 범위이며 로드맵에 명시되어 있습니다. 즉 **지금 시작해 점진적으로 규모를 키우는** 사용이 적합합니다.
+- `project.mode` prototype/product 의례 경량화 분기
+- 정식 시나리오 테이블 v0.10 재정비 (legacy shim 제거)
+- Cross-language canonical hash 테스트 벡터
+- Event log rotation (`events.log.YYYYMM`)
 
-**Q. 플러그인이 내 코드를 건드리나요?**
-아니요. 플러그인이 관리하는 영역은 `.harness/` 하나입니다. 어댑터 (`.claude/agents/` · `.claude/skills/`) 는 Claude Code 규약 위치에 따라 생성되지만 사용자 코드와 분리됩니다. 진단 명령은 mtime 도 바꾸지 않습니다.
+릴리즈 이력: [`CHANGELOG.md`](CHANGELOG.md).
 
 ---
 
@@ -336,24 +212,53 @@ Phase 2 까지는 현재 스코프에서 실용 목표. **Phase 3 는 LLM 비용
 
 ```
 harness-boot/
-├── .claude-plugin/          # 플러그인 매니페스트
-├── agents/                  # 에이전트 정의 (코어 + 전문가, 읽는 계층 선언)
-├── commands/                # 슬래시 명령
-├── scripts/                 # Python 구현
-│   ├── sync · work · check · events · metrics · status
-│   ├── render_domain · render_architecture
-│   ├── canonical_hash · include_expander · gate_runner
-│   ├── spec_mode_classifier · validate_spec · state
-│   ├── mode_b_*            # plan.md 통계 추출
-│   └── kickoff · inbox · design_review · retro   # 협업 루틴
-├── skills/spec-conversion/  # plan.md → spec.yaml 변환 스킬
+├── .claude-plugin/              # plugin.json · marketplace.json
+├── agents/                      # 16 전문가 에이전트
+├── commands/                    # 슬래시 명령 (init · work)
+├── hooks/                       # session-bootstrap
+├── scripts/                     # Python 구현 (pure · deterministic)
+│   ├── core/                    # state · event_log · canonical_hash · plugin_root
+│   ├── ui/                      # feature_resolver · intent_planner · dashboard · scenarios
+│   ├── ceremonies/              # kickoff · design_review · retro · inbox
+│   ├── gate/                    # gate_runner (auto-detect pytest/mypy/ruff/...)
+│   ├── render/                  # domain.md · architecture.yaml 렌더링
+│   ├── spec/                    # mode_classifier · validate · include_expander · mode_b_*
+│   ├── sync.py · work.py · status.py · check.py · events.py · metrics.py
+│   └── self_check.sh            # SSoT · validate · sync · check · commands 5 단계
+├── skills/spec-conversion/      # plan.md → spec.yaml 변환 스킬
 ├── docs/
-│   ├── schemas/             # spec.schema.json (v2.3.8)
-│   ├── templates/starter/   # init 템플릿
-│   └── samples/harness-boot-self/   # 자기 표현 스펙
+│   ├── schemas/spec.schema.json # v2.3.8 JSONSchema
+│   ├── templates/starter/       # init 복사 대상 4 템플릿
+│   └── samples/harness-boot-self/  # 자기 표현 canonical spec
 └── tests/
-    ├── unit/                # 535 단위 테스트
-    └── regression/conversion-goldens/   # 골든 샘플
+    ├── unit/                    # 단위 테스트 (결정론 경로)
+    ├── integration/             # 시나리오 매핑 end-to-end
+    └── regression/              # golden samples (plan.md → spec.yaml)
+```
+
+---
+
+## FAQ
+
+**Q. 기존 프로젝트 관리 도구 (Linear · Jira) 와 겹치지 않나요?**
+사람 팀 조율이 아니라 **AI 개발 루프의 규율 도구**입니다. Jira 는 사람을 조율하고 harness-boot 는 AI 에게 스펙·결정·증거를 제공합니다. 공존합니다.
+
+**Q. 작은 프로젝트엔 과하지 않나요?**
+`spec.project.mode: prototype` 을 설정하면 Iron Law D 가 N=3 → N=1 로 완화되고 의례도 경량화됩니다 (v0.9.5+ 점진 확장). 토이 규모에서도 부담 없이 시작 가능.
+
+**Q. spec.yaml 을 직접 편집해야 하나요?**
+대부분은 `/harness-boot:work` 이 대화로 채워줍니다. `plan.md` 가 있으면 자동 변환, 한 줄 아이디어만 줘도 researcher → product-planner 가 풍부한 plan.md 를 만든 뒤 스펙으로 변환.
+
+**Q. 플러그인이 내 코드를 건드리나요?**
+아니요. `.harness/` 와 Claude Code 규약 경로 (`.claude/agents/` · `.claude/skills/`) 만 관리합니다. 진단 명령은 mtime 도 바꾸지 않습니다.
+
+**Q. CI 에서 사용할 수 있나요?**
+네. `python3 scripts/*.py` 직접 호출 경로가 영구 유지됩니다. `@F-N` prefix 도 슬래시 명령에서 계속 사용 가능.
+
+```yaml
+# .github/workflows/ci.yml
+- run: python3 scripts/work.py F-0 --run-gate gate_0 --json
+- run: python3 scripts/check.py --json
 ```
 
 ---
@@ -362,9 +267,17 @@ harness-boot/
 
 - **버그 · 제안**: [GitHub Issues](https://github.com/qwerfunch/harness-boot/issues)
 - **변경 이력**: [CHANGELOG.md](CHANGELOG.md)
-- **기여자 가이드**: [CLAUDE.md](CLAUDE.md) (개발 시 읽는 맥락 문서)
+- **기여자 가이드**: [CLAUDE.md](CLAUDE.md)
 - **스키마 참조**: [`docs/schemas/spec.schema.json`](docs/schemas/spec.schema.json)
+
+로컬 개발:
+
+```bash
+python3 -m pip install --user -r requirements-dev.txt
+python3 -m pytest tests/ -q
+bash scripts/self_check.sh
+```
 
 ## 라이선스
 
-[MIT](LICENSE) · © qwerfunch
+MIT — [LICENSE](LICENSE).

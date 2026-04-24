@@ -29,6 +29,58 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - ~~Event log rotation (`events.log.YYYYMM`)~~ ✅ v0.8.6
 - AC coverage drift (check.py 11 번째 drift 후보)
 
+## [0.9.4] — 2026-04-25
+
+**UX re-architecture step 5 — README 전면 개편 · 시나리오 매핑 계약 테이블 · 플러그인 description 현대화.**
+
+### Added
+
+- **`scripts/ui/scenarios.py`** — 자연어 phrase ↔ 내부 action canonical 계약 테이블.
+  - `ScenarioMapping(category, phrases, action, description, read_only)` frozen dataclass.
+  - `SCENARIOS` tuple 10 entries · 5 categories (일상 · 시작 · 근거 · 정리).
+  - `Action` Literal 9 values (dashboard · activate · run_gates · complete · block · deactivate · add_evidence · remove · switch).
+  - `dispatch_action_name(action) -> str` — action id → `scripts/work.py` 함수명.
+  - `as_readme_rows()` — README 렌더링용 `(category, phrases, description)` 표.
+- **`tests/integration/test_scenario_mappings.py`** — 20 tests, 4 categories:
+  - Structural — 빈 리스트 · frozen · known action · 빈 phrases · 빈 description · dashboard=read_only · ≤ 6 categories.
+  - Dispatch — 모든 action 이 dispatch name 보유 · `work.py` 에 해당 attr 존재 + callable.
+  - README rendering — row 개수 일치 · phrase quoting.
+  - End-to-end smoke — dashboard snapshot · activate · block · deactivate · add_evidence · complete (Iron Law D) · remove · run_gates.
+  - Coverage — Action literal 전부 SCENARIOS 에 등장 (switch 별칭 제외).
+
+### Changed
+
+- **`README.md`** — 전면 재작성 (370 → 225 줄):
+  - 한 줄 tagline 을 2-command UX 에 재정렬.
+  - "어떻게 말해도 됩니다" 시나리오 매핑 섹션 신설 (scenarios.py 와 동기).
+  - 8 commands 잔상 제거 — 모든 예제를 `/harness-boot:work` 자연어 형식으로 통일.
+  - Iron Law D · drift 10/10 · CQS · events chain 을 "품질 불변량" 한 섹션으로 통합.
+  - Phase 1~4 로드맵 · "적은 인원 × 큰 시스템" 마케팅 섹션 제거 — 현실적 현재 상태 + 열린 작업으로 대체.
+  - FAQ 4 → 5 항목 · CI 사용법 명시 추가.
+  - 뱃지: v0.9.4 · tests 742.
+- **`.claude-plugin/plugin.json` · `.claude-plugin/marketplace.json`** — description 완전 교체.
+  - 구: "Plan.md 하나로 출발해 ..." (plan.md 만 입력으로 가정하던 v0.2 시절 표현)
+  - 신: "Claude Code 용 spec-driven 개발 하네스. 2 개 명령으로 자연어 아이디어부터 완료까지. Iron Law D · drift 10/10 · events.log · 16 에이전트 · 4 루틴 auto-wire."
+
+### v0.9.x 진행
+
+| 버전 | 상태 |
+|---|---|
+| v0.9.0 | ✅ namespace rename + 6 command 삭제 |
+| v0.9.1 | ✅ feature_resolver |
+| v0.9.2 | ✅ dashboard + intent_planner |
+| v0.9.3 | ✅ Iron Law D + hotfix override |
+| **v0.9.4** | ✅ README 전면 개편 · 시나리오 매핑 · 플러그인 description 현대화 |
+| v0.9.5 | ⏳ `project.mode` prototype/product 의례 경량화 분기 |
+| v0.10.0 | ⏳ legacy shim 제거 · README 상단 재작성 |
+
+### Numbers
+
+- Tests: 722 → 742 (+20 integration).
+- README: 370 → 225 줄 (39% 감소).
+- self_check 5/5 PASS.
+- 신규 모듈 1 개 (`scripts/ui/scenarios.py`) · 신규 test dir (`tests/integration/`).
+
 ## [0.9.3] — 2026-04-25
 
 **UX re-architecture step 4 — Iron Law D (누적 declared evidence). BR-004 강화: gate_5 pass + 최근 7 일 declared evidence N 개.**
