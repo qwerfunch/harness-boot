@@ -118,13 +118,22 @@ python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --block "외부 API 미배포" --ki
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --complete --json
+python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --complete --hotfix-reason "prod down — redis race"
 ```
 
-**전제 조건** (BR-004 Iron Law — 증거 없는 완료 주장 금지):
-1. `gate_5` (runtime smoke) 결과 = `pass`
-2. `evidence` 최소 1 건
+**Iron Law D** (v0.9.3 — BR-004 강화):
 
-둘 중 하나라도 미충족 시 거부 + 이유 반환. 통과 시 `done` 전이 + `active_feature_id` 해제.
+1. `gate_5` (runtime smoke) 결과 = `pass`
+2. 최근 **7 일 declared evidence** (kind != `gate_run` · `gate_auto_run`) 개수 ≥ 요구치:
+   - `product` 모드 (default): **3 개**
+   - `prototype` 모드 (`spec.project.mode: prototype`): **1 개**
+3. `--hotfix-reason "..."`: product 모드에서도 1 개 허용. 사유가 `kind=hotfix` evidence 로 자동 기록되어 audit trail 남김.
+
+거부 시 이유 반환 (상태 불변 · 재호출 가능). 통과 시 `done` 전이 + `active_feature_id` 해제 + `feature_done` 이벤트에 `iron_law_mode` · `declared_count` · `required` · (있다면) `hotfix_reason` 첨부.
+
+**kind taxonomy**:
+- automatic: `gate_run` · `gate_auto_run` — gate runner 자동 생성, Iron Law D 불인정.
+- declared: `test` · `manual_check` · `user_feedback` · `reviewer_check` · `blocker` · `hotfix` · `generic` · 그 외 — 개발자 의도 신호, Iron Law D 인정.
 
 ### 현재 active 조회 (CQS — 읽기만)
 

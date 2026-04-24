@@ -186,6 +186,8 @@ class RemoveFeatureTests(ScratchHarness, unittest.TestCase):
         work.activate(self.harness, "F-0")
         work.record_gate(self.harness, "F-0", "gate_5", "pass")
         work.add_evidence(self.harness, "F-0", "test", "ok")
+        work.add_evidence(self.harness, "F-0", "manual_check", "ac-1 verified")
+        work.add_evidence(self.harness, "F-0", "reviewer_check", "peer review ok")
         work.complete(self.harness, "F-0")
         res = work.remove_feature(self.harness, "F-0")
         self.assertEqual(res.action, "queried")

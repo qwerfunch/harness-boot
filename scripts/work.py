@@ -49,13 +49,28 @@ if str(_THIS) not in sys.path:
 from ceremonies import design_review as _design_review  # noqa: E402
 from ceremonies import kickoff as _kickoff  # noqa: E402
 from ceremonies import retro as _retro  # noqa: E402
-from core.state import State, _FEATURE_STATUSES, _GATE_RESULTS  # noqa: E402
+from core.state import (  # noqa: E402
+    IRON_LAW_D_DEFAULT_WINDOW_DAYS,
+    State,
+    _FEATURE_STATUSES,
+    _GATE_RESULTS,
+    count_declared_evidence,
+)
 from gate import runner as gate_runner  # noqa: E402
 from ui import dashboard as _dashboard  # noqa: E402
 from ui import intent_planner as _intent_planner  # noqa: E402
 
 
 _STANDARD_GATES = ("gate_0", "gate_1", "gate_2", "gate_3", "gate_4", "gate_5")
+
+# Iron Law D (v0.9.3) — minimum declared evidence count per project mode.
+# `product` demands 3 independent human signals in the trailing window so that
+# a completion claim is backed by genuine verification, not a single checkbox.
+# `prototype` lowers to 1 for exploratory work where rigor would be theater.
+# Hotfix override (`--hotfix-reason`) collapses product to 1 but records the
+# reason in the evidence trail for audit.
+_IRON_LAW_D_REQUIRED: dict[str, int] = {"prototype": 1, "product": 3}
+_DEFAULT_PROJECT_MODE: str = "product"
 
 
 @dataclass
@@ -424,12 +439,46 @@ def block(harness_dir: Path, fid: str, reason: str, *, kind: str = "blocker") ->
     return res
 
 
-def complete(harness_dir: Path, fid: str) -> WorkResult:
-    """done 전이. Gate 5 가 pass 인지 사전 체크 — BR-004 (Iron Law) 준수.
+def _resolve_project_mode(spec: dict | None) -> str:
+    """Resolve ``spec.project.mode`` to a canonical Iron Law mode.
+
+    v0.9.3 reads the field but does not yet require it in the schema (that
+    arrives in v0.9.5 with ceremony lightening). Missing / unrecognized values
+    fall back to ``product`` so that the strict path is the default — matching
+    the plan's safety bias.
+    """
+    if not isinstance(spec, dict):
+        return _DEFAULT_PROJECT_MODE
+    project = spec.get("project")
+    if not isinstance(project, dict):
+        return _DEFAULT_PROJECT_MODE
+    mode = project.get("mode")
+    if isinstance(mode, str) and mode in _IRON_LAW_D_REQUIRED:
+        return mode
+    return _DEFAULT_PROJECT_MODE
+
+
+def complete(
+    harness_dir: Path,
+    fid: str,
+    *,
+    hotfix_reason: str | None = None,
+) -> WorkResult:
+    """done 전이. Iron Law D (v0.9.3) — gate_5 pass + 누적 declared evidence.
+
+    Iron Law D (BR-004 강화):
+      - ``gate_5.last_result == "pass"`` 필수.
+      - 최근 7 일 declared evidence (kind != ``gate_run`` / ``gate_auto_run``)
+        개수 ≥ mode-specific 요구치.
+        - ``prototype`` mode: 1 개.
+        - ``product`` mode (default): 3 개.
+      - ``hotfix_reason`` 제공 시: product 모드도 1 개 허용. 사유를 ``kind=
+        hotfix`` 로 evidence 에 append 하여 audit trail 에 남김 (이 hotfix
+        evidence 자체가 declared 1 개로 카운트 됨).
 
     Idempotency (v0.8.7): 이미 ``status=done`` 인 피처에 재호출하면 no-op +
     ``queried`` 반환. feature_done event 중복 발화 없음 · retro autowire
-    재실행 없음. (e2e 실증에서 이 gap 이 드러남 — v0.8.2 의 kickoff 패턴과 동일.)
+    재실행 없음.
     """
     state = State.load(harness_dir)
     f = state.ensure_feature(fid)
@@ -445,11 +494,51 @@ def complete(harness_dir: Path, fid: str) -> WorkResult:
         res.action = "queried"
         res.message = "cannot complete — gate_5 (runtime_smoke) not pass"
         return res
-    evidence = f.get("evidence", []) or []
-    if not evidence:
+
+    spec = _load_spec(harness_dir)
+    mode = _resolve_project_mode(spec)
+    required_default = _IRON_LAW_D_REQUIRED[mode]
+    required = 1 if hotfix_reason else required_default
+
+    # Hotfix evidence is recorded *before* the count so the reason itself
+    # contributes toward the 1-declared floor. Without this the caller would
+    # need to add a prior evidence entry, defeating the "emergency shortcut"
+    # intent. The hotfix kind is declared (not in the automatic set).
+    if hotfix_reason and not str(hotfix_reason).strip():
+        return WorkResult(
+            feature_id=fid,
+            action="queried",
+            current_status=f.get("status", "planned"),
+            gates_passed=[g for g, v in gates.items() if isinstance(v, dict) and v.get("last_result") == "pass"],
+            gates_failed=[g for g, v in gates.items() if isinstance(v, dict) and v.get("last_result") == "fail"],
+            evidence_count=len(f.get("evidence") or []),
+            message="hotfix reason cannot be empty — describe the emergency briefly",
+        )
+    if hotfix_reason:
+        state.add_evidence(fid, kind="hotfix", summary=str(hotfix_reason).strip())
+        # Reload the feature dict — add_evidence mutates state in place, but
+        # we want count_declared_evidence to see the new entry.
+        f = state.get_feature(fid) or f
+
+    declared = count_declared_evidence(
+        f, window_days=IRON_LAW_D_DEFAULT_WINDOW_DAYS,
+    )
+    if declared < required:
+        # Keep state.yaml untouched on reject. If hotfix added an entry above
+        # we must roll it back so a rejection does not leave noise.
+        if hotfix_reason:
+            evidence_list = f.get("evidence") or []
+            if evidence_list:
+                evidence_list.pop()
+            state.save()
         res = _summarize(state, fid)
         res.action = "queried"
-        res.message = "cannot complete — at least one evidence required (BR-004)"
+        reason_suffix = f", hotfix" if hotfix_reason else ""
+        res.message = (
+            f"cannot complete — Iron Law D: {declared}/{required} declared evidence "
+            f"in last {IRON_LAW_D_DEFAULT_WINDOW_DAYS} days (mode: {mode}{reason_suffix}). "
+            f"Add more with --evidence, or use --hotfix-reason for emergency override."
+        )
         return res
 
     state.set_status(fid, "done")
@@ -458,14 +547,17 @@ def complete(harness_dir: Path, fid: str) -> WorkResult:
         state.set_active(None)
     state.save()
 
-    _append_event(
-        harness_dir,
-        {
-            "ts": _now_iso(),
-            "type": "feature_done",
-            "feature": fid,
-        },
-    )
+    event = {
+        "ts": _now_iso(),
+        "type": "feature_done",
+        "feature": fid,
+        "iron_law_mode": mode,
+        "declared_count": declared,
+        "required": required,
+    }
+    if hotfix_reason:
+        event["hotfix_reason"] = str(hotfix_reason).strip()
+    _append_event(harness_dir, event)
     _autowire_retro(harness_dir, fid)
     res = _summarize(state, fid)
     res.action = "completed"
@@ -635,7 +727,12 @@ def main(argv: list[str] | None = None) -> int:
         "--block", default=None, help="block feature with this reason"
     )
     parser.add_argument(
-        "--complete", action="store_true", help="transition to done (requires gate_5 pass + evidence)"
+        "--complete", action="store_true", help="transition to done (requires gate_5 pass + Iron Law D declared evidence)"
+    )
+    parser.add_argument(
+        "--hotfix-reason",
+        default=None,
+        help="Iron Law D hotfix override (v0.9.3): collapse product mode to 1 declared evidence. Reason is logged as kind=hotfix evidence. Use for true emergencies only — audit trail records the reason.",
     )
     parser.add_argument(
         "--deactivate",
@@ -740,7 +837,11 @@ def main(argv: list[str] | None = None) -> int:
             if not args.feature:
                 print("error: feature id required with --complete", file=sys.stderr)
                 return 2
-            res = complete(args.harness_dir, args.feature)
+            res = complete(
+                args.harness_dir,
+                args.feature,
+                hotfix_reason=args.hotfix_reason,
+            )
         else:
             if not args.feature:
                 # v0.9.2 — no-args 진입점 = 대시보드 (CQS · 읽기 전용).
