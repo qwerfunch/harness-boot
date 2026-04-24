@@ -1,0 +1,44 @@
+name: self-check
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: self-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: unittest + self_check (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install runtime dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # pyyaml is required. jsonschema is optional (validate_spec prints
+          # a warning and skips structural validation when missing) but we
+          # install it in CI so the full matrix is covered.
+          python -m pip install pyyaml jsonschema
+
+      - name: Unit tests
+        run: python -m unittest discover tests/unit --verbose
+
+      - name: self_check (SSoT + validate + sync + check + commands)
+        run: bash scripts/self_check.sh
