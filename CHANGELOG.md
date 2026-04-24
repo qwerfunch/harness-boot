@@ -16,6 +16,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - Design review auto-wire (v0.8+ — ux-architect flows.md save 훅 모호성)
 - ADR supersedes 자동 전이 (v0.7 PR-β)
 
+## [0.7.1] — 2026-04-24
+
+**Activate UX patch. 3 gaps surfaced during v0.7.0 live smoke test.**
+
+### Added
+
+- `scripts/work.py::deactivate(harness_dir)` — clears `session.active_feature_id` without touching feature status. CLI: `--deactivate`. Emits `feature_deactivated` event.
+- `scripts/work.py::remove_feature(harness_dir, fid)` — deletes feature entry from `state.yaml`. Refuses done features (audit trail protection). Clears active pointer if removing the active feature. CLI: `--remove FID`. Emits `feature_removed` event with `prior_status`.
+- `scripts/state.py::remove_feature(fid) -> bool` and `features_in_progress() -> list[str]` helpers.
+- `tests/unit/test_work_ux.py` — 16 tests covering ghost warning, concurrent warning, deactivate, remove semantics, done-protection, CLI flags.
+
+### Changed
+
+- `scripts/work.py::activate()` now warns on stderr (proceeds regardless — backward compat):
+  - **ghost feature**: `spec.yaml` exists but F-N is not defined in `features[]`.
+  - **concurrent in_progress**: another feature is already `in_progress`.
+- `commands/work.md` — new sections *Activate UX 경고* + *Session pointer 정리* documenting warnings and the two new flags.
+
+### Tests
+
+566/566 green (550 + 16). self_check 5/5 PASS.
+
 ## [0.7.0] — 2026-04-24
 
 **Auto-wire kickoff · retro ceremonies. `scripts/work.py::activate/complete()` 가 `kickoff.py` · `retro.py` 를 자동 호출 — v0.6 의 "prose-contract 수동 호출" 약속이 실 구현으로 전환.**
