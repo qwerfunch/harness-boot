@@ -46,6 +46,7 @@ _THIS = Path(__file__).resolve().parent
 if str(_THIS) not in sys.path:
     sys.path.insert(0, str(_THIS))
 
+from ceremonies import design_review as _design_review  # noqa: E402
 from ceremonies import kickoff as _kickoff  # noqa: E402
 from ceremonies import retro as _retro  # noqa: E402
 from core.state import State, _FEATURE_STATUSES, _GATE_RESULTS  # noqa: E402
@@ -125,6 +126,50 @@ def _autowire_retro(harness_dir: Path, fid: str) -> None:
         return
     try:
         _retro.generate_retro(harness_dir, feature_id=fid)
+    except Exception:
+        return
+
+
+def _autowire_design_review(
+    harness_dir: Path,
+    fid: str,
+    *,
+    force: bool = False,
+) -> None:
+    """Fire design-review ceremony when ux-architect has delivered flows.md (v0.8).
+
+    Three AND conditions for auto-fire:
+      1. features[F-N].ui_surface.present == true (design-review has meaning only for UI features).
+      2. .harness/_workspace/design/flows.md exists (ux-architect delivered upstream).
+      3. .harness/_workspace/design-review/F-N.md does NOT exist (idempotent — once per feature).
+
+    `force=True` overrides condition (3) for explicit `--design-review` flag retries. All other
+    checks still apply; no amount of forcing will emit a design-review for a feature without UI.
+
+    Silent-swallows exceptions like kickoff/retro autowires — a ceremony glitch must not fail
+    activate/record_gate/add_evidence.
+    """
+    spec = _load_spec(harness_dir)
+    if spec is None:
+        return
+    feature = _find_feature(spec, fid)
+    if feature is None:
+        return
+    ui = feature.get("ui_surface") or {}
+    if ui.get("present") is not True:
+        return
+    flows_path = harness_dir / "_workspace" / "design" / "flows.md"
+    if not flows_path.is_file():
+        return
+    review_path = harness_dir / "_workspace" / "design-review" / f"{fid}.md"
+    if review_path.is_file() and not force:
+        return
+    try:
+        _design_review.generate_design_review(
+            harness_dir,
+            feature_id=fid,
+            has_audio=_kickoff.has_audio(feature),
+        )
     except Exception:
         return
 
@@ -214,6 +259,7 @@ def activate(harness_dir: Path, fid: str) -> WorkResult:
         },
     )
     _autowire_kickoff(harness_dir, fid)
+    _autowire_design_review(harness_dir, fid)
     res = _summarize(state, fid)
     res.action = "activated"
     return res
@@ -315,6 +361,7 @@ def record_gate(
             "note": note,
         },
     )
+    _autowire_design_review(harness_dir, fid)
     res = _summarize(state, fid)
     res.action = "gate_recorded"
     return res
@@ -335,6 +382,7 @@ def add_evidence(harness_dir: Path, fid: str, kind: str, summary: str) -> WorkRe
             "summary": summary,
         },
     )
+    _autowire_design_review(harness_dir, fid)
     res = _summarize(state, fid)
     res.action = "evidence_added"
     return res
@@ -472,6 +520,7 @@ def run_and_record_gate(
             "reason": run_result.reason,
         },
     )
+    _autowire_design_review(harness_dir, fid)
 
     res = _summarize(state, fid)
     res.action = "gate_auto_run"
@@ -551,6 +600,11 @@ def main(argv: list[str] | None = None) -> int:
         help="clear session.active_feature_id without changing feature status (v0.7.1)",
     )
     parser.add_argument(
+        "--design-review",
+        action="store_true",
+        help="force re-generate .harness/_workspace/design-review/F-N.md (v0.8 — overrides idempotent skip)",
+    )
+    parser.add_argument(
         "--remove",
         metavar="FID",
         default=None,
@@ -578,6 +632,13 @@ def main(argv: list[str] | None = None) -> int:
             res = deactivate(args.harness_dir)
         elif args.remove:
             res = remove_feature(args.harness_dir, args.remove)
+        elif args.design_review:
+            if not args.feature:
+                print("error: feature id required with --design-review", file=sys.stderr)
+                return 2
+            _autowire_design_review(args.harness_dir, args.feature, force=True)
+            res = _summarize(State.load(args.harness_dir), args.feature)
+            res.action = "design_review_refreshed"
         elif args.gate:
             if not args.feature:
                 print("error: feature id required with --gate", file=sys.stderr)
