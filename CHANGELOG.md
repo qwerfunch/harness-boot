@@ -29,6 +29,55 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - ~~Event log rotation (`events.log.YYYYMM`)~~ ✅ v0.8.6
 - AC coverage drift (check.py 11 번째 drift 후보)
 
+## [0.9.2] — 2026-04-25
+
+**UX re-architecture step 3 — 빈 호출 대시보드 + intent_planner 결정론 추천. `/harness-boot:work` 하나로 상태 파악 + 다음 할 일 한 눈에.**
+
+### Added
+
+- **`scripts/ui/intent_planner.py::suggest(state, spec) -> list[Suggestion]`** — 상태 → Top 1~3 다음 행동 추천. 순수 결정론 (LLM 호출 없음).
+  - Active feature 있을 때: `blocked/blocker` 최우선 → gate `fail` 분석+재실행 → 가장 이른 미통과 gate 실행 → `gate_5` 통과+근거 0 → 근거 추가 → 완료 처리.
+  - Active 없을 때: `in_progress` 존재 → 이어 작업 / `planned` 존재 → 다음 피처 시작 / 없음 → 새 피처 등록.
+  - `Suggestion(label, action, feature_id, gate)` frozen dataclass. `action` 은 machine id (`run_gate` · `complete` · `resolve_block` · ...).
+  - Title lookup: 가능한 곳마다 `spec.features[].name` 을 label 에 임베드 — 사용자가 F-N 대신 제목으로 인식.
+- **`scripts/ui/dashboard.py::render(state, spec, suggestions) -> str`** — 빈 호출 대시보드 렌더러. 순수 함수 · I/O 없음.
+  - 섹션: `작업 중` (title · 검증 N/6 통과 · 근거 N 개 · 차단 note) · `진행 중 (다른)` · `보류` · `대기` · `다음 할 일`.
+  - 최근 non-blocker evidence 가 있으면 이전 blocker note 자동 억제 — 해결 후 차단 문구 잔상 제거.
+  - "Enter = 1 (추천)" 푸터로 Top 추천 즉시 선택 경로 안내.
+- **`scripts/work.py`** — 빈 호출 분기 추가. `python3 scripts/work.py` (feature id 없음) → 대시보드 출력. `--json` 지원 (snapshot shape).
+  - `dashboard_snapshot(harness_dir) -> dict` 공개 — State · spec · suggestions · counts · active_feature_id 를 묶어 반환. CQS (읽기 전용).
+- **`tests/unit/test_intent_planner.py`** — 22 tests:
+  - Suggestion 데이터 형상 · default fields.
+  - Idle paths: 빈 state / 계획 only / 진행 중 only / 진행+계획 공존 / dangling active.
+  - Gate progression: no gates → gate_0 / gate_0 pass → gate_1 / 0~4 pass → gate_5.
+  - Completion: all pass 근거 0 → add_evidence / all pass 근거 ≥ 1 → complete.
+  - Fail/block: gate fail → analyze+rerun / blocked status → resolve_block / blocker evidence → resolve_block / blocker 뒤 non-blocker 이면 정상 흐름 복귀.
+  - Malformed inputs · title lookup.
+  - Max 3 suggestions.
+- **`tests/unit/test_dashboard.py`** — 19 tests:
+  - Render — 빈 state / active block / 제목 lookup / blocker note / blocker 자동 억제 / title fallback to id.
+  - Sections — 진행 중 others / pending / blocked / active 는 others/blocked 에서 제외.
+  - Suggestion block — 번호 · 추천 marker · "Enter = 1".
+  - CLI integration — `work.py` 빈 호출 · JSON 출력 · state/events mtime 불변 · 파일 생성 없음 · missing harness_dir 에러.
+- **`commands/work.md`** — `### 대시보드 (v0.9.2 — 빈 호출)` 섹션 추가.
+
+### v0.9.x 진행
+
+| 버전 | 상태 |
+|---|---|
+| v0.9.0 | ✅ namespace rename + 6 command 삭제 |
+| v0.9.1 | ✅ feature_resolver 모듈 + 테스트 |
+| **v0.9.2** | ✅ dashboard + intent_planner (읽기 전용 진입점) |
+| v0.9.3 | ⏳ Iron Law D · 누적 declared evidence · hotfix flag |
+| v0.9.4 | ⏳ 시나리오 매핑 integration test · README "어떻게 말해도 됩니다" |
+| v0.9.5 | ⏳ `project.mode` prototype/product 분기 |
+| v0.10.0 | ⏳ legacy shim 제거 · README 재작성 |
+
+### Numbers
+
+- Tests: 666 → 687 (+21 — intent_planner 22 tests 중 일부는 기존 helper 와 중복되지 않음, dashboard 19 tests).
+- `scripts/ui/` 총 3 모듈: feature_resolver (v0.9.1) · intent_planner · dashboard.
+
 ## [0.9.1] — 2026-04-25
 
 **UX re-architecture step 2 — title fuzzy + @F-N resolver. v0.9 의 "F-N 외우지 않음" 기반 모듈.**

@@ -51,6 +51,8 @@ from ceremonies import kickoff as _kickoff  # noqa: E402
 from ceremonies import retro as _retro  # noqa: E402
 from core.state import State, _FEATURE_STATUSES, _GATE_RESULTS  # noqa: E402
 from gate import runner as gate_runner  # noqa: E402
+from ui import dashboard as _dashboard  # noqa: E402
+from ui import intent_planner as _intent_planner  # noqa: E402
 
 
 _STANDARD_GATES = ("gate_0", "gate_1", "gate_2", "gate_3", "gate_4", "gate_5")
@@ -481,6 +483,25 @@ def current(harness_dir: Path) -> WorkResult | None:
     return res
 
 
+def dashboard_snapshot(harness_dir: Path) -> dict:
+    """Build the no-args dashboard snapshot (CQS — read-only).
+
+    v0.9.2 — Returns a dict consumable by ``ui.dashboard.render`` as well as
+    JSON callers. Does not touch any file on disk. Used by ``main()`` when
+    ``scripts/work.py`` is invoked without a feature id.
+    """
+    state = State.load(harness_dir)
+    spec = _load_spec(harness_dir)
+    suggestions = _intent_planner.suggest(state.data, spec)
+    return {
+        "state": state.data,
+        "spec": spec,
+        "suggestions": suggestions,
+        "counts": state.feature_counts(),
+        "active_feature_id": state.data["session"].get("active_feature_id"),
+    }
+
+
 def run_and_record_gate(
     harness_dir: Path,
     fid: str,
@@ -722,8 +743,31 @@ def main(argv: list[str] | None = None) -> int:
             res = complete(args.harness_dir, args.feature)
         else:
             if not args.feature:
-                print("error: feature id required (or use --current)", file=sys.stderr)
-                return 2
+                # v0.9.2 — no-args 진입점 = 대시보드 (CQS · 읽기 전용).
+                snap = dashboard_snapshot(args.harness_dir)
+                if args.json:
+                    out = {
+                        "active_feature_id": snap["active_feature_id"],
+                        "counts": snap["counts"],
+                        "suggestions": [
+                            {
+                                "label": s.label,
+                                "action": s.action,
+                                "feature_id": s.feature_id,
+                                "gate": s.gate,
+                            }
+                            for s in snap["suggestions"]
+                        ],
+                    }
+                    json.dump(out, sys.stdout, indent=2, ensure_ascii=False)
+                    print()
+                else:
+                    sys.stdout.write(
+                        _dashboard.render(
+                            snap["state"], snap["spec"], snap["suggestions"]
+                        )
+                    )
+                return 0
             res = activate(args.harness_dir, args.feature)
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
