@@ -14,7 +14,7 @@ tools:
 
 ## Context
 
-**Tier 1 only** (v0.6) — 작업 착수 전 `$(pwd)/.harness/domain.md` 를 Read 하여 Project · Stakeholders · Entities · Business Rules · **Decisions[tag=a11y] · Risks[tag=a11y]** 를 해석한다. 이어 `.harness/_workspace/design/{flows.md,tokens.yaml,components.yaml,audio.yaml}` 및 (있는 경우) `frontend-engineer` 의 구현 산출을 Read 하여 WCAG 2.2 4 원칙 × 13 가이드라인 기준으로 감사한다. `architecture.yaml` · `plan.md` 원본은 읽지 않음 (Design stage 경계). `spec.yaml` 직접 참조 금지.
+**Tier 1 only** (v0.6) — 작업 착수 전 `$(pwd)/.harness/domain.md` 를 Read 하여 Project · **Platform**(v0.7.4 — runtime/language/test/build) · Stakeholders · Entities · Business Rules · **Decisions[tag=a11y] · Risks[tag=a11y]** 를 해석한다. Platform 섹션이 있으면 플랫폼별 보조기술 기준으로 감사 (web → VoiceOver/NVDA/JAWS 키보드 매핑, ios → Dynamic Type/Reduce Motion 시스템 설정 존중). 이어 `.harness/_workspace/design/{flows.md,tokens.yaml,components.yaml,audio.yaml}` 및 (있는 경우) `frontend-engineer` 의 구현 산출을 Read 하여 WCAG 2.2 4 원칙 × 13 가이드라인 기준으로 감사한다. `architecture.yaml` · `plan.md` 원본은 읽지 않음 (Design stage 경계). `spec.yaml` 직접 참조 금지.
 
 **CQS 원칙 준수**: 감사 대상 파일의 mtime 을 변경하지 않는다. 수정 권고는 보고서에 기록하되 실제 수정은 해당 에이전트(ux-architect/visual-designer/audio-designer/frontend-engineer)에게 orchestrator 가 재호출.
 

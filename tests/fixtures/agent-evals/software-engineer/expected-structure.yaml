@@ -1,0 +1,40 @@
+# Contract for software-engineer code output (v0.7.4 producer_type=code).
+#
+# Unlike markdown/yaml producers, code output spans multiple files.
+# Contract declares: required file patterns (test pair first, TDD ordering),
+# required code phrases (evidence of role-compliance), forbidden patterns.
+
+agent: software-engineer
+producer_type: code
+# No single output_path — code producers write to multiple files.
+output_path: null
+
+# File patterns that must be present after the agent ships. Glob-style paths;
+# future eval harness can fnmatch over actual diff.
+# Order is semantic (test first for TDD), not an enforcement of file order.
+required_file_patterns:
+  - "tests/domain/session.spec.ts"
+  - "src/domain/session.ts"
+
+# Phrases that prove TDD + domain-rooted identifier rules held.
+required_phrases:
+  - "describe("                # test framework (vitest/jest form)
+  - "startSession"             # domain verb, not F003 suffix
+  - "pauseSession"
+  - "completeSession"
+  - "F-003"                    # spec id MUST appear in docstring/comment
+
+# Anti-patterns. ID-in-name is the big one for this project's coding style.
+forbidden_phrases:
+  - "startSessionForF003"      # spec id smeared into identifier — banned
+  - "class F003"               # same
+  - "AC1_"                     # test name prefixed with AC id
+  - "TODO"
+  - "new Date()"               # direct clock side-effect instead of injected source
+  - "console.log("             # left-in debugging
+
+# TDD ordering hint — tests file must include assertion for AC-2 transition
+# (session end → break auto-transition) since orchestration depends on it.
+required_test_assertions:
+  - "AC-2"
+  - "AC-3"

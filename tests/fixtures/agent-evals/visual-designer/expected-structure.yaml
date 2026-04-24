@@ -1,0 +1,41 @@
+# Contract for visual-designer tokens.yaml output.
+#
+# Producer type is yaml (not markdown), so the contract declares the
+# required top-level keys instead of section headers. Eval harness
+# inspects parsed YAML structure against this map.
+
+agent: visual-designer
+producer_type: yaml
+output_path: .harness/_workspace/design/tokens.yaml
+
+# Top-level keys the tokens file must declare. Order not enforced; presence is.
+required_top_keys:
+  - color
+  - space
+  - typography
+  - motion
+  - radius
+
+# Naming convention evidence — eval harness greps the full yaml body for
+# these substrings to catch Tailwind/Material copy-paste regressions.
+required_phrases:
+  - "surface/"          # domain-semantic naming, not 'bg-blue-500'
+  - "ink/"              # text role naming
+  - "accent/"           # action-primary token family
+  - "focus/"            # focus ring token
+  - "motion/session-"   # motion token scoped to flow
+
+# Bans.
+forbidden_phrases:
+  - "bg-"               # Tailwind utility leak
+  - "blue-500"          # Tailwind default scale
+  - "primary:"          # generic 'primary' without role
+  - "TODO"
+  - "#FFFFFF"           # literal hex in surface role hints raw carry-over
+  - "color: red"        # semantic-less color mention
+
+# Motion tokens must always declare three fields per token.
+motion_required_fields:
+  - duration
+  - ease
+  - purpose

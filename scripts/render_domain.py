@@ -69,6 +69,7 @@ def render(spec: dict, *, timestamp: str | None = None) -> str:
     business_rules = _get(spec, "domain.business_rules", []) or []
     decisions = _get(spec, "decisions", []) or []
     risks = _get(spec, "risks", []) or []
+    tech_stack = _get(spec, "constraints.tech_stack", {}) or {}
 
     lines: list[str] = []
 
@@ -96,6 +97,40 @@ def render(spec: dict, *, timestamp: str | None = None) -> str:
         lines.append("")
         lines.append(_multiline(project_vision).rstrip())
         lines.append("")
+
+    # Platform — v0.7.4 additive. Tier 1 design agents (visual-designer · a11y-auditor)
+    # 는 architecture.yaml 접근 권한이 없으므로 플랫폼 정보가 domain.md 에 있어야 함.
+    if isinstance(tech_stack, dict) and tech_stack:
+        lines.append("## Platform")
+        lines.append("")
+        runtime = tech_stack.get("runtime")
+        min_version = tech_stack.get("min_version")
+        if runtime:
+            runtime_line = f"**Runtime**: {runtime}"
+            if min_version:
+                runtime_line += f" {min_version}+"
+            lines.append(runtime_line)
+            lines.append("")
+        language = tech_stack.get("language")
+        if language:
+            lines.append(f"**Language**: {language}")
+            lines.append("")
+        test = tech_stack.get("test")
+        if test:
+            lines.append(f"**Test**: {test}")
+            lines.append("")
+        build = tech_stack.get("build")
+        if build:
+            lines.append(f"**Build**: {build}")
+            lines.append("")
+        # Anything else (additionalProperties: true) — dump as a plain list
+        known = {"runtime", "min_version", "language", "test", "build"}
+        extras = [(k, v) for k, v in tech_stack.items() if k not in known]
+        if extras:
+            lines.append("**Extra**:")
+            for k, v in extras:
+                lines.append(f"- {k}: {v}")
+            lines.append("")
 
     # Stakeholders — v0.5 expert agent pool 의 단일 참조점 (domain.md SSoT).
     lines.append(f"## Stakeholders ({len(stakeholders)})")

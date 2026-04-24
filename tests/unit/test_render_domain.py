@@ -375,5 +375,64 @@ class RealSpecSmokeTests(unittest.TestCase):
         self.assertIn("Business Rules (", out)
 
 
+class PlatformSectionTests(unittest.TestCase):
+    """v0.7.4 — constraints.tech_stack → domain.md 의 ## Platform 섹션.
+
+    Design-tier agents (visual-designer · a11y-auditor 등 Tier 1 only) 가
+    플랫폼 맥락에 접근하려면 architecture.yaml(Tier 2) 대신 domain.md 에
+    platform 정보가 있어야 한다.
+    """
+
+    def test_platform_section_absent_when_no_tech_stack(self):
+        spec = {"project": {"name": "demo"}, "domain": {}}
+        out = rd.render(spec, timestamp=FIXED_TS)
+        self.assertNotIn("## Platform", out)
+
+    def test_platform_section_present_with_tech_stack(self):
+        spec = {
+            "project": {"name": "demo"},
+            "constraints": {
+                "tech_stack": {
+                    "runtime": "node",
+                    "min_version": "20",
+                    "language": "ts",
+                    "test": "vitest",
+                    "build": "vite",
+                }
+            },
+        }
+        out = rd.render(spec, timestamp=FIXED_TS)
+        self.assertIn("## Platform", out)
+        self.assertIn("node", out)
+        self.assertIn("20", out)
+        self.assertIn("vitest", out)
+        self.assertIn("vite", out)
+
+    def test_platform_section_before_stakeholders(self):
+        """Design-tier agents read top-down — Platform must precede Stakeholders so
+        they see target platforms before meeting the personas.
+        """
+        spec = {
+            "project": {"name": "demo", "stakeholders": [{"role": "user"}]},
+            "constraints": {"tech_stack": {"runtime": "browser"}},
+        }
+        out = rd.render(spec, timestamp=FIXED_TS)
+        self.assertLess(out.index("## Platform"), out.index("## Stakeholders"))
+
+    def test_platform_handles_partial_fields(self):
+        spec = {
+            "project": {"name": "demo"},
+            "constraints": {"tech_stack": {"runtime": "python"}},
+        }
+        out = rd.render(spec, timestamp=FIXED_TS)
+        self.assertIn("## Platform", out)
+        self.assertIn("python", out)
+
+    def test_empty_tech_stack_skipped(self):
+        spec = {"project": {"name": "demo"}, "constraints": {"tech_stack": {}}}
+        out = rd.render(spec, timestamp=FIXED_TS)
+        self.assertNotIn("## Platform", out)
+
+
 if __name__ == "__main__":
     unittest.main()
