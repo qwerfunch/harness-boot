@@ -236,6 +236,39 @@ python3 "$PLUGIN_ROOT/scripts/inbox.py" --harness-dir .harness --feature F-N
 
 **왜 파일 기반**: daemon · routing 복잡도 0, `git grep` 으로 이력 추적, PR diff 로 리뷰 가능. Slack 스레드의 로컬 등가물.
 
+## Design Review Ceremony (v0.6)
+
+`ux-architect` 가 `.harness/_workspace/design/flows.md` 를 저장한 뒤 orchestrator 가 호출 (또는 `/harness:work F-N --design-review` 명시). 고정 reviewer 3 명(+ has_audio 시 audio-designer 포함 4 명).
+
+```bash
+python3 "$PLUGIN_ROOT/scripts/design_review.py" \
+    --harness-dir .harness --feature F-N [--has-audio]
+```
+
+**참여**: `visual-designer` + `frontend-engineer` + `a11y-auditor` (+ `audio-designer` if has_audio). 그 외 agent 는 flows.md 접근 권한 없음 (Tier 규약).
+
+**산출**: `.harness/_workspace/design-review/F-N.md` — reviewer 별 concerns 섹션 + orchestrator "Decisions" 푸터. 충돌 2회 반복 시 사용자 escalate.
+
+**이벤트**: `design_review_opened`.
+
+## Retrospective Ceremony (v0.6)
+
+`/harness:work F-N --complete` 성공 직후 orchestrator 가 자동 실행.
+
+```bash
+python3 "$PLUGIN_ROOT/scripts/retro.py" --harness-dir .harness --feature F-N
+```
+
+**산출**: `.harness/_workspace/retro/F-N.md`
+- 머신 섹션 (retro.py 자동 채움): What Shipped · First Gate to Fail · Ceremonies summary (kickoff/design-review/questions 카운트).
+- LLM 섹션 (orchestrator 가 reviewer → tech-writer 순차 호출): Risks Materialized vs plan.md · Decisions Revised · Kickoff Predictions Right/Wrong · Reviewer Reflection · Copy Polish.
+
+**author 순서**: reviewer 가 draft (audit 산출물이라 CQS 예외 — `agents/reviewer.md` §Context 명시), tech-writer 가 prose polish. 순차 고정.
+
+**이벤트**: `feature_retro_written` (분석 summary 포함).
+
+**향후 활용**: retro 코퍼스는 cross-feature learning · `/harness:metrics` 기반 입력.
+
 ## 참조
 
 - `scripts/work.py` — 실제 구현.
