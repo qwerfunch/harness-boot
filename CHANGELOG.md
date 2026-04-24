@@ -24,10 +24,33 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 **기타 backlog**:
 
-- Phase 3 CI — `.github/workflows/self-check.yml` + PR gate
+- ~~Phase 3 CI — `.github/workflows/self-check.yml` + PR gate~~ ✅ v0.8.3
 - Cross-language hash test vectors (Appendix D.7)
 - Event log rotation (`events.log.YYYYMM`)
 - AC coverage drift (check.py 11 번째 drift 후보)
+
+## [0.8.3] — 2026-04-24
+
+**Phase 3 CI — GitHub Actions self-check workflow. Every PR + push to main/develop runs the full suite + self_check against Python 3.10-3.13.**
+
+### Added
+
+- **`.github/workflows/self-check.yml`** — matrix build (Python 3.10 · 3.11 · 3.12 · 3.13) on Ubuntu. Triggers on push to `main` / `develop` and on any PR targeting those branches. `fail-fast: false` so each Python minor reports independently.
+- Pipeline steps:
+  1. Checkout (fetch-depth 1).
+  2. Setup Python with `actions/setup-python@v5`.
+  3. Install `pyyaml` + `jsonschema` (CI runs the full matrix with structural validation enabled).
+  4. `python -m unittest discover tests/unit --verbose` — full 617-test regression.
+  5. `bash scripts/self_check.sh` — SSoT · validate · sync · check · commands 규약 5 steps.
+- **Concurrency group** keyed on ref name — in-progress runs cancel when a new push lands.
+
+### Why
+
+Closes one of the v1.0 checklist items: automated regression gate on public branches. Before v0.8.3 the suite ran only locally; now it's enforced on every PR before merge.
+
+### Tests
+
+617/617 green locally (CI will mirror on first run). self_check 5/5 PASS.
 
 ## [0.8.2] — 2026-04-24
 
