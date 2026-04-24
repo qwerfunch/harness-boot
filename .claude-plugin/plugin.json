@@ -1,7 +1,7 @@
 {
   "name": "harness-boot",
   "version": "0.9.4",
-  "description": "Claude Code 용 spec-driven 개발 하네스. /harness-boot:init 과 /harness-boot:work 2 개 명령으로 자연어 아이디어부터 완료까지 — 외울 건 명령 2 개, 나머지는 자연어. Iron Law D (누적 declared evidence ≥ 3) · drift 10/10 · events.log 투명 audit · 16 전문가 에이전트 · 4 협업 루틴 auto-wire. spec.yaml 을 SSoT 로 유지하고 나머지는 파생.",
+  "description": "자연어 아이디어를 스펙으로 굳히고, 전문가 에이전트 팀이 역할별로 협업해 실제 돌아가는 코드까지 이끌어내는 AI 개발 하네스 프레임워크. Claude Code 플러그인 · 2 개 slash command (/harness-boot:init · /harness-boot:work) 로 외울 것 최소화 · 자연어 입력.",
   "author": {
     "name": "qwerfunch"
   },
