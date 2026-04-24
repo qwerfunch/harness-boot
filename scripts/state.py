@@ -182,6 +182,28 @@ class State:
             self.ensure_feature(fid)
         self.data["session"]["active_feature_id"] = fid
 
+    def remove_feature(self, fid: str) -> bool:
+        """state.yaml features[] 에서 해당 항목 제거. 반환: 제거되었으면 True."""
+        before = len(self.data["features"])
+        self.data["features"] = [
+            f for f in self.data["features"]
+            if not (isinstance(f, dict) and f.get("id") == fid)
+        ]
+        removed = len(self.data["features"]) < before
+        if removed and self.data["session"].get("active_feature_id") == fid:
+            self.data["session"]["active_feature_id"] = None
+        return removed
+
+    def features_in_progress(self) -> list[str]:
+        """Status == 'in_progress' 인 feature id 목록."""
+        out: list[str] = []
+        for f in self.data["features"]:
+            if isinstance(f, dict) and f.get("status") == "in_progress":
+                fid = f.get("id")
+                if isinstance(fid, str):
+                    out.append(fid)
+        return out
+
     def set_last_command(self, command: str) -> None:
         self.data["session"]["last_command"] = command
         if self.data["session"].get("started_at") is None:

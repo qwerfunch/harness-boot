@@ -144,6 +144,30 @@ def _summarize(state: State, fid: str) -> WorkResult:
     )
 
 
+def _warn_if_ghost(harness_dir: Path, fid: str) -> None:
+    """spec.yaml 은 있으나 fid 가 그 안에 없으면 stderr 경고 — v0.7.1 UX gap #1."""
+    spec = _load_spec(harness_dir)
+    if spec is None:
+        return
+    if _find_feature(spec, fid) is None:
+        print(
+            f"warn: {fid} not defined in spec.yaml — proceeding as ghost feature. "
+            f"Use /harness:spec to register it or `--remove {fid}` to undo.",
+            file=sys.stderr,
+        )
+
+
+def _warn_if_concurrent(state: State, fid: str) -> None:
+    """다른 피처가 in_progress 인 채로 새 피처 activate 시 경고 — v0.7.1 UX gap #2."""
+    others = [f for f in state.features_in_progress() if f != fid]
+    if others:
+        print(
+            f"warn: other feature(s) still in_progress: {', '.join(others)}. "
+            f"Finish or block before switching, or ignore to work in parallel.",
+            file=sys.stderr,
+        )
+
+
 def activate(harness_dir: Path, fid: str) -> WorkResult:
     """피처를 active 로 설정 + planned → in_progress 전이."""
     state = State.load(harness_dir)
@@ -153,6 +177,10 @@ def activate(harness_dir: Path, fid: str) -> WorkResult:
         res.action = "queried"
         res.message = f"{fid} is already done — no re-activation"
         return res
+
+    _warn_if_ghost(harness_dir, fid)
+    _warn_if_concurrent(state, fid)
+
     state.set_active(fid)
     if f.get("status") in (None, "planned"):
         state.set_status(fid, "in_progress")
@@ -172,6 +200,76 @@ def activate(harness_dir: Path, fid: str) -> WorkResult:
     res = _summarize(state, fid)
     res.action = "activated"
     return res
+
+
+def deactivate(harness_dir: Path) -> WorkResult:
+    """session.active_feature_id 만 None 으로. 피처 status 는 유지 — v0.7.1."""
+    state = State.load(harness_dir)
+    fid = state.data["session"].get("active_feature_id")
+    if not fid:
+        return WorkResult(
+            feature_id="",
+            action="queried",
+            current_status="",
+            gates_passed=[],
+            gates_failed=[],
+            evidence_count=0,
+            message="no active feature to deactivate",
+        )
+    state.set_active(None)
+    state.save()
+    _append_event(
+        harness_dir,
+        {
+            "ts": _now_iso(),
+            "type": "feature_deactivated",
+            "feature": fid,
+        },
+    )
+    res = _summarize(state, fid)
+    res.action = "deactivated"
+    return res
+
+
+def remove_feature(harness_dir: Path, fid: str) -> WorkResult:
+    """state.yaml features[] 에서 항목 삭제. done 피처는 보호 — v0.7.1."""
+    state = State.load(harness_dir)
+    f = state.get_feature(fid)
+    if f is None:
+        return WorkResult(
+            feature_id=fid,
+            action="queried",
+            current_status="",
+            gates_passed=[],
+            gates_failed=[],
+            evidence_count=0,
+            message=f"{fid} not in state — nothing to remove",
+        )
+    if f.get("status") == "done":
+        res = _summarize(state, fid)
+        res.action = "queried"
+        res.message = f"cannot remove {fid} — feature is done (audit trail protected)"
+        return res
+    state.remove_feature(fid)
+    state.save()
+    _append_event(
+        harness_dir,
+        {
+            "ts": _now_iso(),
+            "type": "feature_removed",
+            "feature": fid,
+            "prior_status": f.get("status"),
+        },
+    )
+    return WorkResult(
+        feature_id=fid,
+        action="removed",
+        current_status="",
+        gates_passed=[],
+        gates_failed=[],
+        evidence_count=0,
+        message=f"{fid} removed from state",
+    )
 
 
 def record_gate(
@@ -422,6 +520,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--complete", action="store_true", help="transition to done (requires gate_5 pass + evidence)"
     )
+    parser.add_argument(
+        "--deactivate",
+        action="store_true",
+        help="clear session.active_feature_id without changing feature status (v0.7.1)",
+    )
+    parser.add_argument(
+        "--remove",
+        metavar="FID",
+        default=None,
+        help="delete feature entry from state.yaml (ghost cleanup). done features protected. (v0.7.1)",
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
 
@@ -440,6 +549,10 @@ def main(argv: list[str] | None = None) -> int:
                 else:
                     print("no active feature")
                 return 0
+        elif args.deactivate:
+            res = deactivate(args.harness_dir)
+        elif args.remove:
+            res = remove_feature(args.harness_dir, args.remove)
         elif args.gate:
             if not args.feature:
                 print("error: feature id required with --gate", file=sys.stderr)

@@ -138,6 +138,23 @@ class AC1_CodeFormatTests(unittest.TestCase): ...
 - `--complete` 인데 gate_5 미통과 또는 evidence 없음 → action=queried + 이유 메시지 반환 (실패 아님, 재호출 가능).
 - invalid gate result → exit 3.
 
+## Activate UX 경고 (v0.7.1)
+
+`activate` 는 아래 상황에서 stderr 경고를 찍고도 진행한다 (backward compat — 실패 아님):
+
+- **ghost feature**: `spec.yaml` 은 존재하나 해당 `F-N` 이 그 안에 없음. `/harness:spec` 으로 등록하거나 `--remove F-N` 으로 되돌릴 것을 안내.
+- **concurrent in_progress**: 다른 피처가 이미 `in_progress`. 새 피처 activate 전에 완료·block 또는 무시하고 병렬 작업.
+
+## Session pointer 정리 (v0.7.1)
+
+```bash
+/harness:work --deactivate              # session.active_feature_id 만 비움. 피처 status 유지
+/harness:work --remove F-99             # state.yaml features[] 에서 항목 삭제 (유령 정리). done 피처는 보호
+```
+
+- `--deactivate` 는 단일 작업 세션을 닫을 때 (상태는 나중에 재개 가능).
+- `--remove` 는 ghost 나 오타로 만들어진 엔트리 회수. `feature_removed` event 가 log 에 남아 audit 가능.
+
 ## Orchestration Routing (v0.5)
 
 orchestrator 가 피처 shape 에 따라 소환 체인을 결정한다. 아래 표는 **머신 체크 가능한 계약** — `tests/unit/test_work_routing.py` 가 이 표를 파싱해 6 행 존재 + shape_key + agent_chain 컬럼을 assert.
