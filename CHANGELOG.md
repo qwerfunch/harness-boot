@@ -12,10 +12,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - Marketplace PR (anthropic/claude-plugins-official) — **v1.0 릴리즈 후** 제출 (사전 제출 없음)
 - v1.0 readiness: design-review auto-wire · 나머지 8 agent fixtures · Known Issues 0 · migration guide · README polish
 
-**v0.8 범위 후보**:
+**v0.8 범위 후보** (v0.8.0 에서 PR-α 착수 완료 · PR-β 미착수):
 
-- Design review auto-wire — ux-architect flows.md save 훅 (v0.6 부터 미해결)
-- 나머지 agent fixtures (backend/security/performance/audio/qa/integrator/orchestrator/reviewer)
+- ~~Design review auto-wire — ux-architect flows.md save 훅~~ ✅ v0.8.0
+- 나머지 agent fixtures (backend/security/performance/audio/qa/integrator/orchestrator/reviewer) — v0.8.1 예정
 
 **v0.9 범위 후보 (novel axis)**:
 
@@ -28,6 +28,46 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - Cross-language hash test vectors (Appendix D.7)
 - Event log rotation (`events.log.YYYYMM`)
 - AC coverage drift (check.py 11 번째 drift 후보)
+
+## [0.8.0] — 2026-04-24
+
+**Ceremony auto-wire 4/4 완결 — design-review 자동 발화 (마지막 남은 수동 ceremony 해소).**
+
+### Added
+
+- `scripts/work.py::_autowire_design_review(harness_dir, fid, *, force=False)` — state-mutating work.py 호출 말미에서 3 조건 AND readiness 평가:
+  1. `features[F-N].ui_surface.present == true` — UI 없는 피처는 design-review 의미 없음
+  2. `.harness/_workspace/design/flows.md` 존재 — ux-architect delivered
+  3. `.harness/_workspace/design-review/F-N.md` 미존재 — idempotent
+- 4 wiring 지점: `activate`, `record_gate`, `add_evidence`, `run_and_record_gate`. 각 호출 말미에 조건 체크 후 필요 시 `ceremonies.design_review.generate_design_review` 호출. kickoff/retro 와 동일하게 silent-swallow exceptions (ceremony 오류가 state mutation 을 실패시키지 않음).
+- `--design-review` CLI flag — idempotent (조건 3) 우회, 기존 design-review/F-N.md 덮어쓰고 재생성. UI 조건 (1) 과 flows.md 조건 (2) 는 여전히 적용.
+- `tests/unit/test_work_design_review.py` — 10 tests: auto-fire conditions (5) · multiple trigger points (3) · has_audio propagation (1) · force re-generate flag (1).
+
+### Changed
+
+- `commands/work.md` Design Review Ceremony 섹션 전면 개정:
+  - "prose-contract 수동 호출" → "v0.8 auto-wire"
+  - 3 조건 readiness check 규약 명시
+  - `--design-review` flag 안내
+
+### Ceremony 자동화 현황 (v0.8.0 시점)
+
+| Ceremony | 상태 | 트리거 | 버전 |
+|---|---|---|---|
+| Kickoff | ✅ auto | `work.activate` | v0.7 |
+| Retrospective | ✅ auto | `work.complete` | v0.7 |
+| Design Review | ✅ auto | 3 조건 readiness (state-mutating calls) | **v0.8** |
+| Q&A file-drop | 🟡 poll | `inbox.py --feature` — orchestrator 주기 polling | — |
+
+Q&A 는 "protocol" 성격이라 auto-wire 대상 아님 — orchestrator 가 stage 경계에서 `inbox.py` 로 poll 하는 게 설계 의도.
+
+### Tests
+
+612/612 green (602 + 10). self_check 5/5 PASS.
+
+### Version policy note
+
+v0.8.0 은 **minor bump**. 사유 = ceremony auto-wire 스토리 (4/4) 의 마일스톤 완결. 이전 v0.7.x patch 시리즈와 달리 사용자 대면 capability (자동 발화) 의 구조적 변화.
 
 ## [0.7.6] — 2026-04-24
 

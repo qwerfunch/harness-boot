@@ -264,9 +264,27 @@ python3 "$PLUGIN_ROOT/scripts/ceremonies/inbox.py" --harness-dir .harness --feat
 
 **왜 파일 기반**: daemon · routing 복잡도 0, `git grep` 으로 이력 추적, PR diff 로 리뷰 가능. Slack 스레드의 로컬 등가물.
 
-## Design Review Ceremony (v0.6)
+## Design Review Ceremony (v0.8 auto-wire)
 
-`ux-architect` 가 `.harness/_workspace/design/flows.md` 를 저장한 뒤 orchestrator 가 **prose-contract 로 수동 호출** (v0.7 에서도 수동 유지 — file-watcher · git hook 없음. `scripts/work.py` 에 `--design-review` 플래그 미존재. kickoff/retro 와 달리 activate/complete 같은 명시적 호출 훅이 없어 자동화 대상이 모호하므로 v0.8+ 로 미룸). 고정 reviewer 3 명(+ has_audio 시 audio-designer 포함 4 명).
+v0.8 부터 `scripts/work.py` 가 자동 발화. 트리거는 단일 lifecycle 이벤트가 아니라 **3 조건 readiness check** — state-mutating work.py 호출 (activate · record_gate · add_evidence · run_and_record_gate) 말미에서 평가.
+
+**자동 발화 3 조건** (AND):
+
+1. `features[F-N].ui_surface.present == true` — UI 없는 피처는 design-review 의미 없음
+2. `.harness/_workspace/design/flows.md` 존재 — ux-architect 가 delivered
+3. `.harness/_workspace/design-review/F-N.md` 미존재 — **idempotent**, 한 번만 발화
+
+셋 다 참이면 `ceremonies.design_review.generate_design_review` 가 호출되어 template + `design_review_opened` event 를 생성. 하나라도 거짓이면 silent skip.
+
+**수동 재생성** (예: flows.md 업데이트 후 design-review 갱신):
+
+```bash
+python3 "$PLUGIN_ROOT/scripts/work.py" F-N --design-review --harness-dir .harness
+```
+
+`--design-review` 플래그는 idempotent 조건 (3) 을 우회해 덮어쓴다. 조건 (1)(2) 는 여전히 적용 — UI 없는 피처엔 강제 재생성도 발화 안 함.
+
+**CLI 직접 호출** (raw template 생성):
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/ceremonies/design_review.py" \
