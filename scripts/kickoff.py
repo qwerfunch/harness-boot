@@ -139,7 +139,7 @@ def generate_kickoff(
         {
             "ts": timestamp,
             "type": "kickoff_started",
-            "feature_id": feature_id,
+            "feature": feature_id,
             "shapes": list(shapes),
             "agents": agents,
             "path": str(kickoff_path.relative_to(harness_dir)),

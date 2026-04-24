@@ -300,11 +300,21 @@ class TierMappingTests(unittest.TestCase):
             self.assertIn("architecture.yaml", ctx)
             self.assertIn("plan.md", ctx)
 
-    def test_reviewer_has_retro_write_exception(self):
-        """reviewer 는 retro.md write 예외가 Context 에 명시되어야 (CQS 완화)."""
+    def test_reviewer_retro_prose_handoff(self):
+        """reviewer 는 retro.md 에 직접 write 하지 않음 — prose 반환 후 orchestrator 가 write.
+
+        v0.6.1 정정 — 이전 "write 예외" 설계는 reviewer frontmatter tools 에
+        Write 가 없어 enforce 불가 · CQS 위반 충돌. CQS 유지 + orchestrator 가 write.
+        """
         body = self._body("reviewer")
+        # CQS 엄격 유지 문구 필수
+        self.assertIn("CQS", body)
+        # retro 관련 설명 존재
         self.assertIn("retro", body)
-        self.assertRegex(body, r"write\s*예외|예외.*retro|retro.*(?:예외|허용)")
+        # Write 권한이 frontmatter 에 없다는 것도 확인 (핵심 안전장치)
+        fm = _load_agent("reviewer")
+        self.assertNotIn("Write", set(fm["tools"]))
+        self.assertNotIn("Edit", set(fm["tools"]))
 
 
 class UxArchitectReferenceFixtureTests(unittest.TestCase):

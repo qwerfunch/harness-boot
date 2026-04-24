@@ -71,7 +71,7 @@ class GenerateDesignReviewTests(unittest.TestCase):
         log = (self.harness / "events.log").read_text(encoding="utf-8")
         event = json.loads(log.strip().splitlines()[-1])
         self.assertEqual(event["type"], "design_review_opened")
-        self.assertEqual(event["feature_id"], "F-9")
+        self.assertEqual(event["feature"], "F-9")
         self.assertEqual(event["reviewers"], ["visual-designer", "frontend-engineer", "a11y-auditor"])
 
 

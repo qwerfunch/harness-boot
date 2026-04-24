@@ -102,7 +102,7 @@ def generate_design_review(
         {
             "ts": timestamp,
             "type": "design_review_opened",
-            "feature_id": feature_id,
+            "feature": feature_id,
             "reviewers": reviewers,
             "has_audio": has_audio,
             "path": str(path.relative_to(harness_dir)),

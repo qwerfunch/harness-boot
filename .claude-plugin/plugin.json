@@ -1,6 +1,6 @@
 {
   "name": "harness",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Plan.md 하나로 출발해 Claude Code 에이전트·스킬·훅·프로토콜을 파생·생성·진화시키는 harness 플러그인. spec.yaml(v2.3.8) 을 단일 사용자 편집 대상으로 유지하며 나머지는 자동 생성.",
   "author": {
     "name": "qwerfunch"

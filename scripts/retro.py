@@ -35,15 +35,20 @@ def _read_events(harness_dir: Path) -> list[dict]:
 
 
 def analyze(events: list[dict], feature_id: str) -> dict:
-    """Extract machine-readable retro data from events."""
-    relevant = [e for e in events if e.get("feature_id") == feature_id]
+    """Extract machine-readable retro data from events.
+
+    Event key contract mirrors scripts/work.py (canonical emitter):
+      - field name is `"feature"` (not "feature_id")
+      - completion type is `"feature_done"` (not "feature_completed")
+    """
+    relevant = [e for e in events if e.get("feature") == feature_id]
     gate_events = [e for e in relevant if e.get("type") == "gate_recorded"]
     first_gate_fail: dict | None = None
     for e in gate_events:
         if e.get("result") == "fail":
             first_gate_fail = e
             break
-    completed = any(e.get("type") == "feature_completed" for e in relevant)
+    completed = any(e.get("type") == "feature_done" for e in relevant)
     kickoff_opened = any(e.get("type") == "kickoff_started" for e in relevant)
     design_review_opened = any(
         e.get("type") == "design_review_opened" for e in relevant
@@ -148,7 +153,10 @@ def _template(feature_id: str, analysis: dict, timestamp: str) -> str:
     # Reviewer Reflection
     lines.append("## Reviewer Reflection")
     lines.append("")
-    lines.append("<!-- orchestrator invokes @harness:reviewer first (draft). -->")
+    lines.append(
+        "<!-- orchestrator invokes @harness:reviewer to produce draft prose."
+        " reviewer 는 read-only (CQS) — draft 텍스트만 반환. orchestrator 가 이 섹션에 write. -->"
+    )
     lines.append("")
     lines.append("_(pending)_")
     lines.append("")
@@ -157,7 +165,8 @@ def _template(feature_id: str, analysis: dict, timestamp: str) -> str:
     lines.append("## Copy Polish")
     lines.append("")
     lines.append(
-        "<!-- orchestrator invokes @harness:tech-writer to polish prose after reviewer draft. -->"
+        "<!-- orchestrator invokes @harness:tech-writer to polish the Reviewer Reflection."
+        " tech-writer 가 Write/Edit 으로 직접 이 섹션을 다듬음. -->"
     )
     lines.append("")
     lines.append("_(pending)_")
@@ -192,7 +201,7 @@ def generate_retro(
         {
             "ts": timestamp,
             "type": "feature_retro_written",
-            "feature_id": feature_id,
+            "feature": feature_id,
             "analysis_summary": {
                 "completed": analysis["completed"],
                 "first_gate_fail": (

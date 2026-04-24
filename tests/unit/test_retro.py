@@ -29,32 +29,32 @@ def _write_events(harness: Path, events: list[dict]) -> None:
 class AnalyzeTests(unittest.TestCase):
     def test_completion_detection(self):
         events = [
-            {"type": "feature_activated", "feature_id": "F-1"},
-            {"type": "feature_completed", "feature_id": "F-1"},
+            {"type": "feature_activated", "feature": "F-1"},
+            {"type": "feature_done", "feature": "F-1"},
         ]
         a = rt.analyze(events, "F-1")
         self.assertTrue(a["completed"])
 
     def test_no_completion(self):
-        events = [{"type": "feature_activated", "feature_id": "F-1"}]
+        events = [{"type": "feature_activated", "feature": "F-1"}]
         self.assertFalse(rt.analyze(events, "F-1")["completed"])
 
     def test_first_gate_fail_returns_first_only(self):
         events = [
-            {"type": "gate_recorded", "feature_id": "F-1", "gate": "gate_0", "result": "pass"},
-            {"type": "gate_recorded", "feature_id": "F-1", "gate": "gate_2", "result": "fail", "note": "lint"},
-            {"type": "gate_recorded", "feature_id": "F-1", "gate": "gate_3", "result": "fail", "note": "cov"},
+            {"type": "gate_recorded", "feature": "F-1", "gate": "gate_0", "result": "pass"},
+            {"type": "gate_recorded", "feature": "F-1", "gate": "gate_2", "result": "fail", "note": "lint"},
+            {"type": "gate_recorded", "feature": "F-1", "gate": "gate_3", "result": "fail", "note": "cov"},
         ]
         fgf = rt.analyze(events, "F-1")["first_gate_fail"]
         self.assertEqual(fgf["gate"], "gate_2")
 
     def test_ceremony_flags(self):
         events = [
-            {"type": "kickoff_started", "feature_id": "F-1"},
-            {"type": "design_review_opened", "feature_id": "F-1"},
-            {"type": "question_opened", "feature_id": "F-1"},
-            {"type": "question_opened", "feature_id": "F-1"},
-            {"type": "question_answered", "feature_id": "F-1"},
+            {"type": "kickoff_started", "feature": "F-1"},
+            {"type": "design_review_opened", "feature": "F-1"},
+            {"type": "question_opened", "feature": "F-1"},
+            {"type": "question_opened", "feature": "F-1"},
+            {"type": "question_answered", "feature": "F-1"},
         ]
         a = rt.analyze(events, "F-1")
         self.assertTrue(a["kickoff_opened"])
@@ -64,8 +64,8 @@ class AnalyzeTests(unittest.TestCase):
 
     def test_filters_other_features(self):
         events = [
-            {"type": "feature_completed", "feature_id": "F-2"},
-            {"type": "feature_activated", "feature_id": "F-1"},
+            {"type": "feature_done", "feature": "F-2"},
+            {"type": "feature_activated", "feature": "F-1"},
         ]
         a = rt.analyze(events, "F-1")
         self.assertFalse(a["completed"])
@@ -116,8 +116,8 @@ class GenerateRetroTests(unittest.TestCase):
         _write_events(
             self.harness,
             [
-                {"type": "gate_recorded", "feature_id": "F-1", "gate": "gate_1", "result": "fail", "note": "type"},
-                {"type": "feature_completed", "feature_id": "F-1"},
+                {"type": "gate_recorded", "feature": "F-1", "gate": "gate_1", "result": "fail", "note": "type"},
+                {"type": "feature_done", "feature": "F-1"},
             ],
         )
         rt.generate_retro(self.harness, feature_id="F-1", timestamp=FIXED_TS)
@@ -125,13 +125,13 @@ class GenerateRetroTests(unittest.TestCase):
         # Last line should be our feature_retro_written.
         last = json.loads(log_lines[-1])
         self.assertEqual(last["type"], "feature_retro_written")
-        self.assertEqual(last["feature_id"], "F-1")
+        self.assertEqual(last["feature"], "F-1")
         self.assertEqual(last["analysis_summary"]["first_gate_fail"], "gate_1")
 
     def test_first_gate_fail_rendered_in_template(self):
         _write_events(
             self.harness,
-            [{"type": "gate_recorded", "feature_id": "F-1", "gate": "gate_2", "result": "fail", "note": "ruff noise"}],
+            [{"type": "gate_recorded", "feature": "F-1", "gate": "gate_2", "result": "fail", "note": "ruff noise"}],
         )
         rt.generate_retro(self.harness, feature_id="F-1", timestamp=FIXED_TS)
         body = (self.harness / "_workspace" / "retro" / "F-1.md").read_text(encoding="utf-8")

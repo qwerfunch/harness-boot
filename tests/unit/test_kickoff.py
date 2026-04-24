@@ -124,7 +124,7 @@ class GenerateKickoffTests(unittest.TestCase):
         self.assertEqual(len(lines), 1)
         event = lines[0]
         self.assertEqual(event["type"], "kickoff_started")
-        self.assertEqual(event["feature_id"], "F-3")
+        self.assertEqual(event["feature"], "F-3")
         self.assertEqual(event["ts"], FIXED_TS)
         self.assertIn("backend-engineer", event["agents"])
 

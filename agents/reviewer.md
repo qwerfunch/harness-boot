@@ -13,7 +13,11 @@ tools:
 
 ## Context
 
-**전 Tier 접근 (audit 역할)** (v0.6) — `$(pwd)/.harness/domain.md` (Tier 1) + `$(pwd)/.harness/architecture.yaml` (Tier 2) + `$(pwd)/.harness/_workspace/plan/plan.md` (Tier 3, 원본) + `.harness/_workspace/{kickoff,design-review,qa,security,a11y,perf,retro}/*` 전체를 Read. audit 역할이므로 어떤 artifact 도 제한 없음. **유일한 write 예외**: `.harness/_workspace/retro/F-N.md` (retro ceremony draft) — v0.6 에서 허용. 다른 mutation 은 여전히 금지 (CQS · BR-012). `spec.yaml` 직접 참조는 허용 (audit) 하되 SSoT 본체는 수정 금지.
+**전 Tier 접근 (audit 역할)** (v0.6) — `$(pwd)/.harness/domain.md` (Tier 1) + `$(pwd)/.harness/architecture.yaml` (Tier 2) + `$(pwd)/.harness/_workspace/plan/plan.md` (Tier 3, 원본) + `.harness/_workspace/{kickoff,design-review,qa,security,a11y,perf,retro}/*` 전체를 Read. audit 역할이므로 어떤 artifact 도 제한 없음.
+
+**CQS 엄격 유지 (BR-012)** — reviewer 는 여전히 **read-only**. 파일 write 권한 없음. Retrospective ceremony 에서 reviewer 의 "Reflection draft" 는 **prose 형태로 orchestrator 에게 반환**하고, `.harness/_workspace/retro/F-N.md` 의 실제 write 는 **orchestrator 가 수행** (또는 tech-writer 의 polish 단계에서). 이렇게 하면 reviewer frontmatter `tools: [Read, Grep, Glob, Bash]` 가 변경 없이 유지되고 Claude Code 의 권한 enforcement 와 Context 문서가 일치한다.
+
+`spec.yaml` 직접 참조는 허용 (audit) 하되 SSoT 본체는 수정 금지.
 
 ## 역할
 

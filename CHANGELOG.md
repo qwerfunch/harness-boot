@@ -16,6 +16,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - `features[].performance_budget` schema 필드 — v0.6
 - 나머지 10 expert agents fixture — v0.6
 
+## [0.6.1] — 2026-04-24
+
+**Critical fixes surfaced by pre-push audit. v0.6.0 was not pushed; these patches land before first publish.**
+
+### Fixed
+
+- **Event schema drift** (v0.6.0 blocker) — `scripts/retro.py::analyze()` was reading `"feature_id"` and `"feature_completed"`, but the canonical emitter `scripts/work.py` uses `"feature"` + `"feature_done"`. retro ran blind against real pipelines (tests passed only because they fabricated fake events). Aligned retro.py · kickoff.py · design_review.py to emit `"feature"` key (matches work.py). Retro filter now uses `"feature_done"`. tests/unit/test_{retro,kickoff,design_review}.py updated.
+- **Reviewer write permission mismatch** (v0.6.0 blocker) — `agents/reviewer.md` Context prose promised retro.md write exception, but frontmatter `tools: [Read, Grep, Glob, Bash]` blocks Write. Claude Code enforces via frontmatter, not prose. Resolved by **keeping CQS strict** — reviewer returns draft prose, orchestrator writes the file. reviewer frontmatter unchanged. Retro template comments clarify handoff.
+- **Auto-trigger claims** (v0.6.0 blocker) — `commands/work.md` said kickoff fires "자동" on `activate` and retro on `--complete`, but `scripts/work.py::activate/complete()` never calls them. Documentation softened to "orchestrator 가 prose-contract 로 수동 호출" with v0.7 note for auto-wire. Same applies to design-review trigger.
+- **ROUTING_SHAPES drift risk** — `scripts/kickoff.py::ROUTING_SHAPES` and `commands/work.md` Orchestration Routing table were not mutually validated. `tests/unit/test_work_routing.py::KickoffRoutingShapesParityTests` adds 3 checks (forward/reverse shape coverage + per-shape agent inclusion).
+
+### Known (documented · deferred to v0.7)
+
+- `decisions[].supersedes[]` — 렌더만 되고 **old ADR 의 `status=superseded` 자동 전이는 미구현** (수동 업데이트 필요). `skills/spec-conversion` Mode B-2 또는 별도 preprocessor 에서 v0.7 에 구현 예정.
+- `state.yaml.features[].skipped_agents[]` — schema 문서화 됐으나 `scripts/state.py` · `scripts/work.py` 가 읽거나 쓰지 않음. v0.7 에서 skip policy 실 구현 시 연동.
+- `features[].performance_budget` — schema 만 존재, `gate_runner.py` 에 연동 없음. v0.7 에서 performance-engineer 자동 트리거에 사용.
+- `agents/visual-designer.md` / `a11y-auditor.md` Tier 1 only — motion/a11y 결정이 플랫폼 의존이나 현재 `constraints.tech_stack` 접근 없음. v0.7 에 `render_domain.py` 에 `## Platform` 섹션 추가 검토.
+
+### Tests
+
+535/535 green (기존 532 + 3 routing parity). self_check 5/5 PASS.
+
 ## [0.6.0] — 2026-04-24
 
 **3-Anchor Tier orchestration + real-team ceremonies (kickoff · design-review · Q&A · retro). 사용자 우려 "모든 에이전트에 전부 주입은 과도 · 플래너 산출이 다른 에이전트로 전달되어야" 에 대한 구조적 답.**

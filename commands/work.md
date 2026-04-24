@@ -177,7 +177,7 @@ ui_surface: {present, platforms, has_audio}  # (있을 때만)
 
 ## Kickoff Ceremony (v0.6)
 
-`/harness:work F-N activate` state 전이 직후 orchestrator 가 자동 실행. Discovery 단계(spec 최초 작성)는 해당 없음 — 기존 spec 에서 새 feature activate 시만.
+`/harness:work F-N activate` state 전이 직후 orchestrator 가 **prose-contract 로 수동 호출** (v0.6 범위 — `scripts/work.py` 가 kickoff.py 를 자동 subprocess 호출 하지는 않음 · v0.7 에서 auto-wire 검토). Discovery 단계(spec 최초 작성)는 해당 없음 — 기존 spec 에서 새 feature activate 시만.
 
 **실행 메커니즘**:
 
@@ -238,7 +238,7 @@ python3 "$PLUGIN_ROOT/scripts/inbox.py" --harness-dir .harness --feature F-N
 
 ## Design Review Ceremony (v0.6)
 
-`ux-architect` 가 `.harness/_workspace/design/flows.md` 를 저장한 뒤 orchestrator 가 호출 (또는 `/harness:work F-N --design-review` 명시). 고정 reviewer 3 명(+ has_audio 시 audio-designer 포함 4 명).
+`ux-architect` 가 `.harness/_workspace/design/flows.md` 를 저장한 뒤 orchestrator 가 **prose-contract 로 수동 호출** (v0.6 범위 — file-watcher · git hook 없음 · `scripts/work.py` 에도 `--design-review` 플래그 미존재). 고정 reviewer 3 명(+ has_audio 시 audio-designer 포함 4 명).
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/design_review.py" \
@@ -253,7 +253,7 @@ python3 "$PLUGIN_ROOT/scripts/design_review.py" \
 
 ## Retrospective Ceremony (v0.6)
 
-`/harness:work F-N --complete` 성공 직후 orchestrator 가 자동 실행.
+`/harness:work F-N --complete` 성공(gate_5 + evidence) 직후 orchestrator 가 **prose-contract 로 수동 호출** (v0.6 범위 — `scripts/work.py::complete()` 가 retro.py 를 subprocess 호출 하지는 않음).
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/retro.py" --harness-dir .harness --feature F-N
@@ -263,7 +263,7 @@ python3 "$PLUGIN_ROOT/scripts/retro.py" --harness-dir .harness --feature F-N
 - 머신 섹션 (retro.py 자동 채움): What Shipped · First Gate to Fail · Ceremonies summary (kickoff/design-review/questions 카운트).
 - LLM 섹션 (orchestrator 가 reviewer → tech-writer 순차 호출): Risks Materialized vs plan.md · Decisions Revised · Kickoff Predictions Right/Wrong · Reviewer Reflection · Copy Polish.
 
-**author 순서**: reviewer 가 draft (audit 산출물이라 CQS 예외 — `agents/reviewer.md` §Context 명시), tech-writer 가 prose polish. 순차 고정.
+**author 순서**: reviewer 가 draft **prose 반환** (read-only 유지 · CQS — BR-012), orchestrator 가 Reviewer Reflection 섹션에 draft 를 write. 이어 tech-writer 가 Copy Polish 섹션에서 prose 를 직접 다듬음 (tech-writer tools 에 Write/Edit 있음). 순차 고정.
 
 **이벤트**: `feature_retro_written` (분석 summary 포함).
 

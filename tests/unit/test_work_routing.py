@@ -89,6 +89,44 @@ class RoutingContractTests(unittest.TestCase):
                 )
 
 
+class KickoffRoutingShapesParityTests(unittest.TestCase):
+    """v0.6.1 — kickoff.py 의 ROUTING_SHAPES 가 commands/work.md 표와 정합해야.
+
+    두 source 가 drift 하면 kickoff 가 잘못된 agent 를 소환하거나 work.md 가 거짓말.
+    """
+
+    def setUp(self):
+        import sys
+        scripts_path = str(REPO_ROOT / "scripts")
+        if scripts_path not in sys.path:
+            sys.path.insert(0, scripts_path)
+        import kickoff as kk  # noqa: E402
+
+        self.kickoff_shapes = kk.ROUTING_SHAPES
+        self.work_rows = dict(_parse_routing_table(WORK_MD.read_text(encoding="utf-8")))
+
+    def test_all_kickoff_shapes_appear_in_work_md(self):
+        """kickoff.py 가 아는 shape 가 work.md 표에도 있어야."""
+        missing = set(self.kickoff_shapes.keys()) - set(self.work_rows.keys())
+        self.assertFalse(missing, f"shapes in kickoff.py not in work.md: {missing}")
+
+    def test_work_md_shapes_covered_by_kickoff(self):
+        """work.md 표의 모든 shape 가 kickoff.py 에 등록되어야 (역방향 drift 방지)."""
+        missing = set(self.work_rows.keys()) - set(self.kickoff_shapes.keys())
+        self.assertFalse(missing, f"shapes in work.md not in kickoff.py: {missing}")
+
+    def test_every_kickoff_agent_appears_in_work_md_chain(self):
+        """kickoff 의 agent 들이 같은 shape 의 work.md chain 에도 등장해야."""
+        for shape, agents in self.kickoff_shapes.items():
+            chain = self.work_rows.get(shape, "")
+            for agent in agents:
+                self.assertIn(
+                    agent,
+                    chain,
+                    f"shape={shape}: agent '{agent}' in kickoff but not in work.md chain",
+                )
+
+
 class ConflictResolutionTests(unittest.TestCase):
     def setUp(self):
         self.body = WORK_MD.read_text(encoding="utf-8")
