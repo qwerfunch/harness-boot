@@ -1,0 +1,35 @@
+"""conftest.py — src/ pythonpath injection for pytest + subprocess smoke.
+
+Optional · Python projects only. Ship this to the repo root (same level as
+``src/`` and ``tests/``) when your layout puts source under ``src/<pkg>/``.
+Two things it handles:
+
+1. **pytest collection** — ``sys.path`` gets ``src/`` prepended so ``from
+   mypkg import X`` works without installing the package editable.
+2. **subprocess smoke** — ``PYTHONPATH`` env var gets the same directory
+   appended so any ``subprocess.run([sys.executable, "-m", "mypkg", ...])``
+   call from inside a test inherits the import path. (This is what
+   v0.8.6 e2e smoke uncovered — `python -m greet world` failed until
+   PYTHONPATH was propagated.)
+
+Delete if your project doesn't need it (e.g., packaged with
+``pip install -e .`` or flat layout with no ``src/``).
+"""
+
+import os
+import sys
+from pathlib import Path
+
+SRC = Path(__file__).parent / "src"
+
+if SRC.is_dir():
+    # pytest discovery
+    if str(SRC) not in sys.path:
+        sys.path.insert(0, str(SRC))
+
+    # subprocess propagation
+    env_pythonpath = os.environ.get("PYTHONPATH", "")
+    if str(SRC) not in env_pythonpath.split(os.pathsep):
+        os.environ["PYTHONPATH"] = os.pathsep.join(
+            filter(None, [str(SRC), env_pythonpath])
+        )

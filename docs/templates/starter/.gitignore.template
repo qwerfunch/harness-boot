@@ -1,0 +1,38 @@
+# harness-boot — mutable state (regenerable from spec.yaml)
+#
+# Written by /harness:init (v0.8.9+). If your project already has a .gitignore,
+# merge these lines into it rather than overwriting.
+
+# Runtime state · append-only logs · derived artifacts
+.harness/events.log
+.harness/events.log.*     # rotated monthly files (v0.8.6)
+.harness/state.yaml
+.harness/harness.yaml
+.harness/domain.md
+.harness/architecture.yaml
+
+# Working outputs — regenerated each ceremony
+.harness/_workspace/
+
+# Python (if your project uses Python)
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+.mypy_cache/
+.ruff_cache/
+
+# Node/pnpm/yarn (if your project uses Node)
+node_modules/
+.pnpm-store/
+dist/
+
+# IDE noise
+.vscode/
+.idea/
+.DS_Store
+
+# What you do keep under version control:
+# - .harness/spec.yaml       ← the SSoT you edit
+# - .harness/chapters/*.md   ← your $include prose (if any)
+# - .harness/protocols/*.md  ← user protocols (if any)
