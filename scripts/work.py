@@ -126,13 +126,18 @@ def _autowire_kickoff(harness_dir: Path, fid: str, *, force: bool = False) -> No
         return
 
 
-def _autowire_retro(harness_dir: Path, fid: str) -> None:
-    """Fire retro ceremony after complete. Silent skip when spec.yaml missing (symmetry with kickoff)."""
+def _autowire_retro(harness_dir: Path, fid: str, *, force: bool = False) -> None:
+    """Fire retro ceremony after complete. Silent skip when spec.yaml missing (symmetry with kickoff).
+
+    Idempotency (v0.8.7): ``retro.generate_retro`` is idempotent via file-exists
+    check. Pass ``force=True`` (via ``--retro`` CLI flag) to explicitly
+    re-generate and overwrite any user curation of the retro prose.
+    """
     spec = _load_spec(harness_dir)
     if spec is None:
         return
     try:
-        _retro.generate_retro(harness_dir, feature_id=fid)
+        _retro.generate_retro(harness_dir, feature_id=fid, force=force)
     except Exception:
         return
 
@@ -418,9 +423,19 @@ def block(harness_dir: Path, fid: str, reason: str, *, kind: str = "blocker") ->
 
 
 def complete(harness_dir: Path, fid: str) -> WorkResult:
-    """done 전이. Gate 5 가 pass 인지 사전 체크 — BR-004 (Iron Law) 준수."""
+    """done 전이. Gate 5 가 pass 인지 사전 체크 — BR-004 (Iron Law) 준수.
+
+    Idempotency (v0.8.7): 이미 ``status=done`` 인 피처에 재호출하면 no-op +
+    ``queried`` 반환. feature_done event 중복 발화 없음 · retro autowire
+    재실행 없음. (e2e 실증에서 이 gap 이 드러남 — v0.8.2 의 kickoff 패턴과 동일.)
+    """
     state = State.load(harness_dir)
     f = state.ensure_feature(fid)
+    if f.get("status") == "done":
+        res = _summarize(state, fid)
+        res.action = "queried"
+        res.message = f"{fid} is already done — no re-completion"
+        return res
     gates = f.get("gates", {}) or {}
     gate5 = gates.get("gate_5", {})
     if not (isinstance(gate5, dict) and gate5.get("last_result") == "pass"):
@@ -617,6 +632,11 @@ def main(argv: list[str] | None = None) -> int:
         help="force re-generate .harness/_workspace/kickoff/F-N.md (v0.8.2 — overrides idempotent skip)",
     )
     parser.add_argument(
+        "--retro",
+        action="store_true",
+        help="force re-generate .harness/_workspace/retro/F-N.md (v0.8.7 — overrides idempotent skip)",
+    )
+    parser.add_argument(
         "--remove",
         metavar="FID",
         default=None,
@@ -658,6 +678,13 @@ def main(argv: list[str] | None = None) -> int:
             _autowire_kickoff(args.harness_dir, args.feature, force=True)
             res = _summarize(State.load(args.harness_dir), args.feature)
             res.action = "kickoff_refreshed"
+        elif args.retro:
+            if not args.feature:
+                print("error: feature id required with --retro", file=sys.stderr)
+                return 2
+            _autowire_retro(args.harness_dir, args.feature, force=True)
+            res = _summarize(State.load(args.harness_dir), args.feature)
+            res.action = "retro_refreshed"
         elif args.gate:
             if not args.feature:
                 print("error: feature id required with --gate", file=sys.stderr)

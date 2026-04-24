@@ -305,9 +305,21 @@ python3 "$PLUGIN_ROOT/scripts/ceremonies/design_review.py" \
 
 **이벤트**: `design_review_opened`.
 
-## Retrospective Ceremony (v0.6)
+## Retrospective Ceremony (v0.6 + v0.8.7 idempotency)
 
 `/harness:work F-N --complete` 성공(gate_5 + evidence) 직후 `scripts/work.py::complete()` 가 **자동으로** `retro.generate_retro` 를 호출한다 (v0.7 auto-wire). spec.yaml 미존재 시 silent skip (kickoff 와 대칭).
+
+**Idempotency (v0.8.7)**:
+
+- `--complete` 를 **이미 done 인 피처에 재호출** 시 no-op + `action=queried` 반환. `feature_done` · `feature_retro_written` event 중복 발화 없음.
+- `.harness/_workspace/retro/F-N.md` 이 이미 존재하면 덮어쓰지 않음 — orchestrator 가 reviewer → tech-writer 로 채운 prose 가 재생성으로 날아가지 않음.
+- 재생성이 필요하면 `--retro` 플래그로 force:
+
+```bash
+python3 "$PLUGIN_ROOT/scripts/work.py" F-N --retro --harness-dir .harness
+```
+
+(kickoff 의 `--kickoff` · design-review 의 `--design-review` 와 같은 패턴. 3 ceremony 모두 일관.)
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/ceremonies/retro.py" --harness-dir .harness --feature F-N
