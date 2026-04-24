@@ -29,6 +29,42 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - ~~Event log rotation (`events.log.YYYYMM`)~~ ✅ v0.8.6
 - AC coverage drift (check.py 11 번째 drift 후보)
 
+## [0.9.1] — 2026-04-25
+
+**UX re-architecture step 2 — title fuzzy + @F-N resolver. v0.9 의 "F-N 외우지 않음" 기반 모듈.**
+
+### Added
+
+- **`scripts/ui/`** — 신규 subpackage. UI helpers · slash command 와 결정론 scripts 사이 라우팅 레이어. 향후 dashboard · intent_planner · sync_gate · confirm 모듈의 그릇.
+- **`scripts/ui/feature_resolver.py::resolve(query, spec) -> ResolveResult`** — 사용자 입력을 spec.features[] 의 dict 로 해결.
+  - `@F-N` 명시 prefix (최우선) — 파워 유저 escape · title 매칭 절대 섞이지 않음.
+  - 평문 `F-N` (caps-insensitive) — 기존 CLI 호환.
+  - 제목 substring fuzzy (대소문자 무시 · 공백 정규화).
+  - 결과 3 종: `single` · `multiple` (2+ 매칭 · caller 가 메뉴 제시) · `none`.
+  - 순수 함수 · I/O 없음 · state 변경 없음.
+- **`tests/unit/test_feature_resolver.py`** — 21 tests 커버:
+  - `@F-N` 명시 (존재/부재/잘못된 패턴/공백)
+  - 평문 `F-N` (존재/부재)
+  - Title fuzzy (단일/다중/대소문자/공백/부분 단어/무매칭)
+  - Edge cases (빈 query · 빈 features · title 없는 feature)
+  - 우선순위 (@F-N · F-N 이 title 보다 우선)
+  - ResolveResult 데이터 형상
+
+### v0.9.x 진행
+
+| 버전 | 상태 |
+|---|---|
+| v0.9.0 | ✅ namespace rename + 6 command 삭제 |
+| **v0.9.1** | ✅ feature_resolver 모듈 + 테스트 (wiring 은 v0.9.2) |
+| v0.9.2 | ⏳ dashboard · intent routing · Plan+Y/n UX |
+| v0.9.3 | ⏳ Iron Law D · 누적 declared evidence |
+| v0.9.4 | ⏳ 시나리오 매핑 integration test |
+| v0.9.5 | ⏳ project.mode prototype/product 축 |
+
+### Tests
+
+646/646 green (625 + 21). self_check 5/5 PASS.
+
 ## [0.9.0] — 2026-04-24
 
 **UX re-architecture · 첫 단계. Plugin namespace rename + command surface 8 → 2 collapse. 내부 엔진 변화 없음 · slash command 재조직만.**
