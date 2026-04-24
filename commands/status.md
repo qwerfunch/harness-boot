@@ -53,5 +53,5 @@ python3 "$PLUGIN_ROOT/scripts/status.py" --harness-dir "$(pwd)/.harness" --json
 
 ## 참조
 
-- `scripts/status.py` · `scripts/state.py` · `scripts/events.py`.
+- `scripts/status.py` · `scripts/core/state.py` · `scripts/events.py`.
 - BR-012 (CQS 원칙): 진단 명령은 파일 수정 금지.

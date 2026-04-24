@@ -207,7 +207,7 @@ class IntegrationWithCanonicalHashTests(ScratchDirMixin, unittest.TestCase):
     """F-009 + F-010 결합: expand 전후 해시가 다르고, 같은 expand 는 같은 해시."""
 
     def test_expand_changes_hash(self):
-        import canonical_hash as ch
+        from core import canonical_hash as ch
 
         self.write_chapter("d.md", "bodytext")
         spec = {"project": {"description": {"$include": "d.md"}}}
@@ -217,7 +217,7 @@ class IntegrationWithCanonicalHashTests(ScratchDirMixin, unittest.TestCase):
         self.assertNotEqual(hash_raw, hash_expanded)
 
     def test_expand_is_deterministic(self):
-        import canonical_hash as ch
+        from core import canonical_hash as ch
 
         self.write_chapter("d.md", "bodytext")
         spec = {"project": {"description": {"$include": "d.md"}}}

@@ -63,7 +63,7 @@ python3 "$PLUGIN_ROOT/scripts/sync.py" --harness-dir "$(pwd)/.harness" --json
 2. `expanded_spec` → `spec_hash_expanded` (include 전개 후 해시).
 3. 각 subtree (project · domain · features[*] · metadata.*) 별 `subtree_hashes` 계산.
 4. 알고리즘: **Canonical YAML → Canonical JSON → SHA-256** (부록 D 명세).
-5. 구현: `scripts/canonical_hash.py` 사용 (v0.2 에서 신설 예정 — 현재는 Python one-liner 로 임시 대체 가능).
+5. 구현: `scripts/core/canonical_hash.py` 사용 (v0.2 에서 신설 예정 — 현재는 Python one-liner 로 임시 대체 가능).
 
 ### 0.4 도메인 뷰 렌더링 (`domain.md`)
 
@@ -141,7 +141,7 @@ python3 "$PLUGIN_ROOT/scripts/sync.py" --harness-dir "$(pwd)/.harness" --json
 
 이 stub 은 **계약 레벨** 만 명시. 다음은 v0.2 구현에서 채워야 함:
 
-- **scripts/canonical_hash.py** (Python) — Canonical YAML→JSON→SHA256. F-010 전용 테스트 벡터 (부록 D.7) 검증.
+- **scripts/core/canonical_hash.py** (Python) — Canonical YAML→JSON→SHA256. F-010 전용 테스트 벡터 (부록 D.7) 검증.
 - **$include 전개 로직** — F-009 모듈. 단순 regex 치환 + 깊이 체크. Python 스크립트로 뽑을지 Claude-인라인으로 처리할지 v0.2 구현 중 결정.
 - **domain.md / architecture.yaml 템플릿** — 이 sync 가 렌더링할 대상 형식. `docs/templates/derived/` 에 추가 예정.
 - **edit-wins 감지** — harness.yaml 의 `output_hash` 와 현재 파일 해시 비교. F-018 에서 심화.

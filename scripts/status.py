@@ -36,7 +36,7 @@ _THIS = Path(__file__).resolve().parent
 if str(_THIS) not in sys.path:
     sys.path.insert(0, str(_THIS))
 
-from state import State  # noqa: E402
+from core.state import State  # noqa: E402
 
 
 @dataclass

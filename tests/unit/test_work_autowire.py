@@ -22,7 +22,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-import kickoff as kk  # noqa: E402
+from ceremonies import kickoff as kk  # noqa: E402
 import work  # noqa: E402
 
 
@@ -283,7 +283,7 @@ class PerfGateBudgetIntegrationTests(ScratchHarness, unittest.TestCase):
         )
         self.assertEqual(res.message.split()[1], "PASS")
         # Find the gate_run evidence entry
-        from state import State as _State
+        from core.state import State as _State
         st = _State.load(self.harness)
         ev = st.get_feature("F-0").get("evidence", [])
         gate_ev = [e for e in ev if e["kind"] == "gate_run"]
@@ -303,7 +303,7 @@ class PerfGateBudgetIntegrationTests(ScratchHarness, unittest.TestCase):
             project_root=self.tmp,
             override_command=["true"],
         )
-        from state import State as _State
+        from core.state import State as _State
         st = _State.load(self.harness)
         ev = st.get_feature("F-0").get("evidence", [])
         # The most recent gate_run for gate_0 should not include "budget:"

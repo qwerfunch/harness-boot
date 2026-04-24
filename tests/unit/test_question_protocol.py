@@ -12,7 +12,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-import inbox as ib  # noqa: E402
+from ceremonies import inbox as ib  # noqa: E402
 
 
 def _write_question(

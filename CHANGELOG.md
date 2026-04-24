@@ -16,6 +16,44 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - Design review auto-wire (v0.8+ — ux-architect flows.md save 훅 모호성)
 - gate_perf auto-detect heuristics (lighthouse.config.js · k6 · wrk 설정 감지) — v0.8+
 
+## [0.7.6] — 2026-04-24
+
+**Deeper scripts/ reorganization — root cleaned to 6 primary command entries. Internal refactor only; `/harness:*` behavior byte-for-byte identical.**
+
+### Refactored
+
+- **13 더 많은 파일 서브패키지로 이동** (v0.7.5 는 내부 전용 8 만 이동, v0.7.6 은 공개 CLI 포함 모두 정리):
+  - `state.py` · `canonical_hash.py` · `plugin_root.py` → `core/`
+  - `gate_runner.py` → `gate/runner.py`
+  - `kickoff.py` · `retro.py` · `design_review.py` · `inbox.py` → `ceremonies/`
+  - `validate_spec.py` → `spec/validate.py`
+  - `explain_spec.py` → `spec/explain.py`
+  - `spec_diff.py` → `spec/diff.py`
+  - `spec_mode_classifier.py` → `spec/mode_classifier.py`
+  - `mode_b_extract.py` → `spec/mode_b_extract.py`
+- **scripts/ 루트에 6 primary CLI 만 남음**: `sync · work · status · check · events · metrics`. 4 subdir (`core` · `gate` · `ceremonies` · `spec` · `render`) 로 나머지 분산.
+- `commands/*.md` 의 `$PLUGIN_ROOT/scripts/<name>.py` 참조 18 군데 일괄 업데이트. 사용자는 `/plugin update` 한 번이면 byte-for-byte 동일 경험.
+- 모든 cross-import 경로 업데이트 (`import state` → `from core.state import` 등). 3 루트 CLI (work/check/sync/status) + 13 moved 파일 + 21 test 파일 커버.
+- `scripts/self_check.sh` 의 `validate_spec.py` 경로 보정.
+
+### Added
+
+- 새 3 서브패키지 `__init__.py` — 책임 경계 + 호출 방향 명시 (`core` 는 아무 것도 호출 않음; 다른 서브패키지는 `core` 만 호출; 서브패키지 간 상호 호출 금지).
+- `scripts/README.md` 전면 개정 — 5 서브패키지 레이아웃 · 의존 그래프 · 공개 CLI 표.
+
+### Changed — 버전 정책 명시화
+
+v0.7.5 에서 "공개 CLI 경로 변경은 major bump" 라고 기록했던 문구를 **철회**. 실제 계약은:
+
+- **사용자 대면**: `/harness:*` 슬래시 명령만. 이게 진짜 공개 API.
+- **내부 구현 경로**: `scripts/**/*.py` 는 patch 단위로 자유롭게 이동 가능. commands/*.md 가 동일 커밋에서 갱신되고 테스트가 녹색이면 OK. `/plugin update` 후 사용자는 변화를 인지하지 않음.
+
+이 구분이 scripts/README.md §"버전 정책" 에 고정됨.
+
+### Tests
+
+602/602 green (baseline 동일). self_check 5/5 PASS. `git mv` 로 history 보존.
+
 ## [0.7.5] — 2026-04-24
 
 **Internal refactor — scripts/ directory organization + professional docstrings. No user-facing behavior change.**

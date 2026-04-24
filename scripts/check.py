@@ -48,9 +48,9 @@ _THIS = Path(__file__).resolve().parent
 if str(_THIS) not in sys.path:
     sys.path.insert(0, str(_THIS))
 
-import canonical_hash as ch  # noqa: E402
+from core import canonical_hash as ch  # noqa: E402
+from core.state import State  # noqa: E402
 from spec import include_expander as ie  # noqa: E402
-from state import State  # noqa: E402
 
 
 DriftKind = str  # "Generated" | "Derived" | "Spec" | "Include" | "Evidence" | "Code" | "Doc" | "Anchor" | "Protocol"
