@@ -2,7 +2,7 @@
 
 > 자연어 아이디어를 **스펙으로 굳히고**, 전문가 에이전트 팀이 **역할별로 협업해** 실제 돌아가는 코드까지 이끌어내는 **AI 개발 하네스 프레임워크**.
 
-[![version](https://img.shields.io/badge/plugin-v0.9.4-blue)](.claude-plugin/plugin.json)
+[![version](https://img.shields.io/badge/plugin-v0.9.5-blue)](.claude-plugin/plugin.json)
 [![spec](https://img.shields.io/badge/spec-v2.3.8-green)](docs/schemas/spec.schema.json)
 [![tests](https://img.shields.io/badge/tests-742%20passing-brightgreen)](tests)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
@@ -304,7 +304,7 @@ harness-boot/
 
 ## 현재 상태 · 기여
 
-**v0.9.4** — 2 개 명령어 UX + 완료 근거 원칙 + 시나리오 계약 완결. 742 tests · self_check 5/5.
+**v0.9.5** — 2 개 명령어 UX + 완료 근거 원칙 + 시나리오 계약 + 사용자 친화 README. 742 tests · self_check 5/5.
 
 - **버그 · 제안**: [GitHub Issues](https://github.com/qwerfunch/harness-boot/issues)
 - **변경 이력**: [CHANGELOG.md](CHANGELOG.md)

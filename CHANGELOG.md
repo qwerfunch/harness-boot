@@ -29,6 +29,44 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - ~~Event log rotation (`events.log.YYYYMM`)~~ ✅ v0.8.6
 - AC coverage drift (check.py 11 번째 drift 후보)
 
+## [0.9.5] — 2026-04-25
+
+**Docs-only patch — README / 플러그인 description 사용자 친화 개편.**
+
+v0.9.4 에서 나온 README 가 타이틀 문장 가치 제안 부족 · 내부 용어 (F-N · AC · Iron Law D · CQS · drift 10) 노출 · "솔로 음악인 연습용 포모도로" niche 예시 · 구조 다이어그램 부재로 사용자가 이해하기 어렵다는 피드백. 이 릴리즈는 코드 변경 없이 문서만 교체.
+
+### Changed
+
+- **`README.md`** 전면 재작성 — 가치 제안 기반 재배열:
+  - 타이틀 문장: v0.9.3 의 원문 복원 ("자연어 아이디어를 스펙으로 굳히고, 전문가 에이전트 팀이 역할별로 협업해 ...").
+  - **전체 구조** 섹션 신설 — 아이디어 → `spec.yaml` (단일 원천) → 파생 문서 + 전문가 팀 → `/harness-boot:work` 흐름을 ASCII 로 시각화.
+  - 예시 교체 — "솔로 음악인 연습용 포모도로 타이머" → **"간단한 할 일 관리 앱"** / "로그인 기능" / "회원가입" 등 모두 이해 가능한 보통 이름.
+  - 내부 용어 은닉 — F-N · @F-N · AC · gate_0~5 · Iron Law D · CQS · drift 10-way · declared evidence 를 사용자 섹션에서 제거. 쉬운 문구로 풀어 서술 (유일 잔존 위치: CI 사용 예시 코드 블록 — 기술 맥락상 적절).
+  - **이런 분에게 유용합니다** 재작성 — negative framing ("'다 됐다' 통제") 제거, positive value 기반 (일관 흐름 · 역할 분리 · 결정 맥락 유지 · 축적된 스펙 위 협업).
+  - "일상 / 매일" → "작업 / 이후 작업" 용어 통일 (4 곳).
+  - `spec.yaml` 문구 갱신 — "사용자가 직접 편집하는 파일" → "자연어 대화로 자동 생성 · 갱신되는 시스템 원천". 직접 편집은 escape hatch 로 재위치.
+  - 마케팅성 섹션 (Phase 1~4 로드맵 · "적은 인원 × 큰 시스템") 유지 제거.
+- **`.claude-plugin/plugin.json`** · **`.claude-plugin/marketplace.json`** — description 을 타이틀 문장 스타일로 교체: "자연어 아이디어를 스펙으로 굳히고 ... AI 개발 하네스 프레임워크. Claude Code 플러그인 · 2 개 slash command ... 외울 것 최소화 · 자연어 입력."
+
+### v0.9.x 진행
+
+| 버전 | 상태 |
+|---|---|
+| v0.9.0 | ✅ namespace rename + 6 command 삭제 |
+| v0.9.1 | ✅ feature_resolver |
+| v0.9.2 | ✅ dashboard + intent_planner |
+| v0.9.3 | ✅ Iron Law D + hotfix override |
+| v0.9.4 | ✅ 시나리오 매핑 · 통합 테스트 + 플러그인 description 1차 현대화 |
+| **v0.9.5** | ✅ README 사용자 친화 재구성 + 플러그인 description 타이틀 스타일 |
+| v0.9.6 | ⏳ `project.mode` prototype/product 분기 · 의례 경량화 (v0.9.5 로 계획됐던 항목) |
+| v0.10.0 | ⏳ legacy shim 제거 |
+
+### Numbers
+
+- Tests: 742 (unchanged — docs-only).
+- README: 322 줄 (v0.9.4 의 298 대비 + 구조 다이어그램 / walkthrough).
+- self_check 5/5 PASS.
+
 ## [0.9.4] — 2026-04-25
 
 **UX re-architecture step 5 — README 전면 개편 · 시나리오 매핑 계약 테이블 · 플러그인 description 현대화.**
