@@ -175,6 +175,67 @@ test_strategy: tdd | contract | property | smoke
 ui_surface: {present, platforms, has_audio}  # (있을 때만)
 ```
 
+## Kickoff Ceremony (v0.6)
+
+`/harness:work F-N activate` state 전이 직후 orchestrator 가 자동 실행. Discovery 단계(spec 최초 작성)는 해당 없음 — 기존 spec 에서 새 feature activate 시만.
+
+**실행 메커니즘**:
+
+```bash
+python3 "$PLUGIN_ROOT/scripts/kickoff.py" \
+    --harness-dir .harness \
+    --feature F-N \
+    --shape ui_surface.present \
+    --shape feature_completion \
+    [--has-audio]
+```
+
+Python 은 **템플릿만 생성**하고 orchestrator 에게 제어를 반환:
+
+1. `.harness/_workspace/kickoff/F-N.md` — per-role heading · 빈 bullet 자리.
+2. `.harness/events.log` 에 `kickoff_started` append (agents list 포함).
+
+이후 orchestrator 가 prose-contract 으로 각 agent 를 순서대로 소환 ("F-N 의 당신 관점 우려 3 bullet. [Tier anchor] 를 80 단어 내로.") → 응답을 해당 heading 아래 append.
+
+**참여 범위**: 위 Orchestration Routing 표 + feature shape 매칭. 전 14 agent 소환 금지. `kickoff.py` 의 `ROUTING_SHAPES` 상수가 이 표와 1:1 일치 (test_ceremony_routing.py 로 정합성 검증).
+
+**소비**: 이후 이 feature 의 모든 agent 는 `.harness/_workspace/kickoff/F-N.md` 를 briefing 의 일부로 참조 (cross-role empathy 제공).
+
+## Q&A File-Drop Protocol (v0.6)
+
+에이전트가 작업 중 불명확·상충을 발견하면 **직접 다른 agent 를 호출하지 않고** 파일 기반 inbox 에 질문을 떨어뜨린다. orchestrator 가 stage 경계에서 poll.
+
+**파일 규약**: `.harness/_workspace/questions/F-N--<from>--<to>.md`
+
+```markdown
+---
+to: ux-architect
+blocking: true
+needs_reply_by: design-review
+---
+## Question (2026-04-25T10:00:00Z · from frontend-engineer)
+
+AC-2 "즉시 전이" 가 150ms 내인가 300ms 내인가. design tokens/motion/session-start 은
+200ms 인데 AC 문서에 명시 없음.
+
+## Answer (2026-04-25T10:30:00Z · from ux-architect)
+
+200ms 로 통일. flows.md 의 motion/session-start 기준이 canonical.
+```
+
+**폴링**:
+
+```bash
+python3 "$PLUGIN_ROOT/scripts/inbox.py" --harness-dir .harness --feature F-N
+# → 🔒/⬜️ · 🔒 blocking · F-N · from → to · path
+```
+
+`--json` 으로 machine-parse · `--all` 로 answered 포함.
+
+**이벤트**: orchestrator 는 새 question 파일 감지 시 `question_opened` · answer append 시 `question_answered` 를 `events.log` 에 append (PR-ε retro 에서 집계).
+
+**왜 파일 기반**: daemon · routing 복잡도 0, `git grep` 으로 이력 추적, PR diff 로 리뷰 가능. Slack 스레드의 로컬 등가물.
+
 ## 참조
 
 - `scripts/work.py` — 실제 구현.

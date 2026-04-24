@@ -1,0 +1,187 @@
+#!/usr/bin/env python3
+"""kickoff.py — v0.6 F-N kickoff ceremony template generator.
+
+Generates `.harness/_workspace/kickoff/F-N.md` with per-role headings for
+the agents matched by the feature shape. This is a **template only** —
+Python cannot fan-out to Claude Code agents directly; orchestrator fills
+each heading via prose-contract invocations (routing table in
+`commands/work.md` §Orchestration Routing).
+
+Also appends a `kickoff_started` event to `.harness/events.log`.
+
+Usage (library):
+    from kickoff import generate_kickoff
+    generate_kickoff(harness_dir, feature_id="F-1", shapes=["ui_surface.present"])
+
+Usage (CLI):
+    python3 scripts/kickoff.py --harness-dir .harness --feature F-1 \\
+        --shape ui_surface.present --shape feature_completion
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Iterable
+
+
+# Mirrors commands/work.md §Orchestration Routing table.
+# test_ceremony_routing.py (PR-ε) will assert this map stays in sync.
+ROUTING_SHAPES: dict[str, list[str]] = {
+    "baseline-empty-vague": ["researcher", "product-planner"],
+    "ui_surface.present": [
+        "ux-architect",
+        "visual-designer",
+        "a11y-auditor",
+        "frontend-engineer",
+        "software-engineer",
+    ],
+    "sensitive_or_auth": ["security-engineer", "reviewer"],
+    "performance_budget": ["performance-engineer"],
+    "pure_domain_logic": ["backend-engineer", "software-engineer"],
+    "feature_completion": [
+        "qa-engineer",
+        "integrator",
+        "tech-writer",
+        "reviewer",
+    ],
+}
+
+
+def agents_for_shapes(shapes: Iterable[str], *, has_audio: bool = False) -> list[str]:
+    """Resolve shape list → deduped, order-preserved agent list."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for shape in shapes:
+        for agent in ROUTING_SHAPES.get(shape, []):
+            if agent in seen:
+                continue
+            seen.add(agent)
+            out.append(agent)
+        if shape == "ui_surface.present" and has_audio:
+            if "audio-designer" not in seen:
+                seen.add("audio-designer")
+                # Insert audio-designer right after visual-designer per plan §Design Review.
+                try:
+                    idx = out.index("a11y-auditor")
+                    out.insert(idx, "audio-designer")
+                except ValueError:
+                    out.append("audio-designer")
+    return out
+
+
+def _template(feature_id: str, agents: list[str], timestamp: str) -> str:
+    lines: list[str] = []
+    lines.append(f"# Kickoff — {feature_id}")
+    lines.append("")
+    lines.append(f"> 자동 생성 — {timestamp}")
+    lines.append(">")
+    lines.append(
+        "> `scripts/kickoff.py` 가 이 템플릿을 만들고, orchestrator 가 각 agent 를 "
+        "소환해 섹션을 채운다 (80 단어 내 3 bullet). cross-role empathy 용."
+    )
+    lines.append("")
+    lines.append(f"## 참여 에이전트 ({len(agents)})")
+    lines.append("")
+    for a in agents:
+        lines.append(f"- `@harness:{a}`")
+    lines.append("")
+    lines.append("---")
+    lines.append("")
+    for agent in agents:
+        lines.append(f"## {agent} 의 관점")
+        lines.append("")
+        lines.append("<!-- orchestrator: 이 agent 의 Tier anchor 기반 3-bullet 우려 · 80 단어 이내 -->")
+        lines.append("")
+        lines.append("- ")
+        lines.append("- ")
+        lines.append("- ")
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _append_event(harness_dir: Path, event: dict) -> None:
+    """Append a single JSON line to events.log. Matches scripts/work.py pattern."""
+    log_path = harness_dir / "events.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+
+def generate_kickoff(
+    harness_dir: Path,
+    *,
+    feature_id: str,
+    shapes: Iterable[str],
+    has_audio: bool = False,
+    timestamp: str | None = None,
+) -> Path:
+    """Create kickoff template + event. Returns path to the kickoff.md."""
+    if timestamp is None:
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    agents = agents_for_shapes(shapes, has_audio=has_audio)
+    if not agents:
+        raise ValueError(
+            f"no agents matched for shapes={list(shapes)}; check ROUTING_SHAPES"
+        )
+
+    kickoff_dir = harness_dir / "_workspace" / "kickoff"
+    kickoff_dir.mkdir(parents=True, exist_ok=True)
+    kickoff_path = kickoff_dir / f"{feature_id}.md"
+    kickoff_path.write_text(_template(feature_id, agents, timestamp), encoding="utf-8")
+
+    _append_event(
+        harness_dir,
+        {
+            "ts": timestamp,
+            "type": "kickoff_started",
+            "feature_id": feature_id,
+            "shapes": list(shapes),
+            "agents": agents,
+            "path": str(kickoff_path.relative_to(harness_dir)),
+        },
+    )
+
+    return kickoff_path
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Generate kickoff.md template + events.log entry"
+    )
+    parser.add_argument(
+        "--harness-dir", type=Path, default=Path(".harness")
+    )
+    parser.add_argument("--feature", required=True, help="F-N id")
+    parser.add_argument(
+        "--shape",
+        action="append",
+        required=True,
+        help="Routing shape (repeatable)",
+    )
+    parser.add_argument("--has-audio", action="store_true")
+    parser.add_argument("--timestamp", default=None)
+    args = parser.parse_args(argv)
+
+    try:
+        path = generate_kickoff(
+            args.harness_dir,
+            feature_id=args.feature,
+            shapes=args.shape,
+            has_audio=args.has_audio,
+            timestamp=args.timestamp,
+        )
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+
+    print(str(path))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
