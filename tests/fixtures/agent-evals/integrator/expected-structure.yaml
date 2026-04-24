@@ -1,0 +1,26 @@
+# Contract for integrator output.
+
+agent: integrator
+output_path: .harness/_workspace/integration/notes.md
+
+required_sections_in_order:
+  - "## Assembly Checklist"   # main.ts 조립 순서 · module wire
+  - "## package.json Scripts" # dev/build/preview/test/smoke 5 종
+  - "## CI Workflow"          # GitHub Actions matrix + Electron builder
+  - "## Gate 5 Override"      # harness.yaml.gate_commands.gate_5 커맨드
+
+required_phrases:
+  - "pnpm"                     # workspace manager (from ADR-001)
+  - "matrix:"                  # CI matrix for web+electron
+  - "contextIsolation: true"   # security-engineer finding 반영
+  - "gate_5"                   # harness integration point
+  - "base:"                    # Vite base path
+  - "ADR-"                     # references decisions catalog
+
+forbidden_phrases:
+  - "TODO"
+  - "auto-update"              # deferred to v0.9+ explicitly
+  - "WCAG"                     # a11y-auditor territory
+  - "LUFS"                     # audio-designer territory
+  - "ADR-999"                  # no-op reference
+  - "새 ADR 추가"               # integrator must not mint new ADRs

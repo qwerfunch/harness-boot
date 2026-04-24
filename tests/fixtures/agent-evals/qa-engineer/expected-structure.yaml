@@ -1,0 +1,24 @@
+# Contract for qa-engineer output.
+
+agent: qa-engineer
+output_path: .harness/_workspace/qa/strategy.md
+
+required_sections_in_order:
+  - "## Risk Map"             # R-001~R-003 각 risk 에 대응하는 test type
+  - "## Test Strategy"        # 피라미드 분포 + 도구 선택
+  - "## Coverage Plan"        # gate_3 threshold 매핑
+
+required_phrases:
+  - "R-001"                   # risk catalog reference
+  - "vitest"                  # unit test tool
+  - "Playwright"              # e2e tool
+  - "피라미드"                 # test pyramid concept (Korean project default)
+  - "결정성"                   # determinism (R-001 대응)
+  - "stub"                    # external dependency stubbing policy
+
+forbidden_phrases:
+  - "retry:"                  # flaky retry is explicitly banned
+  - "TODO"
+  - "bench"                   # performance-engineer territory (중복 금지)
+  - "LUFS"                    # audio-designer territory
+  - "WCAG"                    # a11y-auditor territory

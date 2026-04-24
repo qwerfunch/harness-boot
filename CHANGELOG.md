@@ -12,10 +12,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - Marketplace PR (anthropic/claude-plugins-official) — **v1.0 릴리즈 후** 제출 (사전 제출 없음)
 - v1.0 readiness: design-review auto-wire · 나머지 8 agent fixtures · Known Issues 0 · migration guide · README polish
 
-**v0.8 범위 후보** (v0.8.0 에서 PR-α 착수 완료 · PR-β 미착수):
+**v0.8 완결** (PR-α + PR-β):
 
-- ~~Design review auto-wire — ux-architect flows.md save 훅~~ ✅ v0.8.0
-- 나머지 agent fixtures (backend/security/performance/audio/qa/integrator/orchestrator/reviewer) — v0.8.1 예정
+- ~~Design review auto-wire~~ ✅ v0.8.0
+- ~~나머지 agent fixtures (8 종)~~ ✅ v0.8.1 — 15/15 fixtures 전원 완결
 
 **v0.9 범위 후보 (novel axis)**:
 
@@ -28,6 +28,39 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - Cross-language hash test vectors (Appendix D.7)
 - Event log rotation (`events.log.YYYYMM`)
 - AC coverage drift (check.py 11 번째 drift 후보)
+
+## [0.8.1] — 2026-04-24
+
+**Agent eval fixture coverage reaches 15/15 — v1.0 체크리스트의 fixture 항목 완결.**
+
+### Added — 8 새 fixtures
+
+| Agent | producer_type | output_path |
+|---|---|---|
+| `backend-engineer` | code | null (OpenAPI + src/domain + tests/domain 조합) |
+| `security-engineer` | markdown | `.harness/_workspace/security/report.md` (STRIDE + Findings + Verdict) |
+| `performance-engineer` | markdown | `.harness/_workspace/perf/report.md` (Budget + Measurements + Verdict) |
+| `audio-designer` | yaml | `.harness/_workspace/design/audio.yaml` (sound/loudness/freq_strategy/reduced_motion) |
+| `qa-engineer` | markdown | `.harness/_workspace/qa/strategy.md` (Risk Map + Test Strategy + Coverage) |
+| `integrator` | markdown | `.harness/_workspace/integration/notes.md` (Assembly + CI + Gate 5 Override) |
+| `orchestrator` | markdown | null — prose returned to user (상태 전이 + 참여 에이전트 + BLOCK + 다음 단계) |
+| `reviewer` | markdown | null — prose returned to orchestrator (CQS · BR-012 엄수) |
+
+각 fixture 는 역할 경계 침범을 막는 `forbidden_phrases` 포함:
+- qa-engineer 가 `LUFS` (audio-designer 어휘) · `bench` (performance-engineer 영역) 사용 금지
+- integrator 가 `새 ADR 추가` 금지 (product-planner 영역)
+- reviewer 가 `Edit(` · `Write(` · `TODO: fix` 사용 금지 (CQS 위반 정후)
+- orchestrator 가 `WCAG SC` · `CVSS` 사용 금지 (도메인 전문가 영역)
+
+### Coverage
+
+| 이전 (v0.7.4) | v0.8.1 |
+|---|---|
+| 7/15 fixtures | **15/15 fixtures** |
+
+### Tests
+
+612/612 green (fixture 8 추가는 새 테스트 없이 기존 파라메트릭 스키마에 통합 · 모두 green). self_check 5/5 PASS.
 
 ## [0.8.0] — 2026-04-24
 

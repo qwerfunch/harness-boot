@@ -1,0 +1,25 @@
+# Contract for security-engineer output.
+
+agent: security-engineer
+output_path: .harness/_workspace/security/report.md
+
+required_sections_in_order:
+  - "## Threat Model"       # STRIDE 커버
+  - "## Findings"
+  - "## Verdict"
+
+required_phrases:
+  - "STRIDE"                 # threat model framework
+  - "Spoofing"               # at least one STRIDE category named
+  - "ASVS"                   # OWASP ASVS mapping
+  - "BLOCK"                  # at least one critical finding
+  - "CVSS"                   # severity scoring
+  - "httpOnly"               # refresh token storage discussed
+
+min_findings: 3
+
+forbidden_phrases:
+  - "문제 없음"               # blanket pass is suspicious
+  - "TODO"                   # unfinished audit
+  - "색은 파란색"             # visual-designer territory
+  - "무한 스크롤"             # ux-architect territory

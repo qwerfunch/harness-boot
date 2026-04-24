@@ -1,0 +1,33 @@
+# Contract for backend-engineer code output.
+
+agent: backend-engineer
+producer_type: code
+output_path: null  # multi-file
+
+required_file_patterns:
+  - "docs/api/sessions.yaml"         # OpenAPI 3.1 schema (contract-first)
+  - "src/domain/session.ts"          # Session aggregate
+  - "src/api/sessions/router.ts"     # Route handler
+  - "src/infra/clock.ts"             # Clock port
+  - "tests/domain/session.spec.ts"   # Aggregate invariants unit test
+
+required_phrases:
+  - "F-003"                # spec id MUST appear in docstring/comment
+  - "describe("            # vitest/jest test framework
+  - "startSession"         # domain verb (not F003 suffix)
+  - "openapi: 3.1"         # OpenAPI 3.1 schema header
+  - "duration_min"         # domain vocabulary preserved
+
+forbidden_phrases:
+  - "startSessionForF003"  # id-in-name ban
+  - "class AC1"            # AC id in class name
+  - "TODO"
+  - "new Date()"           # direct clock side-effect (must inject)
+  - "PostgresSessionRepo"  # F-003 must use in-memory repo
+  - "prisma.session."      # no ORM layer in F-003
+
+required_test_assertions:
+  - "AC-1"
+  - "AC-2"
+  - "AC-3"                 # 409 conflict path
+  - "invariant"            # aggregate invariant tests

@@ -1,0 +1,29 @@
+# Contract for reviewer output.
+#
+# reviewer 는 CQS 엄수 (BR-012) — 파일을 직접 write 하지 않음. retro.md 의
+# Reviewer Reflection 섹션은 orchestrator 가 reviewer 의 prose 반환을 받아
+# 기록. 이 fixture 는 reviewer 가 반환하는 prose 의 기대 구조를 검증.
+
+agent: reviewer
+producer_type: markdown
+output_path: null   # CQS — reviewer returns prose, orchestrator writes
+
+required_sections_in_order:
+  - "## Findings"
+  - "## Verdict"    # APPROVE · BLOCK · REQUEST_CHANGES
+
+required_phrases:
+  - "BR-004"                   # Iron Law reference
+  - "BR-012"                   # CQS reference
+  - "gate_5"                   # evidence gate
+  - "evidence"                 # Iron Law vocabulary
+  - "drift"                    # 10/10 drift awareness
+  - "APPROVE"                  # or BLOCK / REQUEST_CHANGES — final verdict token
+
+forbidden_phrases:
+  - "TODO: fix"                # auto-fix suggestion banned (CQS)
+  - "Edit(file_path"           # reviewer must not invoke write tools
+  - "Write("                   # same
+  - "수정 완료"                 # reviewer never writes, so cannot "complete" a fix
+  - "새 ADR 추가"               # ADR creation is product-planner territory
+  - "package.json 수정"         # integrator territory
