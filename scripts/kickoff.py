@@ -51,6 +51,71 @@ ROUTING_SHAPES: dict[str, list[str]] = {
 }
 
 
+def has_audio(feature: dict) -> bool:
+    """Feature → has_audio flag. Reads ui_surface.has_audio, default False."""
+    ui = feature.get("ui_surface") or {}
+    return bool(ui.get("has_audio"))
+
+
+def _touches_sensitive_entity(feature: dict, spec: dict) -> bool:
+    """True if feature text/modules references a domain.entities[].name with sensitive=true."""
+    entities = (spec.get("domain") or {}).get("entities") or []
+    sensitive_names: list[str] = []
+    for e in entities:
+        if isinstance(e, dict) and e.get("sensitive") is True:
+            name = e.get("name")
+            if isinstance(name, str) and name:
+                sensitive_names.append(name.lower())
+    if not sensitive_names:
+        return False
+    parts: list[str] = [feature.get("title") or ""]
+    parts.extend(feature.get("modules") or [])
+    parts.extend(feature.get("acceptance_criteria") or [])
+    haystack = " ".join(p for p in parts if isinstance(p, str)).lower()
+    return any(name in haystack for name in sensitive_names)
+
+
+def detect_shapes(feature: dict, *, spec: dict | None = None) -> list[str]:
+    """Feature dict → routing shape list at activate time.
+
+    Heuristic order (v0.7 PR-α):
+      * empty title · empty AC · empty modules → ["baseline-empty-vague"] (early discovery)
+      * else accumulate: ui_surface.present, performance_budget, sensitive_or_auth
+      * if none of the specialist shapes apply → "pure_domain_logic"
+      * always append "feature_completion" (qa/integrator/tech-writer/reviewer end chain)
+
+    sensitive_or_auth triggers:
+      * feature.sensitive == True
+      * any domain.entities[].sensitive=true referenced in title/modules/AC text
+    """
+    title = (feature.get("title") or "").strip()
+    ac = feature.get("acceptance_criteria") or []
+    modules = feature.get("modules") or []
+
+    if not title and not ac and not modules:
+        return ["baseline-empty-vague"]
+
+    shapes: list[str] = []
+
+    ui = feature.get("ui_surface") or {}
+    if ui.get("present") is True:
+        shapes.append("ui_surface.present")
+
+    if feature.get("performance_budget"):
+        shapes.append("performance_budget")
+
+    if feature.get("sensitive") is True:
+        shapes.append("sensitive_or_auth")
+    elif spec and _touches_sensitive_entity(feature, spec):
+        shapes.append("sensitive_or_auth")
+
+    if not shapes:
+        shapes.append("pure_domain_logic")
+
+    shapes.append("feature_completion")
+    return shapes
+
+
 def agents_for_shapes(shapes: Iterable[str], *, has_audio: bool = False) -> list[str]:
     """Resolve shape list → deduped, order-preserved agent list."""
     out: list[str] = []

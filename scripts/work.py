@@ -47,6 +47,8 @@ if str(_THIS) not in sys.path:
     sys.path.insert(0, str(_THIS))
 
 import gate_runner  # noqa: E402
+import kickoff as _kickoff  # noqa: E402
+import retro as _retro  # noqa: E402
 from state import State, _FEATURE_STATUSES, _GATE_RESULTS  # noqa: E402
 
 
@@ -73,6 +75,58 @@ def _append_event(harness_dir: Path, event: dict) -> None:
     log.parent.mkdir(parents=True, exist_ok=True)
     with log.open("a", encoding="utf-8") as f:
         f.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+
+def _load_spec(harness_dir: Path) -> dict | None:
+    """Return parsed spec.yaml or None when missing/unparseable. Silent — autowire relies on absence to no-op."""
+    spec_path = harness_dir / "spec.yaml"
+    if not spec_path.is_file():
+        return None
+    try:
+        data = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
+    except yaml.YAMLError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _find_feature(spec: dict, fid: str) -> dict | None:
+    for f in spec.get("features") or []:
+        if isinstance(f, dict) and f.get("id") == fid:
+            return f
+    return None
+
+
+def _autowire_kickoff(harness_dir: Path, fid: str) -> None:
+    """Fire kickoff ceremony when spec.yaml + feature resolve. Never raises — activate must not fail on ceremony errors."""
+    spec = _load_spec(harness_dir)
+    if spec is None:
+        return
+    feature = _find_feature(spec, fid)
+    if feature is None:
+        return
+    try:
+        shapes = _kickoff.detect_shapes(feature, spec=spec)
+        if not shapes:
+            return
+        _kickoff.generate_kickoff(
+            harness_dir,
+            feature_id=fid,
+            shapes=shapes,
+            has_audio=_kickoff.has_audio(feature),
+        )
+    except Exception:
+        return
+
+
+def _autowire_retro(harness_dir: Path, fid: str) -> None:
+    """Fire retro ceremony after complete. Silent skip when spec.yaml missing (symmetry with kickoff)."""
+    spec = _load_spec(harness_dir)
+    if spec is None:
+        return
+    try:
+        _retro.generate_retro(harness_dir, feature_id=fid)
+    except Exception:
+        return
 
 
 def _summarize(state: State, fid: str) -> WorkResult:
@@ -114,6 +168,7 @@ def activate(harness_dir: Path, fid: str) -> WorkResult:
             "status": state.get_feature(fid)["status"],
         },
     )
+    _autowire_kickoff(harness_dir, fid)
     res = _summarize(state, fid)
     res.action = "activated"
     return res
@@ -224,6 +279,7 @@ def complete(harness_dir: Path, fid: str) -> WorkResult:
             "feature": fid,
         },
     )
+    _autowire_retro(harness_dir, fid)
     res = _summarize(state, fid)
     res.action = "completed"
     return res

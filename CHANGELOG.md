@@ -12,9 +12,35 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - Cross-language hash test vectors (Appendix D.7)
 - Event log rotation (`events.log.YYYYMM`)
 - AC coverage drift (check.py 10 번째 drift)
-- Visual regression gate (gate_6) · a11y gate (gate_7) — v0.6 검토
-- `features[].performance_budget` schema 필드 — v0.6
-- 나머지 10 expert agents fixture — v0.6
+- Agent eval fixture — 15 agents × 3 대표 입력 회귀 (v0.7 PR-β 예정)
+- Design review auto-wire (v0.8+ — ux-architect flows.md save 훅 모호성)
+- ADR supersedes 자동 전이 (v0.7 PR-β)
+
+## [0.7.0] — 2026-04-24
+
+**Auto-wire kickoff · retro ceremonies. `scripts/work.py::activate/complete()` 가 `kickoff.py` · `retro.py` 를 자동 호출 — v0.6 의 "prose-contract 수동 호출" 약속이 실 구현으로 전환.**
+
+### Added
+
+- `scripts/kickoff.py::detect_shapes(feature, *, spec=None)` — feature dict → routing shape list 자동 감지:
+  - title · AC · modules 비어 있음 → `["baseline-empty-vague"]`
+  - `ui_surface.present=true` → `ui_surface.present` (+ `has_audio=true` → audio-designer)
+  - `performance_budget` 선언 → `performance_budget`
+  - `sensitive=true` 또는 `domain.entities[].sensitive=true` 참조 → `sensitive_or_auth`
+  - 위 전문가 shape 모두 없음 → `pure_domain_logic`
+  - 항상 최종에 `feature_completion` 추가
+- `scripts/kickoff.py::has_audio(feature)` — `ui_surface.has_audio` 추출.
+- `scripts/work.py::_autowire_kickoff` · `_autowire_retro` — activate/complete 내부 훅. spec.yaml resolve 되고 feature 존재할 때만 발화, 예외는 silent swallow (activate/complete 는 ceremony 오류로 실패하지 않음).
+- `tests/unit/test_work_autowire.py` — 15 tests: shape detection 7 · activate autowire 6 · complete autowire 2. 핵심 불변: backward-compat (spec.yaml 미존재 시 kickoff/retro 디렉터리 생성 없음) + 이벤트 순서 (`feature_activated` < `kickoff_started`, `feature_done` < `feature_retro_written`).
+
+### Changed
+
+- `commands/work.md` Kickoff · Retrospective 섹션의 "prose-contract 로 수동 호출" 문구를 "자동 호출 (v0.7 auto-wire)" 로 정정. Design Review 섹션은 수동 유지 명시 (file-watcher 훅 없음, v0.8+ 로 미룸).
+- Shape 감지 규칙 문서가 `commands/work.md` Kickoff 섹션에 편입 — orchestrator 가 어떤 shape 로 어떤 에이전트를 소환하는지 사용자가 예측 가능.
+
+### Tests
+
+550/550 green (기존 535 + 15 autowire). self_check 5/5 PASS.
 
 ## [0.6.1] — 2026-04-24
 
