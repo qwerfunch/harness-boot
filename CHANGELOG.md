@@ -29,6 +29,42 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - Event log rotation (`events.log.YYYYMM`)
 - AC coverage drift (check.py 11 번째 drift 후보)
 
+## [0.8.4] — 2026-04-24
+
+**Hotfix: path depth off-by-one after v0.7.6 subpackage relocation. CI (v0.8.3) caught this immediately on first matrix run — exactly what the gate was built for.**
+
+### Problem
+
+v0.7.6 moved `scripts/validate_spec.py` → `scripts/spec/validate.py` (+ two siblings) but retained the original `Path(__file__).resolve().parent.parent` pattern. When the file was at `scripts/validate_spec.py` that resolved to repo root; after the move it resolves to `scripts/`, which is wrong.
+
+Locally the failure was silent — 12 of the 14 `test_validate_spec.py` cases skip when `jsonschema` is not installed, so the broken path code was never exercised. CI installs `jsonschema` in the full matrix, so every Python minor exposed the bug on the first run.
+
+Error message seen in CI:
+
+```
+AssertionError: 'features' not found in
+'스키마 파일 없음: /home/runner/work/harness-boot/harness-boot/scripts/docs/schemas/spec.schema.json'
+                                                     ^^^^^^^
+                                                     bogus prefix
+```
+
+### Fixed
+
+- `scripts/spec/validate.py::_default_schema_path` — `parent.parent` → `parents[2]`.
+- `scripts/spec/conversion_diff.py::REPO_ROOT` — `parent.parent` → `parents[2]`.
+- `scripts/spec/mode_b/roundtrip.py::REPO` — `parent.parent` → `parents[3]`.
+
+Comments added to each fixed line pointing to this release so future relocations notice the depth dependency.
+
+### Verification
+
+With `jsonschema` installed locally (matching CI env): 617/617 green, 0 skipped (previously 18 skipped locally because jsonschema was missing — that was what hid the bug). self_check 5/5 PASS.
+
+### Lessons captured
+
+- Dev dependencies file missing — `pyyaml` + `jsonschema` should be documented as expected local deps. Candidate v0.8.5 or v0.9 cleanup item.
+- Path-depth discipline — any module that computes repo-relative paths via `__file__` needs a comment stating its depth, so future `git mv` callers know to update it.
+
 ## [0.8.3] — 2026-04-24
 
 **Phase 3 CI — GitHub Actions self-check workflow. Every PR + push to main/develop runs the full suite + self_check against Python 3.10-3.13.**

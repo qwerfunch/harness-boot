@@ -44,8 +44,14 @@ class SpecValidationError(Exception):
 
 
 def _default_schema_path() -> Path:
-    """scripts/ 의 부모 repo 에서 docs/schemas/spec.schema.json 탐색."""
-    repo = Path(__file__).resolve().parent.parent
+    """repo 루트의 docs/schemas/spec.schema.json 탐색.
+
+    File location is ``scripts/spec/validate.py`` — ``parents[2]`` climbs
+    scripts/spec → scripts → repo root. (v0.7.6 relocation fixed here in
+    v0.8.4; before that the path resolved to ``scripts/docs/...`` which only
+    looked healthy locally when ``jsonschema`` was absent and tests skipped.)
+    """
+    repo = Path(__file__).resolve().parents[2]
     return repo / "docs" / "schemas" / "spec.schema.json"
 
 

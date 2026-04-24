@@ -44,7 +44,7 @@ DEFAULT_SAMPLES = [
     "vscode-commit-craft",
 ]
 
-REPO = Path(__file__).resolve().parent.parent
+REPO = Path(__file__).resolve().parents[3]  # v0.8.4: scripts/spec/mode_b/ → repo root needs [3]
 OVERLAP_MIN_DEFAULT = 5
 MIN_SECTION_TOKENS = 15  # skip tiny sections (headings only)
 
