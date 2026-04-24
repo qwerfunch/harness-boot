@@ -29,6 +29,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - ~~Event log rotation (`events.log.YYYYMM`)~~ ✅ v0.8.6
 - AC coverage drift (check.py 11 번째 drift 후보)
 
+## [0.8.8] — 2026-04-24
+
+**Gate 0/3 pytest detection — covers user-site / venv installs. Second fix from v0.8.6 e2e smoke findings.**
+
+### Problem
+
+`detect_gate_0_command` / `detect_gate_3_command` used `shutil.which("pytest")` to find the test runner. If pytest was installed only as a Python module (pip `--user`, venv without activated PATH, Homebrew site-packages, etc.), the binary wouldn't appear on PATH, so detection fell through to `unittest discover` — which collected 0 tests when the project's layout was pytest-idiomatic. Gate 0 then returned exit 5 (NO_TESTS_COLLECTED) spuriously. Surfaced on the live greet-e2e smoke.
+
+### Fixed
+
+- **`scripts/gate/runner.py::_pytest_command()`** — new helper returns a runnable pytest command:
+  1. If `shutil.which("pytest")` → `["pytest"]` (cleanest invocation).
+  2. Else if `python -m pytest --version` succeeds → `[sys.executable, "-m", "pytest"]` (covers user-site/venv).
+  3. Else `None`.
+- **`detect_gate_0_command`** and **`detect_gate_3_command`** both route pytest detection through `_pytest_command()` instead of bare `shutil.which`. Behavior for non-pytest runners (unittest, npm, make, cargo, go) is unchanged.
+- **`tests/unit/test_gate_runner.py::PytestCommandDetectionTests`** — 2 new tests verifying the helper returns a callable command on any Python with pytest installed, and module form starts with `sys.executable`.
+- Existing `DetectCommandTests` that monkey-patched `shutil.which("pytest") → None` updated to also mock `gr._pytest_command = lambda: None` so they continue to exercise the unittest fallback path.
+
+### Tests
+
+633/633 green (631 + 2 new). self_check 5/5 PASS.
+
 ## [0.8.7] — 2026-04-24
 
 **Complete + retro idempotency — closes the third instance of the "ceremony writes unconditionally" pattern. Surfaced by v0.8.6 end-to-end smoke run.**

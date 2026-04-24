@@ -70,12 +70,40 @@ def _tail(text: str, n_lines: int = 30) -> str:
     return "\n".join(["... (earlier output elided)"] + lines[-n_lines:])
 
 
+def _pytest_command() -> list[str] | None:
+    """Return a runnable pytest command, or None if pytest is not installed.
+
+    Priority:
+      1. Binary ``pytest`` on PATH  →  ``["pytest"]``  (cleanest invocation)
+      2. ``python -m pytest --version`` succeeds → ``[sys.executable, "-m", "pytest"]``
+         (covers user-site / venv installs where the binary isn't exported)
+
+    v0.8.8: added the module fallback after the v0.8.6 e2e smoke surfaced
+    the gap — pytest was installed under the running Python but the binary
+    wasn't on PATH, so ``shutil.which("pytest")`` returned None and gate_0
+    fell through to unittest with no tests collected.
+    """
+    if shutil.which("pytest"):
+        return ["pytest"]
+    try:
+        r = subprocess.run(
+            [sys.executable, "-m", "pytest", "--version"],
+            capture_output=True,
+            timeout=5,
+        )
+        if r.returncode == 0:
+            return [sys.executable, "-m", "pytest"]
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return None
+
+
 def detect_gate_0_command(project_root: Path) -> list[str] | None:
     """Gate 0 테스트 러너 자동 감지.
 
     우선순위:
-      1. pyproject.toml 에 `[tool.pytest]` 섹션 → pytest
-      2. `tests/` 디렉터리 + pytest binary 있음 → pytest
+      1. pyproject.toml 에 `[tool.pytest]` 섹션 → pytest (binary 또는 module)
+      2. `tests/` 디렉터리 + pytest 있음 → pytest (binary 또는 module)
       3. `tests/` 디렉터리 → python -m unittest discover
       4. package.json 에 `scripts.test` → `npm test`
       5. Makefile 에 `test:` 타겟 → `make test`
@@ -87,15 +115,17 @@ def detect_gate_0_command(project_root: Path) -> list[str] | None:
         try:
             text = pyproject.read_text(encoding="utf-8")
             if "[tool.pytest" in text:
-                if shutil.which("pytest"):
-                    return ["pytest"]
+                cmd = _pytest_command()
+                if cmd is not None:
+                    return cmd
         except OSError:
             pass
 
     tests_dir = project_root / "tests"
     if tests_dir.is_dir():
-        if shutil.which("pytest"):
-            return ["pytest"]
+        cmd = _pytest_command()
+        if cmd is not None:
+            return cmd
         # tests/ 가 namespace 패키지 (no __init__.py) 이고 test 파일이 서브디렉터리에
         # 있는 레이아웃 (예: tests/unit/test_*.py) 을 지원. `-s tests` 는 이 경우
         # "NO TESTS RAN" 을 반환하므로 module-path form (tests.<sub>) 을 우선 사용.
@@ -322,15 +352,18 @@ def detect_gate_3_command(project_root: Path) -> list[str] | None:
     """
     pyproject = project_root / "pyproject.toml"
     if pyproject.is_file():
-        if shutil.which("pytest"):
+        pytest_cmd = _pytest_command()
+        if pytest_cmd is not None:
             try:
                 text = pyproject.read_text(encoding="utf-8")
                 if "pytest-cov" in text or "[tool.coverage" in text:
-                    return ["pytest", "--cov"]
+                    return pytest_cmd + ["--cov"]
             except OSError:
                 pass
-        if shutil.which("coverage") and shutil.which("pytest"):
-            return ["sh", "-c", "coverage run -m pytest && coverage report"]
+        if shutil.which("coverage") and pytest_cmd is not None:
+            pytest_arg = pytest_cmd[0] if len(pytest_cmd) == 1 else f"{pytest_cmd[0]} {pytest_cmd[1]} pytest"
+            # Prefer module form for coverage wrapper so it inherits the same python.
+            return ["sh", "-c", f"coverage run -m pytest && coverage report"]
 
     pkg = project_root / "package.json"
     if pkg.is_file():

@@ -14,6 +14,34 @@ sys.path.insert(0, str(REPO_ROOT / "scripts"))
 from gate import runner as gr  # noqa: E402
 
 
+class PytestCommandDetectionTests(unittest.TestCase):
+    """v0.8.8 — _pytest_command() returns either binary, module form, or None.
+
+    e2e smoke (v0.8.6) surfaced that `shutil.which('pytest')` alone misses
+    user-site / venv installs where the binary isn't on PATH but `python -m
+    pytest` still works. This covers both paths.
+    """
+
+    def test_returns_list_when_pytest_importable(self):
+        """On any CI with pytest installed (requirements-dev.txt), _pytest_command is truthy."""
+        cmd = gr._pytest_command()
+        self.assertIsNotNone(cmd)
+        self.assertIsInstance(cmd, list)
+        self.assertGreater(len(cmd), 0)
+
+    def test_module_form_starts_with_python(self):
+        """When falling back to module form, first arg is sys.executable."""
+        import shutil as _shutil
+        if _shutil.which("pytest"):
+            # Binary on PATH — module fallback not exercised. Skip.
+            self.skipTest("pytest binary on PATH — module fallback untested here")
+        cmd = gr._pytest_command()
+        self.assertIsNotNone(cmd)
+        self.assertEqual(cmd[0], sys.executable)
+        self.assertEqual(cmd[1], "-m")
+        self.assertEqual(cmd[2], "pytest")
+
+
 class TailTests(unittest.TestCase):
     def test_short_text_passthrough(self):
         self.assertEqual(gr._tail("a\nb\n"), "a\nb")
@@ -46,12 +74,15 @@ class DetectCommandTests(ScratchProjectMixin, unittest.TestCase):
         (self.root / "tests").mkdir()
         import shutil
         original = shutil.which
-        # pytest 없는 척
+        # pytest 없는 척 (v0.8.8: _pytest_command 도 모킹해 module fallback 차단)
         shutil.which = lambda cmd: None if cmd == "pytest" else original(cmd)
+        original_pytest_cmd = gr._pytest_command
+        gr._pytest_command = lambda: None
         try:
             cmd = gr.detect_gate_0_command(self.root)
         finally:
             shutil.which = original
+            gr._pytest_command = original_pytest_cmd
         self.assertIsNotNone(cmd)
         self.assertIn("unittest", cmd)
 
@@ -65,10 +96,13 @@ class DetectCommandTests(ScratchProjectMixin, unittest.TestCase):
         import shutil
         original = shutil.which
         shutil.which = lambda cmd: None if cmd == "pytest" else original(cmd)
+        original_pytest_cmd = gr._pytest_command
+        gr._pytest_command = lambda: None
         try:
             cmd = gr.detect_gate_0_command(self.root)
         finally:
             shutil.which = original
+            gr._pytest_command = original_pytest_cmd
         self.assertIsNotNone(cmd)
         self.assertEqual(cmd[-1], "tests.unit")
         self.assertNotIn("-s", cmd)
@@ -82,10 +116,13 @@ class DetectCommandTests(ScratchProjectMixin, unittest.TestCase):
         import shutil
         original = shutil.which
         shutil.which = lambda cmd: None if cmd == "pytest" else original(cmd)
+        original_pytest_cmd = gr._pytest_command
+        gr._pytest_command = lambda: None
         try:
             cmd = gr.detect_gate_0_command(self.root)
         finally:
             shutil.which = original
+            gr._pytest_command = original_pytest_cmd
         self.assertEqual(cmd[-1], "tests.integration")
 
     def test_tests_unit_prefers_over_other_subpackages(self):
@@ -101,10 +138,13 @@ class DetectCommandTests(ScratchProjectMixin, unittest.TestCase):
         import shutil
         original = shutil.which
         shutil.which = lambda cmd: None if cmd == "pytest" else original(cmd)
+        original_pytest_cmd = gr._pytest_command
+        gr._pytest_command = lambda: None
         try:
             cmd = gr.detect_gate_0_command(self.root)
         finally:
             shutil.which = original
+            gr._pytest_command = original_pytest_cmd
         self.assertEqual(cmd[-1], "tests.unit")
 
     def test_tests_flat_layout_falls_back_to_dash_s(self):
@@ -116,10 +156,13 @@ class DetectCommandTests(ScratchProjectMixin, unittest.TestCase):
         import shutil
         original = shutil.which
         shutil.which = lambda cmd: None if cmd == "pytest" else original(cmd)
+        original_pytest_cmd = gr._pytest_command
+        gr._pytest_command = lambda: None
         try:
             cmd = gr.detect_gate_0_command(self.root)
         finally:
             shutil.which = original
+            gr._pytest_command = original_pytest_cmd
         self.assertIn("-s", cmd)
         self.assertEqual(cmd[-1], "tests")
 
