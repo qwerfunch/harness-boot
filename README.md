@@ -1,6 +1,6 @@
 # harness-boot
 
-> 자연어 아이디어를 **스펙으로 굳히고**, 전문가 에이전트 팀이 **역할별로 협업해** 실제 돌아가는 코드까지 이끌어내는 AI 개발 규율 도구.
+> 자연어 아이디어를 **스펙으로 굳히고**, 전문가 에이전트 팀이 **역할별로 협업해** 실제 돌아가는 코드까지 이끌어내는 **AI 개발 하네스 프레임워크**.
 
 [![version](https://img.shields.io/badge/plugin-v0.6.1-blue)](.claude-plugin/plugin.json)
 [![spec](https://img.shields.io/badge/spec-v2.3.8-green)](docs/schemas/spec.schema.json)
