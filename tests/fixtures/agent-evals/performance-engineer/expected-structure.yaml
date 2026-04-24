@@ -1,0 +1,24 @@
+# Contract for performance-engineer output.
+
+agent: performance-engineer
+output_path: .harness/_workspace/perf/report.md
+
+required_sections_in_order:
+  - "## Budget"          # declared thresholds from features[].performance_budget
+  - "## Measurements"    # actual numbers per platform
+  - "## Findings"        # per-metric PASS/WARN/BLOCK judgment
+  - "## Verdict"
+
+required_phrases:
+  - "lcp_ms"              # Web Vitals standard metric mentioned
+  - "inp_ms"
+  - "bundle_kb"
+  - "session_start_to_tick_ms"  # custom metric from budget
+  - "Lighthouse"          # measurement tool
+  - "p50"                 # percentile reporting (or p95 · mean)
+
+forbidden_phrases:
+  - "TODO"
+  - "추후 측정"           # perf-engineer must not defer actual measurement
+  - "색"                  # visual-designer territory
+  - "WCAG"                # a11y-auditor territory

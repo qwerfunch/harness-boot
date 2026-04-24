@@ -1,0 +1,29 @@
+# Contract for orchestrator output.
+#
+# orchestrator 는 파일을 직접 write 하지 않는다 (state.yaml/events.log 는 work.py
+# 가 처리). 사용자 눈앞에 표시되는 prose 가 곧 "산출" — 해당 구조를 검증한다.
+
+agent: orchestrator
+producer_type: markdown
+output_path: null   # coordinator — prose returned to user, no dedicated file
+
+required_sections_in_order:
+  - "## 상태 전이"          # state change summary
+  - "## 참여 에이전트"       # who was invoked
+  - "## BLOCK"             # blockers surfaced (empty section allowed)
+  - "## 다음 단계"          # suggested next commands
+
+required_phrases:
+  - "F-003"                # feature id
+  - "in_progress"          # state transition evidence
+  - "BR-004"               # Iron Law reference
+  - "gate_5"               # evidence requirement
+  - "kickoff"              # ceremony name
+  - "/harness:"            # next command suggestion
+
+forbidden_phrases:
+  - "TODO"
+  - "완료"                  # orchestrator must never declare done without gate_5+evidence
+  - "src/"                  # implementation code is engineer territory
+  - "WCAG SC"               # a11y-auditor specific citations are NOT orchestrator's
+  - "CVSS"                  # security-engineer specific citations are NOT orchestrator's

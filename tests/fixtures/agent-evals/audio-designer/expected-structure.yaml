@@ -1,0 +1,28 @@
+# Contract for audio-designer audio.yaml output.
+
+agent: audio-designer
+producer_type: yaml
+output_path: .harness/_workspace/design/audio.yaml
+
+required_top_keys:
+  - sound            # sound token families (sound/session-start, sound/break-end 등)
+  - loudness         # LUFS target per category
+  - freq_strategy    # spectral masking avoidance policy
+  - reduced_motion   # WCAG 2.3.3 AAA compliance
+
+required_phrases:
+  - "sound/session-"    # motion 네이밍 parity
+  - "LUFS"              # loudness spec
+  - "Hz"                # frequency spec
+  - "duration_ms"       # per-sound duration field
+  - "envelope"          # per-sound envelope field
+  - "purpose"           # semantic per-sound purpose
+
+forbidden_phrases:
+  - "bg-"               # Tailwind leak (mirrors visual-designer)
+  - "TODO"
+  - "sound: beep"       # undifferentiated generic sound name
+  - "volume: 100"       # linear volume without LUFS spec
+
+motion_audio_parity:
+  - "sound/session-start matches motion/session-start"   # naming parity evidence
