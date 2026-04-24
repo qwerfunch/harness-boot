@@ -174,6 +174,34 @@ class State:
         ev = f.setdefault("evidence", [])
         ev.append({"ts": ts or _now(), "kind": kind, "summary": summary})
 
+    def add_skipped_agent(
+        self,
+        fid: str,
+        agent: str,
+        reason: str,
+        *,
+        ts: str | None = None,
+    ) -> None:
+        """Record that an agent was intentionally skipped for a feature.
+
+        v0.5 routing documented skipped_agents[] but state.py never implemented it —
+        orchestrator skip decisions left no trail. v0.7.2 adds the write API; the
+        policy (where in the chain skips happen) remains orchestrator business.
+        """
+        if not agent:
+            raise ValueError("agent name required")
+        if not reason:
+            raise ValueError("reason required — silent skips defeat the audit purpose")
+        f = self.ensure_feature(fid)
+        skipped = f.setdefault("skipped_agents", [])
+        skipped.append({"agent": agent, "reason": reason, "ts": ts or _now()})
+
+    def get_skipped_agents(self, fid: str) -> list[dict]:
+        f = self.get_feature(fid)
+        if f is None:
+            return []
+        return list(f.get("skipped_agents") or [])
+
     # --- session helpers --------------------------------------------------
 
     def set_active(self, fid: str | None) -> None:

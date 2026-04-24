@@ -157,5 +157,46 @@ class SnapshotTests(ScratchHarnessMixin, unittest.TestCase):
         self.assertNotIn("tampered", st.data["features"][0])
 
 
+class SkippedAgentsTests(ScratchHarnessMixin, unittest.TestCase):
+    """v0.7.2 — skipped_agents[] API (v0.5 routing policy enforcement substrate)."""
+
+    def test_add_and_read(self):
+        st = State.load(self.harness)
+        st.add_skipped_agent("F-1", "security-engineer", "no sensitive entity, static client only")
+        entries = st.get_skipped_agents("F-1")
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]["agent"], "security-engineer")
+        self.assertIn("sensitive", entries[0]["reason"])
+        self.assertIn("ts", entries[0])
+
+    def test_multiple_skips_preserved_in_order(self):
+        st = State.load(self.harness)
+        st.add_skipped_agent("F-1", "audio-designer", "has_audio=false")
+        st.add_skipped_agent("F-1", "performance-engineer", "no perf budget declared")
+        entries = st.get_skipped_agents("F-1")
+        self.assertEqual([e["agent"] for e in entries], ["audio-designer", "performance-engineer"])
+
+    def test_get_returns_empty_list_for_unknown_feature(self):
+        st = State.load(self.harness)
+        self.assertEqual(st.get_skipped_agents("F-999"), [])
+
+    def test_empty_reason_refused(self):
+        st = State.load(self.harness)
+        with self.assertRaises(ValueError):
+            st.add_skipped_agent("F-1", "security-engineer", "")
+
+    def test_empty_agent_refused(self):
+        st = State.load(self.harness)
+        with self.assertRaises(ValueError):
+            st.add_skipped_agent("F-1", "", "reason")
+
+    def test_persists_across_save_load(self):
+        st = State.load(self.harness)
+        st.add_skipped_agent("F-1", "audio-designer", "no audio")
+        st.save()
+        st2 = State.load(self.harness)
+        self.assertEqual(len(st2.get_skipped_agents("F-1")), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

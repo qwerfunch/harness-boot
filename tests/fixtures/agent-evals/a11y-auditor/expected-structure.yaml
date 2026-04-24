@@ -1,0 +1,30 @@
+# Contract for a11y-auditor output.
+#
+# Eval harness (future) can diff real report.md against these keys
+# without relaunching the agent. See tests/unit/test_agent_fixtures.py
+# for the shared schema.
+
+agent: a11y-auditor
+output_path: .harness/_workspace/a11y/report.md
+
+required_sections_in_order:
+  - "## WCAG 2.2 Compliance Summary"
+  - "## Findings"
+  - "## Verdict"
+
+# Phrases that prove the audit was real, not a rubber-stamp.
+required_phrases:
+  - "WCAG"          # standard reference
+  - "SC "           # Success Criterion citation
+  - "BLOCK"         # at least one critical finding
+  - "4.5:1"         # contrast ratio or equivalent
+  - "키보드"         # keyboard operability (Korean default)
+
+# Minimum finding count — below this is almost certainly not a real audit.
+min_findings: 3
+
+# Anti-patterns.
+forbidden_phrases:
+  - "문제 없음"         # blanket pass is suspicious
+  - "TODO"            # unfinished audit leaks downstream
+  - "색은 파란색"        # visual-designer territory — a11y-auditor judges contrast, not chooses colors
