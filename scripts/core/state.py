@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Literal
 
@@ -52,6 +52,20 @@ _FEATURE_STATUSES: frozenset[str] = frozenset(
     {"planned", "in_progress", "blocked", "done", "archived"}
 )
 _GATE_RESULTS: frozenset[str] = frozenset({"pass", "fail", "skipped"})
+
+# Iron Law D (v0.9.3) — evidence kinds produced by machines (gate runner auto-
+# emits ``gate_run`` on pass). These do NOT count toward Iron Law D because the
+# whole point is that **human-declared signals** (manual checks, reviews, user
+# feedback, tests the author chose to record) prove genuine verification.
+# Kinds not in this set — including ``test``, ``manual_check``,
+# ``user_feedback``, ``reviewer_check``, ``generic``, ``blocker``, ``hotfix``
+# — are declared. The taxonomy is kind-based rather than a new field so that
+# existing state.yaml files stay forward-compatible with no migration.
+_AUTOMATIC_EVIDENCE_KINDS: frozenset[str] = frozenset({"gate_run", "gate_auto_run"})
+
+# Iron Law D — default trailing window (days) for counting declared evidence.
+# v0.9.3 hardcodes 7; v0.9.4+ may override via ``.harness/.config.toml``.
+IRON_LAW_D_DEFAULT_WINDOW_DAYS: int = 7
 
 
 def _now() -> str:
@@ -254,4 +268,79 @@ class State:
         return copy.deepcopy(self.data)
 
 
-__all__ = ["State", "FeatureStatus", "GateResult"]
+def is_declared_evidence(ev: Any) -> bool:
+    """Return True when an evidence entry counts as a declared signal.
+
+    Declared = human-volition record of verification. Automatic = gate runner
+    byproduct. Entries missing ``kind`` are treated as declared (conservative
+    — unclassified signals are assumed intentional).
+
+    See ``_AUTOMATIC_EVIDENCE_KINDS`` for the exhaustive automatic list.
+    """
+    if not isinstance(ev, dict):
+        return False
+    kind = ev.get("kind")
+    if not isinstance(kind, str):
+        return True
+    return kind not in _AUTOMATIC_EVIDENCE_KINDS
+
+
+def _parse_ts(value: Any) -> datetime | None:
+    """Parse an ISO-8601 ``ts`` field; return None on any failure."""
+    if not isinstance(value, str):
+        return None
+    try:
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def count_declared_evidence(
+    feature: dict,
+    *,
+    window_days: int = IRON_LAW_D_DEFAULT_WINDOW_DAYS,
+    now: datetime | None = None,
+) -> int:
+    """Count declared evidence entries within the trailing time window.
+
+    Iron Law D (v0.9.3): at ``/harness-boot:work --complete`` time, this
+    function tallies how many declared signals the feature has accumulated in
+    the last ``window_days`` days. Entries with unparseable or missing ``ts``
+    are counted as recent (conservative — the absence of a timestamp should
+    not penalize the author).
+
+    Args:
+        feature: one ``state.yaml.features[]`` dict.
+        window_days: trailing window size; defaults to 7.
+        now: override clock for tests. Defaults to ``datetime.now(utc)``.
+
+    Returns:
+        Integer count of qualifying entries. Always ``>= 0``.
+    """
+    if not isinstance(feature, dict):
+        return 0
+    if now is None:
+        now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=max(window_days, 0))
+    count = 0
+    for ev in feature.get("evidence") or []:
+        if not is_declared_evidence(ev):
+            continue
+        ts = _parse_ts(ev.get("ts"))
+        if ts is not None and ts < cutoff:
+            continue
+        count += 1
+    return count
+
+
+__all__ = [
+    "State",
+    "FeatureStatus",
+    "GateResult",
+    "is_declared_evidence",
+    "count_declared_evidence",
+    "IRON_LAW_D_DEFAULT_WINDOW_DAYS",
+]

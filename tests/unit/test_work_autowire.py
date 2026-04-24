@@ -314,10 +314,12 @@ class PerfGateBudgetIntegrationTests(ScratchHarness, unittest.TestCase):
 
 class CompleteAutowireTests(ScratchHarness, unittest.TestCase):
     def _seed_done_precondition(self, fid: str) -> None:
-        """Satisfy Iron Law: gate_5 pass + evidence ≥ 1."""
+        """Satisfy Iron Law D (v0.9.3): gate_5 pass + 3 declared evidence (product default)."""
         work.activate(self.harness, fid)
         work.record_gate(self.harness, fid, "gate_5", "pass", note="smoke ok")
         work.add_evidence(self.harness, fid, "test", "smoke passes")
+        work.add_evidence(self.harness, fid, "manual_check", "ac-1 verified")
+        work.add_evidence(self.harness, fid, "reviewer_check", "peer review ok")
 
     def test_complete_with_spec_fires_retro(self):
         self._write_spec(_SPEC_UI)
@@ -397,6 +399,8 @@ class CompleteIdempotencyTests(ScratchHarness, unittest.TestCase):
         work.activate(self.harness, fid)
         work.record_gate(self.harness, fid, "gate_5", "pass")
         work.add_evidence(self.harness, fid, "test", "ok")
+        work.add_evidence(self.harness, fid, "manual_check", "ac-1 verified")
+        work.add_evidence(self.harness, fid, "reviewer_check", "peer review ok")
 
     def test_second_complete_does_not_re_emit(self):
         self._write_spec(_SPEC_UI)
@@ -438,6 +442,8 @@ class RetroForceRefreshTests(ScratchHarness, unittest.TestCase):
         work.activate(self.harness, fid)
         work.record_gate(self.harness, fid, "gate_5", "pass")
         work.add_evidence(self.harness, fid, "test", "ok")
+        work.add_evidence(self.harness, fid, "manual_check", "ac-1 verified")
+        work.add_evidence(self.harness, fid, "reviewer_check", "peer review ok")
 
     def test_retro_flag_overwrites_existing(self):
         self._write_spec(_SPEC_UI)

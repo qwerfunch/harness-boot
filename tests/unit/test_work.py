@@ -98,6 +98,12 @@ class BlockTests(HarnessScratch, unittest.TestCase):
 
 
 class CompleteTests(HarnessScratch, unittest.TestCase):
+    """Iron Law D (v0.9.3): default product mode requires 3 declared evidence."""
+
+    def _seed_evidence(self, fid: str, n: int = 3) -> None:
+        for i in range(n):
+            work.add_evidence(self.harness, fid, "test", f"declared {i+1}")
+
     def test_cannot_complete_without_gate5(self):
         work.activate(self.harness, "F-004")
         work.record_gate(self.harness, "F-004", "gate_0", "pass")
@@ -108,14 +114,14 @@ class CompleteTests(HarnessScratch, unittest.TestCase):
     def test_cannot_complete_without_evidence(self):
         work.activate(self.harness, "F-004")
         work.record_gate(self.harness, "F-004", "gate_5", "pass")
-        # evidence 없음
         res = work.complete(self.harness, "F-004")
-        self.assertIn("evidence", res.message)
+        self.assertIn("Iron Law D", res.message)
+        self.assertIn("0/3", res.message)
 
     def test_complete_transitions_to_done(self):
         work.activate(self.harness, "F-004")
         work.record_gate(self.harness, "F-004", "gate_5", "pass")
-        work.add_evidence(self.harness, "F-004", "test", "all gates green")
+        self._seed_evidence("F-004", 3)
         res = work.complete(self.harness, "F-004")
         self.assertEqual(res.action, "completed")
         self.assertEqual(res.current_status, "done")
@@ -123,7 +129,7 @@ class CompleteTests(HarnessScratch, unittest.TestCase):
     def test_complete_clears_active_feature(self):
         work.activate(self.harness, "F-004")
         work.record_gate(self.harness, "F-004", "gate_5", "pass")
-        work.add_evidence(self.harness, "F-004", "test", "ok")
+        self._seed_evidence("F-004", 3)
         work.complete(self.harness, "F-004")
         st = State.load(self.harness)
         self.assertIsNone(st.data["session"]["active_feature_id"])
@@ -131,7 +137,7 @@ class CompleteTests(HarnessScratch, unittest.TestCase):
     def test_complete_writes_feature_done_event(self):
         work.activate(self.harness, "F-004")
         work.record_gate(self.harness, "F-004", "gate_5", "pass")
-        work.add_evidence(self.harness, "F-004", "test", "ok")
+        self._seed_evidence("F-004", 3)
         work.complete(self.harness, "F-004")
         events = self.read_events()
         types = [e["type"] for e in events]
@@ -208,18 +214,19 @@ class FullCycleTests(HarnessScratch, unittest.TestCase):
         for gate in ("gate_0", "gate_1", "gate_2", "gate_3", "gate_4", "gate_5"):
             work.record_gate(self.harness, "F-xyz", gate, "pass", note=f"{gate} green")
         work.add_evidence(self.harness, "F-xyz", "test", "full test suite 220/220")
+        work.add_evidence(self.harness, "F-xyz", "manual_check", "UI smoke OK")
+        work.add_evidence(self.harness, "F-xyz", "reviewer_check", "peer review clean")
         res = work.complete(self.harness, "F-xyz")
 
         self.assertEqual(res.action, "completed")
         self.assertEqual(res.current_status, "done")
         self.assertEqual(len(res.gates_passed), 6)
 
-        # events: activated + 6 gates + evidence + done = 9
         events = self.read_events()
         types = [e["type"] for e in events]
         self.assertEqual(types.count("feature_activated"), 1)
         self.assertEqual(types.count("gate_recorded"), 6)
-        self.assertEqual(types.count("evidence_added"), 1)
+        self.assertEqual(types.count("evidence_added"), 3)
         self.assertEqual(types.count("feature_done"), 1)
 
 

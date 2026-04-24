@@ -29,6 +29,59 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - ~~Event log rotation (`events.log.YYYYMM`)~~ ✅ v0.8.6
 - AC coverage drift (check.py 11 번째 drift 후보)
 
+## [0.9.3] — 2026-04-25
+
+**UX re-architecture step 4 — Iron Law D (누적 declared evidence). BR-004 강화: gate_5 pass + 최근 7 일 declared evidence N 개.**
+
+### Added
+
+- **`scripts/core/state.py`**:
+  - `is_declared_evidence(ev) -> bool` — evidence kind 를 automatic vs declared 로 분류. `gate_run` / `gate_auto_run` 만 automatic, 나머지 (test · manual_check · user_feedback · reviewer_check · blocker · hotfix · generic · 미지정 kind) 는 declared. Kind-based 분류로 기존 state.yaml 과 forward-compatible (migration 불필요).
+  - `count_declared_evidence(feature, *, window_days=7, now=None) -> int` — 최근 trailing window 내 declared 카운트. ts 누락 / 파싱 실패 entry 는 최근 취급 (보수적 — 타임스탬프 없다고 불이익 없음).
+  - `IRON_LAW_D_DEFAULT_WINDOW_DAYS = 7` 상수.
+- **`scripts/work.py`**:
+  - `_resolve_project_mode(spec) -> "product" | "prototype"` — `spec.project.mode` 읽기, 미정·미지원 값은 `product` (strict default) fallback.
+  - `complete(harness_dir, fid, *, hotfix_reason=None)` — Iron Law D 로 전면 교체:
+    - product (default): 3 declared.
+    - prototype (`spec.project.mode: prototype`): 1 declared.
+    - `--hotfix-reason "..."`: product 에서도 1 declared 허용. 사유가 `kind=hotfix` evidence 로 자동 append 되어 audit 에 남음. 빈 사유 거부.
+    - 거부 시 state.yaml 불변 — hotfix 경로 rollback 포함.
+    - `feature_done` event 에 `iron_law_mode` · `declared_count` · `required` · `hotfix_reason` 첨부.
+  - CLI `--hotfix-reason FLAG`.
+- **`tests/unit/test_iron_law_declared.py`** — 33 tests:
+  - Kind taxonomy (10) · count window (7) · product mode completion (4) · prototype mode (2) · mode resolution edge cases (3) · hotfix override (5) · event metadata (1) · CLI wiring (1).
+- **`commands/work.md`** — "완료 (done 전이)" 섹션 Iron Law D 로 재작성 + kind taxonomy 표.
+
+### Changed
+
+- **`tests/unit/test_work.py::CompleteTests`** · **`test_work_autowire.py`** · **`test_work_ux.py`** — 기존 1-evidence 기반 테스트를 3-declared 기반으로 업데이트 (product default 일관). `test_plan_to_done` 은 3 declared (test · manual_check · reviewer_check) 로 확장.
+
+### Design
+
+**왜 "누적 declared" 인가** (요구사항 재검토 결과):
+- 기계 필터 (길이 / 키워드 규칙) 는 "ok" 3 번도 통과 — 성의의 역설. 제거.
+- 개수 자체가 성실성 신호: 하나하나 짧아도 세 번 쓰는 **행위** 가 의도를 입증.
+- TDD 사이클에서 test · manual_check · reviewer_check 는 **자연히** 쌓임 — 억지 요구 아님.
+- Hotfix 는 긴급 예외 경로로 인정 (single-entry + reason). audit 에 투명하게 남김.
+- Automatic (`gate_run`) 은 gate runner 부산물이라 자기증명에 불인정 — 이게 핵심.
+
+### v0.9.x 진행
+
+| 버전 | 상태 |
+|---|---|
+| v0.9.0 | ✅ namespace rename + 6 command 삭제 |
+| v0.9.1 | ✅ feature_resolver |
+| v0.9.2 | ✅ dashboard + intent_planner |
+| **v0.9.3** | ✅ Iron Law D + hotfix override |
+| v0.9.4 | ⏳ 시나리오 매핑 integration test · README "어떻게 말해도 됩니다" |
+| v0.9.5 | ⏳ `project.mode` prototype/product 의례 경량화 |
+| v0.10.0 | ⏳ legacy shim 제거 · README 재작성 |
+
+### Numbers
+
+- Tests: 689 → 722 (+33 Iron Law D + 기존 테스트 업데이트).
+- self_check 5/5 PASS.
+
 ## [0.9.2] — 2026-04-25
 
 **UX re-architecture step 3 — 빈 호출 대시보드 + intent_planner 결정론 추천. `/harness-boot:work` 하나로 상태 파악 + 다음 할 일 한 눈에.**
