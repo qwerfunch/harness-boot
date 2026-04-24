@@ -97,8 +97,14 @@ def _find_feature(spec: dict, fid: str) -> dict | None:
     return None
 
 
-def _autowire_kickoff(harness_dir: Path, fid: str) -> None:
-    """Fire kickoff ceremony when spec.yaml + feature resolve. Never raises — activate must not fail on ceremony errors."""
+def _autowire_kickoff(harness_dir: Path, fid: str, *, force: bool = False) -> None:
+    """Fire kickoff ceremony when spec.yaml + feature resolve. Never raises — activate must not fail on ceremony errors.
+
+    Idempotency (v0.8.2): ``kickoff.generate_kickoff`` returns without
+    rewriting when the kickoff.md file already exists. Pass ``force=True``
+    (via ``--kickoff`` CLI flag) to explicitly re-generate and overwrite
+    any user curation.
+    """
     spec = _load_spec(harness_dir)
     if spec is None:
         return
@@ -114,6 +120,7 @@ def _autowire_kickoff(harness_dir: Path, fid: str) -> None:
             feature_id=fid,
             shapes=shapes,
             has_audio=_kickoff.has_audio(feature),
+            force=force,
         )
     except Exception:
         return
@@ -605,6 +612,11 @@ def main(argv: list[str] | None = None) -> int:
         help="force re-generate .harness/_workspace/design-review/F-N.md (v0.8 — overrides idempotent skip)",
     )
     parser.add_argument(
+        "--kickoff",
+        action="store_true",
+        help="force re-generate .harness/_workspace/kickoff/F-N.md (v0.8.2 — overrides idempotent skip)",
+    )
+    parser.add_argument(
         "--remove",
         metavar="FID",
         default=None,
@@ -639,6 +651,13 @@ def main(argv: list[str] | None = None) -> int:
             _autowire_design_review(args.harness_dir, args.feature, force=True)
             res = _summarize(State.load(args.harness_dir), args.feature)
             res.action = "design_review_refreshed"
+        elif args.kickoff:
+            if not args.feature:
+                print("error: feature id required with --kickoff", file=sys.stderr)
+                return 2
+            _autowire_kickoff(args.harness_dir, args.feature, force=True)
+            res = _summarize(State.load(args.harness_dir), args.feature)
+            res.action = "kickoff_refreshed"
         elif args.gate:
             if not args.feature:
                 print("error: feature id required with --gate", file=sys.stderr)

@@ -183,8 +183,16 @@ def generate_kickoff(
     shapes: Iterable[str],
     has_audio: bool = False,
     timestamp: str | None = None,
+    force: bool = False,
 ) -> Path:
-    """Create kickoff template + event. Returns path to the kickoff.md."""
+    """Create kickoff template + event. Returns path to the kickoff.md.
+
+    Idempotency (v0.8.2): if the kickoff.md already exists, no file write or
+    event emission happens unless ``force=True``. This keeps user-curated
+    headings intact when state-mutating work.py calls re-evaluate the ceremony
+    condition. The ``--kickoff`` CLI flag on ``scripts/work.py`` passes
+    ``force=True`` for explicit re-generation.
+    """
     if timestamp is None:
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -197,6 +205,11 @@ def generate_kickoff(
     kickoff_dir = harness_dir / "_workspace" / "kickoff"
     kickoff_dir.mkdir(parents=True, exist_ok=True)
     kickoff_path = kickoff_dir / f"{feature_id}.md"
+
+    # Idempotent skip — preserve user-curated headings unless force=True
+    if kickoff_path.is_file() and not force:
+        return kickoff_path
+
     kickoff_path.write_text(_template(feature_id, agents, timestamp), encoding="utf-8")
 
     _append_event(

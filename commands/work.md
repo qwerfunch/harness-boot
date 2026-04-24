@@ -193,9 +193,17 @@ test_strategy: tdd | contract | property | smoke
 ui_surface: {present, platforms, has_audio}  # (있을 때만)
 ```
 
-## Kickoff Ceremony (v0.6)
+## Kickoff Ceremony (v0.6 + v0.8.2 idempotency)
 
 `/harness:work F-N activate` state 전이 직후 `scripts/work.py` 가 **자동으로** `kickoff.generate_kickoff` 를 호출한다 (v0.7 auto-wire). spec.yaml 이 resolve 되고 해당 feature 가 존재할 때만 발화 — spec 미존재 시 silent skip (backward compat). Discovery 단계(spec 최초 작성)는 해당 없음.
+
+**Idempotency (v0.8.2)**: `.harness/_workspace/kickoff/F-N.md` 이 이미 존재하면 **덮어쓰지 않음**. 사용자(또는 orchestrator)가 heading 을 채운 뒤 재-activate 해도 내용 보존. 재생성이 필요하면 `--kickoff` 플래그로 force:
+
+```bash
+python3 "$PLUGIN_ROOT/scripts/work.py" F-N --kickoff --harness-dir .harness
+```
+
+이 플래그는 shape 변화 등으로 agent 라인업을 다시 뽑아야 할 때 사용. (design-review 의 `--design-review` 와 같은 패턴)
 
 **실행 메커니즘** (v0.7 auto-wire):
 

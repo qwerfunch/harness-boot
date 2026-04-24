@@ -343,5 +343,85 @@ class CompleteAutowireTests(ScratchHarness, unittest.TestCase):
         self.assertNotIn("feature_retro_written", types)
 
 
+class KickoffIdempotencyTests(ScratchHarness, unittest.TestCase):
+    """v0.8.2 — kickoff must not re-fire on subsequent state-mutating calls.
+
+    v0.7 autowire wrote kickoff.md unconditionally. Re-activating the same
+    feature overwrote user-curated headings. v0.8.2 brings kickoff in line
+    with design-review's idempotency: create once, never touch again unless
+    --kickoff (force) is explicitly passed.
+    """
+
+    def test_re_activate_does_not_overwrite_kickoff(self):
+        self._write_spec(_SPEC_UI)
+        work.activate(self.harness, "F-0")
+        path = self.harness / "_workspace" / "kickoff" / "F-0.md"
+        self.assertTrue(path.is_file())
+        mtime_before = path.stat().st_mtime_ns
+
+        # User curates the kickoff — marker that must survive re-activate
+        path.write_text("USER_CURATED_CONTENT\n", encoding="utf-8")
+        mtime_curated = path.stat().st_mtime_ns
+
+        work.activate(self.harness, "F-0")  # re-activate
+        self.assertEqual(path.read_text("utf-8"), "USER_CURATED_CONTENT\n")
+        # mtime must not change post-curation activate
+        self.assertEqual(path.stat().st_mtime_ns, mtime_curated)
+
+    def test_re_activate_emits_single_kickoff_started_event(self):
+        self._write_spec(_SPEC_UI)
+        work.activate(self.harness, "F-0")
+        work.activate(self.harness, "F-0")  # re-activate
+        work.activate(self.harness, "F-0")  # re-activate again
+        opens = [e for e in self._events() if e["type"] == "kickoff_started"]
+        self.assertEqual(len(opens), 1)
+
+    def test_record_gate_does_not_re_fire_kickoff(self):
+        self._write_spec(_SPEC_UI)
+        work.activate(self.harness, "F-0")
+        work.record_gate(self.harness, "F-0", "gate_0", "pass")
+        opens = [e for e in self._events() if e["type"] == "kickoff_started"]
+        self.assertEqual(len(opens), 1)
+
+
+class KickoffForceRefreshTests(ScratchHarness, unittest.TestCase):
+    """v0.8.2 — --kickoff CLI flag overrides idempotency."""
+
+    def test_kickoff_flag_overwrites_existing(self):
+        self._write_spec(_SPEC_UI)
+        work.activate(self.harness, "F-0")
+        path = self.harness / "_workspace" / "kickoff" / "F-0.md"
+        self.assertTrue(path.is_file())
+
+        # Tamper to verify overwrite
+        path.write_text("STALE_KICKOFF\n", encoding="utf-8")
+
+        rc = work.main([
+            "F-0",
+            "--harness-dir", str(self.harness),
+            "--kickoff",
+            "--json",
+        ])
+        self.assertEqual(rc, 0)
+        body = path.read_text("utf-8")
+        self.assertNotIn("STALE_KICKOFF", body)
+        self.assertIn("Kickoff", body)
+
+    def test_kickoff_flag_emits_second_kickoff_started_event(self):
+        self._write_spec(_SPEC_UI)
+        work.activate(self.harness, "F-0")
+        # Idempotent re-activate does not emit a new event (covered above);
+        # --kickoff must though, so total is 2
+        rc = work.main([
+            "F-0",
+            "--harness-dir", str(self.harness),
+            "--kickoff",
+            "--json",
+        ])
+        self.assertEqual(rc, 0)
+        opens = [e for e in self._events() if e["type"] == "kickoff_started"]
+        self.assertEqual(len(opens), 2)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -29,6 +29,29 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - Event log rotation (`events.log.YYYYMM`)
 - AC coverage drift (check.py 11 번째 drift 후보)
 
+## [0.8.2] — 2026-04-24
+
+**Kickoff idempotency patch — re-activate no longer overwrites curated kickoff headings. Brings kickoff in line with design-review's idempotency policy.**
+
+### Problem (surfaced in v0.8.0 live smoke test)
+
+`scripts/work.py::_autowire_kickoff` called `kickoff.generate_kickoff` unconditionally. Re-activating the same feature (even via `--current` follow-up by orchestrator) re-wrote `_workspace/kickoff/F-N.md`, wiping any heading content that had been curated between calls. Also emitted a duplicate `kickoff_started` event each time.
+
+### Fixed
+
+- **`ceremonies.kickoff.generate_kickoff`** now accepts `force: bool = False`. When the kickoff.md already exists and `force=False`, the function returns the existing path without rewriting the file or emitting an event.
+- **`scripts/work.py::_autowire_kickoff`** passes `force=False`, so autowire re-runs are silent idempotent skips.
+- **`--kickoff` CLI flag** — explicit force re-generation for cases where the agent lineup needs to refresh (e.g., `ui_surface.present` flipped true, or `has_audio` changed). Mirror of `--design-review` pattern. Emits new `kickoff_started` event and yields action=`kickoff_refreshed`.
+- `commands/work.md` Kickoff Ceremony section documents the idempotency rule + `--kickoff` flag usage.
+
+### Tests
+
+617/617 green (612 + 5: 3 idempotency tests covering re-activate preservation, single event emission, record_gate no-re-fire; 2 force-refresh tests). self_check 5/5 PASS.
+
+### Live smoke evidence
+
+This patch was triggered by direct verification. Before: events.log showed two `kickoff_started` entries from two `activate` calls. After: one entry, regardless of how many state-mutating work calls touch the feature.
+
 ## [0.8.1] — 2026-04-24
 
 **Agent eval fixture coverage reaches 15/15 — v1.0 체크리스트의 fixture 항목 완결.**
