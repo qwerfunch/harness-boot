@@ -33,10 +33,10 @@ if ! diff -q .harness/spec.yaml docs/samples/harness-boot-self/spec.yaml >/dev/n
 fi
 
 # --- Step 2: JSONSchema 검증 ---
-step 2 "validate_spec .harness/spec.yaml"
-if ! python3 scripts/validate_spec.py .harness/spec.yaml >/dev/null 2>&1; then
+step 2 "validate .harness/spec.yaml"
+if ! python3 scripts/spec/validate.py .harness/spec.yaml >/dev/null 2>&1; then
     # 에러 재실행하여 사용자에게 stderr 보이기
-    python3 scripts/validate_spec.py .harness/spec.yaml >&2 || true
+    python3 scripts/spec/validate.py .harness/spec.yaml >&2 || true
     fail "validate_spec 실패"
 fi
 

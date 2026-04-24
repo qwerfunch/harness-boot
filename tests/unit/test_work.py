@@ -12,7 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 import work  # noqa: E402
-from state import State  # noqa: E402
+from core.state import State  # noqa: E402
 
 
 class HarnessScratch:
@@ -175,7 +175,7 @@ class RunAndRecordGateTests(HarnessScratch, unittest.TestCase):
         # skipped 도 gate 기록
         self.assertEqual(res.evidence_count, 0)
         # state 에 skipped 결과 기록됨
-        from state import State
+        from core.state import State
         st = State.load(self.harness)
         gates = st.get_feature("F-010")["gates"]
         self.assertEqual(gates["gate_0"]["last_result"], "skipped")
@@ -194,7 +194,7 @@ class RunAndRecordGateTests(HarnessScratch, unittest.TestCase):
         )
         self.assertEqual(res.current_status, "planned")  # activate 호출 안 했으니
         # state 에 skipped 결과
-        from state import State
+        from core.state import State
         st = State.load(self.harness)
         g1 = st.get_feature("F-010")["gates"].get("gate_1")
         self.assertEqual(g1["last_result"], "skipped")

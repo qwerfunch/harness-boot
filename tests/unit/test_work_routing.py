@@ -100,7 +100,7 @@ class KickoffRoutingShapesParityTests(unittest.TestCase):
         scripts_path = str(REPO_ROOT / "scripts")
         if scripts_path not in sys.path:
             sys.path.insert(0, scripts_path)
-        import kickoff as kk  # noqa: E402
+        from ceremonies import kickoff as kk  # noqa: E402
 
         self.kickoff_shapes = kk.ROUTING_SHAPES
         self.work_rows = dict(_parse_routing_table(WORK_MD.read_text(encoding="utf-8")))

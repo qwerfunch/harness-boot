@@ -46,10 +46,10 @@ _THIS = Path(__file__).resolve().parent
 if str(_THIS) not in sys.path:
     sys.path.insert(0, str(_THIS))
 
-import gate_runner  # noqa: E402
-import kickoff as _kickoff  # noqa: E402
-import retro as _retro  # noqa: E402
-from state import State, _FEATURE_STATUSES, _GATE_RESULTS  # noqa: E402
+from ceremonies import kickoff as _kickoff  # noqa: E402
+from ceremonies import retro as _retro  # noqa: E402
+from core.state import State, _FEATURE_STATUSES, _GATE_RESULTS  # noqa: E402
+from gate import runner as gate_runner  # noqa: E402
 
 
 _STANDARD_GATES = ("gate_0", "gate_1", "gate_2", "gate_3", "gate_4", "gate_5")

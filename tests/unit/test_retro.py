@@ -12,7 +12,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
-import retro as rt  # noqa: E402
+from ceremonies import retro as rt  # noqa: E402
 
 
 FIXED_TS = "2026-04-24T14:00:00Z"

@@ -22,7 +22,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 import work  # noqa: E402
-from state import State  # noqa: E402
+from core.state import State  # noqa: E402
 
 
 _SPEC_WITH_F0 = textwrap.dedent(

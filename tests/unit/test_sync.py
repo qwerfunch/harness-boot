@@ -166,7 +166,7 @@ class ValidationIntegrationTests(SyncScratchMixin, unittest.TestCase):
 
     def setUp(self) -> None:
         super().setUp()
-        import validate_spec as vs
+        from spec import validate as vs
         if vs.jsonschema is None:
             self.skipTest("jsonschema not installed")
 
@@ -181,7 +181,7 @@ class ValidationIntegrationTests(SyncScratchMixin, unittest.TestCase):
         (self.harness / "spec.yaml").write_text(
             yaml.safe_dump(bad_spec, sort_keys=False), encoding="utf-8"
         )
-        import validate_spec as vs
+        from spec import validate as vs
         with self.assertRaises(vs.SpecValidationError):
             sync.run(self.harness, timestamp=FIXED_TS)
         # 파생물은 생성되지 않음
@@ -193,7 +193,7 @@ class ValidationIntegrationTests(SyncScratchMixin, unittest.TestCase):
         (self.harness / "spec.yaml").write_text(
             yaml.safe_dump(bad_spec, sort_keys=False), encoding="utf-8"
         )
-        import validate_spec as vs
+        from spec import validate as vs
         with self.assertRaises(vs.SpecValidationError):
             sync.run(self.harness, timestamp=FIXED_TS)
         # events.log 에 failure 이벤트 기록
@@ -223,7 +223,7 @@ class ValidationIntegrationTests(SyncScratchMixin, unittest.TestCase):
         (self.harness / "spec.yaml").write_text(
             yaml.safe_dump(bad_spec, sort_keys=False), encoding="utf-8"
         )
-        import validate_spec as vs
+        from spec import validate as vs
         with self.assertRaises(vs.SpecValidationError):
             sync.run(self.harness, timestamp=FIXED_TS, dry_run=True)
         self.assertFalse((self.harness / "events.log").is_file())
@@ -263,7 +263,7 @@ class PluginVersionResolutionTests(SyncScratchMixin, unittest.TestCase):
 
     def test_falls_back_to_plugin_root_resolve(self):
         """parent 에 plugin.json 이 없어도 plugin_root.resolve() 로 찾음 (NEW-50)."""
-        import plugin_root as pr
+        from core import plugin_root as pr
         from unittest.mock import patch
 
         self.assertFalse((self.tmp / ".claude-plugin").exists())
@@ -284,7 +284,7 @@ class PluginVersionResolutionTests(SyncScratchMixin, unittest.TestCase):
 
     def test_returns_unknown_when_all_fail(self):
         """parent search + plugin_root.resolve() 둘 다 실패 → 'unknown'."""
-        import plugin_root as pr
+        from core import plugin_root as pr
         from unittest.mock import patch
 
         with patch.object(pr, "resolve", side_effect=pr.PluginRootError("test")):

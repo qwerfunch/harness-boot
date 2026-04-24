@@ -80,16 +80,16 @@ class SpecModeContractTests(unittest.TestCase):
         self.fail("--dry-run semantics (취소/생략) 명시 부재")
 
     def test_mode_classifier_invocation_documented(self):
-        """Python 스크립트 spec_mode_classifier.py 가 분기 도구로 명시."""
-        self.assertIn("spec_mode_classifier.py", self.body)
+        """v0.7.6 relocated — scripts/spec/mode_classifier.py 가 분기 도구로 명시."""
+        self.assertIn("mode_classifier.py", self.body)
 
     def test_mode_e_script_invocation_documented(self):
-        """scripts/explain_spec.py 호출 경로 명시."""
-        self.assertIn("explain_spec.py", self.body)
+        """v0.7.6 relocated — scripts/spec/explain.py 호출 경로 명시."""
+        self.assertIn("spec/explain.py", self.body)
 
     def test_mode_ar_diff_script_documented(self):
-        """Mode A/R 이 spec_diff.py 로 diff 렌더."""
-        self.assertIn("spec_diff.py", self.body)
+        """v0.7.6 relocated — Mode A/R 이 scripts/spec/diff.py 로 diff 렌더."""
+        self.assertIn("spec/diff.py", self.body)
 
 
 class PreambleContractTests(unittest.TestCase):

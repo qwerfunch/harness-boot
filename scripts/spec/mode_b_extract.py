@@ -30,8 +30,10 @@ import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
-# Allow running from repo root without install.
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+# Allow running as both a module (`python3 -m scripts.spec.mode_b_extract`) and
+# a direct script (`python3 scripts/spec/mode_b_extract.py`). The sys.path
+# insertion covers the direct-script case so `scripts.spec` resolves.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from spec.mode_b.stopwords import STOP_EN, STOP_KR, KR_PARTICLES_SUFFIX  # noqa: E402
 from spec.mode_b.axes import AXES  # noqa: E402
 
