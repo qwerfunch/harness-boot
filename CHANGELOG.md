@@ -29,6 +29,27 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - Event log rotation (`events.log.YYYYMM`)
 - AC coverage drift (check.py 11 번째 drift 후보)
 
+## [0.8.5] — 2026-04-24
+
+**Development dependency SSoT — direct follow-up to v0.8.4's lesson.**
+
+### Added
+
+- **`requirements-dev.txt`** — single source of truth for local + CI. Lists `pyyaml` (required) and `jsonschema` (schema validation). Comments point back to v0.8.4 as the incident that justified the file.
+- **README §빠른 시작** — local dev setup block showing `python -m pip install -r requirements-dev.txt`, `python -m unittest discover tests/unit`, `bash scripts/self_check.sh`. Mentions CI installs the same file for matrix parity.
+
+### Changed
+
+- **`.github/workflows/self-check.yml`** — install step now runs `pip install -r requirements-dev.txt` instead of inline package names. Keeps CI and local in lockstep. Comment in the workflow references v0.8.4 incident.
+
+### Why
+
+v0.8.4 was a CI-caught bug hidden locally by a missing `jsonschema` install (12 tests silently skipped). The direct lesson: **local dev environment must match CI**. This release formalizes that parity with a manifest.
+
+### Tests
+
+617/617 green (no new tests; existing suite unchanged). self_check 5/5 PASS.
+
 ## [0.8.4] — 2026-04-24
 
 **Hotfix: path depth off-by-one after v0.7.6 subpackage relocation. CI (v0.8.3) caught this immediately on first matrix run — exactly what the gate was built for.**
