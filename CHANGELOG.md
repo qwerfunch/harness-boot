@@ -16,6 +16,63 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - `features[].performance_budget` schema 필드 — v0.6
 - 나머지 10 expert agents fixture — v0.6
 
+## [0.6.0] — 2026-04-24
+
+**3-Anchor Tier orchestration + real-team ceremonies (kickoff · design-review · Q&A · retro). 사용자 우려 "모든 에이전트에 전부 주입은 과도 · 플래너 산출이 다른 에이전트로 전달되어야" 에 대한 구조적 답.**
+
+### Added
+
+**Schema (PR-α, additive only)**:
+- `decisions[]` (top-level) — ADR 카탈로그. `supersedes[]` / `superseded_by` 양방향 연결.
+- `risks[]` (top-level) — risk catalog. likelihood/impact × mitigation × status {open, mitigated, materialized, closed}.
+- `features[].performance_budget` — Web Vitals (lcp_ms/inp_ms/cls/bundle_kb) + backend (latency_p95_ms/memory_rss_mb) + custom[].
+- `constraints.tech_stack` 구조화 — runtime/min_version/language/test/build. `additionalProperties: true` 보존.
+
+**Renderer (PR-β)**:
+- `scripts/render_domain.py` 에 `## Decisions` · `## Risks` 섹션 — plan.md ADR/Risk 가 drop 되지 않고 domain.md 에 흐름.
+- `skills/spec-conversion/SKILL.md` H-10~H-13 heuristics — plan.md → decisions[]/risks[] 변환 규약.
+
+**Agent Tier 체계 (PR-γ)**:
+- 13 expert agent 의 `## Context` 블록을 Tier 별로 업데이트:
+  - **Tier 1 only** (Design): ux-architect · visual-designer · audio-designer · a11y-auditor — domain.md 만.
+  - **Tier 1 + 2** (Engineering/Quality/Integration): software-engineer · frontend-engineer · backend-engineer · security-engineer · performance-engineer · qa-engineer · integrator — + architecture.yaml.
+  - **Tier 1 + 3** (Docs): tech-writer — + plan.md (ADR 원문 인용).
+  - **전 Tier** (Audit): reviewer — full access + retro.md write exception.
+- `tests/unit/test_agents.py` 에 `TierMappingTests` — 각 agent 가 자기 Tier anchor 만 언급하는지 grep 검증.
+
+**Ceremonies (PR-δ + PR-ε)**:
+- `scripts/kickoff.py` — routing shape 기반 per-role template + `kickoff_started` event.
+- `scripts/inbox.py` — `.harness/_workspace/questions/F-N--<from>--<to>.md` 폴링 · blocking flag 파싱.
+- `scripts/design_review.py` — visual + frontend + a11y (+ audio if has_audio) reviewer trio/quartet.
+- `scripts/retro.py` — events.log 분석 (first gate fail · ceremony count) + reviewer draft → tech-writer polish 템플릿.
+- `commands/work.md` 에 Kickoff · Q&A · Design Review · Retrospective 4 섹션 prose contract.
+
+### Changed
+
+- `agents/reviewer.md` `## Context` 섹션 신설 — 전 Tier access + retro.md write 예외 명시.
+- `agents/software-engineer.md` `## Context` 섹션 신설 (Tier 1+2).
+- `.claude-plugin/{plugin,marketplace}.json` — 0.5.1 → 0.6.0.
+- `docs/templates/starter/CLAUDE.md.template` — 4 신규 ceremony 디렉터리 언급.
+
+### Tests
+532/532 unit tests green (16 skipped + 2 jsonschema-not-installed). v0.5.1 의 459 대비 +73 신규 (24 schema · 6 renderer · 5 Tier · 12 kickoff · 9 inbox · 6 design_review · 11 retro). self_check 5/5 PASS.
+
+### v0.5.1 deferred 해소
+
+- B1-10 `constraints.tech_stack` 구조화 ✅
+- B1-5 feature-context payload — `commands/work.md` 섹션으로 prose 정리 (머신 schema 는 v0.7 검토)
+- B1-6 a11y 재감사 자동 trigger — retro ceremony 가 대체 (수동 호출은 여전히 사용자 선택)
+
+### Why
+
+v0.5.1 suika-web 도그푸드에서 드러난 구조적 gap — plan.md 의 ADR/Risk 가 downstream 에 전달 안 됨, architecture.yaml 이 렌더만 되고 미참조, orchestrator payload 가 prose-only, ceremony 전무 — 에 대한 일괄 답. 사용자 질문 "모든 에이전트가 모든 정보 읽는 건 과도 · 아키텍처는 엔지니어 위주" 를 Tier 구조로 반영.
+
+### Not breaking
+
+- 기존 self-spec · .harness/spec.yaml · v0.5 starter template 모두 v0.6 schema 로 validate.
+- 기존 `@harness:*` 호출 호환 유지.
+- ceremony 는 opt-in — 소규모 피처는 건너뛸 수 있음.
+
 ## [0.5.1] — 2026-04-24
 
 **suika-web 실전 도그푸드에서 드러난 프로즈 gap 4 건 patch. 코드 변경 없음.**

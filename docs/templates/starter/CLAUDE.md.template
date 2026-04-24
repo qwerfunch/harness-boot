@@ -14,22 +14,34 @@
 
 - `.harness/domain.md`, `.harness/architecture.yaml` — spec 파생 뷰
 - `.harness/harness.yaml`, `.harness/state.yaml`, `.harness/events.log` — 도구 관리
-- `.harness/_workspace/{research,plan,design,a11y,security,qa,perf,docs}/**` — 전문가 에이전트 산출 (v0.5+)
+- `.harness/_workspace/{research,plan,design,a11y,security,qa,perf,docs,kickoff,design-review,questions,retro}/**` — 전문가 에이전트 산출 + ceremony (v0.5+/v0.6+)
 - `.claude/settings.json`, `.claude/agents/**`, `.claude/skills/**` — Claude Code 어댑터
 
-## 3. 전문가 에이전트 풀 (v0.5)
+## 3. 전문가 에이전트 풀 (v0.5+) + Tier 체계 (v0.6+)
 
-harness 는 제품 개발 라이프사이클 전반의 13 전문가를 제공합니다. orchestrator 가 피처 shape 에 따라 적재적소로 소환합니다. 수동 @-mention 도 가능:
+harness 는 제품 개발 라이프사이클 전반의 13 전문가를 제공합니다. orchestrator 가 피처 shape 에 따라 적재적소로 소환합니다:
 
 - **Discovery**: `@harness:researcher` · `@harness:product-planner` — 한 줄 아이디어 → 풍부한 plan.md
-- **eXperience**: `@harness:ux-architect` · `@harness:visual-designer` · `@harness:audio-designer` · `@harness:a11y-auditor`
-- **Engineering**: `@harness:software-engineer` · `@harness:frontend-engineer` · `@harness:backend-engineer` · `@harness:security-engineer` · `@harness:performance-engineer`
-- **Quality / Integration**: `@harness:qa-engineer` · `@harness:integrator` · `@harness:tech-writer` · `@harness:reviewer`
+- **eXperience** (Tier 1 — domain.md만): `@harness:ux-architect` · `@harness:visual-designer` · `@harness:audio-designer` · `@harness:a11y-auditor`
+- **Engineering** (Tier 1+2 — + architecture.yaml): `@harness:software-engineer` · `@harness:frontend-engineer` · `@harness:backend-engineer` · `@harness:security-engineer` · `@harness:performance-engineer`
+- **Quality / Integration** (Tier 1+2): `@harness:qa-engineer` · `@harness:integrator`
+- **Docs** (Tier 1+3 — + plan.md 원본): `@harness:tech-writer`
+- **Audit** (전 Tier + retro write 예외): `@harness:reviewer`
 - **Coordination**: `@harness:orchestrator`
 
-각 에이전트는 `.harness/domain.md` 를 단일 참조점으로 읽어 당신의 제품 도메인에 맞춘 결과를 냅니다. 자세한 산출 규약은 `agents/<name>.md` 참고.
+**v0.6 Tier 효율 분배** — 모든 agent 가 모든 정보를 읽는 건 과도 · 역할별로 필요한 anchor 만. domain.md 는 모두 · architecture.yaml 은 엔지니어링/품질/통합/감사만 · plan.md 원본은 docs/audit 만.
 
-## 4. 명령어 지도
+## 4. Real-team Ceremonies (v0.6+)
+
+`/harness:work F-N` 사이클에 자동 실행:
+- **Kickoff** — feature activate 직후, routing-match agent 들이 80-word 우려 bullet 제출
+- **Design Review** — ux flows.md 완료 후 visual/frontend/a11y (+audio) 병렬 리뷰
+- **Q&A file-drop** — `.harness/_workspace/questions/F-N--<from>--<to>.md` 로 비동기 질답
+- **Retrospective** — `--complete` 직후 events.log 분석 + reviewer draft → tech-writer polish
+
+각 산출은 `.harness/_workspace/{kickoff,design-review,questions,retro}/` 에 누적.
+
+## 5. 명령어 지도
 
 | 명령 | 언제 쓰나 |
 |------|----------|
@@ -40,7 +52,7 @@ harness 는 제품 개발 라이프사이클 전반의 13 전문가를 제공합
 | `/harness:status` | 현재 진행 상태 확인 |
 | `/harness:check` | 일관성 검증 (주 1회) |
 
-## 5. Import
+## 6. Import
 
 @.harness/spec.yaml
 @.harness/architecture.yaml
