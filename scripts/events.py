@@ -24,9 +24,20 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Iterator
 
+_THIS = Path(__file__).resolve().parent
+if str(_THIS) not in sys.path:
+    sys.path.insert(0, str(_THIS))
+
+from core.event_log import read_events  # noqa: E402
+
 
 def parse_events(path: Path) -> Iterator[dict]:
-    """events.log 의 각 줄을 JSON 으로 파싱. 깨진 줄은 조용히 skip."""
+    """Backward-compat shim — reads a single events.log file.
+
+    New callers should use ``core.event_log.read_events(harness_dir)`` which
+    unifies rotated files (v0.8.6). This helper is preserved for any
+    downstream consumer that still passes a path directly.
+    """
     if not path.is_file():
         return iter([])
     with path.open("r", encoding="utf-8") as f:
@@ -116,8 +127,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {args.harness_dir} not found", file=sys.stderr)
         return 2
 
-    log_path = args.harness_dir / "events.log"
-    all_events = list(parse_events(log_path))
+    # v0.8.6: use unified reader so rotated events.log.YYYYMM siblings
+    # are surfaced alongside the current-month log.
+    all_events = list(read_events(args.harness_dir))
     filtered = filter_events(
         all_events, kind=args.kind, feature=args.feature, since=args.since
     )
