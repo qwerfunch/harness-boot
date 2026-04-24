@@ -177,9 +177,11 @@ ui_surface: {present, platforms, has_audio}  # (있을 때만)
 
 ## Kickoff Ceremony (v0.6)
 
-`/harness:work F-N activate` state 전이 직후 orchestrator 가 **prose-contract 로 수동 호출** (v0.6 범위 — `scripts/work.py` 가 kickoff.py 를 자동 subprocess 호출 하지는 않음 · v0.7 에서 auto-wire 검토). Discovery 단계(spec 최초 작성)는 해당 없음 — 기존 spec 에서 새 feature activate 시만.
+`/harness:work F-N activate` state 전이 직후 `scripts/work.py` 가 **자동으로** `kickoff.generate_kickoff` 를 호출한다 (v0.7 auto-wire). spec.yaml 이 resolve 되고 해당 feature 가 존재할 때만 발화 — spec 미존재 시 silent skip (backward compat). Discovery 단계(spec 최초 작성)는 해당 없음.
 
-**실행 메커니즘**:
+**실행 메커니즘** (v0.7 auto-wire):
+
+`activate()` 내부가 `_autowire_kickoff()` 를 호출 → `spec.yaml` 파싱 → `kickoff.detect_shapes(feature)` 로 shape list 산출 → `kickoff.generate_kickoff()` 발화. CLI 로도 수동 재현 가능:
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/kickoff.py" \
@@ -189,6 +191,14 @@ python3 "$PLUGIN_ROOT/scripts/kickoff.py" \
     --shape feature_completion \
     [--has-audio]
 ```
+
+Shape 감지 규칙 (`kickoff.detect_shapes`):
+- title · AC · modules 전부 비어 있음 → `["baseline-empty-vague"]`
+- `ui_surface.present=true` → `ui_surface.present` (+ `has_audio=true` 면 audio-designer 포함)
+- `performance_budget` 선언 있음 → `performance_budget`
+- `sensitive=true` 또는 도메인의 sensitive entity 참조 → `sensitive_or_auth`
+- 위 전문가 shape 모두 없음 → `pure_domain_logic`
+- 항상 최종에 `feature_completion` 추가
 
 Python 은 **템플릿만 생성**하고 orchestrator 에게 제어를 반환:
 
@@ -238,7 +248,7 @@ python3 "$PLUGIN_ROOT/scripts/inbox.py" --harness-dir .harness --feature F-N
 
 ## Design Review Ceremony (v0.6)
 
-`ux-architect` 가 `.harness/_workspace/design/flows.md` 를 저장한 뒤 orchestrator 가 **prose-contract 로 수동 호출** (v0.6 범위 — file-watcher · git hook 없음 · `scripts/work.py` 에도 `--design-review` 플래그 미존재). 고정 reviewer 3 명(+ has_audio 시 audio-designer 포함 4 명).
+`ux-architect` 가 `.harness/_workspace/design/flows.md` 를 저장한 뒤 orchestrator 가 **prose-contract 로 수동 호출** (v0.7 에서도 수동 유지 — file-watcher · git hook 없음. `scripts/work.py` 에 `--design-review` 플래그 미존재. kickoff/retro 와 달리 activate/complete 같은 명시적 호출 훅이 없어 자동화 대상이 모호하므로 v0.8+ 로 미룸). 고정 reviewer 3 명(+ has_audio 시 audio-designer 포함 4 명).
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/design_review.py" \
@@ -253,7 +263,7 @@ python3 "$PLUGIN_ROOT/scripts/design_review.py" \
 
 ## Retrospective Ceremony (v0.6)
 
-`/harness:work F-N --complete` 성공(gate_5 + evidence) 직후 orchestrator 가 **prose-contract 로 수동 호출** (v0.6 범위 — `scripts/work.py::complete()` 가 retro.py 를 subprocess 호출 하지는 않음).
+`/harness:work F-N --complete` 성공(gate_5 + evidence) 직후 `scripts/work.py::complete()` 가 **자동으로** `retro.generate_retro` 를 호출한다 (v0.7 auto-wire). spec.yaml 미존재 시 silent skip (kickoff 와 대칭).
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/retro.py" --harness-dir .harness --feature F-N
