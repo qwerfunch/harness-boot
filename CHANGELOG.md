@@ -11,12 +11,33 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - Phase 3 CI — `.github/workflows/self-check.yml` + PR gate
 - Cross-language hash test vectors (Appendix D.7)
 - Event log rotation (`events.log.YYYYMM`)
-- AC coverage drift (check.py 10 번째 drift)
-- Agent eval fixture expansion — remaining 10 agents, + YAML/code-producing fixture schema (v0.7.3+)
+- AC coverage drift (check.py 11 번째 drift 후보)
+- Agent eval fixture expansion — remaining 10 agents, + YAML/code-producing fixture schema (v0.7.4+)
 - Design review auto-wire (v0.8+ — ux-architect flows.md save 훅 모호성)
-- ADR supersedes 자동 전이 (v0.7.3)
-- performance_budget × gate_runner 연동 (v0.7.3)
 - Design 계층 tech_stack 접근 — visual-designer/a11y-auditor Tier (v0.7.4)
+- gate_perf auto-detect heuristics (lighthouse.config.js · k6 · wrk 설정 감지) — v0.7.4+
+
+## [0.7.3] — 2026-04-24
+
+**ADR supersedes drift check + gate_perf with performance_budget integration.**
+
+### Added
+
+- `scripts/check.py::check_adr_supersedes(spec)` — 10 번째 drift 종류 `Adr`. `decisions[].supersedes[]` 가 가리키는 ADR 의 `status` 가 `superseded` 가 아니면 warn (domain.md 가 동일 주제에 두 개의 accepted ADR 을 렌더하는 모순 방지). supersedes 가 존재하지 않는 ADR id 를 가리키면 dangling reference warn. SSoT 원칙 유지 — 자동 수정 없음 (사용자 개입 필요).
+- `scripts/gate_runner.py::run_gate_perf` — performance_budget 기반 perf 게이트. auto-detect 없음 (perf 도구 다양성), `harness.yaml.gate_commands.gate_perf` 또는 `--override-command` 로 커맨드 공급 필수. 기본 timeout 900s. run_gate dispatcher 에 gate_perf 등록.
+- `scripts/work.py::_format_performance_budget(budget)` — budget dict → 한 줄 요약 (`lcp_ms=2500 · inp_ms=200 · bundle_kb=180 · api_startup_ms=300`). gate_perf pass 시 evidence summary 에 자동 주입 (`gate_run` kind).
+- `tests/unit/test_check.py::AdrSupersedesDriftTests` — 6 tests.
+- `tests/unit/test_gate_runner.py::RunGatePerfTests` — 5 tests (pass/fail override, skipped 기본, harness.yaml override, dispatcher 인식).
+- `tests/unit/test_work_autowire.py::PerfGateBudgetIntegrationTests` — 2 tests (perf gate pass 시 budget summary 주입 · 다른 gate 는 주입 없음).
+
+### Changed
+
+- `commands/check.md` — 10/10 drift 로 변경, Adr 섹션 추가, Preamble "9 종" → "10 종".
+- `commands/work.md` — Gate 자동 실행 목록에 gate_perf 라인 추가.
+
+### Tests
+
+594/594 green (581 + 13). self_check 5/5 PASS.
 
 ## [0.7.2] — 2026-04-24
 

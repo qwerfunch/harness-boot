@@ -554,6 +554,43 @@ def run_gate_5(
     return _execute("gate_5", cmd, project_root, timeout_sec)
 
 
+def detect_gate_perf_command(project_root: Path) -> list[str] | None:
+    """No auto-detect — performance tooling varies too widely (lighthouse,
+    wrk, k6, custom scripts, …). User must provide override via
+    `harness.yaml.gate_commands.gate_perf` or --override-command.
+    """
+    return None
+
+
+def run_gate_perf(
+    project_root: Path,
+    *,
+    override_command: list[str] | None = None,
+    harness_dir: Path | None = None,
+    timeout_sec: int = 900,
+) -> GateRunResult:
+    """Gate perf — performance_budget 준수 검증 (v0.7.3).
+
+    features[].performance_budget 선언을 가진 피처에 한해 orchestrator 가
+    호출. 예산 수치는 runner 가 환경 변수/커맨드 인자로 전달 — 이 래퍼는
+    커맨드 실행 + exit code → pass/fail 매핑만 책임. 예산 파싱은 work.py
+    의 evidence summary 단계에서 수행한다 (책임 분리).
+
+    Auto-detect 없음 — harness.yaml.gate_commands.gate_perf 또는 --override
+    로 커맨드 공급 필수. 기본 timeout 900s (load test 수용).
+    """
+    cmd = _resolve_command(
+        "gate_perf", project_root, override_command, harness_dir, detect_gate_perf_command
+    )
+    if cmd is None:
+        return GateRunResult(
+            gate="gate_perf",
+            result="skipped",
+            reason="no perf runner configured — harness.yaml.gate_commands.gate_perf 또는 --override-command 필요",
+        )
+    return _execute("gate_perf", cmd, project_root, timeout_sec)
+
+
 def run_gate(
     gate: str,
     project_root: Path,
@@ -562,7 +599,14 @@ def run_gate(
     harness_dir: Path | None = None,
     timeout_sec: int = 300,
 ) -> GateRunResult:
-    """디스패처. 현재는 gate_0 (tests) · gate_1 (type check) · gate_2 (lint) 지원."""
+    """디스패처. gate_0~gate_5 표준 + gate_perf (v0.7.3)."""
+    if gate == "gate_perf":
+        return run_gate_perf(
+            project_root,
+            override_command=override_command,
+            harness_dir=harness_dir,
+            timeout_sec=timeout_sec,
+        )
     if gate == "gate_0":
         return run_gate_0(
             project_root,

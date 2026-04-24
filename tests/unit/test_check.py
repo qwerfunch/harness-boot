@@ -409,6 +409,68 @@ class ProtocolDriftTests(HarnessScratch, unittest.TestCase):
         self.assertIn("mapping", findings[0].message)
 
 
+class AdrSupersedesDriftTests(unittest.TestCase):
+    """v0.7.3 — ADR supersedes chain consistency. When a new ADR supersedes
+    an old one, the old ADR's status must be 'superseded'. Otherwise domain.md
+    renders a contradiction (two 'accepted' ADRs on the same decision).
+    """
+
+    def test_clean_when_old_marked_superseded(self):
+        spec = {
+            "decisions": [
+                {"id": "ADR-001", "title": "old", "status": "superseded"},
+                {"id": "ADR-002", "title": "new", "status": "accepted", "supersedes": ["ADR-001"]},
+            ],
+        }
+        findings = check.check_adr_supersedes(spec)
+        self.assertEqual(findings, [])
+
+    def test_warns_when_old_still_accepted(self):
+        spec = {
+            "decisions": [
+                {"id": "ADR-001", "title": "old", "status": "accepted"},
+                {"id": "ADR-002", "title": "new", "status": "accepted", "supersedes": ["ADR-001"]},
+            ],
+        }
+        findings = check.check_adr_supersedes(spec)
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].kind, "Adr")
+        self.assertIn("ADR-001", findings[0].path)
+        self.assertIn("ADR-002", findings[0].message)
+
+    def test_warns_when_supersedes_target_missing(self):
+        spec = {
+            "decisions": [
+                {"id": "ADR-002", "title": "new", "status": "accepted", "supersedes": ["ADR-999"]},
+            ],
+        }
+        findings = check.check_adr_supersedes(spec)
+        self.assertEqual(len(findings), 1)
+        self.assertIn("ADR-999", findings[0].message)
+
+    def test_no_decisions_section_is_clean(self):
+        findings = check.check_adr_supersedes({})
+        self.assertEqual(findings, [])
+
+    def test_empty_supersedes_is_clean(self):
+        spec = {"decisions": [{"id": "ADR-001", "status": "accepted"}]}
+        findings = check.check_adr_supersedes(spec)
+        self.assertEqual(findings, [])
+
+    def test_chain_of_two_supersedes(self):
+        """ADR-003 supersedes ADR-002 which supersedes ADR-001 — all except ADR-003 must be superseded."""
+        spec = {
+            "decisions": [
+                {"id": "ADR-001", "status": "superseded"},
+                {"id": "ADR-002", "status": "accepted", "supersedes": ["ADR-001"]},
+                {"id": "ADR-003", "status": "accepted", "supersedes": ["ADR-002"]},
+            ],
+        }
+        findings = check.check_adr_supersedes(spec)
+        self.assertEqual(len(findings), 1)
+        self.assertIn("ADR-002", findings[0].path)
+
+
 class IntegrationTests(HarnessScratch, unittest.TestCase):
     def test_clean_run_reports_no_findings(self):
         # 정상 시나리오: harness.yaml 있고 spec 해시 맞고 파생 없음 (미파생 상태지만 해시도 기록 안 된 이상 warn 안 나옴)

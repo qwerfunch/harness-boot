@@ -129,6 +129,23 @@ def _autowire_retro(harness_dir: Path, fid: str) -> None:
         return
 
 
+def _format_performance_budget(budget: dict) -> str:
+    """Performance budget dict → compact one-line summary for evidence entries (v0.7.3)."""
+    if not isinstance(budget, dict) or not budget:
+        return ""
+    parts: list[str] = []
+    standard = ("lcp_ms", "inp_ms", "cls", "bundle_kb", "latency_p95_ms", "memory_rss_mb")
+    for key in standard:
+        if key in budget:
+            parts.append(f"{key}={budget[key]}")
+    custom = budget.get("custom") or []
+    if isinstance(custom, list):
+        for entry in custom:
+            if isinstance(entry, dict) and "metric" in entry and "budget" in entry:
+                parts.append(f"{entry['metric']}={entry['budget']}")
+    return " · ".join(parts)
+
+
 def _summarize(state: State, fid: str) -> WorkResult:
     f = state.get_feature(fid) or {}
     gates = f.get("gates", {}) or {}
@@ -430,6 +447,14 @@ def run_and_record_gate(
         summary = f"Gate {gate_name} pass ({run_result.duration_sec:.1f}s)"
         if run_result.command:
             summary += " · cmd: " + " ".join(run_result.command)
+        if gate_name == "gate_perf":
+            spec = _load_spec(harness_dir)
+            feature = _find_feature(spec, fid) if spec else None
+            budget_summary = _format_performance_budget(
+                (feature or {}).get("performance_budget") or {}
+            )
+            if budget_summary:
+                summary += f" · budget: {budget_summary}"
         state.add_evidence(fid, kind="gate_run", summary=summary)
 
     state.save()
