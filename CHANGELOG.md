@@ -16,6 +16,36 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - `features[].performance_budget` schema 필드 — v0.6
 - 나머지 10 expert agents fixture — v0.6
 
+## [0.5.1] — 2026-04-24
+
+**suika-web 실전 도그푸드에서 드러난 프로즈 gap 4 건 patch. 코드 변경 없음.**
+
+### Changed
+- `commands/work.md` Preamble — Iron Law 문구에 "상태 전이는 scripts/work.py 경유" 명시. state.yaml 수동 편집과 events.log drift 를 방지 (B1-1).
+- `commands/work.md` — `## Skip 정책` 섹션 추가. security-engineer · performance-engineer · audio-designer 는 조건부 skip 허용하되 **state.yaml `skipped_agents[]` 에 사유 기록**. integrator · tech-writer 는 원칙 skip 금지 (문서-only 피처 예외) (B1-7).
+- `agents/frontend-engineer.md` — `## Viewport · Resize · Physics 체크리스트` 추가. canvas resize 시 physics world 재구축 · viewport-fit=cover + safe-area-inset 4 방향 · aria-live debounce · SRI/onerror · reduced-motion transform sweep 포함 (B1-2).
+- `agents/security-engineer.md` — STRIDE Tampering 에 `## Supply Chain / CDN` 체크리스트 구체화. 외부 CDN 로드는 SRI 필수 · crossorigin=anonymous · onerror fallback · exact version pinning · 라이선스 확인 (B1-8).
+- `.claude-plugin/{plugin,marketplace}.json` — 0.5.0 → 0.5.1.
+
+### Why
+`/Users/qwerfunch/Developer/work/suika-web/` 에서 v0.5.0 workflow 를 14 agent 역할극으로 시뮬한 결과:
+- Matter.js CDN 을 SRI 없이 로드했다가 뒤늦게 제거 (security-engineer 규약 부재 원인)
+- resize 핸들러가 walls 재구축 안 해서 회전 시 과일 탈출 가능 (frontend-engineer 규약 부재 원인)
+- suika-web state.yaml 수동 작성 → events.log 와 drift (Phase 1 observational 경계 문서 부재 원인)
+- security-engineer 를 "no sensitive entity" 이유로 skip 했는데 사유 기록 안 됨 (skip 정책 부재 원인)
+
+각 item 은 **실전에서 드러난 gap** 이며 **severity should** 이상 만 반영. nice-to-have (B1-3 sync.md 문서화 gap · B1-11 ui_surface 스코프 주석) 은 v0.6 으로 연기.
+
+### Tests
+459/459 unit tests green 유지 (프로즈 변경이라 계약 영향 없음). self_check 5/5 PASS.
+
+### Deferred to v0.6
+- B1-4 `scripts/init.py` 도입 or prose-only 설계 확정
+- B1-5 feature-context payload JSON schema
+- B1-6 a11y post-implementation 재감사 자동 trigger
+- B1-10 `constraints` schema 구조화 (tech_stack runtime/min_version)
+- B1-12 나머지 10 agent fixture
+
 ## [0.5.0] — 2026-04-24
 
 **전문가 에이전트 풀(14) + Orchestration Routing. 제품 개발 라이프사이클 전반에 최고 수준 전문가가 도메인을 이해하고 동작.**

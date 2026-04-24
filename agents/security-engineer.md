@@ -48,12 +48,25 @@ tools:
 
 **필수 섹션**:
 
-1. `## Threat Model` — STRIDE 테이블. 피처별 6 카테고리 × {risk level, mitigation, residual}.
+1. `## Threat Model` — STRIDE 테이블. 피처별 6 카테고리 × {risk level, mitigation, residual}. **Tampering 행에는 Supply Chain 체크 필수** (아래 참조).
 2. `## AuthN/AuthZ Design` — flow 다이어그램 + OAuth 2.1/FIDO2 준수 명시.
 3. `## Secrets Audit` — repo grep 결과 (hardcoded keys/tokens/creds 0 개 보장). 실패 시 위치 + 제거 diff.
 4. `## Data Handling` — sensitive entity 의 encryption at rest/transit · 로그 마스킹 · retention.
 5. `## Dependency Audit` — `npm audit` / `pip-audit` / `trivy` 결과. CVSS ≥ 7 는 BLOCK.
-6. `## Verdict` — PASS | WARN | BLOCK + 근거 (OWASP ASVS 조항 id).
+6. `## Supply Chain / CDN` — 외부 script/style 로드 전수 검사 (v0.5.1 신규, 아래).
+7. `## Verdict` — PASS | WARN | BLOCK + 근거 (OWASP ASVS 조항 id).
+
+### Supply Chain / CDN 체크리스트 (v0.5.1 · STRIDE Tampering 구체화)
+
+외부 CDN (jsdelivr · unpkg · googleapis 등) 에서 로드하는 모든 `<script src>` · `<link rel=stylesheet>` 는:
+
+- **SRI hash 필수** — `integrity="sha384-..."` 속성. pin 된 버전의 공식 hash 를 jsdelivr SRI 도구 또는 `openssl dgst -sha384 -binary | base64` 로 산출.
+- **`crossorigin="anonymous"` 동반** — SRI 는 CORS 없이 검증 불가.
+- **onerror fallback 또는 local vendor** — CDN 장애 시 degrade 경로. 최소한 사용자에게 "재시도" 메시지.
+- **버전 pinning** — `@latest` · major-only 금지. exact semver 고정.
+- **라이선스 확인** — OSI 승인 라이선스만. GPL/AGPL 은 제품 요구에 따라 사용자 승인 전제.
+
+CVSS ≥ 7 의 known vulnerability 가 pinned 버전에 있으면 BLOCK. upgrade path 제시 후 재감사.
 
 **부 산출** (실구현 가능 시): src/ 내 보안 가드 파일 (middleware, validator, CSP config).
 

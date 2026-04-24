@@ -48,6 +48,16 @@ tools:
 - 테스트: component 단위 RTL/Playwright 또는 동등. `aria-*` assertion 필수.
 - a11y-auditor BLOCK 이 있으면 해당 파일 수정 금지 (먼저 해소 기다림).
 
+## Viewport · Resize · Physics 체크리스트 (v0.5.1)
+
+반응형 UI · Canvas/WebGL · 물리 시뮬레이션 있는 피처에서 반드시 검토:
+
+- **canvas 크기 변경**: window resize 또는 orientationchange 시 canvas 치수만 갱신하면 **물리 world/collider 는 stale 상태 유지** → 벽·바닥이 잘못된 위치. resize 핸들러에서 물리 world 재구축 또는 canvas 크기 잠금.
+- **viewport meta**: iOS 노치 대응 시 `viewport-fit=cover` + CSS `env(safe-area-inset-*)` 를 **4 방향 모두** 고려. top/bottom 만 적용하고 left/right 누락은 landscape 에서 콘텐츠 잘림.
+- **`aria-live` flood**: 빠른 연속 업데이트(점수 · 카운트) 에서 `textContent` 를 바로 갱신하면 SR 이 overlapping announcement 로 폭발. 200ms trailing-edge debounce 또는 동등 throttle.
+- **external CDN 로드**: `<script src>` 에 `integrity` SRI + `onerror` fallback 필수 (security-engineer 규약과 정렬).
+- **reduced-motion**: `transition: none` 만으로 부족 — `:active { transform: scale() }` 같은 pseudo 상태의 transform 도 감쌈. 전체 `transform`/`animation` 을 `@media (prefers-reduced-motion: reduce)` 에서 sweep.
+
 ## 전형 흐름
 
 1. domain.md · flows.md · tokens.yaml · components.yaml · a11y/report.md Read
