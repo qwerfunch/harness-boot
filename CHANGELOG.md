@@ -12,10 +12,25 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - Cross-language hash test vectors (Appendix D.7)
 - Event log rotation (`events.log.YYYYMM`)
 - AC coverage drift (check.py 11 번째 drift 후보)
-- Agent eval fixture expansion — remaining 10 agents, + YAML/code-producing fixture schema (v0.7.4+)
+- 나머지 agent fixtures (backend/security/performance/audio/qa/integrator/orchestrator/reviewer) — v0.7.5+
 - Design review auto-wire (v0.8+ — ux-architect flows.md save 훅 모호성)
-- Design 계층 tech_stack 접근 — visual-designer/a11y-auditor Tier (v0.7.4)
-- gate_perf auto-detect heuristics (lighthouse.config.js · k6 · wrk 설정 감지) — v0.7.4+
+- gate_perf auto-detect heuristics (lighthouse.config.js · k6 · wrk 설정 감지) — v0.8+
+
+## [0.7.4] — 2026-04-24
+
+**Design-tier Platform access + fixture schema for YAML/code producers.**
+
+### Added
+
+- `scripts/render_domain.py` 에 `## Platform` 섹션 렌더러 (v0.7.4). `constraints.tech_stack` (runtime · min_version · language · test · build + 추가 필드) 가 선언돼 있으면 Project 바로 뒤 · Stakeholders 앞에 렌더. Tier 1 only agents (visual-designer · a11y-auditor) 가 architecture.yaml(Tier 2) 접근 없이도 플랫폼 맥락에 닿음. tech_stack 부재/비어있음 시 섹션 자체 생략.
+- `agents/visual-designer.md` + `agents/a11y-auditor.md` Context 블록 업데이트 — domain.md 의 Platform 섹션을 명시적으로 참조 (runtime=browser → system-ui · runtime=ios → Dynamic Type 등 플랫폼별 기본값 규약).
+- `tests/unit/test_agent_fixtures.py` — `producer_type` 필드 지원 (`markdown` 기본 · `yaml` · `code`). 타입별 요구 키 디스패치: markdown → required_sections_in_order · yaml → required_top_keys · code → required_file_patterns. 기존 v0.7.2 fixture 5 개는 producer_type 생략 시 markdown 으로 간주되어 계속 PASS.
+- `tests/fixtures/agent-evals/visual-designer/` (producer_type=yaml) · `tests/fixtures/agent-evals/software-engineer/` (producer_type=code) — 2 개 non-markdown fixture 추가. 총 7 agents 커버.
+- `tests/unit/test_render_domain.py::PlatformSectionTests` — 5 tests (부재 · 존재 · 순서 · 부분 필드 · 빈 stack 처리).
+
+### Tests
+
+602/602 green (594 + 8). self_check 5/5 PASS.
 
 ## [0.7.3] — 2026-04-24
 

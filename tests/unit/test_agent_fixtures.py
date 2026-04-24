@@ -29,12 +29,16 @@ FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures" / "agent-evals"
 AGENTS_DIR = REPO_ROOT / "agents"
 
 
-_REQUIRED_KEYS = (
-    "agent",
-    "output_path",
-    "required_sections_in_order",
-    "forbidden_phrases",
-)
+_COMMON_REQUIRED_KEYS = ("agent", "output_path", "forbidden_phrases")
+
+# Per-producer-type required keys. v0.7.4 — fixtures can declare
+# producer_type: markdown (default · fallback for backward compat with v0.7.2
+# fixtures that omit the field), yaml, code.
+_PRODUCER_KEYS: dict[str, tuple[str, ...]] = {
+    "markdown": ("required_sections_in_order",),
+    "yaml": ("required_top_keys",),
+    "code": ("required_file_patterns",),
+}
 
 
 def _fixture_dirs() -> list[Path]:
@@ -79,13 +83,28 @@ class FixtureContractTests(unittest.TestCase):
                 f"{d.name}: expected-structure.yaml root must be a mapping",
             )
 
-    def test_required_keys_present(self):
+    def test_common_required_keys_present(self):
         for d in _fixture_dirs():
             data = yaml.safe_load((d / "expected-structure.yaml").read_text(encoding="utf-8"))
-            for key in _REQUIRED_KEYS:
+            for key in _COMMON_REQUIRED_KEYS:
                 self.assertIn(
                     key, data,
-                    f"{d.name}/expected-structure.yaml: missing required key {key!r}",
+                    f"{d.name}/expected-structure.yaml: missing common key {key!r}",
+                )
+
+    def test_producer_type_specific_keys(self):
+        """producer_type 에 따라 요구 키가 다르다 (markdown/yaml/code)."""
+        for d in _fixture_dirs():
+            data = yaml.safe_load((d / "expected-structure.yaml").read_text(encoding="utf-8"))
+            ptype = data.get("producer_type", "markdown")
+            self.assertIn(
+                ptype, _PRODUCER_KEYS,
+                f"{d.name}: producer_type {ptype!r} must be one of {list(_PRODUCER_KEYS)}",
+            )
+            for key in _PRODUCER_KEYS[ptype]:
+                self.assertIn(
+                    key, data,
+                    f"{d.name} (producer_type={ptype}): missing key {key!r}",
                 )
 
     def test_agent_field_matches_directory(self):
@@ -97,9 +116,11 @@ class FixtureContractTests(unittest.TestCase):
             )
 
     def test_required_sections_nonempty_and_markdown_heading(self):
-        """Sections must be H2 or H3 markdown headings (`## ` or `### `)."""
+        """Sections must be H2 or H3 markdown headings. Applies only when producer_type=markdown."""
         for d in _fixture_dirs():
             data = yaml.safe_load((d / "expected-structure.yaml").read_text(encoding="utf-8"))
+            if data.get("producer_type", "markdown") != "markdown":
+                continue
             sections = data["required_sections_in_order"]
             self.assertIsInstance(sections, list, f"{d.name}: required_sections must be a list")
             self.assertGreater(len(sections), 0, f"{d.name}: empty required_sections")
@@ -107,6 +128,34 @@ class FixtureContractTests(unittest.TestCase):
                 self.assertTrue(
                     isinstance(s, str) and (s.startswith("## ") or s.startswith("### ")),
                     f"{d.name}: section {s!r} must be markdown H2/H3",
+                )
+
+    def test_yaml_top_keys_are_dotted_strings(self):
+        """yaml producers: required_top_keys is a list of strings like 'color' or 'space/card'."""
+        for d in _fixture_dirs():
+            data = yaml.safe_load((d / "expected-structure.yaml").read_text(encoding="utf-8"))
+            if data.get("producer_type") != "yaml":
+                continue
+            keys = data["required_top_keys"]
+            self.assertIsInstance(keys, list, f"{d.name}: required_top_keys must be list")
+            self.assertGreater(len(keys), 0, f"{d.name}: empty required_top_keys")
+            for k in keys:
+                self.assertIsInstance(k, str, f"{d.name}: key {k!r} must be string")
+
+    def test_code_patterns_are_glob_strings(self):
+        """code producers: required_file_patterns is a list of path patterns (src/... · tests/...)."""
+        for d in _fixture_dirs():
+            data = yaml.safe_load((d / "expected-structure.yaml").read_text(encoding="utf-8"))
+            if data.get("producer_type") != "code":
+                continue
+            patterns = data["required_file_patterns"]
+            self.assertIsInstance(patterns, list, f"{d.name}: required_file_patterns must be list")
+            self.assertGreater(len(patterns), 0, f"{d.name}: empty required_file_patterns")
+            for p in patterns:
+                self.assertIsInstance(p, str, f"{d.name}: pattern {p!r} must be string")
+                self.assertTrue(
+                    "/" in p or "." in p,
+                    f"{d.name}: pattern {p!r} should look like a path",
                 )
 
     def test_forbidden_phrases_list_of_strings(self):

@@ -14,7 +14,7 @@ tools:
 
 ## Context
 
-**Tier 1 only** (v0.6) — 작업 착수 전 `$(pwd)/.harness/domain.md` 를 Read 하여 Project(vision·summary) · Stakeholders · Entities · Business Rules · **Decisions** · **Risks** 를 해석한다. 이어 `.harness/_workspace/design/flows.md` (ux-architect 산출) 를 Read 하여 행동 구조에 입힐 시각 언어를 결정한다. `architecture.yaml` · `plan.md` 원본은 읽지 않음 (Design stage 경계). 그 제품 도메인의 최고 수준 시각 디자이너로 행동한다. `spec.yaml` 직접 참조 금지 — orchestrator 가 tags `brand|visual|motion` 를 하이라이트.
+**Tier 1 only** (v0.6) — 작업 착수 전 `$(pwd)/.harness/domain.md` 를 Read 하여 Project(vision·summary) · **Platform**(v0.7.4 — runtime/language/test/build) · Stakeholders · Entities · Business Rules · **Decisions** · **Risks** 를 해석한다. Platform 섹션이 있으면 플랫폼별 폰트/터치영역/모션 감도 기본값을 그 값에 맞춘다 (예: runtime=browser → system-ui 우선, runtime=ios → Dynamic Type 존중). 이어 `.harness/_workspace/design/flows.md` (ux-architect 산출) 를 Read 하여 행동 구조에 입힐 시각 언어를 결정한다. `architecture.yaml` · `plan.md` 원본은 읽지 않음 (Design stage 경계). 그 제품 도메인의 최고 수준 시각 디자이너로 행동한다. `spec.yaml` 직접 참조 금지 — orchestrator 가 tags `brand|visual|motion` 를 하이라이트.
 
 **전문 프레임워크 (내장 판정 규준)**:
 
