@@ -29,6 +29,38 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - ~~Event log rotation (`events.log.YYYYMM`)~~ ✅ v0.8.6
 - AC coverage drift (check.py 11 번째 drift 후보)
 
+## [0.8.9] — 2026-04-24
+
+**Starter `.gitignore` + `conftest.py` templates — closes the third v0.8.6 e2e finding. Onboarding friction removed.**
+
+### Problem (from v0.8.6 e2e smoke)
+
+- **No `.gitignore` shipped** → `.harness/events.log` · `state.yaml` · `_workspace/` were tracked by default. `/harness:work --run-gate gate_4` (commit check) FAILs on every mutation.
+- **No `conftest.py` helper** → Python projects with `src/<pkg>/` layout couldn't run pytest collection or subprocess smoke (`python -m pkg`) without manual `sys.path` / `PYTHONPATH` configuration.
+
+### Added
+
+- **`docs/templates/starter/.gitignore.template`** — ignores mutable harness files (events.log + rotated `events.log.YYYYMM*`, state.yaml, harness.yaml, domain.md, architecture.yaml, `_workspace/`) plus common Python/Node/IDE noise. Comments at bottom list what to **keep** tracking (spec.yaml, chapters/, protocols/). Designed for append-merge when user already has a .gitignore.
+- **`docs/templates/starter/conftest.py.template`** — pythonpath injection for `src/<pkg>/` layouts. Handles both pytest collection (`sys.path.insert`) and subprocess propagation (`os.environ["PYTHONPATH"]`). Safe no-op when no `src/` directory exists. Optional — Python projects only.
+- **`commands/init.md` §2.5** — new "선택 파일" section documenting when to copy each template, merge policy (`.gitignore` = append · `conftest.py` = manual for existing files), and `--solo` lite-mode skip.
+- **`tests/unit/test_starter_schema.py::OptionalStarterTemplatesTests`** — 4 tests: gitignore ships with mutable files listed, gitignore preserves user-editables (spec.yaml · chapters/ · protocols/), conftest ships with sys.path + PYTHONPATH handling, init.md documents both templates.
+
+### End-to-end smoke findings — fully resolved
+
+| Finding | Fix version |
+|---|---|
+| `shutil.which("pytest")` misses user-site installs | v0.8.8 |
+| `--complete` re-emits events on done feature | v0.8.7 |
+| retro.md overwritten on re-complete | v0.8.7 |
+| No `.gitignore` → gate_4 dirty tree | **v0.8.9** |
+| No `conftest.py` → Python smoke fails | **v0.8.9** |
+
+All 5 gaps surfaced by the v0.8.6 greet-e2e live run are now closed.
+
+### Tests
+
+637/637 green (633 + 4 new). self_check 5/5 PASS.
+
 ## [0.8.8] — 2026-04-24
 
 **Gate 0/3 pytest detection — covers user-site / venv installs. Second fix from v0.8.6 e2e smoke findings.**

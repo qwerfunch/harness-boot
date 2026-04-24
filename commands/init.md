@@ -94,6 +94,23 @@ jq -r '.plugins | to_entries[] | select(.key | startswith("harness@")) | .value[
 
 `CLAUDE.md` 는 병합 로직이 섞여있으므로 §3 이 전담합니다.
 
+### 2.5. 선택 파일 — `.gitignore` + `conftest.py` (v0.8.9)
+
+**`.gitignore`** — 프로젝트 루트. `.harness/` 안의 파생물 (events.log · state.yaml · harness.yaml · domain.md · architecture.yaml · _workspace/) 과 로테이션된 `events.log.YYYYMM*` 를 무시하는 설정 포함. 이게 없으면 `/harness:work --run-gate gate_4` 가 매번 dirty working tree 로 fail — v0.8.6 e2e 실증에서 확인된 gap.
+
+- 대상: 프로젝트 루트 `.gitignore`
+- 원본: `docs/templates/starter/.gitignore.template`
+- **이미 `.gitignore` 가 있으면 **append 병합** (중복 라인은 생략 · "# harness-boot —" 섹션 헤더로 구분)**. 새로 만들면 전체 복사.
+
+**`conftest.py`** — Python 프로젝트만. `src/<pkg>/` 레이아웃에서 pytest 수집 + subprocess smoke 의 PYTHONPATH 전파 처리. Node/다른 런타임이면 건너뜀.
+
+- 대상: 프로젝트 루트 `conftest.py`
+- 원본: `docs/templates/starter/conftest.py.template`
+- **이미 `conftest.py` 가 있으면 사용자에게 병합 여부 확인 후 manual merge** (자동 병합 금지 — pytest 설정은 프로젝트마다 민감).
+- `src/` 디렉터리가 없는 프로젝트에는 복사하지 않음 (flat layout 은 필요 없음).
+
+이 섹션을 건너뛰면 나중에 수동으로 복사해도 됨. `/harness:init --solo` 같은 라이트 모드에서는 기본 skip.
+
 ### 3. CLAUDE.md 생성 또는 병합
 
 **신규 생성** 케이스 (CLAUDE.md 가 프로젝트 루트에 없을 때):
