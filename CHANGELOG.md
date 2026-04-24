@@ -26,8 +26,34 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 - ~~Phase 3 CI — `.github/workflows/self-check.yml` + PR gate~~ ✅ v0.8.3
 - Cross-language hash test vectors (Appendix D.7)
-- Event log rotation (`events.log.YYYYMM`)
+- ~~Event log rotation (`events.log.YYYYMM`)~~ ✅ v0.8.6
 - AC coverage drift (check.py 11 번째 drift 후보)
+
+## [0.8.6] — 2026-04-24
+
+**Phase 2 scale readiness · first step — `events.log` monthly rotation.**
+
+### Why
+
+Events accumulate forever. On a long-running project (the vision's "수년 운영" target) the single `events.log` grows unbounded, and every `/harness:events` / `/harness:metrics` call pays linear parse cost over history. v0.8.6 introduces opt-in rotation that keeps the **write path identical** (no emitter change) while letting queries span split files transparently.
+
+### Added
+
+- **`scripts/core/event_log.py`** — new module with two public functions:
+  - `read_events(harness_dir)` — unified event stream across `events.log` + every `events.log.YYYYMM` sibling, returned in timestamp order. Unparseable-ts events sort last but are never dropped.
+  - `rotate(harness_dir, *, now_yyyymm=None, dry_run=False)` — moves events whose ts is strictly older than the current month into `events.log.YYYYMM` buckets. Current-month events and events with unparseable ts stay in `events.log`. Returns `{yyyymm: count}` moved. Idempotent.
+- **CLI**: `python3 scripts/core/event_log.py rotate [--harness-dir PATH] [--dry-run]`.
+- **`tests/unit/test_event_log.py`** — 10 tests: empty harness, single log, merged rotated files, corrupted-line skip, split semantics, append to existing rotated file, idempotency, unparseable-ts preservation, dry-run non-mutation, events.py integration.
+
+### Changed
+
+- **`scripts/events.py`** main path now calls `read_events(harness_dir)` instead of `parse_events(events.log)` — automatically surfaces rotated files. Legacy `parse_events(path)` helper kept for backward compat (any downstream consumer passing a path directly).
+- **`scripts/metrics.py`** `compute(log_path, ...)` — when `log_path.name == "events.log"`, routes through `read_events(log_path.parent)`. Other paths fall back to single-file parser (preserves test-only direct-path calls).
+- **`commands/events.md`** — new "Log rotation (v0.8.6)" section with CLI usage + writer/reader contract + idempotency guarantee.
+
+### Tests
+
+627/627 green (617 + 10). self_check 5/5 PASS.
 
 ## [0.8.5] — 2026-04-24
 

@@ -38,6 +38,7 @@ if str(_THIS) not in sys.path:
     sys.path.insert(0, str(_THIS))
 
 import events as events_mod  # noqa: E402
+from core.event_log import read_events  # noqa: E402
 
 
 _PERIOD_PATTERN = re.compile(r"^\s*(\d+)\s*([smhdw])\s*$", re.IGNORECASE)
@@ -214,8 +215,16 @@ def compute(
     우선순위: `since` > `period`. 둘 다 없으면 전체 기간.
     `period_label` — 사용자 입력 원문 (예: "7d"). 생략 시 period 에서 복구.
     `now` 는 테스트용 — 기본 UTC now.
+
+    v0.8.6: ``log_path`` 의 파일명이 ``events.log`` 일 때 ``log_path.parent``
+    를 harness_dir 로 간주하고 ``core.event_log.read_events`` 로 rotated
+    ``events.log.YYYYMM`` siblings 까지 합산. 다른 이름/경로는 기존 단일 파일
+    파서 사용 (backward compat — 테스트에서 가끔 직접 지정).
     """
-    all_events = list(events_mod.parse_events(log_path))
+    if log_path.name == "events.log":
+        all_events = list(read_events(log_path.parent))
+    else:
+        all_events = list(events_mod.parse_events(log_path))
 
     window_end: datetime | None = None
     window_start: datetime | None = None

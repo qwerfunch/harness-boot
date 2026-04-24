@@ -65,7 +65,26 @@ python3 "$PLUGIN_ROOT/scripts/events.py" --harness-dir "$(pwd)/.harness" --json
 - `evidence_added` — /harness:work --evidence.
 - `include_expand_failed` — /harness:sync 의 $include 전개 실패.
 
+## Log rotation (v0.8.6)
+
+`events.log` 가 수개월~수년 누적되면 파싱·쿼리 비용이 선형 증가. v0.8.6 부터 **opt-in 월단위 회전** 지원:
+
+```bash
+# 과거 월 이벤트를 events.log.YYYYMM 로 분리 (현재 월은 events.log 유지)
+python3 "$PLUGIN_ROOT/scripts/core/event_log.py" rotate --harness-dir .harness
+
+# 미리 보기
+python3 "$PLUGIN_ROOT/scripts/core/event_log.py" rotate --harness-dir .harness --dry-run
+```
+
+**규약**:
+
+- 작성자 (work.py · ceremonies · sync.py 등) 는 변경 없음 — 여전히 `events.log` 에 append.
+- 읽기 (`/harness:events`, `/harness:metrics`) 는 자동으로 `events.log` + 모든 `events.log.YYYYMM` 을 timestamp 순으로 통합.
+- rotate 는 **idempotent** — 2 회 실행해도 파일 내용 동일.
+- ts 파싱 불가한 이벤트는 회전 대상에서 제외되어 `events.log` 에 보존.
+
 ## 참조
 
-- `scripts/events.py`.
+- `scripts/events.py` · `scripts/core/event_log.py` (v0.8.6 rotation).
 - BR-012 (CQS) · BR-013 (append-only 로그).
