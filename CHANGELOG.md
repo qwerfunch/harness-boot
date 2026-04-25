@@ -29,6 +29,51 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - ~~Event log rotation (`events.log.YYYYMM`)~~ ✅ v0.8.6
 - AC coverage drift (check.py 11 번째 drift 후보)
 
+## [0.9.6] — 2026-04-25
+
+**Project mode axis — `prototype` vs `product` ceremony lightening.**
+
+`spec.project.mode` becomes a single switch that simultaneously tightens or
+relaxes Iron Law D (already in place since v0.9.3), kickoff template depth,
+retrospective template depth, and design-review autowire. Existing specs
+without the field continue to behave identically (defaults to `product`).
+
+### Added
+
+- **`scripts/core/project_mode.py`** — shared `resolve_mode(spec) -> "prototype" | "product"` helper. Pure function, no I/O. Replaces the duplicated mode resolution that was inlined in `scripts/work.py`.
+- **`scripts/ceremonies/kickoff.py`** — `generate_kickoff(..., mode=...)`. `prototype` renders one bullet per agent and a one-line guidance comment; `product` keeps the original three-bullet / 80-word prompt. Agent list itself unchanged across modes — only per-agent depth is lightened. The `kickoff_started` event now carries `mode`.
+- **`scripts/ceremonies/retro.py`** — `generate_retro(..., mode=...)`. `prototype` renders only the three machine-extractable sections (What Shipped · First Gate to Fail · Ceremonies summary) and skips the five LLM-driven sections that need a reviewer→tech-writer pass. `feature_retro_written` event now carries `mode`.
+- **`scripts/work.py::_autowire_design_review`** — fourth AND condition: skips the autowire when mode is `prototype`. Explicit `--design-review` flag still forces generation in either mode.
+- **`docs/schemas/spec.schema.json`** — `project.mode` enum (`prototype` · `product`) added with description.
+- **`tests/unit/test_project_mode.py`** — 22 tests:
+  - `resolve_mode` (11) — defaults, enum gating, malformed input handling, non-dict spec.
+  - Kickoff lightening (4) — product 3-bullets, prototype 1-bullet, default mode, event metadata.
+  - Retro lightening (4) — product full template, prototype machine-only, default mode, event metadata.
+  - Design-review autowire (3) — product autowires, prototype skips, prototype `--design-review` overrides skip.
+
+### Changed
+
+- `scripts/work.py` no longer holds its own `_resolve_project_mode` — imports `core.project_mode.resolve_mode`. All Iron Law D mode lookups, kickoff autowire, retro autowire, and design-review autowire now go through the same single path.
+
+### v0.9.x progress
+
+| Version | Status |
+|---|---|
+| v0.9.0 | ✅ Namespace rename + 6 commands removed |
+| v0.9.1 | ✅ feature_resolver |
+| v0.9.2 | ✅ Dashboard + intent_planner |
+| v0.9.3 | ✅ Iron Law D + hotfix override |
+| v0.9.4 | ✅ Scenario contract table + integration tests + plugin description modernization (round 1) |
+| v0.9.5 | ✅ README user-friendly rewrite + plugin description tagline style |
+| **v0.9.6** | ✅ project.mode prototype/product ceremony lightening |
+| v0.10.0 | ⏳ Legacy shim removal · README top reorganization |
+
+### Numbers
+
+- Tests: 742 → 764 (+22).
+- self_check 5/5 PASS.
+- One new module (`scripts/core/project_mode.py`), schema enum addition, three ceremony / autowire touch-ups.
+
 ## [0.9.5] — 2026-04-25
 
 **Docs-only patch — README / 플러그인 description 사용자 친화 개편.**

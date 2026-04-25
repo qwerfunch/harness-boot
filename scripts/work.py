@@ -49,6 +49,7 @@ if str(_THIS) not in sys.path:
 from ceremonies import design_review as _design_review  # noqa: E402
 from ceremonies import kickoff as _kickoff  # noqa: E402
 from ceremonies import retro as _retro  # noqa: E402
+from core.project_mode import resolve_mode as _resolve_project_mode  # noqa: E402
 from core.state import (  # noqa: E402
     IRON_LAW_D_DEFAULT_WINDOW_DAYS,
     State,
@@ -70,7 +71,6 @@ _STANDARD_GATES = ("gate_0", "gate_1", "gate_2", "gate_3", "gate_4", "gate_5")
 # Hotfix override (`--hotfix-reason`) collapses product to 1 but records the
 # reason in the evidence trail for audit.
 _IRON_LAW_D_REQUIRED: dict[str, int] = {"prototype": 1, "product": 3}
-_DEFAULT_PROJECT_MODE: str = "product"
 
 
 @dataclass
@@ -121,6 +121,9 @@ def _autowire_kickoff(harness_dir: Path, fid: str, *, force: bool = False) -> No
     rewriting when the kickoff.md file already exists. Pass ``force=True``
     (via ``--kickoff`` CLI flag) to explicitly re-generate and overwrite
     any user curation.
+
+    Mode-aware (v0.9.6): passes ``spec.project.mode`` so prototype mode
+    renders the slim 1-bullet-per-agent variant.
     """
     spec = _load_spec(harness_dir)
     if spec is None:
@@ -138,6 +141,7 @@ def _autowire_kickoff(harness_dir: Path, fid: str, *, force: bool = False) -> No
             shapes=shapes,
             has_audio=_kickoff.has_audio(feature),
             force=force,
+            mode=_resolve_project_mode(spec),
         )
     except Exception:
         return
@@ -149,12 +153,19 @@ def _autowire_retro(harness_dir: Path, fid: str, *, force: bool = False) -> None
     Idempotency (v0.8.7): ``retro.generate_retro`` is idempotent via file-exists
     check. Pass ``force=True`` (via ``--retro`` CLI flag) to explicitly
     re-generate and overwrite any user curation of the retro prose.
+
+    Mode-aware (v0.9.6): prototype renders only machine-extractable sections.
     """
     spec = _load_spec(harness_dir)
     if spec is None:
         return
     try:
-        _retro.generate_retro(harness_dir, feature_id=fid, force=force)
+        _retro.generate_retro(
+            harness_dir,
+            feature_id=fid,
+            force=force,
+            mode=_resolve_project_mode(spec),
+        )
     except Exception:
         return
 
@@ -167,13 +178,16 @@ def _autowire_design_review(
 ) -> None:
     """Fire design-review ceremony when ux-architect has delivered flows.md (v0.8).
 
-    Three AND conditions for auto-fire:
+    Four AND conditions for auto-fire:
       1. features[F-N].ui_surface.present == true (design-review has meaning only for UI features).
       2. .harness/_workspace/design/flows.md exists (ux-architect delivered upstream).
       3. .harness/_workspace/design-review/F-N.md does NOT exist (idempotent — once per feature).
+      4. ``spec.project.mode != "prototype"`` (v0.9.6 — prototype skips the autowire entirely;
+         users can still force generation via ``--design-review``).
 
-    `force=True` overrides condition (3) for explicit `--design-review` flag retries. All other
-    checks still apply; no amount of forcing will emit a design-review for a feature without UI.
+    ``force=True`` overrides conditions (3) and (4) for explicit ``--design-review`` flag
+    retries. All other checks still apply; no amount of forcing will emit a design-review
+    for a feature without UI.
 
     Silent-swallows exceptions like kickoff/retro autowires — a ceremony glitch must not fail
     activate/record_gate/add_evidence.
@@ -192,6 +206,8 @@ def _autowire_design_review(
         return
     review_path = harness_dir / "_workspace" / "design-review" / f"{fid}.md"
     if review_path.is_file() and not force:
+        return
+    if _resolve_project_mode(spec) == "prototype" and not force:
         return
     try:
         _design_review.generate_design_review(
@@ -437,25 +453,6 @@ def block(harness_dir: Path, fid: str, reason: str, *, kind: str = "blocker") ->
     res.action = "blocked"
     res.message = reason
     return res
-
-
-def _resolve_project_mode(spec: dict | None) -> str:
-    """Resolve ``spec.project.mode`` to a canonical Iron Law mode.
-
-    v0.9.3 reads the field but does not yet require it in the schema (that
-    arrives in v0.9.5 with ceremony lightening). Missing / unrecognized values
-    fall back to ``product`` so that the strict path is the default — matching
-    the plan's safety bias.
-    """
-    if not isinstance(spec, dict):
-        return _DEFAULT_PROJECT_MODE
-    project = spec.get("project")
-    if not isinstance(project, dict):
-        return _DEFAULT_PROJECT_MODE
-    mode = project.get("mode")
-    if isinstance(mode, str) and mode in _IRON_LAW_D_REQUIRED:
-        return mode
-    return _DEFAULT_PROJECT_MODE
 
 
 def complete(
