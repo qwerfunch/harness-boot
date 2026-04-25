@@ -144,5 +144,96 @@ class GenerateRetroTests(unittest.TestCase):
         self.assertIn("없음", body)
 
 
+class ArchivedRetroSectionTests(unittest.TestCase):
+    """v0.10 F-028 — feature_archived 가 retro 에 'Superseded By' 섹션 자동 채움."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.harness = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_archived_event_detected_in_analysis(self):
+        events = [
+            {"type": "feature_done", "feature": "F-1"},
+            {
+                "type": "feature_archived",
+                "feature": "F-1",
+                "superseded_by": "F-9",
+                "reason": "pivot",
+                "ts": "2026-04-25T00:00:00Z",
+            },
+        ]
+        a = rt.analyze(events, "F-1")
+        self.assertTrue(a["archived"])
+        self.assertEqual(a["archived_event"]["superseded_by"], "F-9")
+
+    def test_section_rendered_when_archived(self):
+        _write_events(
+            self.harness,
+            [
+                {"type": "feature_done", "feature": "F-1"},
+                {
+                    "type": "feature_archived",
+                    "feature": "F-1",
+                    "superseded_by": "F-9",
+                    "reason": "Sun→Earth pivot",
+                    "ts": "2026-04-25T00:00:00Z",
+                },
+            ],
+        )
+        rt.generate_retro(self.harness, feature_id="F-1", timestamp=FIXED_TS, force=True)
+        body = (self.harness / "_workspace" / "retro" / "F-1.md").read_text(encoding="utf-8")
+        self.assertIn("## Superseded By", body)
+        self.assertIn("F-9", body)
+        self.assertIn("Sun→Earth pivot", body)
+
+    def test_section_omitted_when_not_archived(self):
+        rt.generate_retro(self.harness, feature_id="F-1", timestamp=FIXED_TS)
+        body = (self.harness / "_workspace" / "retro" / "F-1.md").read_text(encoding="utf-8")
+        self.assertNotIn("## Superseded By", body)
+
+    def test_section_handles_missing_superseded_by(self):
+        """deprecation only — superseded_by 미지정도 유효한 archive."""
+        _write_events(
+            self.harness,
+            [
+                {"type": "feature_done", "feature": "F-1"},
+                {
+                    "type": "feature_archived",
+                    "feature": "F-1",
+                    "reason": "no longer needed",
+                    "ts": "2026-04-25T00:00:00Z",
+                },
+            ],
+        )
+        rt.generate_retro(self.harness, feature_id="F-1", timestamp=FIXED_TS, force=True)
+        body = (self.harness / "_workspace" / "retro" / "F-1.md").read_text(encoding="utf-8")
+        self.assertIn("## Superseded By", body)
+        self.assertIn("superseded_by 미지정", body)
+        self.assertIn("no longer needed", body)
+
+    def test_section_renders_in_prototype_mode(self):
+        _write_events(
+            self.harness,
+            [
+                {"type": "feature_done", "feature": "F-1"},
+                {
+                    "type": "feature_archived",
+                    "feature": "F-1",
+                    "superseded_by": "F-9",
+                    "reason": "pivot",
+                    "ts": "2026-04-25T00:00:00Z",
+                },
+            ],
+        )
+        rt.generate_retro(
+            self.harness, feature_id="F-1", timestamp=FIXED_TS, force=True, mode="prototype"
+        )
+        body = (self.harness / "_workspace" / "retro" / "F-1.md").read_text(encoding="utf-8")
+        self.assertIn("## Superseded By", body)
+
+
 if __name__ == "__main__":
     unittest.main()

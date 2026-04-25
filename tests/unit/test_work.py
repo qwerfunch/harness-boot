@@ -144,6 +144,96 @@ class CompleteTests(HarnessScratch, unittest.TestCase):
         self.assertIn("feature_done", types)
 
 
+class ArchiveTests(HarnessScratch, unittest.TestCase):
+    """v0.10 — done → archived 전이 (two-layer model lifecycle)."""
+
+    def _set_done(self, fid: str) -> None:
+        st = State.load(self.harness)
+        st.set_status(fid, "done")
+        st.save()
+
+    def _write_spec(self, feature_ids: list[str]) -> None:
+        import yaml as _yaml
+        features = [{"id": "F-001", "type": "skeleton"}] + [
+            {"id": fid} for fid in feature_ids if fid != "F-001"
+        ]
+        (self.harness / "spec.yaml").write_text(
+            _yaml.safe_dump({"features": features}, sort_keys=False),
+            encoding="utf-8",
+        )
+
+    def test_archive_transitions_done_to_archived(self):
+        self._set_done("F-004")
+        res = work.archive(self.harness, "F-004")
+        self.assertEqual(res.action, "archived")
+        self.assertEqual(res.current_status, "archived")
+
+    def test_archive_writes_feature_archived_event(self):
+        self._set_done("F-004")
+        work.archive(self.harness, "F-004", reason="pivot")
+        events = self.read_events()
+        archived = [e for e in events if e["type"] == "feature_archived"]
+        self.assertEqual(len(archived), 1)
+        self.assertEqual(archived[0]["feature"], "F-004")
+        self.assertEqual(archived[0]["reason"], "pivot")
+
+    def test_archive_with_superseded_by_records_field(self):
+        self._write_spec(["F-004", "F-005"])
+        self._set_done("F-004")
+        work.archive(
+            self.harness, "F-004", superseded_by="F-005", reason="replaced"
+        )
+        events = self.read_events()
+        archived = next(e for e in events if e["type"] == "feature_archived")
+        self.assertEqual(archived["superseded_by"], "F-005")
+        self.assertEqual(archived["reason"], "replaced")
+
+    def test_cannot_archive_non_done_feature(self):
+        # status defaults to planned for newly ensured features
+        res = work.archive(self.harness, "F-004")
+        self.assertEqual(res.action, "queried")
+        self.assertIn("Only 'done'", res.message)
+
+    def test_idempotent_when_already_archived(self):
+        self._set_done("F-004")
+        work.archive(self.harness, "F-004")
+        res = work.archive(self.harness, "F-004")
+        self.assertEqual(res.action, "queried")
+        self.assertIn("already archived", res.message)
+        events = self.read_events()
+        self.assertEqual(
+            sum(1 for e in events if e["type"] == "feature_archived"), 1
+        )
+
+    def test_archive_clears_active_feature(self):
+        work.activate(self.harness, "F-004")
+        st = State.load(self.harness)
+        st.set_status("F-004", "done")
+        st.save()
+        work.archive(self.harness, "F-004")
+        st = State.load(self.harness)
+        self.assertIsNone(st.data["session"]["active_feature_id"])
+
+    def test_superseded_by_self_rejected(self):
+        self._set_done("F-004")
+        res = work.archive(self.harness, "F-004", superseded_by="F-004")
+        self.assertEqual(res.action, "queried")
+        self.assertIn("cannot reference self", res.message)
+
+    def test_superseded_by_must_exist_in_spec(self):
+        self._write_spec(["F-004"])  # F-005 not in spec
+        self._set_done("F-004")
+        res = work.archive(self.harness, "F-004", superseded_by="F-005")
+        self.assertEqual(res.action, "queried")
+        self.assertIn("not found in spec.yaml", res.message)
+
+    def test_empty_superseded_by_rejected(self):
+        self._set_done("F-004")
+        res = work.archive(self.harness, "F-004", superseded_by="   ")
+        self.assertEqual(res.action, "queried")
+        self.assertIn("cannot be empty", res.message)
+
+
 class CurrentTests(HarnessScratch, unittest.TestCase):
     def test_no_active_returns_none(self):
         self.assertIsNone(work.current(self.harness))

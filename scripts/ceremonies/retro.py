@@ -61,6 +61,7 @@ def analyze(events: list[dict], feature_id: str) -> dict:
     Event key contract mirrors scripts/work.py (canonical emitter):
       - field name is `"feature"` (not "feature_id")
       - completion type is `"feature_done"` (not "feature_completed")
+      - archive type is `"feature_archived"` (v0.10)
     """
     relevant = [e for e in events if e.get("feature") == feature_id]
     gate_events = [e for e in relevant if e.get("type") == "gate_recorded"]
@@ -80,6 +81,11 @@ def analyze(events: list[dict], feature_id: str) -> dict:
     questions_answered = sum(
         1 for e in relevant if e.get("type") == "question_answered"
     )
+    # v0.10 — most recent feature_archived event (later wins).
+    archived_event: dict | None = None
+    for e in relevant:
+        if e.get("type") == "feature_archived":
+            archived_event = e
     return {
         "completed": completed,
         "first_gate_fail": first_gate_fail,
@@ -89,6 +95,8 @@ def analyze(events: list[dict], feature_id: str) -> dict:
         "questions_answered": questions_answered,
         "gate_events_total": len(gate_events),
         "all_events_total": len(relevant),
+        "archived": archived_event is not None,
+        "archived_event": archived_event,
     }
 
 
@@ -143,6 +151,31 @@ def _template(
     else:
         lines.append(f"- {feature_id} — complete 이벤트 미감지. 수동 확인 필요.")
     lines.append("")
+
+    # Superseded By — v0.10 archived feature 자동 채움.
+    if analysis.get("archived"):
+        ev = analysis.get("archived_event") or {}
+        sb = ev.get("superseded_by")
+        reason = ev.get("reason") or "(reason 미기록)"
+        ts = ev.get("ts", "?")
+        lines.append("## Superseded By")
+        lines.append("")
+        if sb:
+            lines.append(
+                f"- 이 피처는 **{sb}** 로 대체됨 ({ts})"
+            )
+        else:
+            lines.append(
+                f"- 이 피처는 archived 됨 ({ts}) — superseded_by 미지정 "
+                "(deprecation only · 대체 피처 없음)"
+            )
+        lines.append(f"- 사유: {reason}")
+        lines.append("")
+        lines.append(
+            "<!-- F-028: feature_archived event 의 superseded_by/reason 자동 채움. "
+            "수동 추가 컨텍스트는 아래에 자유 기술. -->"
+        )
+        lines.append("")
 
     # First Gate to Fail
     lines.append("## First Gate to Fail")
