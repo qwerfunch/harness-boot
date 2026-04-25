@@ -29,6 +29,94 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - ~~Event log rotation (`events.log.YYYYMM`)~~ ✅ v0.8.6
 - AC coverage drift (check.py 11 번째 drift 후보)
 
+## [0.10.0] — 2026-04-25
+
+**Two-layer supersession — features[] supersedes/superseded_by + archive flow + Stale drift.**
+
+Resolves the asymmetry surfaced by the cosmic-suika dogfood: `decisions[]`
+already had `supersedes` for ADRs, but features had no equivalent. Pivots
+forced a binary choice — rewrite history (lose audit) or leave dead code
+(lose reality). The two-layer model splits these cleanly:
+
+- **Spec is additive** — features never deleted; `supersedes` /
+  `superseded_by` chain marks replacement (mirrors the ADR pattern).
+- **State is transitional** — `done → archived` through a new audited
+  `feature_archived` event.
+- **Code is replacement** — dead modules can be deleted freely; the new
+  `Stale` drift surfaces done features whose declared modules are
+  unreferenced and not yet archived/superseded.
+
+### Added
+
+- **`features[].supersedes` / `features[].superseded_by`** schema fields
+  in `docs/schemas/spec.schema.json` — array of `F-N` and single `F-N`
+  string respectively, both optional, mirroring the existing
+  `decisions[].supersedes` pattern. Backward-compatible: existing specs
+  validate unchanged.
+- **`scripts/work.py archive(...)`** + `--archive [--superseded-by F-N]
+  [--reason "..."]` CLI flags — transition a `done` feature to
+  `archived`, append `feature_archived` event with `superseded_by` /
+  `reason` to `events.log`, and force-refresh the retro template so the
+  new "Superseded By" section can fill in. Guards: feature must be
+  `done`, `--superseded-by` target must exist in spec, idempotent on
+  re-archive.
+- **`Stale` drift** in `scripts/check.py` — flags features where
+  `status == "done"`, declared `modules` exist with concrete `source`
+  paths, but no `src/` file references them. Severity `warn` (gives
+  cleanup time, not Iron Law). Exempted: `status == "archived"`,
+  `superseded_by` set, or no modules declared. Silent when no `src/`
+  tree (non-typescript/python repos).
+- **`scripts/check.py::check_anchor`** extension — Anchor drift now also
+  validates `supersedes` / `superseded_by` references: dangling-ref,
+  self-ref, cycle detection (DFS), and bidirectional consistency
+  (`A.superseded_by = B` must match `B.supersedes ⊇ [A]`, else warn).
+- **`scripts/ceremonies/retro.py`** — `analyze` detects
+  `feature_archived` events; template renders an auto-filled
+  `## Superseded By` section showing replacement F-N + reason +
+  timestamp. Renders in both `prototype` and `product` modes.
+- **`tests/unit/test_feature_supersedes.py`** (new, 12 tests) —
+  reference validity, self-ref rejection, two-/three-node cycle
+  detection, bidirectional consistency, dangling-ref handling.
+- **`tests/unit/test_check.py::StaleDriftTests`** — 8 tests covering the
+  Stale drift exemptions and detection.
+- **`tests/unit/test_work.py::ArchiveTests`** — 9 tests covering
+  archive transitions, idempotency, guards, event emission.
+- **`tests/unit/test_retro.py::ArchivedRetroSectionTests`** — 5 tests
+  covering Superseded By section rendering across modes.
+- **`tests/unit/test_schema_additive.py::FeatureSupersedesSchemaTests`**
+  — schema-shape backward-compat assertions.
+
+### Changed
+
+- `DriftKind` comment updated to include `Stale`. `run_check` registers
+  the new check after `Adr` so the order in `Checked:` line stays
+  predictable.
+
+### v0.9.x → v0.10.0
+
+| Version | Status |
+|---|---|
+| v0.9.0 ~ v0.9.6 | shipped |
+| **v0.10.0** | ✅ Two-layer supersession metadata |
+
+### Numbers
+
+- Tests: 764 → 802 (+38).
+- self_check 5/5 PASS.
+- New module surface: schema fields ×2, drift kind ×1, CLI flag ×3,
+  retro section ×1.
+
+### Validated externally
+
+The cosmic-suika dogfood was the first consumer: 3 design pivots
+accumulated 3 done features (`F-037 / F-038 / F-040`) that no longer
+matched the implemented game. After v0.10.0 they're marked
+`superseded_by F-042 / F-043` and archived, and ~600 LOC of orphaned
+modules (sun.ts, sun-surface.ts, saturn-ring.ts, sun-absorption.ts +
+test, launcher-anchor.ts) deleted with `check.py` Stale drift staying
+clean. The audit chain — every pivot recorded in `events.log` with
+reason — survived intact.
+
 ## [0.9.6] — 2026-04-25
 
 **Project mode axis — `prototype` vs `product` ceremony lightening.**

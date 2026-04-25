@@ -11,7 +11,7 @@
       "name": "harness-boot",
       "description": "자연어 아이디어를 스펙으로 굳히고, 전문가 에이전트 팀이 역할별로 협업해 실제 돌아가는 코드까지 이끌어내는 AI 개발 하네스 프레임워크. Claude Code 플러그인 · 2 개 slash command (/harness-boot:init · /harness-boot:work) 로 외울 것 최소화 · 자연어 입력.",
       "source": "./",
-      "version": "0.9.6",
+      "version": "0.10.0",
       "homepage": "https://github.com/qwerfunch/harness-boot",
       "category": "development"
     }
