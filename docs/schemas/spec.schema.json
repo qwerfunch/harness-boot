@@ -146,6 +146,16 @@
               }
             },
             "additionalProperties": true
+          },
+          "supersedes": {
+            "type": "array",
+            "items": {"type": "string", "pattern": "^F-\\d+$"},
+            "description": "v0.10 additive — 이 피처가 대체한 이전 피처 ids. 대체된 피처는 state.yaml 에서 status=archived 로 전이되는 것이 권장. 자기참조·순환 금지 (check.py Anchor drift 가 검증)."
+          },
+          "superseded_by": {
+            "type": "string",
+            "pattern": "^F-\\d+$",
+            "description": "v0.10 additive — 이 피처를 대체한 피처 id (있을 때). work.py --archive --superseded-by 가 supersedes 역방향으로 채움."
           }
         },
         "additionalProperties": true

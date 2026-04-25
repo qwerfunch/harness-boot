@@ -161,6 +161,27 @@ class ConstraintsTechStackTests(unittest.TestCase):
         self.assertTrue(self.constraints.get("additionalProperties", False))
 
 
+class FeatureSupersedesSchemaTests(unittest.TestCase):
+    """v0.10 features[].supersedes / superseded_by — 두 layer 분리 모델의
+    'supersession 메타' 표기. ADR 와 동일한 양방향 패턴."""
+
+    def setUp(self):
+        self.schema = _load_schema()
+        self.feature_props = self.schema["properties"]["features"]["items"]["properties"]
+
+    def test_supersedes_is_array_of_feature_ids(self):
+        self.assertIn("supersedes", self.feature_props)
+        sup = self.feature_props["supersedes"]
+        self.assertEqual(sup["type"], "array")
+        self.assertEqual(sup["items"]["pattern"], r"^F-\d+$")
+
+    def test_superseded_by_is_feature_id_string(self):
+        self.assertIn("superseded_by", self.feature_props)
+        sb = self.feature_props["superseded_by"]
+        self.assertEqual(sb["type"], "string")
+        self.assertEqual(sb["pattern"], r"^F-\d+$")
+
+
 class BackwardCompatTests(unittest.TestCase):
     """추가 필드가 **전부 optional** — 기존 v0.5 spec 이 여전히 validate."""
 
@@ -176,6 +197,12 @@ class BackwardCompatTests(unittest.TestCase):
         schema = _load_schema()
         feature_item = schema["properties"]["features"]["items"]
         self.assertNotIn("performance_budget", feature_item.get("required", []))
+
+    def test_feature_item_does_not_require_supersedes(self):
+        schema = _load_schema()
+        feature_item = schema["properties"]["features"]["items"]
+        self.assertNotIn("supersedes", feature_item.get("required", []))
+        self.assertNotIn("superseded_by", feature_item.get("required", []))
 
     def test_tech_stack_not_required(self):
         schema = _load_schema()

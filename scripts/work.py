@@ -561,6 +561,112 @@ def complete(
     return res
 
 
+def archive(
+    harness_dir: Path,
+    fid: str,
+    *,
+    superseded_by: str | None = None,
+    reason: str | None = None,
+) -> WorkResult:
+    """v0.10 — done → archived 전이 (two-layer model 의 lifecycle 측면).
+
+    spec 은 additive (피처 절대 삭제 X) · code 는 replacement 자유. 그 사이의
+    "이미 shipped 됐지만 더 이상 살아있지 않은" 상태가 archived. ADR
+    supersedes 와 동일한 의미적 표기를 features 에도 부여한다.
+
+    조건:
+      - 피처는 ``status == "done"`` 이어야 함. 미완료 피처를 archived 로 보낼
+        수 없음 (Iron Law audit chain 의 의미 유지).
+      - ``superseded_by`` 가 명시되면 spec.yaml features[] 에 실재해야 하고,
+        대상 피처가 자기 자신이 아니어야 함.
+      - ``reason`` 은 권장. 없으면 events.log 에 빈 reason 기록 (retro 가 약한
+        품질 신호로 표시).
+
+    Idempotency: 이미 archived 인 피처는 no-op + ``queried`` 반환. 재실행으로
+    중복 이벤트가 생기지 않음.
+
+    Side effects:
+      - state.yaml: status → archived
+      - events.log: ``{type: feature_archived, feature, superseded_by, reason, ts}``
+      - retro autowire (F-028 가 archived 피처를 인식해 "Superseded By" 섹션
+        자동 채움)
+    """
+    state = State.load(harness_dir)
+    f = state.ensure_feature(fid)
+    current_status = f.get("status")
+
+    if current_status == "archived":
+        res = _summarize(state, fid)
+        res.action = "queried"
+        res.message = f"{fid} is already archived — no re-archive"
+        return res
+
+    if current_status != "done":
+        res = _summarize(state, fid)
+        res.action = "queried"
+        res.message = (
+            f"cannot archive — {fid}.status={current_status!r}. "
+            f"Only 'done' features can be archived (shipped is shipped)."
+        )
+        return res
+
+    if superseded_by is not None:
+        sb = str(superseded_by).strip()
+        if not sb:
+            res = _summarize(state, fid)
+            res.action = "queried"
+            res.message = "--superseded-by cannot be empty"
+            return res
+        if sb == fid:
+            res = _summarize(state, fid)
+            res.action = "queried"
+            res.message = f"--superseded-by cannot reference self ({fid})"
+            return res
+        spec = _load_spec(harness_dir) or {}
+        spec_ids = {
+            entry.get("id")
+            for entry in (spec.get("features") or [])
+            if isinstance(entry, dict)
+        }
+        if sb not in spec_ids:
+            res = _summarize(state, fid)
+            res.action = "queried"
+            res.message = (
+                f"--superseded-by {sb} not found in spec.yaml features[]. "
+                f"Add the replacement feature to spec first."
+            )
+            return res
+        superseded_by = sb
+
+    state.set_status(fid, "archived")
+    if state.data["session"].get("active_feature_id") == fid:
+        state.set_active(None)
+    state.save()
+
+    event: dict = {
+        "ts": _now_iso(),
+        "type": "feature_archived",
+        "feature": fid,
+    }
+    if superseded_by:
+        event["superseded_by"] = superseded_by
+    if reason:
+        event["reason"] = str(reason).strip()
+    _append_event(harness_dir, event)
+    _autowire_retro(harness_dir, fid, force=True)
+
+    res = _summarize(state, fid)
+    res.action = "archived"
+    suffix_parts = []
+    if superseded_by:
+        suffix_parts.append(f"superseded_by={superseded_by}")
+    if reason:
+        suffix_parts.append(f"reason={str(reason).strip()!r}")
+    suffix = f" ({', '.join(suffix_parts)})" if suffix_parts else ""
+    res.message = f"{fid} archived{suffix}"
+    return res
+
+
 def current(harness_dir: Path) -> WorkResult | None:
     """현재 active feature 조회. active 없으면 None."""
     state = State.load(harness_dir)
@@ -757,6 +863,22 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="delete feature entry from state.yaml (ghost cleanup). done features protected. (v0.7.1)",
     )
+    parser.add_argument(
+        "--archive",
+        action="store_true",
+        help="v0.10 — transition a done feature to archived (e.g., when superseded by a pivot). Use --superseded-by F-N + --reason for audit clarity.",
+    )
+    parser.add_argument(
+        "--superseded-by",
+        dest="superseded_by",
+        default=None,
+        help="v0.10 — paired with --archive: feature id (F-N) that replaces this one.",
+    )
+    parser.add_argument(
+        "--reason",
+        default=None,
+        help="v0.10 — paired with --archive: short reason / pivot summary recorded in events.log.",
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
 
@@ -838,6 +960,16 @@ def main(argv: list[str] | None = None) -> int:
                 args.harness_dir,
                 args.feature,
                 hotfix_reason=args.hotfix_reason,
+            )
+        elif args.archive:
+            if not args.feature:
+                print("error: feature id required with --archive", file=sys.stderr)
+                return 2
+            res = archive(
+                args.harness_dir,
+                args.feature,
+                superseded_by=args.superseded_by,
+                reason=args.reason,
             )
         else:
             if not args.feature:

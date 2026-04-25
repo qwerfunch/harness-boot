@@ -53,7 +53,7 @@ from core.state import State  # noqa: E402
 from spec import include_expander as ie  # noqa: E402
 
 
-DriftKind = str  # "Generated" | "Derived" | "Spec" | "Include" | "Evidence" | "Code" | "Doc" | "Anchor" | "Protocol"
+DriftKind = str  # "Generated" | "Derived" | "Spec" | "Include" | "Evidence" | "Code" | "Doc" | "Anchor" | "Protocol" | "Adr" | "Stale"
 
 _FEATURE_ID_PATTERN = re.compile(r"^F-\d+$")
 _CLAUDE_IMPORT_PATTERN = re.compile(r"^@([^\s]+)", re.MULTILINE)
@@ -222,6 +222,110 @@ def check_evidence(harness_dir: Path) -> list[DriftFinding]:
     return findings
 
 
+def check_stale(
+    harness_dir: Path,
+    spec: dict,
+    project_root: Path | None = None,
+) -> list[DriftFinding]:
+    """v0.10 — Stale drift.
+
+    Two-layer model 의 code-replacement 측면 가드. spec 에서 ``done`` 으로
+    표기된 피처의 declared module source 가 더 이상 어디에서도 import 되지
+    않는다면 (= 살아있는 콜체인에서 떨어져 나갔다면) 사용자에게 드러난다.
+
+    조건:
+      - feature.status == "done"
+      - feature.modules[].source 가 실재함 (여기서는 부재 케이스를 검사하지 않음 — Code drift 가 다룸)
+      - 해당 source 파일을 가리키는 import / require 등의 참조가 src 트리에서 0 건
+
+    면제:
+      - feature.status == "archived" (의도적으로 lifecycle 종결)
+      - feature.superseded_by 가 명시됨 (대체될 예정)
+      - features[].modules 가 비어 있음 (선언된 코드 모듈 없음 = 검사 대상 아님)
+
+    심각도: warn (developer 가 정리하거나 archived 처리할 시간을 줘야 하므로
+    error 는 아님 — Iron Law 위반은 아니다).
+
+    Detection: source path 의 stem 또는 basename 이 src 트리의 다른 파일에서
+    문자열로 등장하는지. import system / 패키저 무관 — 가벼운 grep-level 휴리스틱.
+    """
+    findings: list[DriftFinding] = []
+    if project_root is None:
+        project_root = harness_dir.parent
+
+    features = spec.get("features") or []
+    src_root = project_root / "src"
+    if not src_root.is_dir():
+        # No src tree to scan against — silent (likely repo not js/ts/python style).
+        return findings
+
+    src_files = [p for p in src_root.rglob("*") if p.is_file()]
+
+    for f in features:
+        if not isinstance(f, dict):
+            continue
+        if f.get("status") != "done":
+            continue
+        if f.get("superseded_by"):
+            continue
+        modules = f.get("modules") or []
+        declared_sources: list[Path] = []
+        for m in modules:
+            if not isinstance(m, dict):
+                continue
+            src = m.get("source")
+            if not isinstance(src, str) or not src.strip():
+                continue
+            target = (project_root / src).resolve()
+            if target.is_file():
+                declared_sources.append(target)
+        if not declared_sources:
+            continue
+
+        fid = f.get("id", "?")
+        for target in declared_sources:
+            stem = target.stem  # e.g. "earth"
+            base = target.name  # e.g. "earth.ts"
+            referenced = False
+            for sf in src_files:
+                if sf == target:
+                    continue
+                try:
+                    text = sf.read_text(encoding="utf-8", errors="ignore")
+                except OSError:
+                    continue
+                # Match either bare stem in import-like line OR full filename.
+                if base in text:
+                    referenced = True
+                    break
+                # Stem match must be a path-like token to avoid matching
+                # variable names. Look for "/<stem>" or '"<stem>' or "'<stem>".
+                if (
+                    f"/{stem}" in text
+                    or f'"{stem}' in text
+                    or f"'{stem}" in text
+                ):
+                    referenced = True
+                    break
+            if not referenced:
+                try:
+                    rel = target.relative_to(project_root.resolve())
+                    rel_str = str(rel)
+                except ValueError:
+                    rel_str = target.name
+                findings.append(
+                    DriftFinding(
+                        "Stale",
+                        f"{fid}::{rel_str}",
+                        f"피처 {fid} (status=done) 의 모듈 {rel_str} 가 src/ 어디에서도 참조되지 않음 — "
+                        "실제로 사용되지 않는 dead code 거나 archived/superseded_by 처리가 필요",
+                        "warn",
+                    )
+                )
+
+    return findings
+
+
 def check_code(harness_dir: Path, spec: dict, project_root: Path | None = None) -> list[DriftFinding]:
     """features[].modules 내 dict 항목의 `source` 필드가 가리키는 파일이 실제 존재하는지.
 
@@ -305,11 +409,12 @@ def check_doc(harness_dir: Path, project_root: Path | None = None) -> list[Drift
 
 
 def check_anchor(spec: dict) -> list[DriftFinding]:
-    """Anchor drift — feature ID 포맷 · 유일성 · depends_on 참조 유효성.
+    """Anchor drift — feature ID 포맷 · 유일성 · depends_on / supersedes 참조 유효성.
 
     - 각 feature 의 `id` 는 F-NNN (숫자 3 자리 이상) 형식.
     - id 중복 금지.
     - depends_on 에 나열된 ID 는 모두 실제 feature 목록에 존재해야 함.
+    - v0.10: supersedes / superseded_by 참조 유효성 + 자기참조 금지 + 순환 감지.
     """
     findings: list[DriftFinding] = []
     features = spec.get("features") or []
@@ -356,6 +461,121 @@ def check_anchor(spec: dict) -> list[DriftFinding]:
                         "error",
                     )
                 )
+
+    findings.extend(_check_feature_supersedes(features, all_ids))
+    return findings
+
+
+def _check_feature_supersedes(
+    features: list, all_ids: set[str]
+) -> list[DriftFinding]:
+    """v0.10 — features[].supersedes / superseded_by 정합성.
+
+    - supersedes 항목은 실재 feature id.
+    - 자기 자신을 supersedes 금지.
+    - supersedes chain 에 순환 금지 (A → B → A 등).
+    - superseded_by 가 명시되면 해당 피처가 실재해야 하고, 그 피처의 supersedes
+      목록에 역참조가 있어야 함 (양방향 일관성).
+    """
+    findings: list[DriftFinding] = []
+    supersedes_map: dict[str, list[str]] = {}
+
+    for f in features:
+        if not isinstance(f, dict):
+            continue
+        fid = f.get("id")
+        if not isinstance(fid, str) or not fid:
+            continue
+        sup = f.get("supersedes")
+        if sup is None:
+            supersedes_map[fid] = []
+        elif not isinstance(sup, list):
+            findings.append(DriftFinding("Anchor", fid, "supersedes 가 배열이 아님", "error"))
+            supersedes_map[fid] = []
+        else:
+            cleaned: list[str] = []
+            for target in sup:
+                if not isinstance(target, str):
+                    findings.append(
+                        DriftFinding("Anchor", fid, f"supersedes 항목이 문자열 아님: {target!r}", "error")
+                    )
+                    continue
+                if target == fid:
+                    findings.append(
+                        DriftFinding("Anchor", fid, f"supersedes 에 자기 자신 참조 금지: {target}", "error")
+                    )
+                    continue
+                if target not in all_ids:
+                    findings.append(
+                        DriftFinding(
+                            "Anchor",
+                            fid,
+                            f"supersedes 에 존재하지 않는 피처 참조: {target}",
+                            "error",
+                        )
+                    )
+                    continue
+                cleaned.append(target)
+            supersedes_map[fid] = cleaned
+
+        sb = f.get("superseded_by")
+        if sb is not None:
+            if not isinstance(sb, str):
+                findings.append(DriftFinding("Anchor", fid, f"superseded_by 가 문자열 아님: {sb!r}", "error"))
+            elif sb == fid:
+                findings.append(DriftFinding("Anchor", fid, f"superseded_by 에 자기 자신 참조 금지: {sb}", "error"))
+            elif sb not in all_ids:
+                findings.append(
+                    DriftFinding("Anchor", fid, f"superseded_by 에 존재하지 않는 피처 참조: {sb}", "error")
+                )
+
+    # 순환 감지 — DFS.
+    WHITE, GRAY, BLACK = 0, 1, 2
+    color: dict[str, int] = {fid: WHITE for fid in supersedes_map}
+
+    def visit(node: str, stack: list[str]) -> None:
+        color[node] = GRAY
+        for nxt in supersedes_map.get(node, []):
+            if color.get(nxt) == GRAY:
+                cycle = stack + [node, nxt]
+                findings.append(
+                    DriftFinding(
+                        "Anchor",
+                        node,
+                        f"supersedes 순환 감지: {' → '.join(cycle)}",
+                        "error",
+                    )
+                )
+                continue
+            if color.get(nxt) == WHITE:
+                visit(nxt, stack + [node])
+        color[node] = BLACK
+
+    for fid in supersedes_map:
+        if color[fid] == WHITE:
+            visit(fid, [])
+
+    # 양방향 일관성 — superseded_by 가 명시된 피처의 superseded_by 가 실제로 그
+    # 피처의 supersedes 목록에 있는지.
+    by_id: dict[str, dict] = {}
+    for f in features:
+        if isinstance(f, dict) and isinstance(f.get("id"), str):
+            by_id[f["id"]] = f
+    for fid, feat in by_id.items():
+        sb = feat.get("superseded_by")
+        if not isinstance(sb, str) or sb not in by_id:
+            continue
+        target_sup = by_id[sb].get("supersedes") or []
+        if isinstance(target_sup, list) and fid not in target_sup:
+            findings.append(
+                DriftFinding(
+                    "Anchor",
+                    fid,
+                    f"{fid}.superseded_by={sb} 이지만 {sb}.supersedes 에 {fid} 없음 — 양방향 불일치",
+                    "warn",
+                )
+            )
+
     return findings
 
 
@@ -519,6 +739,8 @@ def run_check(harness_dir: Path, project_root: Path | None = None) -> CheckRepor
         report.checked.append("Anchor")
         report.findings.extend(check_adr_supersedes(spec_yaml))
         report.checked.append("Adr")
+        report.findings.extend(check_stale(harness_dir, spec_yaml, project_root))
+        report.checked.append("Stale")
 
     report.findings.extend(check_doc(harness_dir, project_root))
     report.checked.append("Doc")

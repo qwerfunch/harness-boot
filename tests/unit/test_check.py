@@ -471,6 +471,98 @@ class AdrSupersedesDriftTests(unittest.TestCase):
         self.assertIn("ADR-002", findings[0].path)
 
 
+class StaleDriftTests(HarnessScratch, unittest.TestCase):
+    """v0.10 — done 피처의 declared module 이 src/ 어디에도 import 안 되면 warn.
+
+    archived OR superseded_by 명시 시 면제. modules 비어 있어도 면제.
+    """
+
+    def _write_src(self, files: dict[str, str]) -> Path:
+        src = self.tmp / "src"
+        src.mkdir(exist_ok=True)
+        for rel, content in files.items():
+            target = src / rel
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content, encoding="utf-8")
+        return src
+
+    def _spec(self, feature_overrides: dict) -> dict:
+        spec = {
+            "features": [
+                {"id": "F-001", "type": "skeleton"},
+                {
+                    "id": "F-100",
+                    "modules": [{"name": "earth", "source": "src/earth.ts"}],
+                    **feature_overrides,
+                },
+            ]
+        }
+        return spec
+
+    def test_done_feature_with_orphan_module_warns(self):
+        self._write_src({
+            "earth.ts": "export const earth = 1;\n",
+            "main.ts": "console.log('hi')\n",  # does NOT import earth
+        })
+        spec = self._spec({"status": "done"})
+        findings = check.check_stale(self.harness, spec, project_root=self.tmp)
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].kind, "Stale")
+        self.assertEqual(findings[0].severity, "warn")
+        self.assertIn("earth.ts", findings[0].path)
+
+    def test_done_feature_with_used_module_clean(self):
+        self._write_src({
+            "earth.ts": "export const earth = 1;\n",
+            "main.ts": "import { earth } from './earth';\n",
+        })
+        spec = self._spec({"status": "done"})
+        findings = check.check_stale(self.harness, spec, project_root=self.tmp)
+        self.assertEqual(findings, [])
+
+    def test_archived_feature_exempted(self):
+        self._write_src({"earth.ts": "x", "main.ts": "y"})
+        spec = self._spec({"status": "archived"})
+        findings = check.check_stale(self.harness, spec, project_root=self.tmp)
+        self.assertEqual(findings, [])
+
+    def test_superseded_by_feature_exempted(self):
+        self._write_src({"earth.ts": "x", "main.ts": "y"})
+        spec = self._spec({"status": "done", "superseded_by": "F-200"})
+        findings = check.check_stale(self.harness, spec, project_root=self.tmp)
+        self.assertEqual(findings, [])
+
+    def test_planned_feature_not_checked(self):
+        """status != done 은 검사 대상 아님 (아직 ship 안 됨)."""
+        self._write_src({"earth.ts": "x", "main.ts": "y"})
+        spec = self._spec({"status": "planned"})
+        findings = check.check_stale(self.harness, spec, project_root=self.tmp)
+        self.assertEqual(findings, [])
+
+    def test_no_modules_declared_not_checked(self):
+        self._write_src({"main.ts": "y"})
+        spec = {
+            "features": [
+                {"id": "F-001", "type": "skeleton"},
+                {"id": "F-100", "status": "done", "modules": []},
+            ]
+        }
+        findings = check.check_stale(self.harness, spec, project_root=self.tmp)
+        self.assertEqual(findings, [])
+
+    def test_no_src_dir_silent(self):
+        spec = self._spec({"status": "done"})
+        findings = check.check_stale(self.harness, spec, project_root=self.tmp)
+        self.assertEqual(findings, [])
+
+    def test_missing_source_file_silent(self):
+        """존재하지 않는 source 는 Code drift 가 다룸. Stale 은 무시."""
+        self._write_src({"main.ts": "y"})  # earth.ts not created
+        spec = self._spec({"status": "done"})
+        findings = check.check_stale(self.harness, spec, project_root=self.tmp)
+        self.assertEqual(findings, [])
+
+
 class IntegrationTests(HarnessScratch, unittest.TestCase):
     def test_clean_run_reports_no_findings(self):
         # 정상 시나리오: harness.yaml 있고 spec 해시 맞고 파생 없음 (미파생 상태지만 해시도 기록 안 된 이상 warn 안 나옴)
