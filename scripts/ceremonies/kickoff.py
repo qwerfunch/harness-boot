@@ -138,16 +138,39 @@ def agents_for_shapes(shapes: Iterable[str], *, has_audio: bool = False) -> list
     return out
 
 
-def _template(feature_id: str, agents: list[str], timestamp: str) -> str:
+def _template(
+    feature_id: str,
+    agents: list[str],
+    timestamp: str,
+    *,
+    mode: str = "product",
+) -> str:
+    """Render kickoff.md.
+
+    ``mode == "prototype"`` produces a slim variant: one bullet per agent
+    instead of three, with a one-line guidance note instead of the standard
+    "80 words / 3 bullets" prompt. Cross-role empathy is preserved at lower
+    cost. ``"product"`` (default) is the original full template.
+    """
+    is_prototype = mode == "prototype"
+    bullets_per_agent = 1 if is_prototype else 3
+    guidance = (
+        "이 agent 의 관점에서 가장 큰 우려 1 줄."
+        if is_prototype
+        else "이 agent 의 Tier anchor 기반 3-bullet 우려 · 80 단어 이내"
+    )
+    intro = (
+        "프로토타입 모드 — 각 agent 가 1 줄씩만 우려를 적는다."
+        if is_prototype
+        else "orchestrator 가 각 agent 를 소환해 섹션을 채운다 (80 단어 내 3 bullet). cross-role empathy 용."
+    )
+
     lines: list[str] = []
     lines.append(f"# Kickoff — {feature_id}")
     lines.append("")
-    lines.append(f"> 자동 생성 — {timestamp}")
+    lines.append(f"> 자동 생성 — {timestamp} · mode: `{mode}`")
     lines.append(">")
-    lines.append(
-        "> `scripts/kickoff.py` 가 이 템플릿을 만들고, orchestrator 가 각 agent 를 "
-        "소환해 섹션을 채운다 (80 단어 내 3 bullet). cross-role empathy 용."
-    )
+    lines.append(f"> `scripts/kickoff.py` 가 이 템플릿을 만들고, {intro}")
     lines.append("")
     lines.append(f"## 참여 에이전트 ({len(agents)})")
     lines.append("")
@@ -159,11 +182,10 @@ def _template(feature_id: str, agents: list[str], timestamp: str) -> str:
     for agent in agents:
         lines.append(f"## {agent} 의 관점")
         lines.append("")
-        lines.append("<!-- orchestrator: 이 agent 의 Tier anchor 기반 3-bullet 우려 · 80 단어 이내 -->")
+        lines.append(f"<!-- orchestrator: {guidance} -->")
         lines.append("")
-        lines.append("- ")
-        lines.append("- ")
-        lines.append("- ")
+        for _ in range(bullets_per_agent):
+            lines.append("- ")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 
@@ -184,6 +206,7 @@ def generate_kickoff(
     has_audio: bool = False,
     timestamp: str | None = None,
     force: bool = False,
+    mode: str = "product",
 ) -> Path:
     """Create kickoff template + event. Returns path to the kickoff.md.
 
@@ -192,6 +215,12 @@ def generate_kickoff(
     headings intact when state-mutating work.py calls re-evaluate the ceremony
     condition. The ``--kickoff`` CLI flag on ``scripts/work.py`` passes
     ``force=True`` for explicit re-generation.
+
+    ``mode`` (v0.9.6): when ``"prototype"``, the rendered template uses one
+    bullet per agent instead of three. The agent list itself is unchanged so
+    the cross-role empathy structure stays intact — only the per-agent depth
+    is lightened. Defaults to ``"product"`` for backward compat with direct
+    callers and the CLI entry point that does not yet read spec mode.
     """
     if timestamp is None:
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -210,7 +239,10 @@ def generate_kickoff(
     if kickoff_path.is_file() and not force:
         return kickoff_path
 
-    kickoff_path.write_text(_template(feature_id, agents, timestamp), encoding="utf-8")
+    kickoff_path.write_text(
+        _template(feature_id, agents, timestamp, mode=mode),
+        encoding="utf-8",
+    )
 
     _append_event(
         harness_dir,
@@ -220,6 +252,7 @@ def generate_kickoff(
             "feature": feature_id,
             "shapes": list(shapes),
             "agents": agents,
+            "mode": mode,
             "path": str(kickoff_path.relative_to(harness_dir)),
         },
     )

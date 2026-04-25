@@ -92,7 +92,22 @@ def analyze(events: list[dict], feature_id: str) -> dict:
     }
 
 
-def _template(feature_id: str, analysis: dict, timestamp: str) -> str:
+def _template(
+    feature_id: str,
+    analysis: dict,
+    timestamp: str,
+    *,
+    mode: str = "product",
+) -> str:
+    """Render retro.md.
+
+    ``mode == "prototype"`` keeps only the three machine-extractable sections
+    (What Shipped · First Gate to Fail · Ceremonies summary) and drops the
+    five LLM-driven sections that need a reviewer→tech-writer pass. Faster
+    completion for exploratory work where a full retro would be theater.
+    ``"product"`` (default) renders the full template.
+    """
+    is_prototype = mode == "prototype"
     fgf = analysis["first_gate_fail"]
     if fgf:
         fgf_line = (
@@ -102,16 +117,22 @@ def _template(feature_id: str, analysis: dict, timestamp: str) -> str:
     else:
         fgf_line = "- 없음 (전 gate 최초에 pass)"
 
+    intro = (
+        "프로토타입 모드 — 머신 섹션만 자동 채움. LLM 반성 섹션은 생략."
+        if is_prototype
+        else (
+            "`scripts/retro.py` 가 events.log 를 분석해 머신 섹션을 채우고, "
+            "orchestrator 가 reviewer → tech-writer 순차로 Reviewer Reflection · "
+            "Copy Polish 섹션을 완성한다."
+        )
+    )
+
     lines: list[str] = []
     lines.append(f"# Retrospective — {feature_id}")
     lines.append("")
-    lines.append(f"> 자동 생성 — {timestamp}")
+    lines.append(f"> 자동 생성 — {timestamp} · mode: `{mode}`")
     lines.append(">")
-    lines.append(
-        "> `scripts/retro.py` 가 events.log 를 분석해 머신 섹션을 채우고, "
-        "orchestrator 가 reviewer → tech-writer 순차로 Reviewer Reflection · "
-        "Copy Polish 섹션을 완성한다."
-    )
+    lines.append(f"> {intro}")
     lines.append("")
 
     # What Shipped
@@ -140,6 +161,10 @@ def _template(feature_id: str, analysis: dict, timestamp: str) -> str:
         f"- Questions opened: {analysis['questions_opened']} · answered: {analysis['questions_answered']}"
     )
     lines.append("")
+
+    # Prototype mode stops here — the five LLM sections below are product-only.
+    if is_prototype:
+        return "\n".join(lines).rstrip() + "\n"
 
     # Risks Materialized vs plan.md — LLM 섹션
     lines.append("## Risks Materialized vs plan.md")
@@ -209,6 +234,7 @@ def generate_retro(
     feature_id: str,
     timestamp: str | None = None,
     force: bool = False,
+    mode: str = "product",
 ) -> Path:
     """Create retro template + event. Returns path to the retro.md.
 
@@ -216,6 +242,10 @@ def generate_retro(
     or event emission happens unless ``force=True``. This mirrors the
     kickoff/design-review pattern and preserves user-curated prose that
     orchestrator filled after ``reviewer → tech-writer`` chain.
+
+    ``mode`` (v0.9.6): ``"prototype"`` renders only the three machine-
+    extractable sections (What Shipped · First Gate to Fail · Ceremonies).
+    Defaults to ``"product"`` for backward compat.
     """
     if timestamp is None:
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -229,13 +259,17 @@ def generate_retro(
 
     events = _read_events(harness_dir)
     analysis = analyze(events, feature_id)
-    path.write_text(_template(feature_id, analysis, timestamp), encoding="utf-8")
+    path.write_text(
+        _template(feature_id, analysis, timestamp, mode=mode),
+        encoding="utf-8",
+    )
     _append_event(
         harness_dir,
         {
             "ts": timestamp,
             "type": "feature_retro_written",
             "feature": feature_id,
+            "mode": mode,
             "analysis_summary": {
                 "completed": analysis["completed"],
                 "first_gate_fail": (
