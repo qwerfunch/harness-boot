@@ -14,6 +14,56 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - F-053 follow-up — `tests/` Python docstring sweep (~99 files queued; per-area batch execution recommended).
 - F-051 follow-up — older active features (F-002/F-004/F-006/F-011~F-040) description / AC body sweep.
 
+## [0.11.4] — 2026-04-28
+
+**External-surface polish: English-master README, plugin description rewrite, Python 3.10 CI fix, stale-data corrections.**
+
+A documentation-and-CI hotfix that closes the gaps surfaced during the README professional-review pass and the Python 3.10 CI failure. No feature behavior changes — the entire release is content and packaging.
+
+### Changed — README v3 → v11 (English master + Korean mirror)
+
+The README was rewritten across nine iterative passes around the user-articulated five strengths: **Translate · Evolve · Focus · Collaborate · Unify**. The harness metaphor (loose horse vs. harnessed horse) drives the hero, and the portfolio table includes a real entry (cosmic-suika) plus a "Yours next" slot for community submissions.
+
+- `README.md` — now native English (not a translation). Hero: *"Your AI has speed. We give it direction."*
+- `README.ko.md` — Korean mirror, preserves the v10 prose verbatim.
+- Both files carry a top-line language toggle (`[English](README.md) · [한국어](README.ko.md)`) so users round-trip in one click.
+- `docs/assets/README.md` — portfolio asset guide for community contributions (image/GIF format spec).
+
+The README structure now reads as a calm specification — five strengths in one table, one architecture diagram, a portfolio table, and a short conversation example. The previous "feature parade" tone (lists, badges, jargon) is gone.
+
+### Changed — Plugin manifest descriptions in native English
+
+Both `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` now carry the same hero-tone English description aligned with the new README structure:
+
+> *"Multi-agent development harness for Claude Code. Your AI has speed; we give it direction — through living specs and focused specialist agents."*
+
+The previous Korean description leaked command names (`/harness-boot:init`, `/harness-boot:work`); the new wording stays at the value-proposition layer where a marketplace card belongs.
+
+### Fixed — Python 3.10 CI matrix
+
+`scripts/scan/{style_fingerprint, seed_spec, manifest}.py` imported `tomllib` directly. That module joined the standard library only in Python 3.11, so the 3.10 leg of `.github/workflows/self-check.yml` was failing on every push with `ModuleNotFoundError: No module named 'tomllib'`.
+
+```python
+try:
+    import tomllib  # Python 3.11+
+except ImportError:
+    import tomli as tomllib  # Python 3.10 backport
+```
+
+`requirements-dev.txt` now adds `tomli; python_version < "3.11"`. The runtime API of `tomli` is identical to `tomllib`, so no other code changes were needed. Honors the README-stated "Python 3.10+" promise.
+
+### Fixed — stale data in README and marketplace manifest
+
+- `marketplace.json` `plugins[0].version`: `0.10.3` → `0.11.3` → `0.11.4`. The previous value had not moved across five releases (a self-doc drift exactly matching the F-051 13th-detector hypothesis).
+- `README.md` — version, test count, drift detector count all aligned with the running build.
+
+### Numbers
+
+- 1117 unit + integration tests, regression 0
+- self_check 5/5
+- README iterations: 9 commits (v3 through v11), each addressing a specific user feedback round
+- 12 + 1 commits bundled (12 in v0.11.3 push + 1 release commit here)
+
 ## [0.11.3] — 2026-04-28
 
 **Native English consolidation thread closes — F-051 + F-052 + F-053 (partial / deferred) + F-054 (policy).**

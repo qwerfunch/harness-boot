@@ -6,7 +6,7 @@
 
 harness-boot is a multi-agent development harness for Claude Code. Where most AI tools add *capability*, we add *focus*.
 
-[![plugin](https://img.shields.io/badge/plugin-v0.11.3-blue)](.claude-plugin/plugin.json)
+[![plugin](https://img.shields.io/badge/plugin-v0.11.4-blue)](.claude-plugin/plugin.json)
 [![tests](https://img.shields.io/badge/tests-1117%20passing-brightgreen)](tests)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
