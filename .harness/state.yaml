@@ -772,7 +772,7 @@ features:
   started_at: '2026-04-27T08:27:48Z'
   completed_at: '2026-04-27T08:34:05Z'
 - id: F-040
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -797,9 +797,9 @@ features:
       commands/init.md 사용자 언어 섹션 · 33 new tests (lang 12 + messages 9 + format_human
       8 + dashboard_i18n 4) + 1062 unit regression 0 · self_check 5/5
   started_at: '2026-04-27T08:53:54Z'
-  completed_at: null
+  completed_at: '2026-04-27T09:04:53Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
   last_command: /harness:work F-040
   last_gate_passed: gate_5
-  active_feature_id: F-040
+  active_feature_id: null
