@@ -1164,6 +1164,38 @@ features:
       - "AC-8: 1062 unit + 26 integration tests 회귀 0."
       - "AC-9: F-042 양쪽 spec.yaml mirror (diff -q PASS) + work.py 4-verb cycle 완주."
 
+  - id: "F-043"
+    name: "hardcode externalization — single source of truth for routing/gates/render/limits"
+    type: "feature"
+    description: "전체 리팩토링 6 release 의 2 단계. 분산 hardcode 정리: scripts/core/gates.py 신설 (STANDARD_GATES tuple 단일 source — work.py · dashboard.py · check.py 가 import) · scripts/core/routing.py 신설 (kickoff.ROUTING_SHAPES + PARALLEL_GROUPS 이전, kickoff.py 는 wrapper 만, 향후 .harness/routing.yaml override 진입로 marking) · scripts/ui/render.py 신설 (work.py + dashboard.py 의 _render_agent_chain mirror 통합) · scripts/ui/dashboard_config.py 신설 (_MAX_OTHER_LIST 등 magic numbers, env override). backward-compat 보장 — 모든 기존 import path 유지."
+    modules:
+      - "scripts/core/gates"
+      - "scripts/core/routing"
+      - "scripts/ui/render"
+      - "scripts/ui/dashboard_config"
+      - "scripts/work.py"
+      - "scripts/ui/dashboard.py"
+      - "scripts/ceremonies/kickoff.py"
+      - "scripts/check.py"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "core/gates.py: STANDARD_GATES tuple 단일 source — 기존 work._STANDARD_GATES 와 동일 값"
+      - "core/routing.py: ROUTING_SHAPES + PARALLEL_GROUPS 이전 — kickoff.py 는 re-export 로 backward-compat"
+      - "ui/render.py: render_agent_chain(agents, groups) — work.py 의 _render_agent_chain + dashboard.py 의 _render_chain 동일 출력"
+      - "ui/dashboard_config.py: MAX_OTHER_LIST 등 — env HARNESS_DASHBOARD_MAX_OTHER 로 override 가능"
+      - "1062 unit + 26 integration regression 0"
+      - "self_check.sh 5/5 PASS"
+    acceptance_criteria:
+      - "AC-1: scripts/core/gates.py 신설 — STANDARD_GATES = ('gate_0', ..., 'gate_5'). 단일 source."
+      - "AC-2: scripts/work.py · scripts/ui/dashboard.py 가 core.gates.STANDARD_GATES 를 import. 기존 _STANDARD_GATES 상수는 deprecated alias 로 유지 (backward-compat)."
+      - "AC-3: scripts/core/routing.py 신설 — ROUTING_SHAPES + PARALLEL_GROUPS 이전. kickoff.py 는 from core.routing import * 로 re-export."
+      - "AC-4: scripts/ui/render.py 신설 — render_agent_chain(agents, groups, *, parallel_token='∥', sequence_token='→') 단일 함수. work.py + dashboard.py 가 import."
+      - "AC-5: scripts/ui/dashboard_config.py 신설 — MAX_OTHER_LIST · MAX_PENDING_LIST · MAX_UNREGISTERED_LIST. env HARNESS_DASHBOARD_MAX_* override."
+      - "AC-6: 신규 unit ≥ 8 (gates 2 + routing 2 + render 2 + dashboard_config 2)."
+      - "AC-7: 1062 unit + 26 integration tests 회귀 0. F-038/F-039/F-040 routing/i18n tests 모두 PASS."
+      - "AC-8: bash scripts/self_check.sh 5/5 PASS."
+      - "AC-9: F-043 양쪽 spec.yaml mirror + work.py 4-verb cycle 완주."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

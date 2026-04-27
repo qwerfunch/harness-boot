@@ -11,6 +11,41 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 - Marketplace PR (anthropic/claude-plugins-official) — 사용자 명시 후 진입.
 
+## [0.10.17] — 2026-04-27
+
+**Hardcode externalization — Phase 2 of the 6-release refactor (F-043).**
+
+분산 hardcode 정리. 한 곳에서 한 번 바꾸면 전 영역에 반영. backward-compat alias 보존이라 기존 import path · CLI 모두 그대로.
+
+### Added — F-043
+- **`scripts/core/gates.py`** — `STANDARD_GATES = ("gate_0", ..., "gate_5")` + `GATE_PERF`. 단일 source.
+- **`scripts/core/routing.py`** — `ROUTING_SHAPES` + `PARALLEL_GROUPS` 이전. `kickoff.py` 는 re-export.
+- **`scripts/ui/render.py`** — `render_agent_chain(agents, groups, *, parallel_token, sequence_token, comma_join)`. work.py 의 `_render_agent_chain` + dashboard.py 의 `_render_chain` 33 줄 mirror 통합.
+- **`scripts/ui/dashboard_config.py`** — `max_other_list()` · `max_pending_list()` · `max_unregistered_list()` env-overridable. `HARNESS_DASHBOARD_MAX_OTHER` · `_PENDING` · `_UNREGISTERED` 환경변수로 dial up.
+
+### Changed (backward-compat aliases)
+- `scripts/work.py::_STANDARD_GATES` → `core.gates.STANDARD_GATES` re-import.
+- `scripts/work.py::_render_agent_chain` → `ui.render.render_agent_chain` re-import.
+- `scripts/ui/dashboard.py::_STANDARD_GATES` → `core.gates.STANDARD_GATES`.
+- `scripts/ui/dashboard.py::_render_chain` → `ui.render.render_agent_chain`.
+- `scripts/ui/dashboard.py` 의 `_MAX_*` 상수 → 함수 호출 (`_max_other_list()` · `_max_pending_list()` · `_max_unregistered_list()`).
+- `scripts/ceremonies/kickoff.py::ROUTING_SHAPES` · `PARALLEL_GROUPS` → `core.routing` re-export.
+
+### Tests
+- **신규**: 8 `tests/unit/test_core_externalization.py` (gates 2 + routing 2 + render 2 + dashboard_config 2).
+- **누적**: 1070 unit + 26 integration. `self_check 5/5`. F-038/F-039/F-040/F-041/F-042 회귀 0.
+
+### Out-of-scope (의도)
+- `.harness/routing.yaml` override loader — 진입로만 marking, 실 구현은 후속 (사용자 요청 시).
+- check.py 의 8 drift detector → registry pattern — F-045 (work.py + check.py split) 영역.
+- magic numbers 의 모든 외재화 — gate detect 우선순위 list 등은 F-043 범위 밖 (다음 phase).
+
+### 효과 측정
+- 새 gate 추가 비용: 3 곳 → 1 곳 (`core/gates.py`).
+- 새 parallel group / shape 추가 비용: 2 곳 → 1 곳 (`core/routing.py`).
+- `_render_agent_chain` 의 의미 변경 비용: 2 곳 → 1 곳 (`ui/render.py`).
+- 대규모 프로젝트 dashboard 의 truncation cap 조정: 코드 수정 → env 한 줄.
+
 ## [0.10.16] — 2026-04-27
 
 **Doc cleanup — Phase 1 of the 6-release refactor (F-042).**

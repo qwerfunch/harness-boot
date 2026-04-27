@@ -37,12 +37,18 @@ from .lang import resolve_lang
 from .messages import t
 
 
-_STANDARD_GATES: tuple[str, ...] = (
-    "gate_0", "gate_1", "gate_2", "gate_3", "gate_4", "gate_5",
+# F-043 — single sources of truth moved out:
+#   gates → scripts/core/gates.py
+#   limits → scripts/ui/dashboard_config.py (env-overridable)
+try:
+    from scripts.core.gates import STANDARD_GATES as _STANDARD_GATES  # noqa: E402
+except ImportError:
+    from core.gates import STANDARD_GATES as _STANDARD_GATES  # type: ignore[no-redef]  # noqa: E402
+from .dashboard_config import (  # noqa: E402
+    max_other_list as _max_other_list,
+    max_pending_list as _max_pending_list,
+    max_unregistered_list as _max_unregistered_list,
 )
-_MAX_OTHER_LIST: int = 5
-_MAX_PENDING_LIST: int = 5
-_MAX_UNREGISTERED_LIST: int = 5
 
 
 def _feature_title(fid: str, spec: dict | None) -> str:
@@ -141,30 +147,9 @@ def _resolve_agent_chain(
         return [], []
 
 
-def _render_chain(agents: list[str], groups: list[list[str]]) -> str:
-    """Mirror of scripts/work.py::_render_agent_chain (F-039) — kept local so
-    dashboard.py stays a pure renderer with no work.py import."""
-    if not groups:
-        return ", ".join(agents)
-    group_sets = [set(g) for g in groups]
-    parts: list[str] = []
-    i = 0
-    while i < len(agents):
-        member = agents[i]
-        matched = next((gs for gs in group_sets if member in gs), None)
-        if matched is None:
-            parts.append(member)
-            i += 1
-            continue
-        block: list[str] = []
-        while i < len(agents) and agents[i] in matched:
-            block.append(agents[i])
-            i += 1
-        if len(block) >= 2:
-            parts.append("(" + " ∥ ".join(block) + ")")
-        else:
-            parts.append(block[0])
-    return " → ".join(parts)
+# F-043 — _render_chain consolidated into scripts/ui/render.render_agent_chain.
+# This alias keeps dashboard's pre-F-043 callsites and tests stable.
+from .render import render_agent_chain as _render_chain  # noqa: E402
 
 
 def _render_other_in_progress(
@@ -179,7 +164,7 @@ def _render_other_in_progress(
     if not others:
         return []
     lines = [t("in_progress_others", lang=lang)]
-    for f in others[:_MAX_OTHER_LIST]:
+    for f in others[:_max_other_list()]:
         lines.append(f'  "{_feature_title(f.get("id", "?"), spec)}"')
     return lines
 
@@ -193,7 +178,7 @@ def _render_pending(features: list, spec: dict | None, lang: str) -> list[str]:
         return []
     titles = [
         f'"{_feature_title(f.get("id", "?"), spec)}"'
-        for f in pending[:_MAX_PENDING_LIST]
+        for f in pending[:_max_pending_list()]
     ]
     return [f"{t('pending_label', lang=lang)} {' · '.join(titles)}"]
 
@@ -246,13 +231,13 @@ def _render_unregistered(
 
     titles = [
         f'"{_feature_title(f.get("id", "?"), spec)}"'
-        for f in candidates[:_MAX_UNREGISTERED_LIST]
+        for f in candidates[:_max_unregistered_list()]
     ]
     header = t("next_candidates", lang=lang, n=len(candidates))
     lines = [header, "  " + " · ".join(titles)]
-    if len(candidates) > _MAX_UNREGISTERED_LIST:
+    if len(candidates) > _max_unregistered_list():
         lines.append(
-            t("more_after_truncate", lang=lang, n=len(candidates) - _MAX_UNREGISTERED_LIST)
+            t("more_after_truncate", lang=lang, n=len(candidates) - _max_unregistered_list())
         )
     return lines, len(candidates)
 
@@ -270,7 +255,7 @@ def _render_blocked(
         return []
     titles = [
         f'"{_feature_title(f.get("id", "?"), spec)}"'
-        for f in blocked[:_MAX_OTHER_LIST]
+        for f in blocked[:_max_other_list()]
     ]
     return [f"{t('on_hold_label', lang=lang)} {' · '.join(titles)}"]
 

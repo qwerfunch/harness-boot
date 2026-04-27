@@ -68,7 +68,9 @@ from ui.lang import resolve_lang as _resolve_lang  # noqa: E402
 from ui.messages import t as _t  # noqa: E402
 
 
-_STANDARD_GATES = ("gate_0", "gate_1", "gate_2", "gate_3", "gate_4", "gate_5")
+# F-043 — single source moved to scripts/core/gates.py; this alias is kept
+# for backward-compat with any external import.
+from core.gates import STANDARD_GATES as _STANDARD_GATES  # noqa: E402
 
 # Iron Law D (v0.9.3) — minimum declared evidence count per project mode.
 # `product` demands 3 independent human signals in the trailing window so that
@@ -1024,39 +1026,10 @@ def format_human(r: WorkResult, *, lang: str | None = None) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _render_agent_chain(agents: list[str], groups: list[list[str]]) -> str:
-    """F-039 — render an agent chain with parallel groups expressed as ``(a ∥ b)``.
-
-    A group whose members are contiguous in ``agents`` collapses into a single
-    parenthesized token. Members not part of any contiguous group are emitted
-    inline. Falls back to plain ``", "`` join when there are no parallel
-    groups (zero-diff for callers built before F-039).
-    """
-    if not groups:
-        return ", ".join(agents)
-
-    group_sets = [set(g) for g in groups]
-    parts: list[str] = []
-    i = 0
-    while i < len(agents):
-        member = agents[i]
-        matched_group = next(
-            (gs for gs in group_sets if member in gs),
-            None,
-        )
-        if matched_group is None:
-            parts.append(member)
-            i += 1
-            continue
-        block: list[str] = []
-        while i < len(agents) and agents[i] in matched_group:
-            block.append(agents[i])
-            i += 1
-        if len(block) >= 2:
-            parts.append("(" + " ∥ ".join(block) + ")")
-        else:
-            parts.append(block[0])
-    return " → ".join(parts)
+# F-043 — _render_agent_chain moved to scripts/ui/render.py for shared
+# use across work.py and dashboard.py. This alias preserves backward-compat
+# with existing call sites and tests.
+from ui.render import render_agent_chain as _render_agent_chain  # noqa: E402
 
 
 def main(argv: list[str] | None = None) -> int:

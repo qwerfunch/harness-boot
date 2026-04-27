@@ -35,25 +35,12 @@ except ImportError:
 
 # Mirrors commands/work.md §Orchestration Routing table.
 # test_ceremony_routing.py (PR-ε) will assert this map stays in sync.
-ROUTING_SHAPES: dict[str, list[str]] = {
-    "baseline-empty-vague": ["researcher", "product-planner"],
-    "ui_surface.present": [
-        "ux-architect",
-        "visual-designer",
-        "a11y-auditor",
-        "frontend-engineer",
-        "software-engineer",
-    ],
-    "sensitive_or_auth": ["security-engineer", "reviewer"],
-    "performance_budget": ["performance-engineer"],
-    "pure_domain_logic": ["backend-engineer", "software-engineer"],
-    "feature_completion": [
-        "qa-engineer",
-        "integrator",
-        "tech-writer",
-        "reviewer",
-    ],
-}
+# F-043 — single source of truth lives in scripts/core/routing.py.
+# Re-export so existing imports (kickoff.ROUTING_SHAPES, etc.) keep working.
+try:
+    from scripts.core.routing import ROUTING_SHAPES  # noqa: F401
+except ImportError:
+    from core.routing import ROUTING_SHAPES  # type: ignore[no-redef]  # noqa: F401
 
 
 def has_audio(feature: dict) -> bool:
@@ -121,14 +108,11 @@ def detect_shapes(feature: dict, *, spec: dict | None = None) -> list[str]:
     return shapes
 
 
-PARALLEL_GROUPS: dict[str, list[tuple[str, ...]]] = {
-    # F-039 — single message multi tool use 시 병렬 실행 가능한 에이전트 그룹.
-    # security-engineer 와 reviewer 둘 다 read-only 감사 (security 는 BLOCK 권한 보유).
-    "sensitive_or_auth": [("security-engineer", "reviewer")],
-    # visual-designer 와 audio-designer 둘 다 ux-architect.flows.md 의존 + 출력 파일 분리.
-    # has_audio=False 면 helper 가 단원 그룹으로 처리하여 drop.
-    "ui_surface.present": [("visual-designer", "audio-designer")],
-}
+# F-043 — single source of truth lives in scripts/core/routing.py.
+try:
+    from scripts.core.routing import PARALLEL_GROUPS  # noqa: F401
+except ImportError:
+    from core.routing import PARALLEL_GROUPS  # type: ignore[no-redef]  # noqa: F401
 
 
 def parallel_groups_for_shapes(

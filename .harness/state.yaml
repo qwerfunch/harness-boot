@@ -856,8 +856,36 @@ features:
       self_check 5/5 PASS · zero stale path refs · git mv 로 history 보존
   started_at: '2026-04-27T09:53:46Z'
   completed_at: '2026-04-27T09:59:55Z'
+- id: F-043
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-27T10:05:09Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T10:05:10Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T10:05:09Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (9.5s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-27T10:05:10Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.5s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T10:05:10Z'
+    kind: generic
+    summary: F-043 hardcode externalization · scripts/core/gates.py + scripts/core/routing.py
+      + scripts/ui/render.py + scripts/ui/dashboard_config.py 신설 · work.py / dashboard.py
+      / kickoff.py 가 새 source 사용 (backward-compat alias 유지) · 8 new unit (test_core_externalization)
+      + 1062 → 1070 누적 · self_check 5/5 + integration 26 PASS · env override (HARNESS_DASHBOARD_MAX_*)
+      동작
+  started_at: '2026-04-27T10:00:46Z'
+  completed_at: null
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-042
+  last_command: /harness:work F-043
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-043
