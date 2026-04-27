@@ -11,9 +11,13 @@ from __future__ import annotations
 
 import json
 import re
-import tomllib
 from pathlib import Path
 from typing import Optional
+
+try:
+    import tomllib  # Python 3.11+
+except ImportError:
+    import tomli as tomllib  # Python 3.10 backport
 
 
 _NODE_TEST_PRIORITY = ("vitest", "jest", "mocha", "ava", "node:test")

@@ -17,8 +17,12 @@ from __future__ import annotations
 import argparse
 import shutil
 import sys
-import tomllib
 from pathlib import Path
+
+try:
+    import tomllib  # Python 3.11+
+except ImportError:
+    import tomli as tomllib  # Python 3.10 backport
 from typing import Optional
 
 import yaml

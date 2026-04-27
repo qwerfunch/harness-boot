@@ -9,8 +9,12 @@ from __future__ import annotations
 
 import json
 import re
-import tomllib
 from collections import Counter
+
+try:
+    import tomllib  # Python 3.11+
+except ImportError:
+    import tomli as tomllib  # Python 3.10 backport
 from functools import lru_cache
 from pathlib import Path
 
