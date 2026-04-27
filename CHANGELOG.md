@@ -9,6 +9,60 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 - Marketplace PR (anthropic/claude-plugins-official) — 사용자 명시 후 진입.
 
+## [0.11.1] — 2026-04-27
+
+**Iron Law rename (BR-004 외부 호칭 단순화) + F-048 drift × Iron Law gating (격자 1차 결합).**
+
+4 메커니즘 (Iron Law · NO skip · CQS · Drift 12) 결합 검증 결과 발견된 GAP 1 닫기 + 사용자 혼동 호소에 따른 호칭 정리. patch bump (capability 변경은 단일 feature, schema/CLI surface 변경 0).
+
+### Changed — Iron Law rename
+
+- `Iron Law D` → `Iron Law` 외부 호칭 단순화. "D" 는 v0.9.3 의 4번째 정밀화 (declared evidence 도입) 표시였지만 사용자에게 history 흔적이 혼동만 유발. BR-004 의미 보존 — Walking Skeleton + N declared evidence + gate_5 pass.
+- 식별자: `_IRON_LAW_D_REQUIRED` → `_IRON_LAW_REQUIRED` (work.py), `IRON_LAW_D_DEFAULT_WINDOW_DAYS` → `IRON_LAW_WINDOW_DAYS` (state.py), `test_complete_action_enforces_iron_law_d` → `..._iron_law` (integration test).
+- 본문: scripts/, tests/, commands/, agents/, docs/, .harness/, CLAUDE.md (current-state).
+- 보존 (history): CHANGELOG release notes (already-shipped), docs/archive/ frozen, .harness/state.yaml events, CLAUDE.md commit-subject quotes (v0.9.3 / v0.10.3 의 commit message 그대로), `tests/unit/test_cosmic_suika_returns.py` regex (legacy "Iron Law D" + simplified "Iron Law" 둘 다 accept 하도록 일반화).
+
+### Added — F-048 drift × Iron Law gating
+
+`scripts/work.py:complete()` 가 이전엔 `scripts/check.py` 를 호출하지 않아 drift 가 누적된 채로 feature 완료가 가능했음 (4 메커니즘 결합 검증 §Part 10 의 GAP 1). 이번 결합으로 gate_5 + Iron Law 검증 직전에 drift gate 를 추가.
+
+- **차단 대상**: severity="error" 이면서 *진짜 wire 무결성* 위반 (`Code` · `Stale` · `AnchorIntegration`) 인 finding 1+.
+- **차단 안 함**: schema-validation 류 (`Anchor` · `Generated` · `Doc` · `Spec` 등) — build state 따라 false-positive 가능 (예: harness.yaml 미생성). F-051 에서 multi-tier severity (Critical/High/Med/Low) 로 일반화 예정.
+- **escape hatch**: `--hotfix-reason` 으로 bypass — 기존 emergency override 와 동일 path.
+- **best-effort**: check.py 실행 실패 (malformed spec / IO 에러) 시 silent fallback. gate_5 가 이미 runtime smoke 증명.
+
+```python
+# scripts/work.py
+_BLOCKING_DRIFT_KINDS: frozenset[str] = frozenset({"Code", "Stale", "AnchorIntegration"})
+
+# complete() 본체에서:
+blocking = [d for d in drift_report.findings
+            if d.severity == "error" and d.kind in _BLOCKING_DRIFT_KINDS]
+if blocking:
+    return CannotComplete("N blocking drift(s) (kinds...)")
+```
+
+### Tests
+
+- 신규: `tests/unit/work/test_drift_iron_law_gate.py` — 7 케이스 (drift 0 → pass · error wire-integrity → 거부 · 여러 unique kinds 메시지 · non-blocking error kind 통과 · warn-only 통과 · hotfix override · check 실행 실패 graceful).
+- 회귀 0: 1117 unit + integration PASS (1110 → 1117, +7 신규).
+- self_check 5/5.
+
+### Self-evidence (Phase 2 dogfood)
+
+F-048 자체가 자기가 도입한 drift gate 를 통과해 자기 complete — work.py 4-verb 사이클 완주: activate → run-gate gate_5 → 3 declared evidence (manual_check + reviewer_check + auto gate_run) → complete. *"우리 도구가 자기 GAP 을 자기 메커니즘으로 닫는다"* 의 첫 증명.
+
+### Cumulative state (v0.11.1)
+
+- 48 features (47 archived/done + F-048 done)
+- 1117 unit + integration tests · self_check 5/5
+- 4 메커니즘 결합: GAP 1 닫힘 (격자 1차). GAP 2/3 은 외부 dogfood 누적 후 처리 — F-049 (evidence author attribution) · F-050 (Preamble compliance scanner) 는 본 레포 내부 검증 환경 부족.
+- 외부 호칭 정리: "Iron Law D" → "Iron Law" (BR-004 의미 보존)
+
+### 관련 분석
+
+PR/release 분석: `~/.claude/plans/wondrous-hopping-canyon.md` (12 part 분석 — 컨셉/철학/비전 검증 + 4 메커니즘 결합 GAP 발견 + 운용 추천).
+
 ## [0.11.0] — 2026-04-27
 
 **Refactor thread closes (F-042 → F-047) · minor bump · vision consolidation.**
