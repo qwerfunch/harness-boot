@@ -48,7 +48,8 @@ That's runtime enforcement.
 2. **BR-004 Iron Law** — software-engineer cannot reach `done`
    without gate_5 + evidence.
 3. **Preamble + anti-rationalization (BR-014)** — every agent's
-   first three output lines follow the convention.
+   first three output lines follow the convention. Spec:
+   [`docs/preamble-spec.md`](../docs/preamble-spec.md).
 4. **CQS (BR-012)** — reviewer is read-only; diagnosis only.
 
 ## Adding a new agent

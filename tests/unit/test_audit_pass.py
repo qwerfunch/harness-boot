@@ -10,8 +10,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 README = REPO_ROOT / "README.md"
 CLAUDE_MD = REPO_ROOT / "CLAUDE.md"
 TEMPLATE = REPO_ROOT / "docs" / "templates" / "starter" / "CLAUDE.md.template"
-LOCAL_INSTALL = REPO_ROOT / "docs" / "setup" / "local-install.md"
-FIRST_RUN = REPO_ROOT / "docs" / "setup" / "first-run-checklist.md"
+# F-042 — moved under docs/archive/ as part of the doc cleanup; the
+# deprecation-notice contract still applies to the archived copies.
+LOCAL_INSTALL = REPO_ROOT / "docs" / "archive" / "local-install-v0.1.0.md"
+FIRST_RUN = REPO_ROOT / "docs" / "archive" / "first-run-checklist-v0.1.0.md"
 ISSUES_LOG = REPO_ROOT / ".harness" / "_workspace" / "issues-log.md"
 
 

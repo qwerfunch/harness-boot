@@ -84,6 +84,10 @@ Where are you?
 
 ## Preamble (top 3 lines of every output)
 
+> Spec: see [`docs/preamble-spec.md`](../docs/preamble-spec.md) — the
+> single source of truth for the convention. The block below is this
+> command's instance.
+
 ```
 🧰 /harness-boot:init · <mode=solo|team> · <5–10 word reason>
 NO skip: §0-2 checks for an existing .harness/spec.yaml — never overwrite on re-run

@@ -11,6 +11,38 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 - Marketplace PR (anthropic/claude-plugins-official) — 사용자 명시 후 진입.
 
+## [0.10.16] — 2026-04-27
+
+**Doc cleanup — Phase 1 of the 6-release refactor (F-042).**
+
+전체 리팩토링 6 release 의 첫 단계 (가장 안전, code 0). 누적된 dead docs / 중복 / 4 곳 반복 규약을 정리. v0.10.17~20 + v0.11.0 으로 이어지는 청결 base.
+
+### Added — F-042
+- `docs/preamble-spec.md` — 3-line Preamble + `NO skip:` / `NO shortcut:` prefix 규약의 single source. `commands/{init,work}.md` 의 Preamble 섹션 + `agents/README.md` 의 design principles 가 backlink. self_check.sh step 5 가 hardgrep 하는 두 prefix 가 영어로 박혀있다는 사실 + 변경 가능 / 불가 영역 명시.
+
+### Moved (history preserved via `git mv`)
+- `docs/setup/local-install.md` → `docs/archive/local-install-v0.1.0.md`
+- `docs/setup/first-run-checklist.md` → `docs/archive/first-run-checklist-v0.1.0.md`
+- `docs/release/v0.1.0.md` → `docs/archive/release-v0.1.0-playbook.md`
+- `docs/release/v0.4-plan.md` → `docs/archive/release-v0.4-plan-shipped.md`
+- `docs/i18n/ko/` → `docs/archive/i18n-ko-frozen-f041/` (17 files)
+
+빈 부모 디렉토리 (`docs/setup/`, `docs/release/`) 자동 제거.
+
+### Updated
+- `CLAUDE.md` — 5 곳의 stale path reference 갱신 (`docs/setup/*` · `docs/release/v0.1.0` → `docs/archive/*`). 본문 한국어 톤 유지 (ops 컨텍스트).
+- `docs/i18n/README.md` — KO snapshot 경로 backlink 를 `docs/archive/i18n-ko-frozen-f041/` 로 갱신 + 시각적 archive 의미 한 줄.
+- `tests/unit/test_audit_pass.py` — `LOCAL_INSTALL` / `FIRST_RUN` 경로 상수 갱신 (deprecation-notice 검증 contract 그대로 유지).
+
+### Out-of-scope (의도)
+- README 한국어 → 영어 — 사용자 결정 보류.
+- 실 deletion — `git mv` 로 archive 이동 만, history 보존.
+- CHANGELOG historical entries 압축 — 다음 release (F-047) 의 vision consolidation 영역.
+
+### Tests
+- 1062 unit + 26 integration · self_check 5/5 · F-040 KO runtime catalog 회귀 0.
+- F-041 native-English masters + KO archive snapshot 모두 byte-stable.
+
 ## [0.10.15] — 2026-04-27
 
 **Native-English rewrite of `commands/` and `agents/` (F-041).**

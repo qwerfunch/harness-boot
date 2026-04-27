@@ -65,10 +65,10 @@ docs/
 ├── schemas/spec.schema.json        # spec v2.3.8 JSONSchema (Walking Skeleton 강제 + project.mode)
 ├── samples/harness-boot-self/      # self-referential canonical spec (24 features → 25 with F-025)
 ├── templates/starter/              # /harness-boot:init 이 복사하는 템플릿 (CLAUDE.md.template 등)
-├── setup/
-│   ├── local-install.md            # 플러그인 설치 + dev workflow + self-hosting 부록
-│   └── first-run-checklist.md
-└── release/v0.1.0.md               # 태깅·플레이북 (v0.10.x 에도 동일 적용)
+├── glossary/BRAND_TERMS.md         # F-041 — 28 brand jargon (Walking Skeleton · Iron Law D · …)
+├── i18n/README.md                  # F-040 — runtime locale 정책
+├── preamble-spec.md                # F-042 — Preamble + NO skip / NO shortcut 단일 source
+└── archive/                        # F-042 — historical (local-install · first-run · v0.1.0 / v0.4 plans · i18n-ko-frozen-f041/)
 .github/workflows/self-check.yml    # Phase 3 CI (v0.8.3) — PR 마다 self_check.sh
 README.md · CHANGELOG.md · LICENSE · CLAUDE.md (이 파일) · requirements-dev.txt
 ```
@@ -117,8 +117,8 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (이 파일) · requirements-d
 |---|---|
 | 현재 상황 30 초 파악 | `README.md` + 이 파일 |
 | **Claude Code 에서 이어 작업** | `design/HANDOFF-to-claude-code.md` (gitignored) |
-| 첫 실행 검증 | `docs/setup/first-run-checklist.md` |
-| 태깅·릴리즈 플레이북 | `docs/release/v0.1.0.md` (v0.10.x 에도 동일 적용) |
+| 첫 실행 검증 | `docs/archive/first-run-checklist-v0.1.0.md` (F-042 archive) |
+| 태깅·릴리즈 플레이북 | `docs/archive/release-v0.1.0-playbook.md` (F-042 archive · v0.10.x 동일 적용) |
 | 전체 변경 이력 | `CHANGELOG.md` |
 | 슬래시 명령 스펙 | `commands/{init,work}.md` (preamble 규약 · NO skip / NO shortcut 2 행 BR-014) |
 | 스펙 v2.3.8 JSONSchema | `docs/schemas/spec.schema.json` |
@@ -126,7 +126,7 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (이 파일) · requirements-d
 | 스킬 v0.5 구현 가이드 | `skills/spec-conversion/SKILL.md` |
 | 스크립트 레이어 테스트 | `tests/unit/test_*.py` (38 파일, 838+ tests) |
 | Project mode 의미론 | `scripts/core/project_mode.py` (prototype vs product 차이 docstring) |
-| Self-hosting 부록 | `docs/setup/local-install.md` 부록 A |
+| Self-hosting 부록 | `docs/archive/local-install-v0.1.0.md` 부록 A (F-042 archive) |
 | 로컬 메모리 (사용자 스타일 · 진행 기록) | `~/.claude/projects/.../memory/MEMORY.md` (gitignored) |
 
 ## 7. 작업 규칙
@@ -158,9 +158,9 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (이 파일) · requirements-d
   - 작동: `/plugin marketplace add qwerfunch/harness-boot` + `/plugin install harness-boot@harness-boot` → `/harness-boot:{init,work}` 사용 가능. 업그레이드 `/plugin update harness-boot@harness-boot`.
   - 미작동: `CLAUDE_PLUGIN_ROOT` env / `settings.json plugins[]` 로 dev checkout 라이브 반영 — 설치본이 우선.
   - 결론: 편집 즉시 슬래시 반영은 불가. **이 레포 내부 dev workflow 는 항상 `python3 scripts/*.py` 직접 호출**. 슬래시 검증은 release → `/plugin update` 루프.
-  - 상세: `docs/setup/local-install.md` §2 + 부록 A.
+  - 상세: `docs/archive/local-install-v0.1.0.md` §2 + 부록 A (F-042 archive).
 
-- **태그는 절대 이동 금지**. 깨진 버전은 yank + hotfix (`docs/release/v0.1.0.md` §5).
+- **태그는 절대 이동 금지**. 깨진 버전은 yank + hotfix (`docs/archive/release-v0.1.0-playbook.md` §5 · F-042 archive).
 - **main 은 default branch**. 머지는 `feat/v0.X.Y-*` 브랜치에서 PR → main fast-forward.
 - **Patch-first 버전 정책**: 새 기능이라도 X.Y.Z+1. minor/major 는 사용자 확인 + 큰 마일스톤 한정.
 - **버전 릴리즈는 사용자 결정**: 자동 태깅 금지. 커밋·머지는 자유, 태그·release notes 는 사용자 명시 후.

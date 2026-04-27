@@ -1133,6 +1133,37 @@ features:
       - "AC-9: F-041 mirrored in both spec.yaml files (diff -q PASS) + work.py 4-verb cycle (activate → gate_0 → gate_5 → evidence → complete) completes."
       - "AC-10: spot-check — a native English-speaking dev can read commands/init.md end-to-end without hitting Korean script or unglossed jargon."
 
+  - id: "F-042"
+    name: "doc cleanup — dead docs + duplicate consolidation + Preamble central spec"
+    type: "feature"
+    description: "전체 리팩토링 6 release 의 첫 단계 (lowest risk, code 0). docs/setup/local-install.md (322줄, stale, F-041 후 redundant) · docs/release/v0.1.0.md (212줄, v0.10.x 시대 부적합) 삭제. docs/i18n/ko/ 17 파일 (180 KB freeze) 을 docs/archive/i18n-ko-frozen-f041/ 로 강등 (보존하되 시각적으로 archive). 설치 경로 정보 3 곳 중복 (README + docs/setup/{local-install,first-run-checklist}.md) → README 한 곳으로 통합. Preamble spec central 화 — docs/preamble-spec.md 신설하여 commands + agents 의 4 곳 반복 규약을 한 곳에 모음."
+    modules:
+      - "docs/setup/local-install.md"
+      - "docs/release/v0.1.0.md"
+      - "docs/i18n/ko/"
+      - "README.md"
+      - "docs/setup/first-run-checklist.md"
+      - "docs/preamble-spec.md"
+      - "commands/init.md"
+      - "commands/work.md"
+      - "agents/README.md"
+    test_strategy: "contract"
+    tdd_focus:
+      - "self_check.sh 5/5 통과 — Preamble · NO skip · NO shortcut prefix 보존 invariant"
+      - "1062 unit + 26 integration tests 회귀 0"
+      - "삭제 대상 파일이 다른 곳에서 link/import 되지 않음 (검증 grep)"
+      - "docs/preamble-spec.md 가 self_check 의 새 5/5+ step 으로 grep 검증되거나 단순 reference"
+    acceptance_criteria:
+      - "AC-1: docs/setup/local-install.md 삭제 + 외부 reference 0 (grep 통과)."
+      - "AC-2: docs/release/v0.1.0.md 삭제 + 외부 reference 0."
+      - "AC-3: docs/i18n/ko/ → docs/archive/i18n-ko-frozen-f041/ 로 이동 (byte-identical 보존). docs/i18n/README.md 의 경로 링크 갱신."
+      - "AC-4: README.md 에 단일 설치 섹션 (marketplace + plugin install). docs/setup/first-run-checklist.md 는 검증 절차만 (설치 명령 중복 제거)."
+      - "AC-5: docs/preamble-spec.md 신설 — Preamble 3 줄 규약 + NO skip / NO shortcut prefix 정의 + 이를 따르는 파일 목록 (commands/* + agents/*)."
+      - "AC-6: commands/{init,work}.md + agents/{README,각 agent}.md 의 Preamble 섹션 끝에 'See [docs/preamble-spec.md](...)' 한 줄 추가 (4중 반복 그대로 유지하되 single source 인지 명시)."
+      - "AC-7: bash scripts/self_check.sh 5/5 PASS — preamble pattern 검증 그대로."
+      - "AC-8: 1062 unit + 26 integration tests 회귀 0."
+      - "AC-9: F-042 양쪽 spec.yaml mirror (diff -q PASS) + work.py 4-verb cycle 완주."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

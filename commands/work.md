@@ -21,6 +21,10 @@ kickoff, retro, autowire, fog-clear, …), see
 
 ## Preamble (top 3 lines of every output)
 
+> Spec: see [`docs/preamble-spec.md`](../docs/preamble-spec.md) — the
+> single source of truth for the convention. The block below is this
+> command's instance.
+
 ```
 🛠 /harness-boot:work · <action on F-ID> · <5–10 word reason>
 NO skip: BR-004 Iron Law — cannot complete without gate_5=pass + evidence ≥ 1
