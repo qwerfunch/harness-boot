@@ -11,6 +11,32 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 - Marketplace PR (anthropic/claude-plugins-official) — 사용자 명시 후 진입.
 
+## [0.10.13] — 2026-04-27
+
+**Parallel agent dispatch — visibility + orchestrator contract (F-039).**
+
+사용자 질문 — *"병행 작업 가능한 에이전트는 멀티 호출로 고속 처리 가능한가?"* — 의 답은 *가능*. Claude Code 의 Agent tool 이 단일 메시지 멀티 호출 시 native 병렬 실행. F-039 가 이 native 동작을 harness-boot 의 데이터·문서·UI 로 노출. F-038 (routing transparency) 의 자연 follow-up.
+
+### Added — F-039 parallel agent dispatch
+
+- **`scripts/ceremonies/kickoff.py::PARALLEL_GROUPS`** — 새 상수 `dict[str, list[tuple[str, ...]]]`. 명시된 그룹: `sensitive_or_auth` → `(security-engineer, reviewer)`, `ui_surface.present` → `(visual-designer, audio-designer)`. ROUTING_SHAPES 자체는 unchanged (backward compat).
+- **`parallel_groups_for_shapes(shapes, has_audio)`** helper — `has_audio=False` 시 `audio-designer` 그룹에서 drop 후 단원 그룹 제거. order-preserving + dedup.
+- **`WorkResult.parallel_groups: list[list[str]]`** (`default_factory=list`) + `_resolve_routing` 가 `(routed_agents, parallel_groups)` 튜플 반환. activate 시점에만 채움.
+- **`format_human()`** — `_render_agent_chain(agents, groups)` 가 그룹화된 표기 emit: 예 `routed agents: ux-architect → (visual-designer ∥ audio-designer) → a11y-auditor → frontend-engineer`. 그룹 없는 chain 은 기존 `, ` join (회귀 0).
+- **`scripts/ui/dashboard.py`** — `_resolve_agent_chain` 가 `(agents, groups)` 튜플 반환 + 로컬 `_render_chain` (work.py 의 mirror — dashboard 가 pure renderer 라 import 회피). active feature 의 `agent chain:` 줄에 동일 ∥ 표기.
+- **`_result_to_dict()`** — `parallel_groups` 키 추가.
+- **`commands/work.md`** Orchestration Routing 표 — `ui_surface.present` 행에 `(visual-designer ∥ audio-designer)` 명시. 새 단락 "Parallel dispatch (F-039)" — 어떤 그룹이 병렬 가능, 안전 규칙 (write conflict 없는 에이전트끼리만), 표기 문법 `(a ∥ b)` 와 `→`, 신규 그룹 추가 절차.
+- **`agents/orchestrator.md`** 새 섹션 "Parallel Invocation Pattern" — single message multi tool use 패턴 명시 + 안전 규칙 + 현재 그룹 2 종 인용 + 호출 예시 (같은 turn 안에 여러 Agent tool call block).
+
+### Tests
+- **신규**: 7 `tests/unit/test_kickoff_parallel_groups.py` (PARALLEL_GROUPS 상수 + helper · 5 cases) + 8 `tests/unit/test_work_parallel_routing.py` (activate 가 채움 · format_human 그룹 표기 · 비-activate 회귀 · JSON dict) + 3 `tests/unit/test_dashboard_parallel.py` (∥ 노출 · pure_domain 회귀 · UI 단원 그룹 drop).
+- **누적**: 1029 unit + 6 integration. self_check 5/5. F-036/F-037/F-038 회귀 0.
+
+### Out-of-scope (의도)
+- orchestrator 의 *실제* 자동 dispatch — orchestrator 는 LLM 에이전트라 결정론 코드로 강제 불가. F-039 는 데이터 + 문서 + UI 로 행동 가이드만.
+- `feature_completion` chain 병렬화 — write conflict 가능성으로 보류 (engineers + integrator).
+- ROUTING_SHAPES 자료 구조 변경 — 별도 PARALLEL_GROUPS 추가만 (backward compat).
+
 ## [0.10.12] — 2026-04-27
 
 **Agent routing transparency in `/harness-boot:work` outputs (F-038).**

@@ -1027,6 +1027,35 @@ features:
       - "AC-7: 신규 unit tests ≥ 5 (WorkResult routed_agents 채움 + format_human 라인 + JSON 키 + dashboard 섹션 + 회귀)."
       - "AC-8: bash scripts/self_check.sh 5/5 + F-038 양쪽 spec mirror (diff -q PASS) + work.py 4-verb cycle 완주."
 
+  - id: "F-039"
+    name: "parallel agent dispatch (visibility + orchestrator contract)"
+    type: "feature"
+    description: "사용자 질문 — '병행 작업 가능한 에이전트는 멀티 호출로 고속 처리 가능한가?' — 의 답은 가능. Claude Code 의 Agent tool 이 단일 메시지 멀티 호출 시 native 병렬 실행. 그러나 harness-boot 측 인프라 부족 — ROUTING_SHAPES 가 plain dict 라 병렬/순차 메타 X, work.md 의 ∥ 표기는 sensitive_or_auth 한 케이스만, orchestrator.md 에 멀티 호출 가이드 없음. F-038 의 자연 follow-up: '어떤' 에이전트뿐 아니라 '어떻게 (sequentially/parallel)' 호출되는지까지 노출. PARALLEL_GROUPS 상수 신설 + WorkResult.parallel_groups + format_human/dashboard 의 ∥ 표기 + orchestrator.md Parallel Invocation Pattern 섹션."
+    modules:
+      - "scripts/ceremonies/kickoff.py"
+      - "scripts/work.py"
+      - "scripts/ui/dashboard.py"
+      - "agents/orchestrator.md"
+      - "commands/work.md"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "kickoff.PARALLEL_GROUPS — sensitive_or_auth: (security-engineer, reviewer); ui_surface.present: (visual-designer, audio-designer)"
+      - "parallel_groups_for_shapes(shapes, has_audio): has_audio=False 면 audio-designer drop → 단원 그룹 제거"
+      - "WorkResult.parallel_groups (default_factory=list) + activate() 가 채움"
+      - "format_human 의 routed agents 라인이 그룹 표기 — a → (b ∥ c) → d. 그룹 없으면 기존 ', ' join (회귀 0)"
+      - "dashboard agent chain 줄 동일 그룹 표기"
+    acceptance_criteria:
+      - "AC-1: kickoff.PARALLEL_GROUPS['sensitive_or_auth'] == [('security-engineer', 'reviewer')]."
+      - "AC-2: kickoff.PARALLEL_GROUPS['ui_surface.present'] 가 has_audio=true 시 ('visual-designer', 'audio-designer') 포함, has_audio=false 시 그 그룹 drop."
+      - "AC-3: WorkResult.parallel_groups (default_factory=list) — activate() 가 채움. 비-activate 액션은 빈 list."
+      - "AC-4: format_human(activate result) 의 routed agents 라인이 그룹 표기. 그룹 없는 chain 은 기존 ', ' 회귀 0."
+      - "AC-5: _result_to_dict() 에 parallel_groups: list[list[str]] 키."
+      - "AC-6: dashboard._render_active_block 의 agent chain: 줄도 동일 그룹 표기."
+      - "AC-7: commands/work.md Orchestration Routing 표의 ui_surface.present 행에 visual-designer ∥ audio-designer 명시 + Parallel dispatch 단락 신설."
+      - "AC-8: agents/orchestrator.md Parallel Invocation Pattern 섹션 — single message multi tool use 패턴 + 안전 규칙 + 현재 그룹 2 종 인용."
+      - "AC-9: 신규 unit ≥ 11 (parallel_groups 4 + work 4 + dashboard 3). F-038 회귀 0. self_check 5/5."
+      - "AC-10: F-039 양쪽 spec.yaml mirror (diff -q PASS) + work.py 4-verb cycle 완주."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

@@ -121,6 +121,43 @@ def detect_shapes(feature: dict, *, spec: dict | None = None) -> list[str]:
     return shapes
 
 
+PARALLEL_GROUPS: dict[str, list[tuple[str, ...]]] = {
+    # F-039 — single message multi tool use 시 병렬 실행 가능한 에이전트 그룹.
+    # security-engineer 와 reviewer 둘 다 read-only 감사 (security 는 BLOCK 권한 보유).
+    "sensitive_or_auth": [("security-engineer", "reviewer")],
+    # visual-designer 와 audio-designer 둘 다 ux-architect.flows.md 의존 + 출력 파일 분리.
+    # has_audio=False 면 helper 가 단원 그룹으로 처리하여 drop.
+    "ui_surface.present": [("visual-designer", "audio-designer")],
+}
+
+
+def parallel_groups_for_shapes(
+    shapes: Iterable[str],
+    *,
+    has_audio: bool = False,
+) -> list[tuple[str, ...]]:
+    """F-039 — collect parallel agent groups for the given shape list.
+
+    Filters out ``audio-designer`` when ``has_audio=False`` and drops any
+    group that ends up with fewer than two members. Order is preserved by
+    shape iteration order, then by group order within a shape.
+    """
+    groups: list[tuple[str, ...]] = []
+    seen: set[tuple[str, ...]] = set()
+    for shape in shapes:
+        for group in PARALLEL_GROUPS.get(shape, []):
+            members = tuple(
+                m for m in group if has_audio or m != "audio-designer"
+            )
+            if len(members) < 2:
+                continue
+            if members in seen:
+                continue
+            seen.add(members)
+            groups.append(members)
+    return groups
+
+
 def agents_for_shapes(shapes: Iterable[str], *, has_audio: bool = False) -> list[str]:
     """Resolve shape list → deduped, order-preserved agent list."""
     out: list[str] = []

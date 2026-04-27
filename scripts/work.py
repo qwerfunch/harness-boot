@@ -89,6 +89,10 @@ class WorkResult:
     # F-038 — populated only when action == "activated" so the user can see
     # which agents are routed for the feature without opening kickoff.md.
     routed_agents: list[str] = field(default_factory=list)
+    # F-039 — sub-groups of routed_agents that orchestrator may dispatch in
+    # parallel via single-message multi tool use. list[list[str]] (not tuple)
+    # for JSON serialization symmetry with routed_agents.
+    parallel_groups: list[list[str]] = field(default_factory=list)
 
 
 def _now_iso() -> str:
@@ -470,31 +474,34 @@ def activate(harness_dir: Path, fid: str, *, disable_fog: bool = False) -> WorkR
     _autowire_design_review(harness_dir, fid)
     res = _summarize(state, fid)
     res.action = "activated"
-    res.routed_agents = _resolve_routed_agents(harness_dir, fid)
+    res.routed_agents, res.parallel_groups = _resolve_routing(harness_dir, fid)
     return res
 
 
-def _resolve_routed_agents(harness_dir: Path, fid: str) -> list[str]:
-    """F-038 — surface the kickoff agent chain to the activate caller.
+def _resolve_routing(harness_dir: Path, fid: str) -> tuple[list[str], list[list[str]]]:
+    """F-038 + F-039 — surface the kickoff agent chain and its parallel groups.
 
     Mirrors what ``_autowire_kickoff`` already computes (so the rendered
-    kickoff.md and the user-visible routed list cannot drift). Returns ``[]``
-    when spec / feature missing or no shapes match — same silent semantics as
-    the autowires.
+    kickoff.md and the user-visible routed list cannot drift). Returns
+    ``([], [])`` when spec / feature missing or no shapes match — same silent
+    semantics as the autowires.
     """
     spec = _load_spec(harness_dir)
     if spec is None:
-        return []
+        return [], []
     feature = _find_feature(spec, fid)
     if feature is None:
-        return []
+        return [], []
     try:
         shapes = _kickoff.detect_shapes(feature, spec=spec)
         if not shapes:
-            return []
-        return list(_kickoff.agents_for_shapes(shapes, has_audio=_kickoff.has_audio(feature)))
+            return [], []
+        has_audio = _kickoff.has_audio(feature)
+        agents = list(_kickoff.agents_for_shapes(shapes, has_audio=has_audio))
+        groups = [list(g) for g in _kickoff.parallel_groups_for_shapes(shapes, has_audio=has_audio)]
+        return agents, groups
     except Exception:
-        return []
+        return [], []
 
 
 def deactivate(harness_dir: Path) -> WorkResult:
@@ -987,6 +994,7 @@ def _result_to_dict(r: WorkResult) -> dict:
         "evidence_count": r.evidence_count,
         "message": r.message,
         "routed_agents": r.routed_agents,
+        "parallel_groups": r.parallel_groups,
     }
 
 
@@ -999,11 +1007,46 @@ def format_human(r: WorkResult) -> str:
         lines.append(f"failed: {', '.join(r.gates_failed)}")
     lines.append(f"evidence: {r.evidence_count} entries")
     if r.action == "activated" and r.routed_agents:
-        lines.append(f"routed agents: {', '.join(r.routed_agents)}")
+        lines.append(f"routed agents: {_render_agent_chain(r.routed_agents, r.parallel_groups)}")
     if r.message:
         lines.append("")
         lines.append(r.message)
     return "\n".join(lines) + "\n"
+
+
+def _render_agent_chain(agents: list[str], groups: list[list[str]]) -> str:
+    """F-039 — render an agent chain with parallel groups expressed as ``(a ∥ b)``.
+
+    A group whose members are contiguous in ``agents`` collapses into a single
+    parenthesized token. Members not part of any contiguous group are emitted
+    inline. Falls back to plain ``", "`` join when there are no parallel
+    groups (zero-diff for callers built before F-039).
+    """
+    if not groups:
+        return ", ".join(agents)
+
+    group_sets = [set(g) for g in groups]
+    parts: list[str] = []
+    i = 0
+    while i < len(agents):
+        member = agents[i]
+        matched_group = next(
+            (gs for gs in group_sets if member in gs),
+            None,
+        )
+        if matched_group is None:
+            parts.append(member)
+            i += 1
+            continue
+        block: list[str] = []
+        while i < len(agents) and agents[i] in matched_group:
+            block.append(agents[i])
+            i += 1
+        if len(block) >= 2:
+            parts.append("(" + " ∥ ".join(block) + ")")
+        else:
+            parts.append(block[0])
+    return " → ".join(parts)
 
 
 def main(argv: list[str] | None = None) -> int:

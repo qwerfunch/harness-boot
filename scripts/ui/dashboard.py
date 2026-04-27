@@ -96,36 +96,67 @@ def _render_active_block(f: dict, spec: dict | None) -> list[str]:
     blocker = _latest_blocker_note(f)
     if blocker:
         lines.append(f"  차단: {blocker}")
-    agents = _resolve_agent_chain(fid, spec)
+    agents, groups = _resolve_agent_chain(fid, spec)
     if agents:
-        lines.append(f"  agent chain: {', '.join(agents)}")
+        lines.append(f"  agent chain: {_render_chain(agents, groups)}")
     return lines
 
 
-def _resolve_agent_chain(fid: str, spec: dict | None) -> list[str]:
-    """F-038 — same kickoff routing the autowire uses, exposed for the dashboard."""
+def _resolve_agent_chain(
+    fid: str, spec: dict | None
+) -> tuple[list[str], list[list[str]]]:
+    """F-038 + F-039 — kickoff routing + parallel groups for dashboard rendering."""
     if not isinstance(spec, dict):
-        return []
+        return [], []
     feature = next(
         (f for f in (spec.get("features") or []) if isinstance(f, dict) and f.get("id") == fid),
         None,
     )
     if feature is None:
-        return []
+        return [], []
     try:
         from scripts.ceremonies import kickoff as _kickoff
     except ImportError:
         try:
             from ceremonies import kickoff as _kickoff  # type: ignore[no-redef]
         except ImportError:
-            return []
+            return [], []
     try:
         shapes = _kickoff.detect_shapes(feature, spec=spec)
         if not shapes:
-            return []
-        return list(_kickoff.agents_for_shapes(shapes, has_audio=_kickoff.has_audio(feature)))
+            return [], []
+        has_audio = _kickoff.has_audio(feature)
+        agents = list(_kickoff.agents_for_shapes(shapes, has_audio=has_audio))
+        groups = [list(g) for g in _kickoff.parallel_groups_for_shapes(shapes, has_audio=has_audio)]
+        return agents, groups
     except Exception:
-        return []
+        return [], []
+
+
+def _render_chain(agents: list[str], groups: list[list[str]]) -> str:
+    """Mirror of scripts/work.py::_render_agent_chain (F-039) — kept local so
+    dashboard.py stays a pure renderer with no work.py import."""
+    if not groups:
+        return ", ".join(agents)
+    group_sets = [set(g) for g in groups]
+    parts: list[str] = []
+    i = 0
+    while i < len(agents):
+        member = agents[i]
+        matched = next((gs for gs in group_sets if member in gs), None)
+        if matched is None:
+            parts.append(member)
+            i += 1
+            continue
+        block: list[str] = []
+        while i < len(agents) and agents[i] in matched:
+            block.append(agents[i])
+            i += 1
+        if len(block) >= 2:
+            parts.append("(" + " ∥ ".join(block) + ")")
+        else:
+            parts.append(block[0])
+    return " → ".join(parts)
 
 
 def _render_other_in_progress(
