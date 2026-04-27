@@ -1056,6 +1056,37 @@ features:
       - "AC-9: 신규 unit ≥ 11 (parallel_groups 4 + work 4 + dashboard 3). F-038 회귀 0. self_check 5/5."
       - "AC-10: F-039 양쪽 spec.yaml mirror (diff -q PASS) + work.py 4-verb cycle 완주."
 
+  - id: "F-040"
+    name: "user-friendly output — i18n + glossary + visual signature"
+    type: "feature"
+    description: "사용자 실 사용 피드백 — '플러그인 출력의 용어가 어렵고, 한국어/영어 혼재되고, harness-boot 가 작업하는 게 구분 안 보임'. 4 가지 갭 메우기: (a) 사용자 언어 매칭 — env HARNESS_LANG / spec.project.language / LC_ALL 으로 영어/한국어 결정, default en. (b) 용어 표준화 — Walking Skeleton/Iron Law/drift/kickoff/retro/preamble/sigil/fog-clear/autowire 같은 jargon 의 사용자 친화 표현. messages catalog 가 영어/한국어 둘 다. (c) 시각 구분 — 모든 사용자 노출 출력에 일관 prefix (🛠 work · 🧰 init · 📊 dashboard) + 단계 진행 표시. (d) 친절한 설명 — work.md/init.md 에 Glossary 섹션 신설. 백엔드 결정론은 그대로 (수학공식), 사용자 표면만 부드럽게."
+    modules:
+      - "scripts/ui/lang.py"
+      - "scripts/ui/messages.py"
+      - "scripts/work.py"
+      - "scripts/ui/dashboard.py"
+      - "docs/schemas/spec.schema.json"
+      - "commands/work.md"
+      - "commands/init.md"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "lang.resolve_lang(): env HARNESS_LANG > spec.project.language > LC_ALL/LANG zh/ko/en 감지 > 'en' fallback"
+      - "messages.t(key, lang): 미존재 키는 KeyError, 미존재 lang 은 'en' fallback"
+      - "format_human() 의 라벨이 lang=ko 일 때 한국어, lang=en 일 때 영어"
+      - "dashboard.render() 의 라벨도 동일 규칙"
+      - "spec.schema 의 project.language enum ['en', 'ko', 'auto'] additive — 11 sample 회귀 0"
+      - "기본값 (lang 미지정) 영어 — 외부 dev 진입 보호"
+    acceptance_criteria:
+      - "AC-1: scripts/ui/lang.py::resolve_lang(spec=None) — env HARNESS_LANG ('ko' 또는 'en') 1순위, spec.project.language 2순위, LC_ALL/LANG 안의 'ko'/'KR' 패턴 3순위, 'en' fallback. lang 'auto' 는 env+LC_ALL 만 본다."
+      - "AC-2: scripts/ui/messages.py::t(key, lang='en') — catalog 에서 (lang, key) lookup. 미존재 키는 KeyError, 미존재 lang 은 'en' fallback."
+      - "AC-3: catalog 가 최소 다음 키 보유: status, passed, failed, evidence, routed_agents, agent_chain, walking_skeleton, gate_pass, gate_fail, iron_law_block, in_progress, done, planned, blocked. en/ko 양쪽."
+      - "AC-4: format_human() 가 lang 결정 후 messages.t() 호출. lang=ko 시 'status:' → '상태:', 'passed:' → '통과:', 'evidence: N entries' → '근거: N 개', 'routed agents:' → '라우팅된 팀:'."
+      - "AC-5: dashboard.render() 가 동일 catalog 사용 — lang=ko 시 '진행:'/'근거:'/'agent chain:' → '에이전트 체인:'. work.py 와 일관."
+      - "AC-6: docs/schemas/spec.schema.json::project.language 추가 (enum: ['en', 'ko', 'auto'], 기본 미설정). 11 sample 회귀 0."
+      - "AC-7: commands/work.md + commands/init.md 끝에 'Glossary / 용어집' 섹션 — Walking Skeleton/Iron Law D/drift/kickoff/retro/preamble/sigil/fog-clear/autowire/gate 의 사용자 친화 풀이 (영어/한국어 한 줄씩)."
+      - "AC-8: 신규 unit ≥ 12 (lang 4 + messages 4 + work 2 + dashboard 2). 누적 1029 + 12 ≈ 1041. self_check 5/5."
+      - "AC-9: F-040 양쪽 spec.yaml mirror (diff -q PASS) + work.py 4-verb cycle 완주."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

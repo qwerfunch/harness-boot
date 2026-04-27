@@ -64,6 +64,8 @@ from core.state import (  # noqa: E402
 from gate import runner as gate_runner  # noqa: E402
 from ui import dashboard as _dashboard  # noqa: E402
 from ui import intent_planner as _intent_planner  # noqa: E402
+from ui.lang import resolve_lang as _resolve_lang  # noqa: E402
+from ui.messages import t as _t  # noqa: E402
 
 
 _STANDARD_GATES = ("gate_0", "gate_1", "gate_2", "gate_3", "gate_4", "gate_5")
@@ -998,16 +1000,24 @@ def _result_to_dict(r: WorkResult) -> dict:
     }
 
 
-def format_human(r: WorkResult) -> str:
+def format_human(r: WorkResult, *, lang: str | None = None) -> str:
+    """Render WorkResult for the user. F-040 — labels are localized via the
+    messages catalog. Pass ``lang`` to override the auto-resolved value (used
+    by tests); production callers leave it ``None`` so the resolver picks up
+    ``HARNESS_LANG`` / ``spec.project.language`` / system locale.
+    """
+    if lang is None:
+        lang = _resolve_lang()
     lines = [f"🛠  /harness:work · {r.action} · {r.feature_id}", ""]
-    lines.append(f"status: {r.current_status}")
+    lines.append(f"{_t('status', lang=lang)}: {r.current_status}")
     if r.gates_passed:
-        lines.append(f"passed: {', '.join(r.gates_passed)}")
+        lines.append(f"{_t('passed', lang=lang)}: {', '.join(r.gates_passed)}")
     if r.gates_failed:
-        lines.append(f"failed: {', '.join(r.gates_failed)}")
-    lines.append(f"evidence: {r.evidence_count} entries")
+        lines.append(f"{_t('failed', lang=lang)}: {', '.join(r.gates_failed)}")
+    lines.append(_t("evidence", lang=lang, n=r.evidence_count))
     if r.action == "activated" and r.routed_agents:
-        lines.append(f"routed agents: {_render_agent_chain(r.routed_agents, r.parallel_groups)}")
+        chain = _render_agent_chain(r.routed_agents, r.parallel_groups)
+        lines.append(f"{_t('routed_agents', lang=lang)}: {chain}")
     if r.message:
         lines.append("")
         lines.append(r.message)

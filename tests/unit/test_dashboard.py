@@ -55,20 +55,19 @@ def _spec(*pairs: tuple[str, str]) -> dict:
 
 class RenderEmptyTests(unittest.TestCase):
     def test_empty_state_shows_hint(self):
-        out = dashboard.render(_state(), None, [])
+        out = dashboard.render(_state(), None, [], lang="ko")
         self.assertIn("📊 harness-boot", out)
         self.assertIn("아직 피처가 없습니다", out)
 
     def test_empty_state_with_suggestions(self):
         out = dashboard.render(
-            _state(), None, suggest(_state(), None),
-        )
+            _state(), None, suggest(_state(), None), lang="ko")
         self.assertIn("다음 할 일", out)
         self.assertIn("새 피처 등록", out)
 
     def test_only_done_features_shows_all_complete_note(self):
         st = _state(features=[_feature("F-1", status="done")])
-        out = dashboard.render(st, None, [])
+        out = dashboard.render(st, None, [], lang="ko")
         self.assertIn("모든 피처 완료", out)
 
 
@@ -83,7 +82,7 @@ class RenderActiveBlockTests(unittest.TestCase):
                 gates={"gate_0": {"last_result": "pass"}},
             )],
         )
-        out = dashboard.render(st, spec, [])
+        out = dashboard.render(st, spec, [], lang="ko")
         self.assertIn('작업 중: "로그인 흐름"', out)
         self.assertIn("검증 1/6 통과", out)
         self.assertIn("근거 0 개", out)
@@ -97,7 +96,7 @@ class RenderActiveBlockTests(unittest.TestCase):
                 evidence=[{"kind": "blocker", "summary": "API 미배포"}],
             )],
         )
-        out = dashboard.render(st, None, [])
+        out = dashboard.render(st, None, [], lang="ko")
         self.assertIn("차단: API 미배포", out)
 
     def test_old_blocker_suppressed_when_newer_evidence_follows(self):
@@ -112,7 +111,7 @@ class RenderActiveBlockTests(unittest.TestCase):
                 ],
             )],
         )
-        out = dashboard.render(st, None, [])
+        out = dashboard.render(st, None, [], lang="ko")
         self.assertNotIn("차단", out)
 
     def test_title_falls_back_to_id(self):
@@ -120,7 +119,7 @@ class RenderActiveBlockTests(unittest.TestCase):
             active="F-7",
             features=[_feature("F-7", status="in_progress")],
         )
-        out = dashboard.render(st, None, [])
+        out = dashboard.render(st, None, [], lang="ko")
         self.assertIn('작업 중: "F-7"', out)
 
 
@@ -134,7 +133,7 @@ class RenderOtherAndPendingTests(unittest.TestCase):
                 _feature("F-2", status="in_progress"),
             ],
         )
-        out = dashboard.render(st, spec, [])
+        out = dashboard.render(st, spec, [], lang="ko")
         self.assertIn("진행 중 (다른)", out)
         self.assertIn('"대시보드"', out)
 
@@ -150,7 +149,7 @@ class RenderOtherAndPendingTests(unittest.TestCase):
                 _feature("F-3", status="planned"),
             ],
         )
-        out = dashboard.render(st, spec, [])
+        out = dashboard.render(st, spec, [], lang="ko")
         self.assertIn("대기: ", out)
         self.assertIn('"로그아웃"', out)
         self.assertIn('"설정"', out)
@@ -161,7 +160,7 @@ class RenderOtherAndPendingTests(unittest.TestCase):
             active="F-1",
             features=[_feature("F-1", status="in_progress")],
         )
-        out = dashboard.render(st, spec, [])
+        out = dashboard.render(st, spec, [], lang="ko")
         self.assertNotIn("진행 중 (다른)", out)
 
     def test_blocked_features_listed_separately(self):
@@ -173,7 +172,7 @@ class RenderOtherAndPendingTests(unittest.TestCase):
                 _feature("F-2", status="blocked"),
             ],
         )
-        out = dashboard.render(st, spec, [])
+        out = dashboard.render(st, spec, [], lang="ko")
         self.assertIn("보류: ", out)
         self.assertIn('"결제"', out)
 
@@ -183,7 +182,7 @@ class RenderOtherAndPendingTests(unittest.TestCase):
             active="F-1",
             features=[_feature("F-1", status="blocked")],
         )
-        out = dashboard.render(st, spec, [])
+        out = dashboard.render(st, spec, [], lang="ko")
         self.assertNotIn("보류: ", out)
 
 
@@ -193,7 +192,7 @@ class RenderUnregisteredTests(unittest.TestCase):
     def test_unregistered_spec_features_listed(self):
         spec = _spec(("F-1", "로그인"), ("F-2", "로그아웃"), ("F-3", "설정"))
         st = _state(features=[_feature("F-1", status="in_progress")])
-        out = dashboard.render(st, spec, [])
+        out = dashboard.render(st, spec, [], lang="ko")
         self.assertIn("다음 후보", out)
         self.assertIn("미시작", out)
         self.assertIn('"로그아웃"', out)
@@ -203,12 +202,12 @@ class RenderUnregisteredTests(unittest.TestCase):
     def test_no_unregistered_when_all_in_state(self):
         spec = _spec(("F-1", "로그인"))
         st = _state(features=[_feature("F-1", status="in_progress")])
-        out = dashboard.render(st, spec, [])
+        out = dashboard.render(st, spec, [], lang="ko")
         self.assertNotIn("다음 후보", out)
 
     def test_no_spec_silent(self):
         st = _state(features=[_feature("F-1", status="in_progress")])
-        out = dashboard.render(st, None, [])
+        out = dashboard.render(st, None, [], lang="ko")
         self.assertNotIn("다음 후보", out)
 
     def test_archived_excluded(self):
@@ -220,7 +219,7 @@ class RenderUnregisteredTests(unittest.TestCase):
             ]
         }
         st = _state(features=[_feature("F-1", status="in_progress")])
-        out = dashboard.render(st, spec, [])
+        out = dashboard.render(st, spec, [], lang="ko")
         self.assertIn('"신 결제"', out)
         self.assertNotIn('"옛 결제"', out)
 
@@ -233,7 +232,7 @@ class RenderUnregisteredTests(unittest.TestCase):
             ]
         }
         st = _state(features=[_feature("F-1", status="in_progress")])
-        out = dashboard.render(st, spec, [])
+        out = dashboard.render(st, spec, [], lang="ko")
         self.assertIn('"신버전"', out)
         self.assertNotIn('"구버전"', out)
 
@@ -241,7 +240,7 @@ class RenderUnregisteredTests(unittest.TestCase):
         pairs = tuple((f"F-{i}", f"피처{i}") for i in range(1, 9))  # 8 features
         spec = _spec(*pairs)
         st = _state(features=[])
-        out = dashboard.render(st, spec, [])
+        out = dashboard.render(st, spec, [], lang="ko")
         self.assertIn("8 개", out)  # total
         self.assertIn("외 3 개", out)  # truncated count (8 - 5 cap)
 
@@ -249,7 +248,7 @@ class RenderUnregisteredTests(unittest.TestCase):
         """state 가 비었어도 spec 후보가 있으면 '아직 피처가 없습니다' 안 나옴."""
         spec = _spec(("F-1", "로그인"))
         st = _state(features=[])
-        out = dashboard.render(st, spec, [])
+        out = dashboard.render(st, spec, [], lang="ko")
         self.assertIn('"로그인"', out)
         self.assertNotIn("아직 피처가 없습니다", out)
         self.assertNotIn("진행 중 · 대기 피처 없음", out)
@@ -261,23 +260,23 @@ class RenderSuggestionTests(unittest.TestCase):
             Suggestion(label="검증 실행: gate_0", action="run_gate", feature_id="F-1", gate="gate_0"),
             Suggestion(label="다른 작업으로 전환", action="deactivate"),
         ]
-        out = dashboard.render(_state(), None, suggestions)
+        out = dashboard.render(_state(), None, suggestions, lang="ko")
         self.assertIn("(1) 검증 실행: gate_0 (추천)", out)
         self.assertIn("(2) 다른 작업으로 전환", out)
         self.assertIn("Enter = 1 (추천)", out)
 
     def test_no_suggestions_omits_block(self):
-        out = dashboard.render(_state(), None, [])
+        out = dashboard.render(_state(), None, [], lang="ko")
         self.assertNotIn("다음 할 일", out)
 
 
 class RenderOutputShapeTests(unittest.TestCase):
     def test_output_ends_with_newline(self):
-        out = dashboard.render(_state(), None, [])
+        out = dashboard.render(_state(), None, [], lang="ko")
         self.assertTrue(out.endswith("\n"))
 
     def test_first_line_is_title(self):
-        out = dashboard.render(_state(), None, [])
+        out = dashboard.render(_state(), None, [], lang="ko")
         self.assertTrue(out.startswith("📊 harness-boot"))
 
 
@@ -289,9 +288,18 @@ class WorkDashboardCliTests(unittest.TestCase):
         self.tmp = Path(self._tmp.name)
         self.harness = self.tmp / ".harness"
         self.harness.mkdir()
+        # F-040 — these CLI tests assert Korean strings, pin lang explicitly.
+        import os
+        self._lang_prev = os.environ.get("HARNESS_LANG")
+        os.environ["HARNESS_LANG"] = "ko"
 
     def tearDown(self) -> None:
         self._tmp.cleanup()
+        import os
+        if self._lang_prev is None:
+            os.environ.pop("HARNESS_LANG", None)
+        else:
+            os.environ["HARNESS_LANG"] = self._lang_prev
 
     def _run(self, *, json_out: bool = False) -> tuple[int, str]:
         argv = ["--harness-dir", str(self.harness)]

@@ -11,6 +11,31 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 - Marketplace PR (anthropic/claude-plugins-official) — 사용자 명시 후 진입.
 
+## [0.10.14] — 2026-04-27
+
+**User-friendly plugin output — i18n, glossary, visual signature (F-040).**
+
+사용자 실 사용 피드백 — *"플러그인 출력 용어가 어렵고 한국어/영어 혼재되고 harness-boot 가 작업하는 게 구분이 안 보인다"* — 의 4 가지 갭 메우기. 백엔드 결정론은 그대로 (수학 공식), 사용자 표면만 부드럽게.
+
+### Added — F-040 user-friendly output
+
+- **`scripts/ui/lang.py`** — `resolve_lang(spec=None)` 우선순위: env `HARNESS_LANG` > `spec.project.language` > `LC_ALL`/`LANG` (ko_KR 패턴) > `"en"` fallback. 영어 default 가 외부 dev 진입 보호.
+- **`scripts/ui/messages.py`** — en/ko 메시지 catalog. 27 키 (status / passed / failed / evidence / routed_agents / agent_chain / walking_skeleton / iron_law_block / dashboard sections / init steps). 미존재 lang 은 en 으로 fallback, 미존재 키는 KeyError 로 fail loud.
+- **`scripts/work.py::format_human()`** — lang 자동 결정 후 messages catalog 호출. 한국어 사용자 시 `상태:` / `통과:` / `근거: N 개` / `라우팅된 팀:`. 영어 default 시 기존 `status:` / `passed:` / `evidence: N entries` / `routed agents:`.
+- **`scripts/ui/dashboard.py`** — `render(state, spec, suggestions, *, lang=None)` 가 lang 자동 결정. 모든 _render_* 함수에 lang 전달, 한국어/영어 일관 출력. 기존 dashboard 테스트 (한국어 가정) 는 `lang="ko"` 명시 호출 + `WorkDashboardCliTests` 의 setUp 에서 env 핀.
+- **`docs/schemas/spec.schema.json`** — `project.language` enum `["en", "ko", "auto"]` additive. 기존 11 sample 회귀 0.
+- **`commands/work.md`** Glossary 섹션 — 16 jargon (Walking Skeleton / Iron Law D / gate_0~5 / evidence / drift / kickoff / retro / autowire / preamble / fog-clear / routed agents / parallel groups / mode / shape / sigil region) 영어/한국어 짧은 풀이.
+- **`commands/init.md`** "사용자 언어" 섹션 — 우선순위 + 활성화 방법 안내.
+
+### Tests
+- **신규**: 12 `tests/unit/test_lang_resolver.py` (env / spec / locale / fallback) + 9 `tests/unit/test_messages_catalog.py` (필수 키 / 미존재 키 / fallback / 핵심 라벨) + 8 `tests/unit/test_format_human_i18n.py` (영어 default / 한국어 / 비-activate 회귀) + 4 `tests/unit/test_dashboard_i18n.py` (영어 / 한국어 라벨).
+- **누적**: 1062 unit (1029 + 33 신규) + 6 integration. `self_check 5/5`. F-036~F-039 회귀 0.
+
+### Out-of-scope (의도)
+- 사용자 자유 텍스트 LLM 응답 — 기존 Claude Code 자체 동작 (사용자가 한국어 prompt → 한국어 답). 본 release 는 결정론 출력만 i18n.
+- 코드 / commit / schema field name — 영어 유지 (drift 위험).
+- 시스템 locale 자동 감지의 고급 케이스 (zh_CN, ja_JP 등) — 우선순위에서 영어 fallback 으로 떨어짐. 추후 확장 가능.
+
 ## [0.10.13] — 2026-04-27
 
 **Parallel agent dispatch — visibility + orchestrator contract (F-039).**

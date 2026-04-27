@@ -33,6 +33,8 @@ from __future__ import annotations
 from typing import Sequence
 
 from .intent_planner import Suggestion
+from .lang import resolve_lang
+from .messages import t
 
 
 _STANDARD_GATES: tuple[str, ...] = (
@@ -82,23 +84,29 @@ def _latest_blocker_note(f: dict) -> str | None:
     return None
 
 
-def _render_active_block(f: dict, spec: dict | None) -> list[str]:
+def _render_active_block(f: dict, spec: dict | None, lang: str) -> list[str]:
     fid = f.get("id", "?")
     title = _feature_title(fid, spec)
     gates = f.get("gates", {}) or {}
     passed = _count_gates_passed(gates)
     evidence_count = len(f.get("evidence") or [])
 
-    lines = [f'작업 중: "{title}"']
+    lines = [t("active_feature", lang=lang, title=title)]
     lines.append(
-        f"  진행: 검증 {passed}/{len(_STANDARD_GATES)} 통과 · 근거 {evidence_count} 개"
+        t(
+            "progress_line",
+            lang=lang,
+            passed=passed,
+            total=len(_STANDARD_GATES),
+            evidence=evidence_count,
+        )
     )
     blocker = _latest_blocker_note(f)
     if blocker:
-        lines.append(f"  차단: {blocker}")
+        lines.append(t("blocker_line", lang=lang, note=blocker))
     agents, groups = _resolve_agent_chain(fid, spec)
     if agents:
-        lines.append(f"  agent chain: {_render_chain(agents, groups)}")
+        lines.append(f"  {t('agent_chain', lang=lang)}: {_render_chain(agents, groups)}")
     return lines
 
 
@@ -160,7 +168,7 @@ def _render_chain(agents: list[str], groups: list[list[str]]) -> str:
 
 
 def _render_other_in_progress(
-    features: list, active_id: str | None, spec: dict | None,
+    features: list, active_id: str | None, spec: dict | None, lang: str,
 ) -> list[str]:
     others = [
         f for f in features
@@ -170,13 +178,13 @@ def _render_other_in_progress(
     ]
     if not others:
         return []
-    lines = ["진행 중 (다른):"]
+    lines = [t("in_progress_others", lang=lang)]
     for f in others[:_MAX_OTHER_LIST]:
         lines.append(f'  "{_feature_title(f.get("id", "?"), spec)}"')
     return lines
 
 
-def _render_pending(features: list, spec: dict | None) -> list[str]:
+def _render_pending(features: list, spec: dict | None, lang: str) -> list[str]:
     pending = [
         f for f in features
         if isinstance(f, dict) and f.get("status") == "planned"
@@ -187,11 +195,11 @@ def _render_pending(features: list, spec: dict | None) -> list[str]:
         f'"{_feature_title(f.get("id", "?"), spec)}"'
         for f in pending[:_MAX_PENDING_LIST]
     ]
-    return [f"대기: {' · '.join(titles)}"]
+    return [f"{t('pending_label', lang=lang)} {' · '.join(titles)}"]
 
 
 def _render_unregistered(
-    state_features: list, spec: dict | None,
+    state_features: list, spec: dict | None, lang: str,
 ) -> tuple[list[str], int]:
     """v0.10.2 — spec 에 정의됐으나 state 에 아직 등록되지 않은 피처들.
 
@@ -240,17 +248,17 @@ def _render_unregistered(
         f'"{_feature_title(f.get("id", "?"), spec)}"'
         for f in candidates[:_MAX_UNREGISTERED_LIST]
     ]
-    header = f"다음 후보 (spec 정의 · 미시작, {len(candidates)} 개):"
+    header = t("next_candidates", lang=lang, n=len(candidates))
     lines = [header, "  " + " · ".join(titles)]
     if len(candidates) > _MAX_UNREGISTERED_LIST:
         lines.append(
-            f"  … 외 {len(candidates) - _MAX_UNREGISTERED_LIST} 개 (spec.yaml 참조)"
+            t("more_after_truncate", lang=lang, n=len(candidates) - _MAX_UNREGISTERED_LIST)
         )
     return lines, len(candidates)
 
 
 def _render_blocked(
-    features: list, active_id: str | None, spec: dict | None,
+    features: list, active_id: str | None, spec: dict | None, lang: str,
 ) -> list[str]:
     blocked = [
         f for f in features
@@ -264,18 +272,19 @@ def _render_blocked(
         f'"{_feature_title(f.get("id", "?"), spec)}"'
         for f in blocked[:_MAX_OTHER_LIST]
     ]
-    return [f"보류: {' · '.join(titles)}"]
+    return [f"{t('on_hold_label', lang=lang)} {' · '.join(titles)}"]
 
 
-def _render_suggestions(suggestions: Sequence[Suggestion]) -> list[str]:
+def _render_suggestions(suggestions: Sequence[Suggestion], lang: str) -> list[str]:
     if not suggestions:
         return []
-    lines = ["다음 할 일:"]
+    lines = [t("next_actions", lang=lang)]
+    marker_text = t("recommended_marker", lang=lang)
     for i, s in enumerate(suggestions, 1):
-        marker = " (추천)" if i == 1 else ""
+        marker = f" {marker_text}" if i == 1 else ""
         lines.append(f"  ({i}) {s.label}{marker}")
     lines.append("")
-    lines.append("Enter = 1 (추천)")
+    lines.append(t("enter_hint", lang=lang, n=1))
     return lines
 
 
@@ -283,19 +292,30 @@ def render(
     state_data: dict,
     spec: dict | None,
     suggestions: Sequence[Suggestion],
+    *,
+    lang: str | None = None,
 ) -> str:
     """Render the dashboard as a single string ending with a newline.
+
+    F-040 — labels and headers honor the resolved language. Pass ``lang``
+    explicitly for tests; production callers leave it ``None`` so the
+    resolver picks up ``HARNESS_LANG`` / ``spec.project.language`` /
+    system locale.
 
     Args:
         state_data: parsed ``state.yaml`` dict.
         spec: parsed ``spec.yaml`` dict (for title lookup) or None.
         suggestions: list from ``intent_planner.suggest``.
+        lang: optional language override ("en" or "ko").
 
     Returns:
         Multi-line string ready to write to stdout.
     """
+    if lang is None:
+        lang = resolve_lang(spec)
+
     sections: list[list[str]] = []
-    sections.append(["📊 harness-boot"])
+    sections.append([f"📊 {t('dashboard_title', lang=lang)}"])
 
     features = state_data.get("features") if isinstance(state_data, dict) else None
     if not isinstance(features, list):
@@ -311,27 +331,27 @@ def render(
     }
 
     if isinstance(active_id, str) and active_id in by_id:
-        sections.append(_render_active_block(by_id[active_id], spec))
+        sections.append(_render_active_block(by_id[active_id], spec, lang))
 
-    other_block = _render_other_in_progress(features, active_id, spec)
+    other_block = _render_other_in_progress(features, active_id, spec, lang)
     if other_block:
         sections.append(other_block)
 
-    blocked_block = _render_blocked(features, active_id, spec)
+    blocked_block = _render_blocked(features, active_id, spec, lang)
     if blocked_block:
         sections.append(blocked_block)
 
-    pending_block = _render_pending(features, spec)
+    pending_block = _render_pending(features, spec, lang)
     if pending_block:
         sections.append(pending_block)
 
-    unregistered_block, unregistered_count = _render_unregistered(features, spec)
+    unregistered_block, unregistered_count = _render_unregistered(features, spec, lang)
     if unregistered_block:
         sections.append(unregistered_block)
 
     # Empty-state hint when no features are tracked at all.
     if not by_id and not features and not unregistered_count:
-        sections.append(["아직 피처가 없습니다."])
+        sections.append([t("no_features", lang=lang)])
     elif (
         (not isinstance(active_id, str) or active_id not in by_id)
         and not other_block
@@ -344,11 +364,11 @@ def render(
             if isinstance(f, dict) and f.get("status") == "done"
         )
         if done_count:
-            sections.append([f"모든 피처 완료 — 완료 {done_count} 개."])
+            sections.append([t("all_done", lang=lang, n=done_count)])
         else:
-            sections.append(["진행 중 · 대기 피처 없음."])
+            sections.append([t("no_active_no_pending", lang=lang)])
 
-    suggestion_block = _render_suggestions(suggestions)
+    suggestion_block = _render_suggestions(suggestions, lang)
     if suggestion_block:
         sections.append(suggestion_block)
 

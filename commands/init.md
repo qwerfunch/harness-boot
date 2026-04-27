@@ -362,3 +362,16 @@ v0.1.0 단계에서는 사용자가 spec.yaml 을 채운 후 `/harness-boot:work
 **언제 안 적나**: 사용자 코드/스펙 자체의 문제 (그건 사용자가 고친다) · 단순 사용자 오타 · 일반 Claude Code 사용법 (harness-boot 무관). 의심스러우면 한 줄로 적되 Severity=trivial.
 
 **NO skip**: 이 섹션은 fail-open 이지만 (logging 실패가 명령을 막지 않음) **Claude 가 마찰을 봤는데 적지 않으면** 다음 사용자가 같은 마찰을 또 만남 — 디시플린.
+
+---
+
+## 사용자 언어 (F-040)
+
+플러그인 출력은 사용자 언어로 자동 매칭됩니다 — 정해진 우선순위:
+
+1. `HARNESS_LANG` env (`ko` 또는 `en`) — 명시적 override
+2. `.harness/spec.yaml` 의 `project.language` (`ko` / `en` / `auto`)
+3. 시스템 locale (`LC_ALL` 또는 `LANG` 의 `ko_KR` 패턴 → 한국어)
+4. 영어 fallback (외부 영어권 사용자 보호)
+
+설치 직후 default 는 영어. `init.md` 가 만든 starter spec.yaml 에 `project.language: ko` 한 줄을 추가하면 그 프로젝트는 항상 한국어 출력. 어려운 jargon (Walking Skeleton / Iron Law / drift / kickoff 등) 의 사용자 친화 풀이는 `commands/work.md` 의 Glossary 섹션 참조.

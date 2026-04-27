@@ -431,3 +431,27 @@ python3 "$PLUGIN_ROOT/scripts/ceremonies/retro.py" --harness-dir .harness --feat
 **언제 안 적나**: 사용자 피처 자체의 버그 (그건 사용자가 F-N evidence 로 기록) · 단순 git 충돌 같은 일반 dev 마찰 · gate 가 정당하게 fail 한 경우 (사용자 코드가 잘못됨). 의심스러우면 한 줄로 적되 Severity=trivial.
 
 **NO skip**: 이 섹션은 fail-open 이지만 (logging 실패가 사이클을 막지 않음) **Claude 가 마찰을 봤는데 적지 않으면** 다음 사용자가 같은 마찰을 또 만남 — 디시플린.
+
+---
+
+## Glossary / 용어집 (F-040)
+
+플러그인 출력 + 문서에서 자주 보이는 용어를 사용자 친화 표현으로 풀어 둡니다. 백엔드 코드 / 스키마 / commit 은 영어 jargon 을 그대로 유지 (drift 위험 회피); 사용자 노출 출력은 `HARNESS_LANG=ko` · `spec.project.language: ko` 또는 시스템 한국어 locale 시 친화 표현으로 자동 전환.
+
+| 용어 (jargon) | 짧은 풀이 (EN) | 짧은 풀이 (KO) |
+|---|---|---|
+| **Walking Skeleton** | the smallest end-to-end slice that proves the system is wired | 시스템이 연결됐음을 증명하는 가장 작은 끝-끝 골격 |
+| **Iron Law D** | "no done without walking skeleton + N declared evidence + gate_5 pass" | "기본 골격 + 근거 N 개 + 검증 5단계 통과 없이 완료 불가" |
+| **gate_0 ~ gate_5** | staged checks (lint → unit → integration → coverage → clean tree → smoke) | 단계별 검증 (린트 → 단위 → 통합 → 커버리지 → 깨끗한 작업 트리 → 동작 확인) |
+| **evidence** | a recorded artifact that this AC passed (test run / contract / smoke) | 이 인수기준이 통과했음을 기록한 산출물 |
+| **drift** | spec ↔ code/doc/state divergence detected by check.py | 스펙과 코드/문서/상태의 어긋남 (check.py 가 자동 검출) |
+| **kickoff** | per-feature ceremony that names participating agents and their concerns | 피처별 시작 회의 — 참여 에이전트와 우려사항 |
+| **retro** | per-feature retrospective written after `--complete` | 피처 완료 후 회고 |
+| **autowire** | implicit ceremony fired by `work.py activate` (kickoff / fog-clear / design-review) | activate 시점에 자동 발화하는 부수 작업 |
+| **preamble** | the 3-line header every command emits (BR-014 anti-rationalization) | 모든 명령이 출력 맨 앞에 박는 3줄 안내 (NO skip / NO shortcut) |
+| **fog-clear** (F-037) | per-feature reconnaissance that fills `.harness/chapters/area-*.md` | 피처마다 영역 정찰 — 지도의 어둠을 걷어냄 |
+| **routed agents** (F-038) | the agents the orchestrator will engage for this feature | 이번 피처에 참여할 팀 |
+| **parallel groups** (F-039) | agent pairs orchestrator may dispatch in one message (e.g. `(security ∥ reviewer)`) | 한 메시지에서 동시 호출 가능한 에이전트 묶음 |
+| **mode = prototype \| product** | ceremony weight switch — prototype is lighter, product strict | 디시플린 강도 — prototype 은 가벼움, product 는 엄격 |
+| **shape** | feature classification driving the agent chain (UI / sensitive / pure-domain / etc.) | 피처 유형 — 어떤 에이전트 체인이 호출될지 결정 |
+| **sigil region** | `<!-- harness:user-edit-begin -->` … `<!-- harness:user-edit-end -->` block preserved across regen | 자동 재생성에도 보존되는 사용자 편집 보호 영역 |
