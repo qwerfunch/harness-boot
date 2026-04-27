@@ -20,32 +20,32 @@ fields:
 
 # sync-to-work-handoff
 
-`/harness:sync` Phase 0 완료 후 `/harness:work` 나 `/harness:check` 가 **spec 상태 확정 여부**를 확인할 때 사용.
+After `/harness-boot:sync` finishes Phase 0, downstream commands like `/harness-boot:work` and `/harness-boot:check` need a way to confirm **the spec snapshot is settled**. This protocol is that handshake.
 
-## 전송 트리거
+## Trigger
 
-`scripts/sync.py` 가 Phase 0 완료 시 `.harness/events.log` 에 `sync_completed` 이벤트를 append. 이 이벤트가 곧 이 프로토콜의 페이로드.
+`scripts/sync.py` appends a `sync_completed` event to `.harness/events.log` when Phase 0 finishes. That event line *is* the protocol payload.
 
-## 소비자 측 계약
+## Consumer contract
 
-`scripts/work.py` · `scripts/check.py` 는:
+`scripts/work.py` and `scripts/check.py` read it as follows:
 
-1. **spec_hash** 를 `harness.yaml.generation.generated_from.spec_hash` 와 비교 → 불일치 시 "spec drift · sync 필요" 반환
-2. **merkle_root** 를 로컬 재계산 (`canonical_hash.compute`) 과 비교 → 검증 실패 시 `sync_failed` 이벤트 append 권장
-3. **derived** 목록에 포함된 파일이 실제 존재하는지 확인 → 부재 시 "derived drift" 반환
-4. **plugin_version** 은 events.log 의 모든 엔트리에 포함되므로 시간대별 플러그인 버전 추적 가능
+1. **`spec_hash`** is compared against `harness.yaml.generation.generated_from.spec_hash`. A mismatch reports "spec drift — sync needed".
+2. **`merkle_root`** is recomputed locally with `canonical_hash.compute` and compared. A mismatch should append a `sync_failed` event.
+3. **`derived`** is the list of files Phase 0 produced. The consumer checks each one exists; missing files report "derived drift".
+4. **`plugin_version`** is included on every events.log entry, which lets you trace plugin-version-over-time after the fact.
 
-## 버전 정책
+## Versioning
 
-v1 (현재):
-- 위 4 필드 stable
-- 추가 optional 필드는 non-breaking (subtrees, skipped, dry_run 등이 이미 optional 로 포함됨)
+v1 (current):
+- The four fields above are stable.
+- Adding optional fields stays non-breaking (`subtrees`, `skipped`, `dry_run` already ride along that way).
 
-v2 전환 조건 (breaking 필요 시):
-- 필수 필드 이름 변경 또는 의미 재정의
-- 전환 시 `docs/protocols/sync-to-work-handoff_v2.md` 신규 작성, v1 은 deprecated 로 변경 후 2 minor 릴리즈 유지
+v2 trigger conditions (when a breaking change is unavoidable):
+- Renaming a required field, or redefining its meaning.
+- On the cut, write `docs/protocols/sync-to-work-handoff_v2.md`, mark v1 `status: deprecated`, and keep v1 alive for two minor releases.
 
-## 예시 페이로드
+## Example payload
 
 ```json
 {
@@ -61,7 +61,7 @@ v2 전환 조건 (breaking 필요 시):
 }
 ```
 
-## 실 레퍼런스
+## Live references
 
-- 쓰기 측 구현: `scripts/sync.py._append_event(..., type="sync_completed")`
-- 읽기 측 구현: `scripts/check.py.check_derived()` + `scripts/status.py._last_sync()`
+- Producer: `scripts/sync.py._append_event(..., type="sync_completed")`.
+- Consumers: `scripts/check.py.check_derived()` and `scripts/status.py._last_sync()`.

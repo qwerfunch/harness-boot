@@ -1345,6 +1345,56 @@ features:
       - "AC-7: bash scripts/self_check.sh 5/5 PASS · 회귀 0 (1084 unit + 26 integration)."
       - "AC-8: F-048 양쪽 spec.yaml mirror + work.py 4-verb cycle 완주 (Phase 2 dogfood)."
 
+  - id: "F-049"
+    name: "native English consolidation — Phase 1: entry-point dev surfaces"
+    type: "feature"
+    description: |
+      Continuation of F-041 (commands + agents native English masters).
+      This phase rewrites the surfaces an external contributor encounters
+      first: top-level dev docs (CLAUDE.md, .harness/README.md), supporting
+      docs (docs/i18n/README.md, docs/protocols/*.md, docs/templates/hooks/
+      README.md, docs/samples/harness-boot-self/README.md), and hook script
+      banners (hooks/pre-commit-phase2.sh, hooks/prompt-log.sh).
+
+      Native English in F-041's sense — not translation. Idioms are recast
+      ("사고의 글 vs 실행의 글" → "author's prose vs engineer's contract",
+      "원천 vs 파생" → "source of truth vs derived view"). KO snapshots
+      are not preserved this round — F-041 froze the pattern at
+      docs/archive/i18n-ko-frozen-f041/, this is a continuation.
+
+      Excluded (per user direction): README.md and .claude-plugin/plugin.
+      json description (a separate polish pass will handle them).
+
+      Phase boundaries: spec mirrors + schema → F-050. scripts/ Python
+      docstrings → F-051. tests/ Python docstrings → F-052. CHANGELOG
+      policy (English-only going forward) → F-053.
+    modules:
+      - "CLAUDE.md"
+      - ".harness/README.md"
+      - "docs/i18n/README.md"
+      - "docs/protocols/README.md"
+      - "docs/protocols/sync-to-work-handoff.md"
+      - "docs/templates/hooks/README.md"
+      - "docs/samples/harness-boot-self/README.md"
+      - "hooks/pre-commit-phase2.sh"
+      - "hooks/prompt-log.sh"
+    test_strategy: "contract"
+    tdd_focus:
+      - "Zero Korean characters [가-힣] in the 9 listed modules"
+      - "self_check 5/5 passes (diff -q, validate, sync, check, preamble grep)"
+      - "1119+ tests pass with no regression"
+      - "BRAND_TERMS.md KO column preserved (intended bilingual reference)"
+      - "docs/i18n/README.md keeps KO examples that demonstrate i18n policy itself"
+    acceptance_criteria:
+      - "AC-1: grep -l '[가-힣]' returns empty for the 9 module files."
+      - "AC-2: Native English idiom (F-041 pattern), not direct translation. Domain phrases recast: 'author's prose vs engineer's contract', 'source of truth vs derived view', etc."
+      - "AC-3: bash scripts/self_check.sh 5/5 PASS — spec mirror diff, validate, sync, drift check, preamble grep all green."
+      - "AC-4: 1119 unit + integration tests PASS, regression 0."
+      - "AC-5: docs/glossary/BRAND_TERMS.md KO column preserved (bilingual intent)."
+      - "AC-6: F-049 spec entry itself written in English (self-evidence — the feature describing native-EN consolidation is itself in native EN)."
+      - "AC-7: F-049 completed via work.py 4-verb cycle (activate → run-gate gate_5 → declared evidence → complete) — Phase 2 dogfood."
+      - "AC-8: F-049 mirrored on both spec.yaml copies (docs/samples + .harness)."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

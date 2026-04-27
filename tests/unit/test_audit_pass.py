@@ -47,43 +47,60 @@ class StaleRenameTests(unittest.TestCase):
 
 
 class ReadmeRefreshTests(unittest.TestCase):
-    """AC-2: README 배지 + 본문 v0.10.7 / 883."""
+    """AC-2: README badge + body track the latest release."""
 
-    def test_version_badge_v_10_7(self):
+    def test_version_badge_pattern(self):
+        # F-049 — track the badge pattern instead of pinning a specific version.
+        # README is refreshed every minor / patch bump.
         body = README.read_text(encoding="utf-8")
-        self.assertIn("v0.10.7", body, "README 에 v0.10.7 누락")
-        self.assertNotIn("v0.9.6", body, "README 에 stale v0.9.6 잔존")
+        self.assertRegex(body, r"plugin-v\d+\.\d+\.\d+-blue", "README plugin badge missing")
+        # Stale tags from earlier minors must not linger as the visible badge.
+        for stale in ("plugin-v0.9.6-blue", "plugin-v0.10.7-blue"):
+            self.assertNotIn(stale, body, f"README still shows stale badge '{stale}'")
 
-    def test_test_count_883(self):
+    def test_test_count_pattern(self):
         body = README.read_text(encoding="utf-8")
-        self.assertIn("883", body, "README 에 883 tests 누락")
-        # 736/742/764 는 stale (v0.9.x 시기)
-        for stale in ("764 tests", "742 tests", "764%20passing"):
-            self.assertNotIn(stale, body, f"README 에 stale '{stale}' 잔존")
+        # Track the badge pattern; the exact number floats with each release.
+        self.assertRegex(body, r"tests-\d{3,5}%20passing-brightgreen", "README tests badge missing")
+        # Stale counts from earlier releases must not remain on the badge.
+        for stale in ("tests-764%20passing", "tests-742%20passing", "tests-883%20passing"):
+            self.assertNotIn(stale, body, f"README still shows stale tests badge '{stale}'")
 
 
 class ClaudeMdRootTests(unittest.TestCase):
-    """AC-3: 루트 CLAUDE.md v0.10.7 + 883 + v0.10.4~7 narrative."""
+    """AC-3: root CLAUDE.md current-release marker + recent-narrative coverage."""
 
     def test_current_release_marker_present(self):
-        # F-047 — track the current-release marker pattern instead of pinning to a
-        # specific version. CLAUDE.md is refreshed every minor bump.
+        # F-049 — markers are now in English ("Current release"), per the F-049
+        # native-English consolidation. The pattern, not a specific version,
+        # is what we track.
         body = CLAUDE_MD.read_text(encoding="utf-8")
-        self.assertRegex(body, r"현재 릴리즈\*\*:\s*v\d+\.\d+\.\d+")
+        self.assertRegex(body, r"\*\*Current release\*\*:\s*v\d+\.\d+\.\d+")
 
-    def test_test_count_883(self):
+    def test_test_count_present(self):
         body = CLAUDE_MD.read_text(encoding="utf-8")
-        self.assertIn("883", body)
+        # CLAUDE.md should mention an integration-or-larger test count to anchor
+        # the "where we are" snapshot. The exact number floats.
+        self.assertRegex(body, r"\b\d{3,5}\s*\(", "CLAUDE.md test-count anchor missing")
 
-    def test_v_10_4_to_7_narrative_present(self):
+    def test_recent_narrative_present(self):
         body = CLAUDE_MD.read_text(encoding="utf-8")
-        for v in ("v0.10.4", "v0.10.5", "v0.10.6", "v0.10.7"):
-            self.assertIn(v, body, f"CLAUDE.md narrative 에서 {v} 누락")
+        # The recent-history narrative should still cover v0.10.4 through the
+        # current release line. We anchor on a few key markers rather than
+        # every patch.
+        for v in ("v0.10.4", "v0.10.7", "v0.11.0", "v0.11.1"):
+            self.assertIn(v, body, f"CLAUDE.md narrative missing {v}")
 
-    def test_no_stale_v_10_3_as_current(self):
+    def test_no_stale_release_marker(self):
         body = CLAUDE_MD.read_text(encoding="utf-8")
-        # historical 컨텍스트로는 등장 가능하나 "현재 릴리즈": v0.10.3 패턴은 금지.
-        self.assertNotIn("현재 릴리즈**: v0.10.3", body)
+        # Old "current release" pinning patterns must not appear at the
+        # current-release line.
+        for stale in (
+            "**Current release**: v0.10.3",
+            "**Current release**: v0.10.7",
+            "현재 릴리즈**: v0.10.3",
+        ):
+            self.assertNotIn(stale, body, f"CLAUDE.md still pins stale current release: {stale!r}")
 
 
 class DogfoodIssuesLogTests(unittest.TestCase):

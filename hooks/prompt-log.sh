@@ -1,25 +1,28 @@
 #!/usr/bin/env bash
 # prompt-log.sh — UserPromptSubmit hook (F-028)
 #
-# 사용자가 입력한 모든 prompt 를 .harness/_workspace/prompts/YYYY-MM.jsonl 에
-# 무음 append. 추후 'prompt 형상화' (어떤 자연어가 init/work 라우팅을 잘
-# 트리거하는지) 데이터 베이스.
+# Silently appends every user prompt to .harness/_workspace/prompts/YYYY-MM.jsonl.
+# Future use: a corpus for "prompt shape" analysis — which natural-language
+# inputs reliably trigger init/work routing.
 #
-# 계약:
-#   - .harness/ 가 없는 워크스페이스에서는 silent exit 0 (대부분의 user 세션).
-#   - fail-open: 어떤 에러도 사용자 prompt 처리를 막지 않음 (exit 0 보장).
-#   - 출력 없음 (stdout 비움) — UserPromptSubmit 은 exit 2 일 때 블로킹이지만
-#     0 일 때도 stdout 이 사용자에게 보일 수 있어 무조건 무출력.
-#   - stdin 으로 Claude Code 가 JSON payload 전달:
+# Contract:
+#   - In a workspace without .harness/, silently exit 0 (the common case for
+#     most user sessions).
+#   - Fail-open: no error here may block the user prompt from being processed
+#     (exit 0 guaranteed).
+#   - No stdout. UserPromptSubmit treats exit 2 as blocking, but stdout is
+#     visible to the user even on exit 0, so we keep it strictly silent.
+#   - Claude Code passes a JSON payload on stdin:
 #       {"session_id": "...", "cwd": "...", "user_prompt": "...", ...}
-#     `user_prompt` 우선, 없으면 `prompt` fallback (Claude Code 버전 호환).
+#     We prefer `user_prompt`; fall back to `prompt` for older Claude Code
+#     versions.
 
 set -u
 
-# stdin 읽기 (JSON payload). cat 실패해도 exit 0 으로 빠져나감.
+# Read stdin (JSON payload). If cat fails, exit 0 silently.
 INPUT="$(cat 2>/dev/null || true)"
 
-# cwd 결정: input.cwd > $CLAUDE_PROJECT_DIR > pwd
+# Resolve cwd: input.cwd > $CLAUDE_PROJECT_DIR > pwd.
 CWD="$(printf '%s' "$INPUT" | python3 -c '
 import json, sys
 try:
@@ -30,7 +33,7 @@ except Exception:
 ' 2>/dev/null || true)"
 [ -z "$CWD" ] && CWD="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 
-# .harness/ 없으면 silent exit (대부분의 워크스페이스).
+# No .harness/ → silent exit (the common case).
 [ -d "$CWD/.harness" ] || exit 0
 
 DEST_DIR="$CWD/.harness/_workspace/prompts"
@@ -40,7 +43,7 @@ MONTH="$(date -u +%Y-%m 2>/dev/null || echo unknown)"
 TS="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo unknown)"
 DEST="$DEST_DIR/${MONTH}.jsonl"
 
-# JSONL 한 줄 append. python3 부재 시도 silent exit.
+# Append a single JSONL line. If python3 is unavailable, exit 0 silently.
 printf '%s' "$INPUT" | python3 -c "
 import json, sys
 try:

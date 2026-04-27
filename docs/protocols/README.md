@@ -1,29 +1,29 @@
-# Protocols — 에이전트 간 페이로드 규약 (F-017)
+# Protocols — inter-agent payload contracts (F-017)
 
-## 목적
+## Purpose
 
-harness-boot 안에서 에이전트 · 명령 · 훅 간 **JSON 페이로드를 주고받을 때** 사용하는 구조 계약. `"내가 보내는 것 = 네가 받아서 쓸 수 있는 것"` 경계를 공식화한다. 비공식 ad-hoc JSON 키 사용을 금지.
+A structured contract for the JSON payloads that flow between agents, slash commands, and hooks inside harness-boot. The line `"what I send = what you can rely on receiving"` is formalized here. Ad-hoc JSON keys are not allowed.
 
-## 위치
+## Locations
 
-| 경로 | 용도 |
+| Path | Use |
 |---|---|
-| `docs/protocols/` (플러그인 소스) | harness-boot 가 기본 제공하는 프로토콜 라이브러리 · 이 README 에서 설명 |
-| 사용자 `.harness/protocols/` | 프로젝트별 커스텀 프로토콜 (init 은 만들지 않음, 필요 시 사용자 생성) · `/harness:check` 가 규약 검증 |
+| `docs/protocols/` (plugin source) | Default protocol library shipped with harness-boot. Documented in this README. |
+| User project `.harness/protocols/` | Per-project custom protocols. `/harness-boot:init` does not create this directory — users add it when needed. `/harness-boot:check` validates the contract. |
 
-## 파일 형식
+## File format
 
-각 프로토콜 파일은 YAML frontmatter + markdown 본문 구조.
+Each protocol file is YAML frontmatter plus a markdown body.
 
-### 필수 frontmatter
+### Required frontmatter
 
 ```yaml
 ---
-protocol_id: sync-to-work-handoff    # 파일명 stem 과 반드시 일치 (AC-2)
-version: "1"                          # semver major; breaking change 는 protocol_v2 병행
+protocol_id: sync-to-work-handoff    # must equal the file's stem (AC-2)
+version: "1"                          # semver major; breaking change ships a parallel _v2
 direction: "sync -> work"             # "<sender> -> <receiver>"
 status: "stable" | "experimental" | "deprecated"
-fields:                                # 페이로드 스키마 요약
+fields:                                # payload schema summary
   - name: "spec_hash"
     type: "string"
     required: true
@@ -33,55 +33,55 @@ fields:                                # 페이로드 스키마 요약
 ---
 ```
 
-### 본문
+### Body
 
-- `## 전송 트리거` — 언제 이 프로토콜이 발송되나
-- `## 소비자 측 계약` — 수신자는 이 필드를 어떻게 해석하는가
-- `## 버전 정책` — breaking change 시 어떻게 전이하는가
-- `## 예시 페이로드` — 구체적 JSON 사례
+- `## Trigger` — when this protocol is emitted.
+- `## Consumer contract` — how the receiver reads each field.
+- `## Versioning` — what to do on breaking change.
+- `## Example payload` — concrete JSON.
 
-## 버전 정책 (AC-1)
+## Versioning policy (AC-1)
 
-**breaking change 가 생기면 새 파일 `<id>_v2.md` 를 만들고 이전 버전도 유지** — drift 방지 원칙. 기존 소비자는 v1 을 계속 읽고, 신규 소비자는 v2 를 선택. 마이그레이션 완료 후 이전 버전을 `status: deprecated` 로 변경.
+**On a breaking change, ship a new file `<id>_v2.md` and keep the old one** — drift prevention by parallel versions. Existing consumers stay on v1; new consumers opt into v2. Once migration is complete, mark the old file `status: deprecated`.
 
-**breaking change 기준**:
-- 필수 필드 추가/제거
-- 필드 타입 변경
-- enum 값 제거
-- 의미 재정의 (같은 이름, 다른 해석)
+**Counts as breaking:**
+- Adding or removing a required field
+- Changing a field's type
+- Removing an enum value
+- Redefining the meaning of an existing name
 
-**non-breaking**:
-- optional 필드 추가
-- enum 값 추가
-- 설명 텍스트만 변경
+**Counts as non-breaking:**
+- Adding an optional field
+- Adding an enum value
+- Wording-only edits
 
-## 검증 (AC-2)
+## Validation (AC-2)
 
-`scripts/check.py` 의 **Protocol drift (9 번째 drift 종)** 이 `.harness/protocols/*.md` 각각에 대해:
+`scripts/check.py` runs **Protocol drift (the 9th drift kind)** against every `.harness/protocols/*.md`:
 
-1. frontmatter 로드 성공
-2. `protocol_id` 필드 존재
-3. `protocol_id == <파일명 stem>`
+1. The frontmatter parses.
+2. A `protocol_id` field is present.
+3. `protocol_id` equals the file's stem.
 
-셋 중 하나라도 어긋나면 `error` severity finding. `/harness:check --harness-dir .harness` 로 실행.
+Any of those failing produces an `error`-severity finding. Run with `/harness-boot:check --harness-dir .harness`.
 
-플러그인 소스의 `docs/protocols/` 는 사용자 데이터가 아니므로 이 check 대상이 **아님**. 플러그인 자체 검증은 harness-boot 기여자 책임.
+The plugin source's own `docs/protocols/` is **not** subject to this user-project check — plugin self-validation is a contributor responsibility.
 
-## 기본 프로토콜 라이브러리
+## Default library
 
-| 파일 | 방향 | 상태 |
+| File | Direction | Status |
 |---|---|---|
-| [sync-to-work-handoff.md](sync-to-work-handoff.md) | `/harness:sync` → `/harness:work` | stable |
+| [sync-to-work-handoff.md](sync-to-work-handoff.md) | `/harness-boot:sync` → `/harness-boot:work` | stable |
 
-## 확장
+## Adding a protocol
 
-새 프로토콜 추가:
-1. `docs/protocols/<new-id>.md` 작성 (형식 준수)
-2. frontmatter `protocol_id: <new-id>` (파일명과 일치)
-3. 본문 4 섹션 채우기
-4. 이 README 의 "기본 프로토콜 라이브러리" 표에 한 줄 추가
-5. 커밋
+1. Write `docs/protocols/<new-id>.md` following the format above.
+2. Frontmatter `protocol_id: <new-id>` (matches the stem).
+3. Fill in the four body sections.
+4. Add a row to "Default library" above.
+5. Commit.
 
-사용자가 자기 프로젝트 별 프로토콜을 추가할 때:
-1. `.harness/protocols/<id>.md` 작성
-2. `/harness:check` 로 검증
+For users adding a project-specific protocol:
+
+1. Write `.harness/protocols/<id>.md`.
+2. Run `/harness-boot:check` to validate.

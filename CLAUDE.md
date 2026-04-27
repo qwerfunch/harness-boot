@@ -1,101 +1,111 @@
-# harness-boot — 플러그인 개발 레포
+# harness-boot — plugin development repo
 
-> 이 CLAUDE.md 는 **이 레포에서 플러그인을 개발할 때** 읽는 컨텍스트입니다.
-> `docs/templates/starter/CLAUDE.md.template` 는 `/harness-boot:init` 이 **사용자 프로젝트에** 쓰는 별개 파일이며 이 파일과 혼동하지 마세요.
+> This CLAUDE.md is the context to read **when developing the plugin in this repo**.
+> Don't confuse it with `docs/templates/starter/CLAUDE.md.template`, which is the separate file `/harness-boot:init` writes **into a user's project**.
 
-## 1. 이 레포가 뭐냐
+## 1. What this repo is
 
-Claude Code 플러그인 `harness-boot` 의 소스. 사용자는 `/harness-boot:init` 로 자기 프로젝트에 `.harness/` 골격을 설치하고, 이후 `/harness-boot:work` 한 명령으로 피처 사이클(activate → gate → evidence → complete)을 돌린다. v0.9.0 의 UX 재구조화로 외울 명령은 2 개로 통합됨.
+The source of the Claude Code plugin `harness-boot`. Users install the `.harness/` skeleton into their own project with `/harness-boot:init`, then run the per-feature cycle (activate → gate → evidence → complete) through a single `/harness-boot:work` command. The v0.9.0 UX rewrite collapsed the surface to two slash commands you actually have to memorize.
 
-- **현재 릴리즈**: v0.11.0 (2026-04-27 태그 · F-047 vision consolidation). 마켓플레이스 PR 은 사용자 결정 시점까지 보류 (memory: marketplace_timing). 누적 이력 상세는 `git log` / `CHANGELOG.md` 참조.
-- **설치 경로**: `/plugin marketplace add qwerfunch/harness-boot` → `/plugin install harness-boot@harness-boot`. 업그레이드 `/plugin update harness-boot@harness-boot`.
-- **SemVer 정책**: patch-first. 새 기능이라도 X.Y.Z+1. minor/major 는 사용자 확인 + 큰 마일스톤 한정.
-- **라이선스**: MIT · Author: qwerfunch
+- **Current release**: v0.11.1 (tagged 2026-04-27 — Iron Law rename + F-048 drift × Iron Law gating). The marketplace PR is held until the user explicitly green-lights it (memory: `marketplace_timing`). For full history see `git log` and `CHANGELOG.md`.
+- **Install path**: `/plugin marketplace add qwerfunch/harness-boot` then `/plugin install harness-boot@harness-boot`. Update with `/plugin update harness-boot@harness-boot`.
+- **SemVer policy**: patch-first. Even new features ship as X.Y.Z+1. Minor and major bumps require user confirmation and are reserved for substantial milestones.
+- **License**: MIT · Author: qwerfunch
 
-## 2. 지금 어디쯤 있나
+## 2. Where we are
 
-**v0.10.7 — Phase 2 self-hosting active + observability + scaling preparedness** (2026-04-27).
+**v0.11.1 — Iron Law (renamed from "Iron Law D") + drift × Iron Law gating** (2026-04-27).
 
-핵심 누적:
-- **2 슬래시 명령** (`/harness-boot:init` · `/harness-boot:work`) — v0.9.0 통합. init 은 자연어 직진 또는 3 옵션 메뉴, work 는 무인자(no-args dashboard, v0.9.2) · 인텐트 자연어 · F-ID 직접 호출 모두 지원.
-- **Gate 자동화 0/1/2/3/5 전부** — `scripts/gate/runner.py` 가 pyproject pytest · npm scripts (typecheck/lint/test:coverage/smoke/test:e2e, v0.10.2) · 도구 직접 호출 · 언어별 polyglot fallback 순으로 자동 감지. **BR-004 Iron Law (gate_5=pass + 선언 evidence ≥ N) 전 구간 자동.**
-- **Iron Law — cumulative declared evidence** (v0.9.3) + **product mode strict** (v0.10.3) — `project.mode == product` 일 때 record 된 모든 gate 의 last_result 가 fail 이 아닐 것까지 강제. prototype 은 lighter contract.
-- **Project mode 축** (v0.9.6) — `spec.project.mode ∈ {prototype, product}` 단일 스위치가 Iron Law 임계값 · kickoff/retro 템플릿 · design-review autowire 전부를 결정. 미지정 → product (strict default).
-- **Drift 탐지 8/8** + **Two-layer supersession metadata + Stale drift** (v0.10.0) — `features[].supersedes` / `superseded_by` 와 archive flow.
-- **Ceremonies 자동화 4/4** — kickoff · retro · design-review · inbox.
-- **자체 도그푸드 Phase 2 active** (2026-04-27) — `.harness/` 가 active workspace. 본 레포의 새 피처도 `python3 scripts/work.py F-N --harness-dir .harness` 사이클을 거침. 자세한 규약은 §7 참조.
-- **Init/work observability** (v0.10.5) — `commands/{init,work}.md` 의 `## Issue logging` 섹션 + `hooks/prompt-log.sh` UserPromptSubmit hook. 사용자 프로젝트의 `.harness/_workspace/{issues-log.md, prompts/YYYY-MM.jsonl}` 누적 → 메인테이너 환원 사이클 트리거 + prompt 형상화.
-- **Scaling preparedness** (v0.10.6) — `features[]` 에 5 additive fields (area · archived_at · archive_reason · digest · include_path) + `scripts/spec/{shard,unshard,summary}.py` sharding 도구 + `tests/scale/test_scale.py` 100/1000/3000/10000 features 실측. 사용자는 ~300 임계점까지 안 호출해도 무방.
-- **cosmic-suika ISSUES-LOG batch return** (v0.10.7) — I-003 (tsconfig 권장값) · I-004 (risks[].id pattern 완화) · I-006 (`--kind trivial` 의미 명시) · I-007 (changelog version optional) — F-027 컨벤션의 첫 환원 사이클.
-- **누적 테스트**: 883 (CHANGELOG v0.10.7 기준 unittest). 41 test 파일.
+Cumulative state:
 
-**다음 작업 후보**: §9 참조.
+- **Two slash commands** (`/harness-boot:init` · `/harness-boot:work`) — collapsed in v0.9.0. `init` accepts a free-form natural-language prompt or a 3-option menu; `work` handles no-args (dashboard, v0.9.2), natural-language intents, and direct F-ID invocation alike.
+- **Gate automation 0/1/2/3/5** — `scripts/gate/runner.py` walks pyproject pytest → npm scripts (typecheck/lint/test:coverage/smoke/test:e2e, v0.10.2) → direct tool invocation → polyglot fallback in that order. **BR-004 Iron Law (gate_5 = pass + declared evidence ≥ N) is automated end-to-end.**
+- **Iron Law — cumulative declared evidence** (v0.9.3) + **product mode strict** (v0.10.3) — when `project.mode == product`, every recorded gate's `last_result` must be non-fail before complete is allowed. Prototype mode keeps the lighter contract. The "D" suffix from v0.9.3 history was dropped in v0.11.1 — internal evolution marker that confused users.
+- **Drift × Iron Law gating** (v0.11.1, F-048) — `complete()` now calls `check.py` first. `severity="error"` findings on wire-integrity drift kinds (`Code` · `Stale` · `AnchorIntegration`) reject the transition; `--hotfix-reason` still bypasses. Closes GAP 1 from the 4-mechanism cohesion analysis.
+- **Project mode axis** (v0.9.6) — `spec.project.mode ∈ {prototype, product}` is the single switch that determines the Iron Law floor, kickoff/retro template depth, and design-review autowire behavior. Unset → product (strict default).
+- **Drift detection 12 kinds** — Generated · Derived · Spec · Include · Evidence · Code · Anchor · Adr · Stale · AnchorIntegration · Doc · Protocol. Two-layer supersession metadata (`features[].supersedes` / `superseded_by`) and the archive flow (v0.10.0).
+- **Ceremony automation 4/4** — kickoff · retro · design-review · inbox.
+- **Phase 2 self-dogfood active** (since 2026-04-27) — `.harness/` is the live workspace. Every new feature in this repo runs through `python3 scripts/work.py F-N --harness-dir .harness`. See §7 for the contract.
+- **Init/work observability** (v0.10.5) — the `## Issue logging` section in `commands/{init,work}.md` plus `hooks/prompt-log.sh` (UserPromptSubmit). Users accumulate `.harness/_workspace/{issues-log.md, prompts/YYYY-MM.jsonl}` → maintainer return cycle + prompt-shape corpus.
+- **Scaling preparedness** (v0.10.6) — five additive fields on `features[]` (area · archived_at · archive_reason · digest · include_path) plus `scripts/spec/{shard,unshard,summary}.py` and `tests/scale/test_scale.py` measuring 100 / 1000 / 3000 / 10000 features. Users won't need to invoke any of this until ~300 features.
+- **cosmic-suika ISSUES-LOG batch return** (v0.10.7) — I-003 (recommended tsconfig) · I-004 (relaxed `risks[].id` pattern) · I-006 (clarified `--kind trivial`) · I-007 (changelog version optional). The first return cycle for the F-027 convention.
+- **Cumulative tests**: 1119 (1110 unit + 26 integration + F-048's 7 new). 41+ test files.
 
-## 3. 레포 구조 (실제로 트래킹되는 것만)
+**Next-thread candidates**: see §9.
+
+## 3. Repo layout (tracked files only)
 
 ```
 .claude-plugin/
-├── plugin.json                     # 플러그인 매니페스트 (name: "harness-boot", v0.10.7)
+├── plugin.json                     # plugin manifest (name: "harness-boot", v0.11.1)
 └── marketplace.json                # single-plugin marketplace
 .harness/                           # Phase 2 active dogfood workspace (§7)
-├── spec.yaml                       # docs/samples/harness-boot-self/spec.yaml 의 복사본 (diff -q 강제)
-├── state.yaml                      # work.py 가 갱신, 수동 편집 금지
-├── README.md                       # 도그푸드 정책 짧은 안내
-├── domain.md · architecture.yaml   # gitignored (sync 가 파생)
+├── spec.yaml                       # copy of docs/samples/harness-boot-self/spec.yaml (diff -q enforced)
+├── state.yaml                      # maintained by work.py — do not edit by hand
+├── README.md                       # short note on the dogfood policy
+├── domain.md · architecture.yaml   # gitignored (sync derives them)
 ├── harness.yaml · events.log       # gitignored
 ├── chapters/                       # gitignored
-└── _workspace/                     # gitignored (ceremonies — kickoff · retro · design_review · questions)
-commands/                           # 2 슬래시 명령 (v0.9.0 통합)
+└── _workspace/                     # gitignored — kickoff · retro · design_review · questions
+commands/                           # two slash commands (collapsed in v0.9.0)
 ├── init.md · work.md
-agents/                             # 15 fixtures (v0.8.1 완결)
-hooks/                              # hooks.json + scripts/ (v0.4 ship)
-skills/spec-conversion/             # plan.md → spec.yaml 변환 스킬
-scripts/                            # Python 구현 (v0.7.6 subpackages 정리)
+agents/                             # 16 fixtures (closed in v0.8.1)
+hooks/                              # hooks.json + scripts/ (shipped in v0.4)
+skills/spec-conversion/             # plan.md → spec.yaml conversion skill
+scripts/                            # Python implementation (subpackage cleanup in v0.7.6)
 ├── work.py · sync.py · status.py · check.py · events.py · metrics.py · self_check.sh
 ├── core/                           # canonical_hash · event_log · plugin_root · project_mode · state
 ├── ceremonies/                     # design_review · inbox · kickoff · retro
-├── gate/                           # runner (Gate 0/1/2/3/5 auto)
+├── gate/                           # runner (gate 0/1/2/3/5 auto)
 ├── render/                         # architecture · domain
 ├── spec/                           # validate · mode_classifier · explain · diff · conversion_diff
 │                                   # · include_expander · mode_b_extract · upgrade_to_2_3_8
 └── ui/                             # dashboard · feature_resolver · intent_planner · scenarios
-tests/unit/                         # 38 test 파일 · 838+ tests
+tests/unit/                         # ~70 test files
 tests/regression/conversion-goldens/   # golden samples + MANIFEST
 docs/
-├── schemas/spec.schema.json        # spec v2.3.8 JSONSchema (Walking Skeleton 강제 + project.mode)
-├── samples/harness-boot-self/      # self-referential canonical spec (24 features → 25 with F-025)
-├── templates/starter/              # /harness-boot:init 이 복사하는 템플릿 (CLAUDE.md.template 등)
-├── glossary/BRAND_TERMS.md         # F-041 — 28 brand jargon (Walking Skeleton · Iron Law · …)
-├── i18n/README.md                  # F-040 — runtime locale 정책
-├── preamble-spec.md                # F-042 — Preamble + NO skip / NO shortcut 단일 source
+├── schemas/spec.schema.json        # spec v2.3.8 JSONSchema (Walking Skeleton enforced + project.mode)
+├── samples/harness-boot-self/      # self-referential canonical spec (49 features incl. F-048/F-049)
+├── templates/starter/              # the templates /harness-boot:init copies (CLAUDE.md.template, etc.)
+├── glossary/BRAND_TERMS.md         # F-041 — 28 brand terms (Walking Skeleton · Iron Law · …)
+├── i18n/README.md                  # F-040 — runtime locale policy
+├── preamble-spec.md                # F-042 — single source for Preamble + NO skip / NO shortcut
 └── archive/                        # F-042 — historical (local-install · first-run · v0.1.0 / v0.4 plans · i18n-ko-frozen-f041/)
-.github/workflows/self-check.yml    # Phase 3 CI (v0.8.3) — PR 마다 self_check.sh
-README.md · CHANGELOG.md · LICENSE · CLAUDE.md (이 파일) · requirements-dev.txt
+.github/workflows/self-check.yml    # Phase 3 CI (v0.8.3) — self_check.sh per PR
+README.md · CHANGELOG.md · LICENSE · CLAUDE.md (this file) · requirements-dev.txt
 ```
 
-**트래킹 안 되는 것** (.gitignore): `design/` · `legacy/` · `translations-ko/` · `node_modules/` · `.harness/{events.log,harness.yaml,domain.md,architecture.yaml,chapters/}` 등.
+**Untracked** (.gitignore): `design/` · `legacy/` · `translations-ko/` · `node_modules/` · `.harness/{events.log,harness.yaml,domain.md,architecture.yaml,chapters/}` · etc.
 
-## 4. 현재 git 상태
+## 4. Current git state
 
-- **태그**: v0.1.0 ~ v0.10.7 원격 push 완료 (v0.10.4 retroactive). 태그 이동 금지.
-- **main HEAD**: `2610829 feat(v0.10.7): cosmic-suika ISSUES-LOG batch return (I-003 / I-004 / I-006 / I-007)`
-- **default branch**: main (마켓플레이스 fetch ref). 작업 브랜치는 `feat/v0.X.Y-*` / `fix/v0.X.Y-*` 패턴, main 으로 fast-forward 머지.
-- **작업 트리**: clean
-- **다음 분기**: 백로그 (§9) 또는 cosmic-suika ISSUES-LOG 환원 후속.
+- **Tags**: v0.1.0 through v0.11.1 are pushed to origin (v0.10.4 was retroactive). Tags must not move.
+- **main HEAD**: `eeb35bc release: v0.11.1 — Iron Law rename + F-048 drift × Iron Law gating`.
+- **Default branch**: main (the marketplace fetch ref). Work branches follow `feat/v0.X.Y-*` / `fix/v0.X.Y-*` and fast-forward into main.
+- **Working tree**: clean.
+- **Next thread**: F-049 (in progress) — native English consolidation, Phase 1 entry-point dev surfaces. See §9.
 
-## 5. 커밋 히스토리 맥락
+## 5. Recent commit context
 
-**v0.10.x 라인 — Phase 2 self-hosting + cosmic-suika ISSUES-LOG 환원 + observability + scaling preparedness** (2026-04-27 cluster):
-- `2610829 feat(v0.10.7): cosmic-suika ISSUES-LOG batch return (I-003 / I-004 / I-006 / I-007)` (tsconfig 권장 + risks pattern + kind=trivial + changelog version optional)
-- `3e8160a feat(v0.10.6): scaling preparedness — F-029 schema + F-030 sharding tools + F-031 stress test` (1000~10000 features 사후 마이그레이션 비용 회피)
-- `36dab82 feat(v0.10.5): init/work observability — issue logging (F-027) + prompt logging (F-028)` (cosmic-suika ISSUES-LOG 패턴 표준화)
-- `bc8e539 feat(v0.10.4): Phase 2 self-hosting active — F-025/F-026 + smoke shim + pytest scope` (Phase 1 → Phase 2 flip)
-- `38eba96 feat(v0.10.3): cosmic-suika I-008 — Iron Law D product mode strict` (record 된 gate fail 시 complete 차단)
+**v0.11.x line — naming cleanup + 4-mechanism cohesion (Iron Law × drift gating)** (2026-04-27 cluster):
+- `eeb35bc release: v0.11.1 — Iron Law rename + F-048 drift × Iron Law gating` (3-commit thread bundled into a patch release)
+- `b03441d feat(F-048): drift × Iron Law gating — complete() blocks on wire-integrity drift` (closes GAP 1: complete() now calls check.py)
+- `856198c chore: rename "Iron Law D" → "Iron Law" (BR-004 simplification)` (drop the v0.9.3 history-marker "D" from external naming)
+
+**v0.11.0 — vision consolidation**:
+- `97e71f9 feat(v0.11.0): vision consolidation — 6-release refactor thread closes (F-047)` (F-001 → F-010 archived in place; minor bump on user confirmation)
+
+**v0.10.x line — Phase 2 self-hosting + cosmic-suika ISSUES-LOG return + observability + scaling preparedness**:
+- `2610829 feat(v0.10.7): cosmic-suika ISSUES-LOG batch return (I-003 / I-004 / I-006 / I-007)`
+- `3e8160a feat(v0.10.6): scaling preparedness — F-029 schema + F-030 sharding tools + F-031 stress test` (avoids 1k–10k feature post-hoc migration cost)
+- `36dab82 feat(v0.10.5): init/work observability — issue logging (F-027) + prompt logging (F-028)` (standardizes the cosmic-suika ISSUES-LOG pattern)
+- `bc8e539 feat(v0.10.4): Phase 2 self-hosting active — F-025/F-026 + smoke shim + pytest scope` (the Phase 1 → Phase 2 flip)
+- `38eba96 feat(v0.10.3): cosmic-suika I-008 — Iron Law D product mode strict` (recorded gate fail blocks complete)
 - `2a4c66d feat(v0.10.2): cosmic-suika I-001 — npm scripts auto-detection in gate runner`
 - `89c5776 feat(v0.10.1): cosmic-suika ISSUES-LOG patch — AnchorIntegration drift + no-args dashboard candidates`
 - `ede6f98 feat(v0.10.0): two-layer supersession — features[] supersedes/superseded_by + archive flow + Stale drift`
 
-**v0.9.x 라인 — UX 재구조화 + Iron Law + 모드 축 도입**:
+**v0.9.x line — UX rewrite + Iron Law + mode axis**:
 - `e969e28 feat(v0.9.0)!: UX re-architecture step 1 — namespace rename + command consolidation` (8 → 2 commands, `harness` → `harness-boot`)
 - `87a490c feat(v0.9.1): feature_resolver module + scripts/ui/ scaffolding`
 - `9d31637 feat(v0.9.2): dashboard + intent_planner — no-args entry point`
@@ -103,106 +113,118 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (이 파일) · requirements-d
 - `8194716 feat(v0.9.4): README overhaul + scenario contract table + plugin description modernization`
 - `db9d0db feat(v0.9.6): project mode axis — prototype/product ceremony lightening`
 
-**v0.8.x 라인 — agent fixtures + ceremonies + CI**:
+**v0.8.x line — agent fixtures + ceremonies + CI**:
 - `66c8a25 feat(v0.8.0): design-review auto-wire closes 4/4 ceremony automation`
 - `aae9e8f feat(v0.8.1): complete agent-eval fixtures 15/15`
 - `9746770 feat(v0.8.3): Phase 3 CI — GitHub Actions self-check workflow`
 - `1bc95a8 feat(v0.8.6): events.log monthly rotation`
 
-**v0.7.x 이전** (subpackage 정리 · gate auto-runners) 은 `git log --oneline v0.7.0..HEAD` 또는 태그 목록(`git tag --sort=-version:refname`)으로 소급.
+**Pre-v0.7.x** (subpackage cleanup, gate auto-runners) is recoverable via `git log --oneline v0.7.0..HEAD` or the tag list (`git tag --sort=-version:refname`).
 
-## 6. 참고 문서 지도
+## 6. Reference map
 
-| 무엇을 하려면 | 읽을 파일 |
+| To do this | Read this |
 |---|---|
-| 현재 상황 30 초 파악 | `README.md` + 이 파일 |
-| **Claude Code 에서 이어 작업** | `design/HANDOFF-to-claude-code.md` (gitignored) |
-| 첫 실행 검증 | `docs/archive/first-run-checklist-v0.1.0.md` (F-042 archive) |
-| 태깅·릴리즈 플레이북 | `docs/archive/release-v0.1.0-playbook.md` (F-042 archive · v0.10.x 동일 적용) |
-| 전체 변경 이력 | `CHANGELOG.md` |
-| 슬래시 명령 스펙 | `commands/{init,work}.md` (preamble 규약 · NO skip / NO shortcut 2 행 BR-014) |
-| 스펙 v2.3.8 JSONSchema | `docs/schemas/spec.schema.json` |
-| **self-referential canonical spec** | `docs/samples/harness-boot-self/spec.yaml` — `.harness/spec.yaml` 의 SSoT |
-| 스킬 v0.5 구현 가이드 | `skills/spec-conversion/SKILL.md` |
-| 스크립트 레이어 테스트 | `tests/unit/test_*.py` (38 파일, 838+ tests) |
-| Project mode 의미론 | `scripts/core/project_mode.py` (prototype vs product 차이 docstring) |
-| Self-hosting 부록 | `docs/archive/local-install-v0.1.0.md` 부록 A (F-042 archive) |
-| 로컬 메모리 (사용자 스타일 · 진행 기록) | `~/.claude/projects/.../memory/MEMORY.md` (gitignored) |
+| 30-second status check | `README.md` plus this file |
+| **Continuing work in Claude Code** | `design/HANDOFF-to-claude-code.md` (gitignored) |
+| First-run smoke verification | `docs/archive/first-run-checklist-v0.1.0.md` (F-042 archive) |
+| Tagging / release playbook | `docs/archive/release-v0.1.0-playbook.md` (F-042 archive — same playbook applies through v0.11.x) |
+| Full change history | `CHANGELOG.md` |
+| Slash command spec | `commands/{init,work}.md` (Preamble convention · BR-014 NO skip / NO shortcut two-liner) |
+| Spec v2.3.8 JSONSchema | `docs/schemas/spec.schema.json` |
+| **Self-referential canonical spec** | `docs/samples/harness-boot-self/spec.yaml` — the SSoT for `.harness/spec.yaml` |
+| Skill v0.5 implementation guide | `skills/spec-conversion/SKILL.md` |
+| Script-layer tests | `tests/unit/test_*.py` (1119 tests) |
+| Project mode semantics | `scripts/core/project_mode.py` (prototype-vs-product docstring) |
+| Self-hosting appendix | `docs/archive/local-install-v0.1.0.md` Appendix A (F-042 archive) |
+| Local memory (user style, progress notes) | `~/.claude/projects/.../memory/MEMORY.md` (gitignored) |
 
-## 7. 작업 규칙
+## 7. Working rules
 
-- **design/ 는 개인 작업 공간**. 절대 `git add` 하지 마세요. 공개할 가치가 있으면 `docs/` 로 승격.
-- **legacy/ 도 동일**. 트래킹된 기존 파일만 유지, 새 파일 추가 금지.
-- **플러그인은 자기 자신에 설치되지 않음**. 이 레포에 `/harness-boot:init` 실행 금지 — 플러그인 소스 자체를 덮어쓴다.
+- **`design/` is your personal workspace.** Never `git add` it. If something there deserves to be public, promote it into `docs/`.
+- **`legacy/` is the same.** Keep the existing tracked files; don't add new ones.
+- **The plugin does not install onto itself.** Never run `/harness-boot:init` in this repo — it would overwrite the plugin source.
 
-- **자체 도그푸드 정책 — Phase 2 active** (2026-04-27 부터):
-  - **새 피처는 모두 work.py 사이클을 거친다**. cosmic-suika 외부 dogfood 와 동일 규약. "리팩터" / "문서만" / "작은 fix" 도 예외 아님.
-  - 사용 명령:
+- **Self-dogfood policy — Phase 2 active** (since 2026-04-27):
+  - **Every new feature goes through the work.py cycle.** Same contract as cosmic-suika and other external dogfood projects. "Refactor" / "doc-only" / "small fix" are not exceptions.
+  - The four-verb flow:
     ```
     python3 scripts/work.py F-N --harness-dir .harness                        # activate
     python3 scripts/work.py F-N --harness-dir .harness --run-gate gate_0      # ... 1, 2, 3, 5
     python3 scripts/work.py F-N --harness-dir .harness --evidence "..."       # declared evidence
-    python3 scripts/work.py F-N --harness-dir .harness --complete             # 전이
+    python3 scripts/work.py F-N --harness-dir .harness --complete             # transition
     ```
-  - 슬래시 명령은 **이 레포에서 live-edit 가 안 됨** (설치본이 우선). 따라서 항상 `python3 scripts/work.py` 직접 호출이 dev 진입점. (사용자 프로젝트에서는 `/harness-boot:work` 가 래퍼.)
-  - `.harness/state.yaml` 커밋은 feature PR 단위로 같이 나감 (이전 Phase 1 의 "릴리즈 태그 시점에만" 제한 해제).
-  - `events.log` 에 lifecycle 이벤트 (`feature_activated` · `gate_run` · `evidence_declared` · `feature_completed`) 가 누적되며, `/harness-boot:work` 대시보드 · `scripts/metrics.py` 가 진짜 lead time / gate pass rate 출력.
-  - `project.mode` 는 `prototype` (현재 기본) — Iron Law 는 evidence ≥ 1 + gate_5 pass. product 로 promote 는 사용자 결정.
+  - Slash commands **cannot live-edit from this repo** — the installed copy always wins. So the dev entry point is always `python3 scripts/work.py` directly. (In a user project, `/harness-boot:work` is the wrapper.)
+  - `.harness/state.yaml` is committed alongside the feature PR (the previous Phase 1 "only at release tag" restriction is lifted).
+  - `events.log` accumulates lifecycle events (`feature_activated`, `gate_run`, `evidence_declared`, `feature_completed`). The `/harness-boot:work` dashboard and `scripts/metrics.py` use them to compute real lead time and gate pass rate.
+  - `project.mode` is `prototype` (current default) — the Iron Law floor is `evidence ≥ 1` plus `gate_5 = pass`. Promotion to product is a user decision.
 
-- **공통 규칙** (Phase 무관):
-  - `.harness/spec.yaml` 은 `docs/samples/harness-boot-self/spec.yaml` 의 **복사본** (symlink 아님). `scripts/self_check.sh` 가 `diff -q` 로 동기성 강제. 새 피처 추가는 **양쪽 동시에**.
-  - `events.log` · `harness.yaml` · `domain.md` · `architecture.yaml` · `chapters/` · `_workspace/` 는 gitignored.
-  - 사용자 충돌 없음: 사용자가 `/harness-boot:*` 실행 시 항상 `$(pwd)/.harness` 만 참조 — 우리 내부 `.harness/` 는 invisible.
+- **Common rules** (Phase-independent):
+  - `.harness/spec.yaml` is a **copy** (not a symlink) of `docs/samples/harness-boot-self/spec.yaml`. `scripts/self_check.sh` enforces lockstep with `diff -q`. Adding a feature means **editing both at once**.
+  - `events.log`, `harness.yaml`, `domain.md`, `architecture.yaml`, `chapters/`, and `_workspace/` are gitignored.
+  - No user collision: when a user runs `/harness-boot:*`, it always references `$(pwd)/.harness` — our internal `.harness/` is invisible to them.
 
-- **슬래시 명령 사용 경로** (2026-04-23 검증, 2026-04-27 재확인):
-  - 작동: `/plugin marketplace add qwerfunch/harness-boot` + `/plugin install harness-boot@harness-boot` → `/harness-boot:{init,work}` 사용 가능. 업그레이드 `/plugin update harness-boot@harness-boot`.
-  - 미작동: `CLAUDE_PLUGIN_ROOT` env / `settings.json plugins[]` 로 dev checkout 라이브 반영 — 설치본이 우선.
-  - 결론: 편집 즉시 슬래시 반영은 불가. **이 레포 내부 dev workflow 는 항상 `python3 scripts/*.py` 직접 호출**. 슬래시 검증은 release → `/plugin update` 루프.
-  - 상세: `docs/archive/local-install-v0.1.0.md` §2 + 부록 A (F-042 archive).
+- **Slash command pathway** (validated 2026-04-23, re-checked 2026-04-27):
+  - Works: `/plugin marketplace add qwerfunch/harness-boot` plus `/plugin install harness-boot@harness-boot` → `/harness-boot:{init,work}` available. Update via `/plugin update harness-boot@harness-boot`.
+  - Doesn't work: `CLAUDE_PLUGIN_ROOT` env or `settings.json plugins[]` for live dev-checkout reflection — the installed copy always wins.
+  - Conclusion: edits don't reflect into slash commands instantly. **The dev workflow inside this repo always calls `python3 scripts/*.py` directly.** Slash-command verification happens through release → `/plugin update`.
+  - Details: `docs/archive/local-install-v0.1.0.md` §2 + Appendix A (F-042 archive).
 
-- **태그는 절대 이동 금지**. 깨진 버전은 yank + hotfix (`docs/archive/release-v0.1.0-playbook.md` §5 · F-042 archive).
-- **main 은 default branch**. 머지는 `feat/v0.X.Y-*` 브랜치에서 PR → main fast-forward.
-- **Patch-first 버전 정책**: 새 기능이라도 X.Y.Z+1. minor/major 는 사용자 확인 + 큰 마일스톤 한정.
-- **버전 릴리즈는 사용자 결정**: 자동 태깅 금지. 커밋·머지는 자유, 태그·release notes 는 사용자 명시 후.
-- **커밋/PR 언어**: 영어. 응답/설명 언어: 한국어 (파일 내용은 문맥에 따라).
-- **Anti-rationalization**: 2 commands 모두 Preamble 3 줄 직후 "NO skip / NO shortcut" 2 행 필수 (BR-014).
-- **CQS 강제**: read-only 명령 (`status` · `check` · `events` · `metrics`) 은 대상 파일 mtime 을 변경하지 않음. 테스트가 mtime 불변을 확인.
+- **Tags never move.** A broken release gets yanked and hotfixed (`docs/archive/release-v0.1.0-playbook.md` §5 · F-042 archive).
+- **main is the default branch.** Merges come from `feat/v0.X.Y-*` PRs and fast-forward into main.
+- **Patch-first versioning.** Even a new feature ships as X.Y.Z+1. Minor or major bumps require user confirmation and a substantial milestone.
+- **Release is a user decision.** No auto-tagging. Commits and merges are free; tags and release notes wait for an explicit instruction.
+- **Commit / PR language**: English. Response / explanation language: Korean (file content depends on context).
+- **Anti-rationalization**: both slash commands carry the Preamble, with the `NO skip:` / `NO shortcut:` pair on lines 2 and 3 (BR-014).
+- **CQS**: read-only commands (`status` · `check` · `events` · `metrics`) never change a target file's mtime. Tests verify the invariant.
 
-## 8. 알려진 제한사항 (v0.10.7 기준)
+## 8. Known limitations (as of v0.11.1)
 
-**닫힘 (이전 CLAUDE.md 시점 대비)**
-- v0.4 ~ v0.7: agent fixtures 15/15 · ceremonies 4/4 · subpackages 정리 · gate auto-runners.
-- v0.8.x: Phase 3 CI · events.log monthly rotation · agent fixtures 완결 · design-review autowire.
-- v0.9.x: 명령 통합 (8 → 2) · feature_resolver · no-args dashboard · Iron Law · README user-friendly · project mode axis.
-- v0.10.0~3: two-layer supersession + Stale drift · cosmic-suika I-001/I-008/I-010 환원.
-- v0.10.4: **Phase 2 self-hosting deferral 해소** (2026-04-27) — 본 레포가 본격 dogfood 진입.
-- v0.10.5: init/work observability — F-027 issue logging convention + F-028 prompt log hook.
-- v0.10.6: scaling preparedness — F-029 schema (5 additive fields) + F-030 sharding tools + F-031 stress test (1000~10000 features 실측).
+**Closed since the last CLAUDE.md snapshot:**
+- v0.4 → v0.7: agent fixtures 15/15 · ceremonies 4/4 · subpackage cleanup · gate auto-runners.
+- v0.8.x: Phase 3 CI · monthly events.log rotation · agent fixtures complete · design-review autowire.
+- v0.9.x: command consolidation (8 → 2) · feature_resolver · no-args dashboard · Iron Law · README user-friendly · project mode axis.
+- v0.10.0–3: two-layer supersession + Stale drift · cosmic-suika I-001/I-008/I-010 returns.
+- v0.10.4: **Phase 2 self-hosting deferral resolved** (2026-04-27) — this repo became real dogfood.
+- v0.10.5: init/work observability — F-027 issue-logging convention + F-028 prompt-log hook.
+- v0.10.6: scaling preparedness — F-029 schema (5 additive fields) + F-030 sharding tools + F-031 stress test (1k–10k features measured).
 - v0.10.7: cosmic-suika ISSUES-LOG batch return (I-003 tsconfig + I-004 risks pattern + I-006 kind=trivial + I-007 changelog version optional).
+- v0.11.0: vision consolidation — F-001 → F-010 archived in place, 6-release refactor thread closed.
+- v0.11.1: Iron Law rename ("D" suffix dropped) + F-048 drift × Iron Law gating (GAP 1 of the 4-mechanism cohesion analysis closed).
 
-**열림**
-- Cross-language canonical hash 테스트 벡터 (부록 D.7) — Node/Go 교차 검증 미구현.
-- AC coverage drift (check.py 11 번째 drift candidate).
-- URL → design seed — scope 크고 IP 경계 주의 (2026-04-24 검토).
-- gate_perf auto-detect heuristics (lighthouse · k6 · wrk 설정 감지).
-- pre-commit hook (Phase 2 자동 enforcement) — 디시플린이 흔들릴 때 진입 후보.
-- F-030 sharding tools 의 사용자 진입로 (현재 `python3 scripts/spec/shard.py` 수동 호출만; 자동화 시점 미정).
-- F-028 prompt log hook 의 production 검증 — 사용자가 `/plugin update` 후 실제 prompt 들이 누적되는지 실측 필요.
+**Open:**
+- Cross-language canonical hash test vectors (Appendix D.7) — Node / Go cross-validation not yet implemented.
+- AC coverage drift (a candidate for a 13th drift detector in `check.py`).
+- URL → design seed — large scope and IP-boundary concerns (reviewed 2026-04-24).
+- gate_perf auto-detect heuristics (lighthouse / k6 / wrk config detection).
+- The pre-commit hook is in place, but the discipline still relies on memory; tighten if it slips.
+- The user entry point for F-030 sharding tools is still `python3 scripts/spec/shard.py` by hand; auto-invocation timing TBD.
+- F-028 prompt-log hook needs a production check — confirm prompts actually accumulate after a real `/plugin update`.
+- F-049 → F-053 native-English consolidation thread (§9) is in flight: F-049 closes the Phase 1 entry-point surfaces; F-050 covers spec mirrors + schema; F-051 covers `scripts/` Python docstrings; F-052 covers `tests/`; F-053 settles a CHANGELOG English-only-going-forward policy.
 
-## 9. 다음 Phase 후보
+## 9. Next-phase candidates
 
-**v0.10.7 완료 (2026-04-27). 후속 후보** (우선순위 미고정):
+**v0.11.1 shipped (2026-04-27). Active and queued:**
 
-### 즉시 착수 가능
-- 본 레포 새 피처를 work.py 사이클에 실어서 가는 것 자체가 가장 큰 작업 (Phase 2 정착).
-- AC coverage drift detector — check.py 11 번째 drift.
-- cosmic-suika ISSUES-LOG 의 다음 환원 가능 항목.
+### In progress
+- **F-049** — native English consolidation, Phase 1: top-level dev docs + supporting docs + hook script banners. (this commit)
 
-### 큰 다음 마일스톤 (사용자 확인 후 minor bump 검토)
-- Cross-language canonical hash 테스트 벡터 (Node/Go 교차).
-- URL → design seed (scope 결정 필요).
+### Queued (user opt-in per phase)
+- **F-050** — Phase 2: both spec mirrors + `docs/schemas/spec.schema.json` description bodies.
+- **F-051** — Phase 3: `scripts/` Python docstrings and comments.
+- **F-052** — Phase 4: `tests/` Python docstrings and comments.
+- **F-053** — Phase 5: CHANGELOG English-only-going-forward policy (history preserved as-is).
+
+### Available but not scheduled
+- AC coverage drift detector — would be the 13th drift kind in `check.py`.
+- The next batch of cosmic-suika ISSUES-LOG returns, when external usage surfaces them.
+- F-049 Tier-promotion candidates from the 4-mechanism cohesion analysis (LLM author-attribution on evidence; Preamble compliance scanner). Held until external dogfood validates the need.
+
+### Larger milestones (user confirmation, minor bump)
+- Cross-language canonical hash test vectors (Node / Go cross-check).
+- URL → design seed (scope decision needed).
 - gate_perf auto-detect heuristics.
 
-## 10. Import
+## 10. Imports
 
-현재 없음. 필요 시 `design/HANDOFF-*.md` 는 개인 노트 (gitignored) 이므로 전역 @import 는 의존하지 말 것.
+None for now. `design/HANDOFF-*.md` files are personal notes (gitignored) — global `@import` should not depend on them.

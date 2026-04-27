@@ -1,39 +1,42 @@
 #!/usr/bin/env bash
 # pre-commit-phase2.sh — F-034 (v0.10.9)
 #
-# Phase 2 dogfood discipline 자동 enforcement. F-026 후속.
-# git commit 시 staged code 변경이 있는데 .harness/state.yaml 의 active
-# feature 가 없으면 reject. 사람 디시플린에 의존하던 'every change MUST
-# go through work.py' 를 도구가 책임.
+# Auto-enforces Phase 2 dogfood discipline. Follows F-026.
+# At git commit time: if there are staged code changes but no active
+# feature in .harness/state.yaml, reject. The "every change MUST go
+# through work.py" rule used to depend on human discipline; this hook
+# moves it to the tooling.
 #
-# 5 분기 (정확히 이 순서):
-#   1. .harness/state.yaml 부재 → silent exit 0 (Phase 2 안 쓰는 프로젝트)
+# Five branches, in this order:
+#   1. .harness/state.yaml absent → silent exit 0 (project doesn't use Phase 2).
 #   2. HARNESS_BYPASS_PRE_COMMIT=1 env → exit 0 (true emergencies; --no-verify
-#      도 동등하나 git 표준)
-#   3. staged 가 화이트리스트만 (chore commits) → exit 0
-#      whitelist: .harness/state.yaml · .harness/_workspace/* · CHANGELOG.md
-#   4. non-whitelisted staged + active feature 부재 → exit 1 + stderr 에 4 우회 옵션
-#   5. non-whitelisted staged + active feature 있음 → exit 0
+#      is the git-standard equivalent).
+#   3. Staged set is whitelist-only (chore commits) → exit 0.
+#      Whitelist: .harness/state.yaml · .harness/_workspace/* · CHANGELOG.md
+#   4. Non-whitelisted staged + no active feature → exit 1 with four bypass
+#      options on stderr.
+#   5. Non-whitelisted staged + active feature present → exit 0.
 #
 # Install: python3 .../scripts/install_pre_commit.py --install
 
 set -u
 
-# 분기 1: .harness/ 부재.
+# Branch 1: no .harness/.
 [ -f ".harness/state.yaml" ] || exit 0
 
-# 분기 2: env bypass.
+# Branch 2: env bypass.
 if [ "${HARNESS_BYPASS_PRE_COMMIT:-}" = "1" ]; then
     exit 0
 fi
 
-# Staged files (added/modified, deleted 제외 — 삭제만 있는 commit 도 일반적).
+# Staged files (added/modified; deletions excluded — delete-only commits are
+# common enough that we let git handle them on its own).
 STAGED="$(git diff --cached --name-only --diff-filter=AM 2>/dev/null || true)"
 
-# 빈 staged → 통과 (git 가 별도로 거부할 것).
+# Empty staged → pass (git itself will reject the commit).
 [ -z "$STAGED" ] && exit 0
 
-# 분기 3: 화이트리스트 검사.
+# Branch 3: whitelist check.
 ALL_WHITELISTED=1
 while IFS= read -r f; do
     [ -z "$f" ] && continue
@@ -49,7 +52,7 @@ if [ "$ALL_WHITELISTED" = "1" ]; then
     exit 0
 fi
 
-# 분기 4/5: active feature 검사.
+# Branches 4/5: active feature check.
 ACTIVE="$(python3 -c '
 import sys, yaml
 try:
@@ -64,20 +67,21 @@ if [ -z "$ACTIVE" ]; then
     cat <<'EOF' >&2
 ✖ pre-commit (harness-boot Phase 2 · F-034): no active feature
 
-staged 코드 변경이 있는데 .harness/state.yaml 의 active feature 가 없습니다.
-"every change MUST go through work.py" 디시플린 위반 (cosmic-suika 메모리).
+You have staged code changes but .harness/state.yaml has no active feature.
+That breaks the "every change MUST go through work.py" discipline (cosmic-
+suika memory).
 
-다음 중 하나로 해결:
+Pick one:
 
-  1. python3 scripts/work.py F-N --harness-dir .harness            # 활성화
-  2. spec.yaml 에 새 F-N 추가 후 1
-  3. git commit --no-verify                                        # 일회성 우회
-  4. HARNESS_BYPASS_PRE_COMMIT=1 git commit ...                    # env 우회
+  1. python3 scripts/work.py F-N --harness-dir .harness            # activate
+  2. Add a new F-N to spec.yaml first, then 1
+  3. git commit --no-verify                                        # one-off bypass
+  4. HARNESS_BYPASS_PRE_COMMIT=1 git commit ...                    # env bypass
 
-화이트리스트 (단독 staged 시 통과): .harness/state.yaml · .harness/_workspace/* · CHANGELOG.md
+Whitelist (passes when staged alone): .harness/state.yaml · .harness/_workspace/* · CHANGELOG.md
 EOF
     exit 1
 fi
 
-# 분기 5: active 있음 → 통과.
+# Branch 5: active feature present → pass.
 exit 0

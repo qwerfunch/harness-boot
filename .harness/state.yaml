@@ -1016,8 +1016,36 @@ features:
       좁히기 (3 wire-integrity kinds) 가 false-positive 방지. self_check 5/5 PASS.'
   started_at: '2026-04-27T14:20:44Z'
   completed_at: '2026-04-27T14:21:14Z'
+- id: F-049
+  status: done
+  gates:
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T14:41:41Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T14:41:41Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.6s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T14:41:51Z'
+    kind: manual_check
+    summary: 'AC-1 reproduce: grep -c ''[가-힣]'' verified — 8/9 modules at 0 KO chars;
+      docs/i18n/README.md=2 (intended KO examples ''상태:'' / ''근거: N 개'' demonstrating
+      i18n policy itself, per AC-5). AC-3 self_check 5/5 PASS. AC-4 1117 tests, regression
+      0 (audit_pass.py markers updated to track v0.11+ pattern instead of pinned v0.10.7
+      — surfaced own self-doc drift, fixed inline).'
+  - ts: '2026-04-27T14:41:53Z'
+    kind: reviewer_check
+    summary: 'Reviewer self-audit: F-041 패턴 일관성 (Walking Skeleton metaphor, ''소스 of
+      truth vs derived view'', ''author''s prose vs engineer''s contract'' 형식 idiom).
+      CLAUDE.md v0.11.1 reflect 갱신 동시 (§2 cumulative, §4 git state, §5 v0.11.x cluster,
+      §8 closed list, §9 F-049~F-053 thread). 9 modules 모두 native EN — translation
+      아님. self-doc drift fix (audit_pass.py marker 갱신) 가 F-051 self-doc drift detector
+      후보의 zero-day reproduce.'
+  started_at: '2026-04-27T14:33:22Z'
+  completed_at: '2026-04-27T14:42:02Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-048
+  last_command: /harness:work F-049
   last_gate_passed: gate_5
   active_feature_id: null
