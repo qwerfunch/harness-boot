@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "harness-boot",
-      "description": "Multi-agent development harness for Claude Code. Your AI has speed; we give it direction. Two slash commands (/harness-boot:init · /harness-boot:work), plain-English intent.",
+      "description": "Multi-agent development harness for Claude Code. Your AI has speed; we give it direction — through living specs and focused specialist agents.",
       "source": "./",
       "version": "0.11.3",
       "homepage": "https://github.com/qwerfunch/harness-boot",

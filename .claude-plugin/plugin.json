@@ -1,7 +1,7 @@
 {
   "name": "harness-boot",
   "version": "0.11.3",
-  "description": "Multi-agent development harness for Claude Code. Your AI has speed; we give it direction. Two slash commands (/harness-boot:init · /harness-boot:work), plain-English intent.",
+  "description": "Multi-agent development harness for Claude Code. Your AI has speed; we give it direction — through living specs and focused specialist agents.",
   "author": {
     "name": "qwerfunch"
   },
