@@ -592,8 +592,40 @@ features:
       entry. 15 신규 tests (test_audit_pass.py). 898 tests · self_check 5/5.'
   started_at: '2026-04-27T05:31:18Z'
   completed_at: '2026-04-27T05:31:43Z'
+- id: F-034
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-27T05:42:56Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T05:42:56Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T05:42:56Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (7.7s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-27T05:42:56Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.5s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T05:43:25Z'
+    kind: generic
+    summary: 'Phase 2 자동 enforcement 도구화 — F-026 후속 (수동 디시플린 → 도구 책임). hooks/pre-commit-phase2.sh
+      5 분기 contract: (1) .harness/state.yaml 부재 시 silent (Phase 2 안 쓰는 프로젝트 영향 0),
+      (2) HARNESS_BYPASS_PRE_COMMIT=1 env 우회, (3) 화이트리스트 (state.yaml · _workspace/*
+      · CHANGELOG.md) 단독 commit 통과, (4) non-whitelisted + active 부재 → exit 1 + 4 우회
+      옵션 안내, (5) active 있음 → 통과. scripts/install_pre_commit.py CLI (--install --uninstall
+      --status --force) — 기존 non-harness pre-commit hook 보존 (--force 시만 덮어씀). 13 신규
+      tests in test_pre_commit_hook.py (5 분기 × tempdir+git mock + installer 6 안전성).
+      본 레포에 self-install 완료 — 다음 commit 부터 enforcement 활성. 911 tests · self_check
+      5/5.'
+  started_at: '2026-04-27T05:42:48Z'
+  completed_at: '2026-04-27T05:43:25Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-033
+  last_command: /harness:work F-034
   last_gate_passed: gate_5
   active_feature_id: null

@@ -11,6 +11,41 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 - Marketplace PR (anthropic/claude-plugins-official) — 사용자 명시 후 진입.
 
+## [0.10.9] — 2026-04-27
+
+**Phase 2 pre-commit hook — 자동 enforcement (F-026 후속).**
+
+수동 디시플린 ("every change MUST go through work.py", cosmic-suika 메모리)
+을 도구가 책임지도록 자동화. F-034 단일 피처로 묶어 work.py 풀 사이클 (gate_0
++ gate_5 + evidence + complete) 완주 후 본 레포에 self-install 완료.
+
+### Added
+
+- **`hooks/pre-commit-phase2.sh`** — git commit 시 staged code 변경이 있는데
+  `.harness/state.yaml` 의 active feature 가 없으면 reject. 5 분기 contract:
+  1. `.harness/state.yaml` 부재 → silent exit 0 (Phase 2 안 쓰는 프로젝트 영향 0)
+  2. `HARNESS_BYPASS_PRE_COMMIT=1` env → exit 0 (true emergencies)
+  3. staged 가 화이트리스트 (`.harness/state.yaml` · `.harness/_workspace/*` ·
+     `CHANGELOG.md`) 만이면 → exit 0 (chore commits 통과)
+  4. non-whitelisted staged + active 부재 → **exit 1 + stderr 에 4 우회 옵션** (work.py
+     activate · spec 에 새 F-N · `--no-verify` · env bypass)
+  5. non-whitelisted staged + active 있음 → exit 0
+- **`scripts/install_pre_commit.py`** — CLI installer:
+  - `--install` (기존 non-harness pre-commit hook 보존, `--force` 로 덮어씀)
+  - `--uninstall` (다른 사용자 hook 은 절대 안 지움 — F-034 marker 검증)
+  - `--status`
+- **`tests/unit/test_pre_commit_hook.py`** — 13 tests. tempdir + git mock 으로
+  5 분기 × installer 6 safety scenarios.
+
+### Notes
+
+- 본 레포에 self-install 완료 — 이번 v0.10.9 commit 부터 enforcement 활성.
+- 사용자 워크스페이스에서: `python3 <plugin_root>/scripts/install_pre_commit.py
+  --install` 한 번 실행 시 활성화. opt-in.
+- git `--no-verify` 와 `HARNESS_BYPASS_PRE_COMMIT=1` 두 가지 우회 — emergency
+  hotfix 같은 정당한 우회 보장.
+- 누적 테스트 898 → 911. features count 33 → 34. self_check 5/5 OK.
+
 ## [0.10.8] — 2026-04-27
 
 **Audit pass — stale rename + README/CLAUDE.md refresh + dogfood self-issues-log + F-029 schema doc 명확화.**

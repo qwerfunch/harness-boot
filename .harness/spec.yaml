@@ -888,6 +888,30 @@ features:
       - "AC-5 (dogfood): .harness/_workspace/issues-log.md 가 audit findings ≥ 5 entry 로 채워짐"
       - "AC-6: F-033 풀 사이클 (gate_0 + gate_5 + evidence + complete) 완주"
 
+  - id: "F-034"
+    name: "Phase 2 pre-commit hook — work.py 사이클 자동 enforcement"
+    type: "feature"
+    description: "F-026 후속. 사람 디시플린에 의존하던 'every change MUST go through work.py' 를 도구가 강제. git commit 시 staged code 파일 + active feature 부재 → reject. .harness/ 없는 프로젝트는 영향 0. 우회: HARNESS_BYPASS_PRE_COMMIT=1 env 또는 git --no-verify. 화이트리스트 (chore commits): state.yaml · _workspace/ · CHANGELOG.md 단독은 통과."
+    modules:
+      - "hooks_pre_commit_phase2_sh"
+      - "scripts_install_pre_commit"
+      - "pre_commit_whitelist_logic"
+    test_strategy: "contract"
+    tdd_focus:
+      - "hook 가 .harness/state.yaml 부재 시 silent exit 0 (Phase 2 안 쓰는 프로젝트)"
+      - "HARNESS_BYPASS_PRE_COMMIT=1 → exit 0"
+      - "staged 가 화이트리스트 (state.yaml · _workspace/* · CHANGELOG.md) 만이면 exit 0"
+      - "non-whitelisted staged + active feature 없음 → exit 1 + stderr 에 4 우회 옵션 출력"
+      - "non-whitelisted staged + active feature 있음 → exit 0"
+      - "installer 가 기존 .git/hooks/pre-commit 보존 (--force 옵션 시만 덮어씀)"
+    acceptance_criteria:
+      - "AC-1: hooks/pre-commit-phase2.sh 존재 · executable · 5 분기 (no-harness · bypass · whitelist · no-active · has-active) 모두 명시"
+      - "AC-2: scripts/install_pre_commit.py CLI 존재 (--install · --uninstall · --status)"
+      - "AC-3: 6+ tests in tests/unit/test_pre_commit_hook.py — tempdir + git mock 으로 5 분기 + installer 안전성"
+      - "AC-4: 본 레포 자체에 install — F-034 done 시점에 .git/hooks/pre-commit 활성화"
+      - "AC-5: bash scripts/self_check.sh 5/5 · 898+ tests OK"
+      - "AC-6: F-034 풀 사이클 (gate_0 + gate_5 + evidence + complete) 완주"
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
