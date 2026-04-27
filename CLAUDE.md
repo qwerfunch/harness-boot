@@ -7,14 +7,14 @@
 
 Claude Code 플러그인 `harness-boot` 의 소스. 사용자는 `/harness-boot:init` 로 자기 프로젝트에 `.harness/` 골격을 설치하고, 이후 `/harness-boot:work` 한 명령으로 피처 사이클(activate → gate → evidence → complete)을 돌린다. v0.9.0 의 UX 재구조화로 외울 명령은 2 개로 통합됨.
 
-- **현재 릴리즈**: v0.10.3 (2026-04-27 태그). 마켓플레이스 PR 은 사용자 결정 시점까지 보류.
+- **현재 릴리즈**: v0.10.7 (2026-04-27 태그). 마켓플레이스 PR 은 사용자 결정 시점까지 보류.
 - **설치 경로**: `/plugin marketplace add qwerfunch/harness-boot` → `/plugin install harness-boot@harness-boot`. 업그레이드 `/plugin update harness-boot@harness-boot`.
 - **SemVer 정책**: patch-first. 새 기능이라도 X.Y.Z+1. minor/major 는 사용자 확인 + 큰 마일스톤 한정.
 - **라이선스**: MIT · Author: qwerfunch
 
 ## 2. 지금 어디쯤 있나
 
-**v0.10.3 — Phase 2 self-hosting active** (2026-04-27).
+**v0.10.7 — Phase 2 self-hosting active + observability + scaling preparedness** (2026-04-27).
 
 핵심 누적:
 - **2 슬래시 명령** (`/harness-boot:init` · `/harness-boot:work`) — v0.9.0 통합. init 은 자연어 직진 또는 3 옵션 메뉴, work 는 무인자(no-args dashboard, v0.9.2) · 인텐트 자연어 · F-ID 직접 호출 모두 지원.
@@ -24,7 +24,10 @@ Claude Code 플러그인 `harness-boot` 의 소스. 사용자는 `/harness-boot:
 - **Drift 탐지 8/8** + **Two-layer supersession metadata + Stale drift** (v0.10.0) — `features[].supersedes` / `superseded_by` 와 archive flow.
 - **Ceremonies 자동화 4/4** — kickoff · retro · design-review · inbox.
 - **자체 도그푸드 Phase 2 active** (2026-04-27) — `.harness/` 가 active workspace. 본 레포의 새 피처도 `python3 scripts/work.py F-N --harness-dir .harness` 사이클을 거침. 자세한 규약은 §7 참조.
-- **누적 테스트**: 838+ (CHANGELOG v0.10.3 기준 unittest). 38 test 파일.
+- **Init/work observability** (v0.10.5) — `commands/{init,work}.md` 의 `## Issue logging` 섹션 + `hooks/prompt-log.sh` UserPromptSubmit hook. 사용자 프로젝트의 `.harness/_workspace/{issues-log.md, prompts/YYYY-MM.jsonl}` 누적 → 메인테이너 환원 사이클 트리거 + prompt 형상화.
+- **Scaling preparedness** (v0.10.6) — `features[]` 에 5 additive fields (area · archived_at · archive_reason · digest · include_path) + `scripts/spec/{shard,unshard,summary}.py` sharding 도구 + `tests/scale/test_scale.py` 100/1000/3000/10000 features 실측. 사용자는 ~300 임계점까지 안 호출해도 무방.
+- **cosmic-suika ISSUES-LOG batch return** (v0.10.7) — I-003 (tsconfig 권장값) · I-004 (risks[].id pattern 완화) · I-006 (`--kind trivial` 의미 명시) · I-007 (changelog version optional) — F-027 컨벤션의 첫 환원 사이클.
+- **누적 테스트**: 883 (CHANGELOG v0.10.7 기준 unittest). 41 test 파일.
 
 **다음 작업 후보**: §9 참조.
 
@@ -32,7 +35,7 @@ Claude Code 플러그인 `harness-boot` 의 소스. 사용자는 `/harness-boot:
 
 ```
 .claude-plugin/
-├── plugin.json                     # 플러그인 매니페스트 (name: "harness-boot", v0.10.3)
+├── plugin.json                     # 플러그인 매니페스트 (name: "harness-boot", v0.10.7)
 └── marketplace.json                # single-plugin marketplace
 .harness/                           # Phase 2 active dogfood workspace (§7)
 ├── spec.yaml                       # docs/samples/harness-boot-self/spec.yaml 의 복사본 (diff -q 강제)
@@ -74,15 +77,19 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (이 파일) · requirements-d
 
 ## 4. 현재 git 상태
 
-- **태그**: v0.1.0 ~ v0.10.3 원격 push 완료. 태그 이동 금지.
-- **main HEAD**: `cac0b55 chore(release): fill CHANGELOG release dates for v0.10.1~v0.10.3`
+- **태그**: v0.1.0 ~ v0.10.7 원격 push 완료 (v0.10.4 retroactive). 태그 이동 금지.
+- **main HEAD**: `2610829 feat(v0.10.7): cosmic-suika ISSUES-LOG batch return (I-003 / I-004 / I-006 / I-007)`
 - **default branch**: main (마켓플레이스 fetch ref). 작업 브랜치는 `feat/v0.X.Y-*` / `fix/v0.X.Y-*` 패턴, main 으로 fast-forward 머지.
 - **작업 트리**: clean
 - **다음 분기**: 백로그 (§9) 또는 cosmic-suika ISSUES-LOG 환원 후속.
 
 ## 5. 커밋 히스토리 맥락
 
-**v0.10.x 라인 — cosmic-suika ISSUES-LOG 환원 사이클** (2026-04-27 cluster):
+**v0.10.x 라인 — Phase 2 self-hosting + cosmic-suika ISSUES-LOG 환원 + observability + scaling preparedness** (2026-04-27 cluster):
+- `2610829 feat(v0.10.7): cosmic-suika ISSUES-LOG batch return (I-003 / I-004 / I-006 / I-007)` (tsconfig 권장 + risks pattern + kind=trivial + changelog version optional)
+- `3e8160a feat(v0.10.6): scaling preparedness — F-029 schema + F-030 sharding tools + F-031 stress test` (1000~10000 features 사후 마이그레이션 비용 회피)
+- `36dab82 feat(v0.10.5): init/work observability — issue logging (F-027) + prompt logging (F-028)` (cosmic-suika ISSUES-LOG 패턴 표준화)
+- `bc8e539 feat(v0.10.4): Phase 2 self-hosting active — F-025/F-026 + smoke shim + pytest scope` (Phase 1 → Phase 2 flip)
 - `38eba96 feat(v0.10.3): cosmic-suika I-008 — Iron Law D product mode strict` (record 된 gate fail 시 complete 차단)
 - `2a4c66d feat(v0.10.2): cosmic-suika I-001 — npm scripts auto-detection in gate runner`
 - `89c5776 feat(v0.10.1): cosmic-suika ISSUES-LOG patch — AnchorIntegration drift + no-args dashboard candidates`
@@ -161,24 +168,30 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (이 파일) · requirements-d
 - **Anti-rationalization**: 2 commands 모두 Preamble 3 줄 직후 "NO skip / NO shortcut" 2 행 필수 (BR-014).
 - **CQS 강제**: read-only 명령 (`status` · `check` · `events` · `metrics`) 은 대상 파일 mtime 을 변경하지 않음. 테스트가 mtime 불변을 확인.
 
-## 8. 알려진 제한사항 (v0.10.3 기준)
+## 8. 알려진 제한사항 (v0.10.7 기준)
 
 **닫힘 (이전 CLAUDE.md 시점 대비)**
 - v0.4 ~ v0.7: agent fixtures 15/15 · ceremonies 4/4 · subpackages 정리 · gate auto-runners.
 - v0.8.x: Phase 3 CI · events.log monthly rotation · agent fixtures 완결 · design-review autowire.
 - v0.9.x: 명령 통합 (8 → 2) · feature_resolver · no-args dashboard · Iron Law D · README user-friendly · project mode axis.
-- v0.10.x: two-layer supersession + Stale drift · cosmic-suika I-001/I-008/I-010 환원.
-- **Phase 2 self-hosting deferral 해소** (2026-04-27) — 본 레포가 본격 dogfood 진입.
+- v0.10.0~3: two-layer supersession + Stale drift · cosmic-suika I-001/I-008/I-010 환원.
+- v0.10.4: **Phase 2 self-hosting deferral 해소** (2026-04-27) — 본 레포가 본격 dogfood 진입.
+- v0.10.5: init/work observability — F-027 issue logging convention + F-028 prompt log hook.
+- v0.10.6: scaling preparedness — F-029 schema (5 additive fields) + F-030 sharding tools + F-031 stress test (1000~10000 features 실측).
+- v0.10.7: cosmic-suika ISSUES-LOG batch return (I-003 tsconfig + I-004 risks pattern + I-006 kind=trivial + I-007 changelog version optional).
 
 **열림**
 - Cross-language canonical hash 테스트 벡터 (부록 D.7) — Node/Go 교차 검증 미구현.
 - AC coverage drift (check.py 11 번째 drift candidate).
-- URL → design seed (`/harness-boot:clone <url>` 또는 별도 `harness-seed` 플러그인) — scope 크고 IP 경계 주의 (2026-04-24 검토).
+- URL → design seed — scope 크고 IP 경계 주의 (2026-04-24 검토).
 - gate_perf auto-detect heuristics (lighthouse · k6 · wrk 설정 감지).
+- pre-commit hook (Phase 2 자동 enforcement) — 디시플린이 흔들릴 때 진입 후보.
+- F-030 sharding tools 의 사용자 진입로 (현재 `python3 scripts/spec/shard.py` 수동 호출만; 자동화 시점 미정).
+- F-028 prompt log hook 의 production 검증 — 사용자가 `/plugin update` 후 실제 prompt 들이 누적되는지 실측 필요.
 
 ## 9. 다음 Phase 후보
 
-**v0.10.3 완료 (2026-04-27). 후속 후보** (우선순위 미고정):
+**v0.10.7 완료 (2026-04-27). 후속 후보** (우선순위 미고정):
 
 ### 즉시 착수 가능
 - 본 레포 새 피처를 work.py 사이클에 실어서 가는 것 자체가 가장 큰 작업 (Phase 2 정착).

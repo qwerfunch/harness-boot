@@ -861,6 +861,33 @@ features:
       - "AC-4 (I-007): metadata.changelog: [{date: ..., note: ...}] (version 없음) 가 validate 통과"
       - "AC-5: F-032 풀 사이클 (gate_0 + gate_5 + 4 + evidence + complete) 완주"
 
+  - id: "F-033"
+    name: "Audit pass — stale rename + work.py archive wiring + README/CLAUDE.md refresh + dogfood self-issues-log"
+    type: "feature"
+    description: "v0.10.4~v0.10.7 빠른 출시 후 codebase audit. 발견된 6 갭 일괄 fix: (1) docs/setup/local-install.md 의 /harness: 26회 + first-run-checklist.md 6회 + templates/starter/CLAUDE.md.template 9회 stale namespace rename. (2) README.md 배지 v0.9.6→v0.10.7, 테스트 수 764/742→883. (3) CLAUDE.md 루트 v0.10.3→v0.10.7 갱신. (4) work.py --archive 가 archived_at (F-029 신 schema field) 자동 채움. (5) F-027 도그푸드 첫 적용 — .harness/_workspace/issues-log.md 에 audit findings 누적. (6) F-028 prompt log hook 의 production 미작동 (사용자 /plugin update 필요) 메모리 + CHANGELOG 안내."
+    modules:
+      - "docs_setup_local_install_rename"
+      - "docs_setup_first_run_checklist_rename"
+      - "templates_starter_claude_md_template_rename"
+      - "readme_version_badge_refresh"
+      - "claude_md_root_refresh"
+      - "work_py_archive_at_wire"
+      - "dogfood_issues_log_seed"
+    test_strategy: "contract"
+    tdd_focus:
+      - "docs/setup/local-install.md · first-run-checklist.md · templates/starter/CLAUDE.md.template 모두 /harness: 0건 (단 historical /harness:status 같은 deprecated 명령은 의도적 잔존 가능 — 그건 commands/ 외 docs 만 검사)"
+      - "README.md grep 'v0.10.7' ≥ 1 · 'v0.9.6' 0 (배지)"
+      - "CLAUDE.md (루트) grep 'v0.10.7' ≥ 1 · 'v0.10.3' 0 또는 historical 컨텍스트만"
+      - "scripts/work.py archive 함수가 archived_at = ISO8601 UTC 자동 기록"
+      - ".harness/_workspace/issues-log.md 존재 + ≥ 1 entry"
+    acceptance_criteria:
+      - "AC-1 (rename): grep -rc '/harness:' docs/setup/ docs/templates/starter/CLAUDE.md.template == 0 (각 파일별)"
+      - "AC-2 (README): 배지 + 본문에 v0.10.7 + 883 tests 일치"
+      - "AC-3 (CLAUDE.md): §1 v0.10.7, §2 누적 테스트 883, §5 v0.10.4~v0.10.7 narrative, §8 cosmic-suika ISSUES-LOG 닫힘 명시"
+      - "AC-4 (design clarification): F-029 의 archived_at / archive_reason 은 work.py 가 자동 채우지 않고 사용자가 spec.yaml 에 declarative 로 명시하는 forward-compat field 임을 schema description + CLAUDE.md 에 명시 (state.yaml 의 status=archived 가 runtime 상태를 책임짐)"
+      - "AC-5 (dogfood): .harness/_workspace/issues-log.md 가 audit findings ≥ 5 entry 로 채워짐"
+      - "AC-6: F-033 풀 사이클 (gate_0 + gate_5 + evidence + complete) 완주"
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

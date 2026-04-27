@@ -11,8 +11,17 @@
 .harness/domain.md
 .harness/architecture.yaml
 
-# Working outputs — regenerated each ceremony
-.harness/_workspace/
+# Working outputs — regenerated each ceremony.
+# Wildcard pattern (not bare dir) so the negation below can re-include
+# issues-log.md — git ignores re-includes whose parent directory is itself
+# ignored, so we ignore the *contents* not the dir.
+.harness/_workspace/*
+.harness/_workspace/**/
+
+# F-027 issue logging — share with maintainer. Commit issues-log.md so the
+# harness-boot maintainer can pick up your friction reports for the next
+# return cycle.
+!.harness/_workspace/issues-log.md
 
 # Python (if your project uses Python)
 __pycache__/

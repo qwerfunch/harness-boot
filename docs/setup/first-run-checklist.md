@@ -1,4 +1,11 @@
-# 첫 실행 검증 체크리스트 (v0.1.0)
+# 첫 실행 검증 체크리스트 (v0.1.0 historical)
+
+> **Notice (v0.10.7)**: 이 체크리스트는 v0.1.0 태깅 시점의 historical 문서입니다.
+> v0.9.0 통합으로 슬래시 명령은 `/harness-boot:init` · `/harness-boot:work` 2 개로
+> 줄어, 본 문서의 `/harness:init` `/harness:status` 등 8 명령 참조는 stale.
+> 현재 첫 실행은 `/plugin install harness-boot@harness-boot` → `/harness-boot:init`
+> (자연어 또는 메뉴) 한 줄로 충분합니다. 본 체크리스트는 v0.1.0 시점 unknown 닫기
+> 기록으로 보존.
 
 이 체크리스트는 **실제 Claude Code 세션** 에서 harness-boot 플러그인을 **1 회** 돌려보고 남은 미지수(10 항목)를 닫는 용도입니다. [드라이런 리포트 §6](../../design/phase-2.16-e2e-dryrun-report.md) 가 문서 기반으로 예상한 동작을 **실제 런타임 동작과 비교**합니다.
 

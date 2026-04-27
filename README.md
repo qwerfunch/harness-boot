@@ -2,9 +2,9 @@
 
 > 자연어 아이디어를 **스펙으로 굳히고**, 전문가 에이전트 팀이 **역할별로 협업해** 실제 돌아가는 코드까지 이끌어내는 **AI 개발 하네스 프레임워크**.
 
-[![version](https://img.shields.io/badge/plugin-v0.9.6-blue)](.claude-plugin/plugin.json)
+[![version](https://img.shields.io/badge/plugin-v0.10.7-blue)](.claude-plugin/plugin.json)
 [![spec](https://img.shields.io/badge/spec-v2.3.8-green)](docs/schemas/spec.schema.json)
-[![tests](https://img.shields.io/badge/tests-764%20passing-brightgreen)](tests)
+[![tests](https://img.shields.io/badge/tests-883%20passing-brightgreen)](tests)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 ---
@@ -293,18 +293,18 @@ harness-boot/
 ├── .claude-plugin/              # plugin.json · marketplace.json
 ├── agents/                      # 16 전문가 에이전트
 ├── commands/                    # 슬래시 명령 (init · work)
-├── hooks/                       # session-bootstrap
-├── scripts/                     # Python 구현
+├── hooks/                       # session-bootstrap · prompt-log (UserPromptSubmit)
+├── scripts/                     # Python 구현 (core · ceremonies · gate · render · spec · ui)
 ├── skills/spec-conversion/      # plan.md → spec.yaml 변환
 ├── docs/                        # 스키마 · 템플릿 · 샘플
-└── tests/                       # 단위 · 통합 · 회귀 (742 tests)
+└── tests/                       # 단위 · 통합 · 회귀 · scale (883 tests · scale 옵트인)
 ```
 
 ---
 
 ## 현재 상태 · 기여
 
-**v0.9.6** — 2 개 명령어 UX + 완료 근거 원칙 + 시나리오 계약 + 사용자 친화 README + prototype/product 모드 의례 경량화. 764 tests · self_check 5/5.
+**v0.10.7** — Phase 2 self-hosting active (본 레포 자체가 work.py 사이클 적용) · cosmic-suika 외부 dogfood 환원 사이클 (I-001 ~ I-008 + I-003/4/6/7) · scaling preparedness (additive schema fields + sharding tools + stress test 1000~10000 features) · init/work observability (issue logging + prompt log hook). 883 tests · self_check 5/5.
 
 - **버그 · 제안**: [GitHub Issues](https://github.com/qwerfunch/harness-boot/issues)
 - **변경 이력**: [CHANGELOG.md](CHANGELOG.md)

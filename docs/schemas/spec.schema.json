@@ -169,11 +169,11 @@
           "archived_at": {
             "type": "string",
             "format": "date-time",
-            "description": "v0.10.6 additive — 피처가 active spec 에서 archive 로 옮겨진 시각 (ISO8601 UTC, 예: '2026-04-27T00:00:00Z'). v0.10.0 supersession (다른 피처가 대체) 과 구분: archive 는 단순히 더 이상 active 가 아닌 done. 미설정이면 active. 향후 ~300 features 임계점에서 spec/archive/YYYY.yaml 으로 이동 시 사용."
+            "description": "v0.10.6 additive (declarative; v0.10.7 clarified) — 피처가 active spec 에서 archive 로 옮겨진 시각 (ISO8601 UTC, 예: '2026-04-27T00:00:00Z'). **사용자가 spec.yaml 에 직접 채우는 declarative field — work.py 가 자동 채우지 않음.** Runtime 상태는 state.yaml 의 status=archived 가 책임 (work.py --archive 가 그것만 갱신). 이 field 는 향후 ~300 features 임계점에서 spec/archive/YYYY.yaml 으로 이동 시 + archive intent 의 spec-level 선언용. 미설정이면 active."
           },
           "archive_reason": {
             "type": "string",
-            "description": "v0.10.6 additive — archive 사유 (1~2 줄). archived_at 와 함께 채워짐. 예: 'feature complete · 6 mo unreferenced', 'replaced by external library', 'scope removed'."
+            "description": "v0.10.6 additive (declarative; v0.10.7 clarified) — archive 사유 (1~2 줄). archived_at 와 함께 사용자가 spec.yaml 에 직접 채움. work.py --archive 의 --reason 옵션은 events.log 에 기록될 뿐 spec.yaml 에는 안 닿음 (사용자 commit 책임). 예: 'feature complete · 6 mo unreferenced', 'replaced by external library', 'scope removed'."
           },
           "digest": {
             "type": "string",

@@ -1,4 +1,12 @@
-# 로컬 설치 스모크 시나리오 (v0.1.0)
+# 로컬 설치 스모크 시나리오 (v0.1.0 historical)
+
+> **Notice (v0.10.7)**: 본 문서의 `/harness:init` · `/harness:spec` · `/harness:status`
+> 등 8 명령 참조는 v0.1.0 ~ v0.8.x 시점 historical. v0.9.0 통합 후 사용자가 외울
+> 명령은 `/harness-boot:init` · `/harness-boot:work` 2 개. 본 문서의 `/harness:init`
+> 는 `/harness-boot:init`, `/harness:work` 는 `/harness-boot:work` 로 대체해 읽으세요.
+> 나머지 6 명령 (`spec` · `sync` · `status` · `check` · `events` · `metrics`) 은
+> v0.9.0 에서 `/harness-boot:work` 의 옵션으로 흡수됨 (`--current` · `--json` 등).
+> 부록 A (자체 도그푸드) 는 Phase 2 active 후 CLAUDE.md §7 + .harness/README.md 가 SSoT.
 
 마켓플레이스 등록 전에 **로컬 클론으로 플러그인이 동작하는지** 1분 안에 확인하는 절차입니다. 각 단계 끝에는 "기대 출력" 이 있어 실패를 즉시 식별할 수 있습니다.
 

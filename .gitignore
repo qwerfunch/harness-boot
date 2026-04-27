@@ -44,10 +44,15 @@ design/
 legacy/
 
 # harness-boot 자체 도그푸드 (.harness/) — derived + 로그 + ceremony 산출은 미추적.
-# spec.yaml · state.yaml · README.md 만 tracked.
+# spec.yaml · state.yaml · README.md · _workspace/issues-log.md 만 tracked.
 .harness/events.log
 .harness/harness.yaml
 .harness/domain.md
 .harness/architecture.yaml
 .harness/chapters/
-.harness/_workspace/
+# .harness/_workspace/ 는 ceremony 산출 + observability log. 단 issues-log.md 만 tracked
+# (F-027 maintainer 환원 사이클의 SSoT). 디렉터리 자체를 ignore 하면 negation 이 안 듣기 때문에
+# 안의 파일만 와일드카드로 ignore + 명시적 unignore.
+.harness/_workspace/*
+.harness/_workspace/**/
+!.harness/_workspace/issues-log.md

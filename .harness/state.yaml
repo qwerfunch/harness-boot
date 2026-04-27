@@ -559,8 +559,41 @@ features:
       14 신규 tests (test_cosmic_suika_returns.py) 모두 OK, 883 tests · self_check 5/5.'
   started_at: '2026-04-27T05:14:39Z'
   completed_at: '2026-04-27T05:15:09Z'
+- id: F-033
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-27T05:31:26Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T05:31:26Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T05:31:26Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (7.1s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-27T05:31:26Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.5s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T05:31:43Z'
+    kind: trivial
+    summary: 'Audit pass — v0.10.4~v0.10.7 빠른 출시 후 codebase 점검. 6 갭 fix: (1) docs/setup/{local-install,first-run-checklist}.md
+      에 v0.10.7 deprecation notice 헤더 (stale /harness:* 명령 안내 처리). (2) docs/templates/starter/CLAUDE.md.template
+      전면 갱신 — /harness-boot:* namespace · 2 명령 통합 안내 · F-027/F-028 observability 섹션
+      + .harness/_workspace/prompts 디렉터리 명시. (3) README.md 배지 v0.9.6→v0.10.7, 테스트
+      수 764/742→883, 현재 상태 narrative 갱신. (4) CLAUDE.md (root) §1 v0.10.3→v0.10.7,
+      §2 누적 테스트 838→883 + v0.10.5/6/7 줄 추가, §5 narrative 4 줄 추가, §8 닫힘 항목 v0.10.4~7
+      정리, §9 다음 후보 갱신. (5) docs/schemas/spec.schema.json 의 archived_at/archive_reason
+      description 에 ''declarative · work.py 자동 채우지 않음'' 명시 — F-029 의 의도 모호 해소. (6)
+      .harness/_workspace/issues-log.md 작성 — F-027 컨벤션의 첫 자체 적용, audit findings 8
+      entry. 15 신규 tests (test_audit_pass.py). 898 tests · self_check 5/5.'
+  started_at: '2026-04-27T05:31:18Z'
+  completed_at: '2026-04-27T05:31:43Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-032
+  last_command: /harness:work F-033
   last_gate_passed: gate_5
   active_feature_id: null

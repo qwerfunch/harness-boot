@@ -11,6 +11,52 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 - Marketplace PR (anthropic/claude-plugins-official) — 사용자 명시 후 진입.
 
+## [0.10.8] — 2026-04-27
+
+**Audit pass — stale rename + README/CLAUDE.md refresh + dogfood self-issues-log + F-029 schema doc 명확화.**
+
+v0.10.4~v0.10.7 빠른 출시 후 codebase 점검. 사용자 영향 0 (기존 동작 변경 없음) ·
+모두 docs / template 갱신 + 자체 도그푸드 적용. F-033 단일 피처로 묶어 work.py
+풀 사이클 (gate_0 + gate_5 + `--kind trivial` evidence + complete) 완주.
+
+### Changed
+
+- **`docs/templates/starter/CLAUDE.md.template`** 전면 재작성 — `/harness:*` →
+  `/harness-boot:*` (사용자 프로젝트에 복사되는 stale 컨텐츠 제거), v0.9.0
+  통합된 2 명령 안내, F-027/F-028 observability 섹션 + `.harness/_workspace/prompts`
+  디렉터리 명시.
+- **`README.md`**: 배지 `v0.9.6` → `v0.10.7`, 테스트 수 `764`/`742` → `883`,
+  현재 상태 단락을 v0.10.7 (Phase 2 + observability + scaling preparedness) 로 갱신.
+- **`CLAUDE.md` (루트)**: §1 현재 릴리즈 v0.10.3 → v0.10.7, §2 누적 테스트
+  838+ → 883 + v0.10.5/6/7 핵심 줄 추가, §5 v0.10.4~7 narrative 4 줄 추가,
+  §8 닫힘 항목 정리, §9 다음 후보 갱신.
+- **`docs/schemas/spec.schema.json`** `archived_at` / `archive_reason`
+  description 에 "**declarative · work.py 가 자동 채우지 않음**" 명시 —
+  F-029 의 의도 모호 해소 (state.yaml 의 status=archived 가 runtime 책임;
+  spec.yaml 의 field 는 사용자가 직접 채우는 forward-compat declaration).
+
+### Added
+
+- **`docs/setup/{local-install,first-run-checklist}.md`** 상단에 v0.10.7
+  deprecation notice 한 단락 — `/harness:*` 잔존 안내. 본문은 historical
+  로 보존.
+- **`.harness/_workspace/issues-log.md`** 신설 — F-027 컨벤션의 본 레포 첫
+  자체 적용. F-025~F-032 사이에 발견한 8 갭을 entry 로 기록 (대부분 이미
+  해소된 ✅ FIXED 표기). dogfood-violation 모순 해소.
+- **`tests/unit/test_audit_pass.py`** 신규 — 15 tests (template stale 0,
+  README 배지/숫자, CLAUDE.md narrative, schema description, issues-log
+  존재 + 5+ entry).
+
+### Notes
+
+- F-028 prompt log hook 의 production 검증은 사용자가 `/plugin update
+  harness-boot@harness-boot` 후 다음 세션부터 가능 — `.harness/_workspace/prompts/YYYY-MM.jsonl`
+  에 매 prompt 마다 entry 가 누적되는지 실측. 현재 본 레포의 첫 entry 는
+  F-028 smoke test 부산물 (빈 prompt + 빈 session_id).
+- F-029 의 5 schema fields 는 의도된 declarative — work.py 가 자동 wire
+  하지 않는 것이 design choice. 향후 sharding 진입 시 사용자가 채움.
+- 누적 테스트 883 → 898 (+15). features count 32 → 33. self_check 5/5 OK.
+
 ## [0.10.7] — 2026-04-27
 
 **cosmic-suika ISSUES-LOG 일괄 환원 (I-003 / I-004 / I-006 / I-007).**
