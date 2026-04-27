@@ -11,6 +11,53 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 - Marketplace PR (anthropic/claude-plugins-official) — 사용자 명시 후 진입.
 
+## [0.10.5] — 2026-04-27
+
+**Init/work observability — issue logging (F-027) + prompt logging (F-028).**
+
+사용자가 외부 프로젝트에서 `/harness-boot:init` · `/harness-boot:work` 를
+사용하면서 (a) 마주친 harness-boot 마찰을 표준화된 형식으로 적게 하고,
+(b) 입력 프롬프트를 자동 누적하여 추후 plugin 개선 (메인테이너 환원 사이클)
++ prompt 형상화 데이터로 활용한다. cosmic-suika 가 수동 운영해온 ISSUES-LOG
+패턴을 플러그인 차원에서 표준화 + 자동화.
+
+### Added — F-027 (issue logging convention)
+
+- **`commands/init.md`** + **`commands/work.md`** 양쪽에 `## Issue logging`
+  섹션 추가. 사용자 프로젝트의 `.harness/_workspace/issues-log.md` 에
+  Claude 가 마찰을 발견할 때마다 한 entry 씩 append 하도록 지시.
+- **Entry schema** (markdown, append-only): `Source` · `Category` (ergonomics
+  / bug / missing-feature / dead-reference / docs-stale / gate-detect) ·
+  `Severity` (blocker / annoying / trivial) · `What happened` ·
+  `Suggested fix`.
+- **5 신규 tests** in `tests/unit/test_command_issue_log.py` —
+  섹션/경로/필드 grep + anti-rationalization (BR-014) 보존 검증.
+
+### Added — F-028 (prompt logging hook)
+
+- **`hooks/prompt-log.sh`** 신설 — UserPromptSubmit hook script. 사용자
+  프로젝트의 `.harness/_workspace/prompts/YYYY-MM.jsonl` 에 prompt 를
+  무음 append. fail-open (빈 stdin · 권한 부재 · python3 부재 등 어떤
+  에러 경로도 exit 0 + 무출력).
+- **`hooks/hooks.json`** 에 UserPromptSubmit 등록 (SessionStart 와 동일
+  pattern, 2>/dev/null + `|| true`).
+- **`.harness/` 부재 시 silent exit 0** — 대부분의 워크스페이스에 영향 X.
+- **JSONL entry schema**: `{ts, session_id, prompt}` · UTF-8 보존
+  (Korean/CJK round-trip).
+- **`user_prompt` 키 우선 + `prompt` 키 fallback** — Claude Code 버전 호환.
+- **7 신규 tests** in `tests/unit/test_prompt_log_hook.py` — 스크립트
+  존재/executable + hooks.json 와이어링 + 4 behavior contract.
+
+### Notes
+
+- F-027 은 LLM 디시플린 (instruction 기반) — Claude 가 마찰을 봤을 때
+  적느냐가 운용 핵심. `NO skip` 명시.
+- F-028 은 자동 (hook 기반) — 사용자가 `/harness-boot:*` 외 일반 prompt 도
+  모두 캡처. `.harness/` 가 있는 워크스페이스에서만 활성화.
+- 누적 테스트 838 → 850.
+- 두 피처 모두 prototype 모드 풀 사이클 (gate_0 + gate_5 + evidence +
+  complete) 완주. features 26 → 28.
+
 ## [0.10.4] — 2026-04-27
 
 **Phase 2 self-hosting active — harness-boot 자체 도그푸드 활성화 + ergonomics 정리.**

@@ -383,3 +383,24 @@ python3 "$PLUGIN_ROOT/scripts/ceremonies/retro.py" --harness-dir .harness --feat
 - `docs/samples/harness-boot-self/spec.yaml` — F-004 AC · modules.
 - BR-004 (Iron Law): "NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE".
 - `agents/*.md` — 각 전문가 에이전트의 `## Context` · `## 산출 규약`.
+
+## Issue logging — harness-boot 개선 피드백 루프 (F-027)
+
+이 명령을 실행하면서 **harness-boot 플러그인 자체의 마찰** (Gate 자동 감지 실패 · spec/state 부정합 · ceremony 산출 깨짐 · stale doc · dead reference · 어색한 UX · 빠진 자동화) 을 발견하면 **즉시 한 항목씩** `.harness/_workspace/issues-log.md` 에 append. 사용자가 메인테이너에게 공유 시 다음 plugin 릴리즈 (예: cosmic-suika I-001/I-008/I-010 → v0.10.x 환원) 의 trigger.
+
+`.harness/_workspace/issues-log.md` 가 없으면 새로 만들고 짧은 헤더 (`# harness-boot ISSUES-LOG — <project name>`) 만 1 회 작성.
+
+**Entry 템플릿 (markdown, append-only)**:
+
+```markdown
+## YYYY-MM-DDTHH:MM:SSZ — <한 줄 제목>
+- **Source**: /harness-boot:work [F-N]
+- **Category**: ergonomics | bug | missing-feature | dead-reference | docs-stale | gate-detect
+- **Severity**: blocker | annoying | trivial
+- **What happened**: <1~3 줄 — Claude 가 본 사실 + 관련 명령/파일 경로>
+- **Suggested fix**: <선택 — 떠오르면 1 줄>
+```
+
+**언제 안 적나**: 사용자 피처 자체의 버그 (그건 사용자가 F-N evidence 로 기록) · 단순 git 충돌 같은 일반 dev 마찰 · gate 가 정당하게 fail 한 경우 (사용자 코드가 잘못됨). 의심스러우면 한 줄로 적되 Severity=trivial.
+
+**NO skip**: 이 섹션은 fail-open 이지만 (logging 실패가 사이클을 막지 않음) **Claude 가 마찰을 봤는데 적지 않으면** 다음 사용자가 같은 마찰을 또 만남 — 디시플린.

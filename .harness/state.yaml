@@ -388,8 +388,65 @@ features:
       풀 사이클 (gate_0 + gate_5 + 선언 evidence) 첫 reference, 838 tests OK.'
   started_at: '2026-04-27T03:13:03Z'
   completed_at: '2026-04-27T03:16:12Z'
+- id: F-027
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-27T04:47:02Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T04:47:02Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T04:47:02Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (6.6s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-27T04:47:02Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.4s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T04:47:13Z'
+    kind: generic
+    summary: 'Init/work issue-logging 규약: commands/init.md + commands/work.md 양쪽에
+      ''Issue logging'' 섹션 추가. .harness/_workspace/issues-log.md 경로 + 5-필드 markdown
+      template (Source/Category/Severity/What happened/Suggested fix). cosmic-suika
+      가 수동 운영해온 ISSUES-LOG → v0.10.x 환원 패턴을 플러그인 차원에서 표준화. anti-rationalization 보존,
+      self_check 5/5, 838 + 5 신규 tests OK.'
+  started_at: '2026-04-27T04:46:55Z'
+  completed_at: '2026-04-27T04:47:14Z'
+- id: F-028
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-27T04:47:28Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T04:47:28Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T04:47:28Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (6.6s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-27T04:47:28Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.4s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T04:47:45Z'
+    kind: generic
+    summary: 'UserPromptSubmit hook 으로 prompt 형상화 데이터 수집: hooks/prompt-log.sh (fail-open
+      · 무음 · .harness/ 부재 시 silent exit) + hooks/hooks.json UserPromptSubmit 등록. user_prompt
+      우선 + prompt fallback (Claude Code 버전 호환). UTF-8 보존, JSONL append, .harness/_workspace/prompts/YYYY-MM.jsonl.
+      7 신규 tests (스크립트 존재/실행권한 + hooks.json 와이어링 + .harness/ 부재 silent + 빈 stdin fail-open
+      + JSONL append + prompt key fallback) 모두 OK. 838 + 12 = 850 tests OK. self_check
+      5/5.'
+  started_at: '2026-04-27T04:47:21Z'
+  completed_at: '2026-04-27T04:47:45Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-026
+  last_command: /harness:work F-028
   last_gate_passed: gate_5
   active_feature_id: null

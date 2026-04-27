@@ -288,3 +288,24 @@ v0.2 로드맵: /harness-boot:work (파생) · /harness-boot:work (구현) · /h
 - 6개 핵심 훅 (security-gate, doc-sync-check, coverage-gate, format, test-runner, session-start-bootstrap)
 
 v0.1.0 단계에서는 사용자가 spec.yaml 을 채운 후 `/harness-boot:work` · `/harness-boot:work` 로 수동 진전하면 됩니다. `.claude/` 는 비어있어도 Claude Code 가 경고하지 않습니다.
+
+## Issue logging — harness-boot 개선 피드백 루프 (F-027)
+
+이 명령을 실행하면서 **harness-boot 플러그인 자체의 마찰** (어색한 UX · 작동 안 하는 명령 · 헷갈리는 안내 · stale doc · dead reference · 빠진 자동화 · 갑자기 막힘) 을 발견하면 **즉시 한 항목씩** `.harness/_workspace/issues-log.md` 에 append. 사용자가 메인테이너에게 공유 시 다음 plugin 릴리즈 (예: cosmic-suika I-001/I-008/I-010 → v0.10.x 환원) 의 trigger.
+
+`.harness/_workspace/issues-log.md` 가 없으면 새로 만들고 짧은 헤더 (`# harness-boot ISSUES-LOG — <project name>`) 만 1 회 작성.
+
+**Entry 템플릿 (markdown, append-only)**:
+
+```markdown
+## YYYY-MM-DDTHH:MM:SSZ — <한 줄 제목>
+- **Source**: /harness-boot:init
+- **Category**: ergonomics | bug | missing-feature | dead-reference | docs-stale
+- **Severity**: blocker | annoying | trivial
+- **What happened**: <1~3 줄 — Claude 가 본 사실>
+- **Suggested fix**: <선택 — 떠오르면 1 줄>
+```
+
+**언제 안 적나**: 사용자 코드/스펙 자체의 문제 (그건 사용자가 고친다) · 단순 사용자 오타 · 일반 Claude Code 사용법 (harness-boot 무관). 의심스러우면 한 줄로 적되 Severity=trivial.
+
+**NO skip**: 이 섹션은 fail-open 이지만 (logging 실패가 명령을 막지 않음) **Claude 가 마찰을 봤는데 적지 않으면** 다음 사용자가 같은 마찰을 또 만남 — 디시플린.

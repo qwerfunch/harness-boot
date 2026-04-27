@@ -729,6 +729,49 @@ features:
       - "AC-4: CHANGELOG [Unreleased] 에 Phase 2 활성화 + F-025/F-026 + bootstrap fix 한 단락"
       - "AC-5: F-026 가 work.py 풀 사이클 (gate_0 + gate_5 + 선언 evidence + complete) 완주 — Phase 2 의 첫 reference cycle"
 
+  - id: "F-027"
+    name: "init/work issue logging — harness-boot 개선 피드백 루프"
+    type: "feature"
+    description: "사용자가 외부 프로젝트에서 /harness-boot:init · /harness-boot:work 를 사용하면서 마주친 마찰 / 갭 / 버그 / dead-reference 를 .harness/_workspace/issues-log.md 에 LLM 이 즉시 append 하는 규약. cosmic-suika 가 수동 운영해온 ISSUES-LOG 패턴을 플러그인 차원에서 표준화. 추후 사용자가 이 파일을 harness-boot 메인테이너에게 공유 → v0.10.x 같은 환원 사이클 (cosmic-suika I-001/I-008/I-010) 의 trigger 가 됨."
+    modules:
+      - "command_init_issue_log_section"
+      - "command_work_issue_log_section"
+      - "issues_log_template_schema"
+    test_strategy: "contract"
+    tdd_focus:
+      - "commands/init.md 에 'issues-log' 섹션 + 한 entry 의 schema (ts · category · severity · what · suggested_fix) 명시"
+      - "commands/work.md 에 동일 섹션"
+      - "anti-rationalization 규약 (NO skip / NO shortcut) 보존"
+      - "self_check.sh step 5 (commands/*.md grep) 가 새 섹션 추가 후에도 통과"
+    acceptance_criteria:
+      - "AC-1: commands/init.md · commands/work.md 모두에 'issues-log' 또는 'Issue Log' 섹션 존재"
+      - "AC-2: 각 섹션에 .harness/_workspace/issues-log.md 경로 명시 + entry template 포함"
+      - "AC-3: tests/unit/test_command_issue_log.py 가 양쪽 명령 grep 검증"
+      - "AC-4: bash scripts/self_check.sh 5/5 pass · 838+ tests OK"
+      - "AC-5: F-027 풀 사이클 (gate_0 + gate_5 + evidence + complete) 완주"
+
+  - id: "F-028"
+    name: "init/work prompt logging — UserPromptSubmit hook + JSONL 누적"
+    type: "feature"
+    description: "사용자가 Claude Code 세션에서 입력한 모든 prompt 를 .harness/_workspace/prompts/YYYY-MM.jsonl 에 무음 append 하는 UserPromptSubmit hook. 추후 'prompt 형상화' (어떤 자연어가 init/work 라우팅을 잘 트리거하는지, 어떤 표현이 LLM 을 헤매게 하는지) 데이터 베이스. .harness/ 가 없는 워크스페이스에서는 silent exit 0. fail-open (출력 없음, 사용자 경험에 영향 없음)."
+    modules:
+      - "hooks_prompt_log_sh"
+      - "hooks_json_user_prompt_submit"
+      - "prompts_jsonl_schema"
+    test_strategy: "contract"
+    tdd_focus:
+      - "hooks/prompt-log.sh 존재 + executable + .harness/ 부재 시 exit 0 + 출력 없음"
+      - "hooks/hooks.json 에 UserPromptSubmit 항목 + prompt-log.sh 경로 매핑"
+      - ".harness/ 존재 시 mock JSON stdin → .harness/_workspace/prompts/YYYY-MM.jsonl 에 한 줄 JSONL append"
+      - "JSONL entry schema: {ts, session_id, prompt} · UTF-8 보존 (Korean OK)"
+      - "user_prompt 키 우선 · prompt 키 fallback (Claude Code 버전 호환)"
+    acceptance_criteria:
+      - "AC-1: hooks/prompt-log.sh 존재 · executable · `bash hooks/prompt-log.sh < /dev/null` 가 exit 0 + 무출력 (no .harness/)"
+      - "AC-2: hooks/hooks.json 의 hooks 객체에 UserPromptSubmit 키 + prompt-log.sh command 등록"
+      - "AC-3: tmpdir 에 .harness/ 만들고 mock JSON 으로 hook 실행 → .harness/_workspace/prompts/YYYY-MM.jsonl 에 1 줄 append, 그 줄이 valid JSON · prompt 텍스트 포함"
+      - "AC-4: bash scripts/self_check.sh 5/5 pass · tests/unit OK"
+      - "AC-5: F-028 풀 사이클 (gate_0 + gate_5 + evidence + complete) 완주"
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
