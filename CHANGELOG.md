@@ -29,6 +29,33 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - ~~Event log rotation (`events.log.YYYYMM`)~~ ✅ v0.8.6
 - AC coverage drift (check.py 11 번째 drift 후보)
 
+## [0.10.3] — TBD
+
+**Iron Law D — product mode strict (cosmic-suika I-008 환원).**
+
+이전 contract (gate_5 pass + N declared evidence) 만으로는 gate_2 (lint)
+fail 이 있어도 complete 가 통과하던 문제. product 모드는 이제 record 된
+모든 gate 의 last_result 가 fail 이 아닐 때만 통과한다. prototype 모드는
+lighter contract 유지.
+
+### Changed
+
+- **`scripts/work.py::complete`** — product 모드일 때 추가 검증 1 단계:
+  ``gates`` 맵에서 ``last_result == "fail"`` 인 항목이 하나라도 있으면
+  reject. 메시지에 모든 fail gate 이름 나열 (정렬). prototype 모드는
+  검증 skip — 현행 동작 유지. ``hotfix_reason`` 제공 시 strict 우회 가능
+  (audit trail 은 hotfix evidence 로 보존).
+
+### Notes
+
+- skipped / unrecorded gate 는 검증 대상 아님 — 사용자가 특정 gate 를
+  의도적으로 안 돌렸을 수 있음 (도구 미설치 환경 등). record 된 gate
+  중 fail 만이 차단 사유.
+- 검증 순서: gate_5 pass → product strict → declared evidence 카운트 →
+  state 전이. 가장 직접적인 gate fail 을 먼저 거름.
+- 8 new tests in `tests/unit/test_iron_law_declared.py`
+  (ProductModeFailedGateTests). 누적 838 tests OK.
+
 ## [0.10.2] — TBD
 
 **npm scripts auto-detection — gate_runner cosmic-suika I-001 환원.**

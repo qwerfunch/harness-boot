@@ -497,6 +497,27 @@ def complete(
     required_default = _IRON_LAW_D_REQUIRED[mode]
     required = 1 if hotfix_reason else required_default
 
+    # v0.10.3 — product mode strict: any declared gate currently failing blocks
+    # completion. cosmic-suika I-008 surfaced that the prior contract
+    # (gate_5 pass + declared evidence) let gate_2 (lint) fail slip through.
+    # Prototype keeps the lighter contract — recorded fails do not block.
+    # hotfix_reason still bypasses, since emergency overrides leave their own
+    # audit trail via the `hotfix` evidence kind.
+    if mode == "product" and not hotfix_reason:
+        failed_gates = sorted(
+            g for g, v in gates.items()
+            if isinstance(v, dict) and v.get("last_result") == "fail"
+        )
+        if failed_gates:
+            res = _summarize(state, fid)
+            res.action = "queried"
+            res.message = (
+                f"cannot complete — product mode strict: declared gate(s) failing — "
+                f"{', '.join(failed_gates)}. Re-run with --run-gate after fixing, "
+                f"or use --hotfix-reason for emergency override."
+            )
+            return res
+
     # Hotfix evidence is recorded *before* the count so the reason itself
     # contributes toward the 1-declared floor. Without this the caller would
     # need to add a prior evidence entry, defeating the "emergency shortcut"
