@@ -912,7 +912,7 @@ features:
   started_at: '2026-04-27T10:07:18Z'
   completed_at: '2026-04-27T10:12:01Z'
 - id: F-045
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -938,9 +938,9 @@ features:
       5 sibling 이 stable access path 제공 · 외부 dev migration 진입로 · 7 new unit tests
       · 1077 → 1084 누적 · self_check 5/5 · 1077 unit + 26 integration regression 0
   started_at: '2026-04-27T10:25:14Z'
-  completed_at: null
+  completed_at: '2026-04-27T10:29:13Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
   last_command: /harness:work F-045
   last_gate_passed: gate_5
-  active_feature_id: F-045
+  active_feature_id: null
