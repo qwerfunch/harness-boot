@@ -742,7 +742,7 @@ features:
   started_at: '2026-04-27T08:11:53Z'
   completed_at: '2026-04-27T08:18:36Z'
 - id: F-039
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -770,9 +770,9 @@ features:
       Parallel Invocation Pattern · 18 new tests (parallel_groups 7 + work_parallel
       8 + dashboard_parallel 3) + 1029 regression 0 + self_check 5/5 + gate_0/5 PASS
   started_at: '2026-04-27T08:27:48Z'
-  completed_at: null
+  completed_at: '2026-04-27T08:34:05Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
   last_command: /harness:work F-039
   last_gate_passed: gate_5
-  active_feature_id: F-039
+  active_feature_id: null
