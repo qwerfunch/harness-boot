@@ -339,8 +339,57 @@ features:
       5 · templates 5 · pipe 11) · 모두 fail-open 검증
   started_at: '2026-04-23T13:37:55Z'
   completed_at: '2026-04-23T13:41:53Z'
+- id: F-025
+  status: done
+  gates:
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T01:54:15Z'
+      note: 'cmd: bash scripts/self_check.sh'
+  evidence:
+  - ts: '2026-04-27T01:54:15Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.5s) · cmd: bash scripts/self_check.sh'
+  - ts: '2026-04-27T01:54:24Z'
+    kind: generic
+    summary: 'Phase 2 self-hosting activation 부트스트랩: CLAUDE.md v0.3.9→v0.10.3 갱신 +
+      메모리(deferred→active) 전환 + dogfood feedback 일반화 + .harness/spec.yaml 에 F-025
+      자체 추가 + project.mode=prototype 명시. self_check.sh 5/5 pass. cosmic-suika 와 동일
+      work.py 사이클 규약 적용.'
+  started_at: '2026-04-27T01:53:41Z'
+  completed_at: '2026-04-27T01:54:29Z'
+- id: F-026
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-27T03:15:44Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T03:15:52Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T03:15:44Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (6.5s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-27T03:15:52Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.4s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T03:16:05Z'
+    kind: generic
+    summary: 'Phase 2 후속 정리 5건 + pytest.ini ergonomics fix: (A) scripts/smoke.sh shim
+      → gate_5 자동 감지 (--override-command 불필요). (B) .harness/README.md Phase 2 active
+      갱신. (C) scripts/self_check.sh 헤더 Phase 1→2. (D) hooks/session-bootstrap.sh dead
+      reference (/harness:status → /harness-boot:work) 수정 — 사용자 visible behavior change.
+      (E) CHANGELOG [Unreleased] 에 Phase 2 활성화 단락. 보너스: pytest.ini 추가로 베어 pytest 가
+      design/oss-refs 까지 수집해서 collection error 던지던 문제 해소 — gate_0 도 override 불필요.
+      풀 사이클 (gate_0 + gate_5 + 선언 evidence) 첫 reference, 838 tests OK.'
+  started_at: '2026-04-27T03:13:03Z'
+  completed_at: '2026-04-27T03:16:12Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-014
+  last_command: /harness:work F-026
   last_gate_passed: gate_5
   active_feature_id: null

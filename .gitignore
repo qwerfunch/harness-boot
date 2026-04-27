@@ -43,10 +43,11 @@ design/
 # but no new local artifacts under legacy/ should enter git
 legacy/
 
-# harness-boot 자체 도그푸드 (.harness/) — derived + 로그는 미추적.
+# harness-boot 자체 도그푸드 (.harness/) — derived + 로그 + ceremony 산출은 미추적.
 # spec.yaml · state.yaml · README.md 만 tracked.
 .harness/events.log
 .harness/harness.yaml
 .harness/domain.md
 .harness/architecture.yaml
 .harness/chapters/
+.harness/_workspace/

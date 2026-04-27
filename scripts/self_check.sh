@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# self_check.sh — harness-boot 자체 도그푸드 Passive 검증 (v0.3.10+, Phase 1)
+# self_check.sh — harness-boot 자체 도그푸드 검증 (Phase 2 active, 2026-04-27~)
+#
+# Phase 2 에서도 동일한 5 단계 구조 무결성 검증을 유지한다 (Phase 1 시절의 유일한
+# 검증이 이제는 work.py 사이클의 gate_5 entry point 로도 쓰임 — scripts/smoke.sh
+# 가 이 파일을 thin wrap 한다).
 #
 # 5 단계 검증:
 #   1. .harness/spec.yaml == docs/samples/harness-boot-self/spec.yaml (SSoT 동기성)

@@ -34,6 +34,7 @@ version: "2.3.8"
 
 project:
   name: "harness-boot"
+  mode: "prototype"                          # v0.9.6 — Phase 2 self-hosting (2026-04-27): lighter Iron Law D
   summary: "Claude Code 용 하네스 플러그인 — spec.yaml 을 SSoT 로 Walking Skeleton 부터 진화까지 자동화"
   description: |
     Anthropic Claude Code 의 플러그인으로 동작하는 "하네스(harness)" 도구.
@@ -682,6 +683,51 @@ features:
       - "플러그인 install 후 SessionStart hook 이 /harness:status 유도 배너 출력"
       - "어떤 플러그인 hook 도 exit 2 반환 불가 (fail-open 강제)"
       - "사용자가 자기 프로젝트 별 훅을 `docs/templates/hooks/` 에서 `.claude/hooks.json` 으로 복사 가능"
+
+  - id: "F-025"
+    name: "Phase 2 self-hosting activation (CLAUDE.md drift fix + 셀프 트래킹)"
+    type: "feature"
+    description: "2026-04-27 Phase 2 self-hosting 활성화 부트스트랩. CLAUDE.md 가 v0.3.9 표기 → v0.10.3 reality 로 갱신, 메모리(project_self_hosting_deferred → _active) 와 dogfood feedback 일반화, .harness/spec.yaml 에 본 F-025 자체를 추가하여 첫 work.py 사이클로 검증한다. 메타-셀프-임프루브먼트 — 정책 변경을 정책 자체로 트래킹."
+    modules:
+      - "claude_md_drift_repair"
+      - "memory_self_hosting_active"
+      - "spec_canonical_f025_append"
+    test_strategy: "smoke"
+    tdd_focus:
+      - "scripts/self_check.sh 5/5 pass (spec diff · validate · sync · check · commands 규약 모두 통과)"
+      - "tests/unit 838+ tests 회귀 없음"
+      - ".harness/state.yaml 에 F-025 가 status=done 으로 전이"
+      - ".harness/events.log 에 F-025 의 4 lifecycle 이벤트 (activated · gate_run · evidence_declared · completed) 누적"
+    acceptance_criteria:
+      - "AC-1: CLAUDE.md 가 v0.10.3 reality 와 일치 — `grep -c 'v0.10.3' CLAUDE.md ≥ 1` · `grep -c 'v0.3.9' CLAUDE.md == 0`"
+      - "AC-2: docs/samples/harness-boot-self/spec.yaml 의 features 길이 == 25 · `.harness/spec.yaml` 와 diff -q 일치"
+      - "AC-3: project.mode == 'prototype' 명시 · scripts/core/project_mode.resolve_mode 가 prototype 반환"
+      - "AC-4: bash scripts/self_check.sh 종료코드 0"
+      - "AC-5: F-025 가 work.py 4-verb 사이클 (activate → run-gate gate_5 → evidence → complete) 을 완주 — Iron Law D (prototype: gate_5 pass + evidence ≥ 1) 준수"
+
+  - id: "F-026"
+    name: "Phase 2 후속 정리 — smoke shim + stale doc/dead-ref + 첫 풀 사이클 reference"
+    type: "feature"
+    description: "F-025 활성화 후 발견된 5 갭 일괄 처리. (A) scripts/smoke.sh 1줄 shim 으로 gate_5 의 --override-command 의존 제거. (B) .harness/README.md 의 Phase 1 표기 → Phase 2 active 로 갱신. (C) scripts/self_check.sh 헤더 주석 동일 갱신. (D) hooks/session-bootstrap.sh 의 /harness:status (v0.9.0 통합 후 부재) → /harness-boot:work dead reference 수정. (E) CHANGELOG [Unreleased] 에 Phase 2 활성화 + F-025/F-026 항목. 본 피처가 work.py 풀 사이클 (gate_0 + gate_5 + evidence + complete) 의 첫 reference cycle 이 됨."
+    modules:
+      - "scripts_smoke_shim"
+      - "harness_readme_phase2"
+      - "self_check_header_phase2"
+      - "session_bootstrap_dead_ref"
+      - "changelog_unreleased_phase2"
+    test_strategy: "smoke"
+    tdd_focus:
+      - "scripts/smoke.sh 존재 + executable + bash scripts/smoke.sh 가 self_check.sh 와 동일 결과"
+      - "gate_5 가 --override-command 없이 auto-detect (work.py --run-gate gate_5 가 'no runtime smoke detected' 메시지 X)"
+      - "tests/unit 838+ tests 회귀 없음"
+      - ".harness/README.md · self_check.sh 에 'Phase 2' 등장 · 'Phase 1 (현재' 부재"
+      - "hooks/session-bootstrap.sh 에 /harness:status 부재 · /harness-boot:work 등장"
+    acceptance_criteria:
+      - "AC-1: scripts/smoke.sh exists · executable · gate_5 자동 감지 (override 없이 pass)"
+      - "AC-2: .harness/README.md · scripts/self_check.sh 헤더 모두 Phase 2 active 반영"
+      - "AC-3: hooks/session-bootstrap.sh dead reference 수정 (/harness:status → /harness-boot:work)"
+      - "AC-4: CHANGELOG [Unreleased] 에 Phase 2 활성화 + F-025/F-026 + bootstrap fix 한 단락"
+      - "AC-5: F-026 가 work.py 풀 사이클 (gate_0 + gate_5 + 선언 evidence + complete) 완주 — Phase 2 의 첫 reference cycle"
 
 constraints:
   tech_stack:

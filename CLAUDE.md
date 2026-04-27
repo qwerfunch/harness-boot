@@ -1,163 +1,195 @@
 # harness-boot — 플러그인 개발 레포
 
 > 이 CLAUDE.md 는 **이 레포에서 플러그인을 개발할 때** 읽는 컨텍스트입니다.
-> `docs/templates/starter/CLAUDE.md.template` 는 `/harness:init` 이 **사용자 프로젝트에** 쓰는 별개 파일이며 이 파일과 혼동하지 마세요.
+> `docs/templates/starter/CLAUDE.md.template` 는 `/harness-boot:init` 이 **사용자 프로젝트에** 쓰는 별개 파일이며 이 파일과 혼동하지 마세요.
 
 ## 1. 이 레포가 뭐냐
 
-Claude Code 플러그인 `harness-boot` 의 소스. 사용자는 `/harness:init` 로 자기 프로젝트에 `.harness/` 골격을 설치하고, `.harness/spec.yaml` 을 편집 혹은 `/harness:spec` 으로 파생/정제하며, 나머지는 플러그인이 파생.
+Claude Code 플러그인 `harness-boot` 의 소스. 사용자는 `/harness-boot:init` 로 자기 프로젝트에 `.harness/` 골격을 설치하고, 이후 `/harness-boot:work` 한 명령으로 피처 사이클(activate → gate → evidence → complete)을 돌린다. v0.9.0 의 UX 재구조화로 외울 명령은 2 개로 통합됨.
 
-- **현재 릴리즈**: v0.3.9 (2026-04-23 태그 · GitHub Release). 공식 마켓플레이스 PR 은 안정화 마무리 후.
-- **설치 경로**: `/plugin marketplace add qwerfunch/harness-boot` → `/plugin install harness@harness-boot`. 공식 claude-plugins-official 마켓 PR 머지 전까지 이 경로가 유일.
-- **SemVer 정책**: 0.3.x 는 patch-first. 기능 추가여도 0.3.X+1. minor/major 는 사용자 확인 + 큰 마일스톤 한정 (v0.4 후보).
+- **현재 릴리즈**: v0.10.3 (2026-04-27 태그). 마켓플레이스 PR 은 사용자 결정 시점까지 보류.
+- **설치 경로**: `/plugin marketplace add qwerfunch/harness-boot` → `/plugin install harness-boot@harness-boot`. 업그레이드 `/plugin update harness-boot@harness-boot`.
+- **SemVer 정책**: patch-first. 새 기능이라도 X.Y.Z+1. minor/major 는 사용자 확인 + 큰 마일스톤 한정.
 - **라이선스**: MIT · Author: qwerfunch
 
 ## 2. 지금 어디쯤 있나
 
-**v0.3.9 릴리즈 완료** (2026-04-23). 0.3.x 코어 스토리 완결 상태:
+**v0.10.3 — Phase 2 self-hosting active** (2026-04-27).
 
-- **8 슬래시 명령 전부 shipped**: `init` · `spec` · `sync` · `work` · `status` · `check` · `events` · `metrics`.
-- **Gate 자동화 0~5 전부**: `/harness:work --run-gate gate_N` 이 pytest/mypy/ruff/coverage/git-diff/smoke 자동 감지 + 실행. **BR-004 Iron Law (gate_5=pass + evidence≥1 없이 done 거부) 전 구간 자동**.
-- **Drift 탐지 8/8**: Generated · Derived · Spec · Include · Evidence · Code · Doc · Anchor.
-- **자기 파생 dogfood 성공**: `docs/samples/harness-boot-self/spec.yaml` 로 self-describe round trip.
-- **누적 테스트**: 373/373 (unittest, 16 skipped).
+핵심 누적:
+- **2 슬래시 명령** (`/harness-boot:init` · `/harness-boot:work`) — v0.9.0 통합. init 은 자연어 직진 또는 3 옵션 메뉴, work 는 무인자(no-args dashboard, v0.9.2) · 인텐트 자연어 · F-ID 직접 호출 모두 지원.
+- **Gate 자동화 0/1/2/3/5 전부** — `scripts/gate/runner.py` 가 pyproject pytest · npm scripts (typecheck/lint/test:coverage/smoke/test:e2e, v0.10.2) · 도구 직접 호출 · 언어별 polyglot fallback 순으로 자동 감지. **BR-004 Iron Law (gate_5=pass + 선언 evidence ≥ N) 전 구간 자동.**
+- **Iron Law D — cumulative declared evidence** (v0.9.3) + **product mode strict** (v0.10.3) — `project.mode == product` 일 때 record 된 모든 gate 의 last_result 가 fail 이 아닐 것까지 강제. prototype 은 lighter contract.
+- **Project mode 축** (v0.9.6) — `spec.project.mode ∈ {prototype, product}` 단일 스위치가 Iron Law D 임계값 · kickoff/retro 템플릿 · design-review autowire 전부를 결정. 미지정 → product (strict default).
+- **Drift 탐지 8/8** + **Two-layer supersession metadata + Stale drift** (v0.10.0) — `features[].supersedes` / `superseded_by` 와 archive flow.
+- **Ceremonies 자동화 4/4** — kickoff · retro · design-review · inbox.
+- **자체 도그푸드 Phase 2 active** (2026-04-27) — `.harness/` 가 active workspace. 본 레포의 새 피처도 `python3 scripts/work.py F-N --harness-dir .harness` 사이클을 거침. 자세한 규약은 §7 참조.
+- **누적 테스트**: 838+ (CHANGELOG v0.10.3 기준 unittest). 38 test 파일.
 
-**다음 작업 후보**:
-- **공식 마켓플레이스 PR** (anthropic/claude-plugins-official 등록) — 이제 0.3.x 스토리 완결이라 타이밍 근접.
-- **v0.4 마일스톤** (minor bump 대상): shipped hooks 세트 · cross-language hash 테스트 벡터 (부록 D.7) · integrator 에이전트 · event log rotation 등.
-- **v0.3.10+ 미세 조정**: 템플릿 보강 (NEW-51/52/53) · init.md §0 `ls -d` 가독성 등.
+**다음 작업 후보**: §9 참조.
 
 ## 3. 레포 구조 (실제로 트래킹되는 것만)
 
 ```
 .claude-plugin/
-├── plugin.json                     # 플러그인 매니페스트 (name: "harness", v0.3.9)
-└── marketplace.json                # single-plugin marketplace (v0.1.1~, NEW-45)
-commands/                           # 8 슬래시 명령
-├── init.md · spec.md · sync.md · work.md
-├── status.md · check.md · events.md · metrics.md
-skills/spec-conversion/             # plan.md → spec.yaml 변환 스킬 v0.5
-scripts/                            # Python 구현 (23 파일)
-├── sync.py · work.py · status.py · check.py · events.py · metrics.py
-├── spec_mode_classifier.py · explain_spec.py · spec_diff.py     # spec Mode E/A/R/B-1
-├── validate_spec.py                  # JSONSchema 2020-12 검증
-├── include_expander.py               # $include depth=1 전개 (F-009)
-├── canonical_hash.py                 # YAML → canonical JSON → SHA-256 + merkle (F-010)
-├── render_domain.py · render_architecture.py   # spec → domain.md · architecture.yaml
-├── state.py                          # state.yaml helper (공통 유틸)
-├── plugin_root.py                    # NEW-37/44 4-전략 경로 해석
-├── gate_runner.py                    # Gate 0~5 자동 실행
-├── mode_b_*.py                       # BM25 통계 추출 (Mode B Phase 1)
-├── conversion_diff.py                # 의미 diff
-└── upgrade_to_2_3_8.py               # 스펙 마이그레이션
-tests/unit/                         # 17 테스트 파일 · 373 tests
-tests/regression/conversion-goldens/   # 8 golden samples + MANIFEST
+├── plugin.json                     # 플러그인 매니페스트 (name: "harness-boot", v0.10.3)
+└── marketplace.json                # single-plugin marketplace
+.harness/                           # Phase 2 active dogfood workspace (§7)
+├── spec.yaml                       # docs/samples/harness-boot-self/spec.yaml 의 복사본 (diff -q 강제)
+├── state.yaml                      # work.py 가 갱신, 수동 편집 금지
+├── README.md                       # 도그푸드 정책 짧은 안내
+├── domain.md · architecture.yaml   # gitignored (sync 가 파생)
+├── harness.yaml · events.log       # gitignored
+├── chapters/                       # gitignored
+└── _workspace/                     # gitignored (ceremonies — kickoff · retro · design_review · questions)
+commands/                           # 2 슬래시 명령 (v0.9.0 통합)
+├── init.md · work.md
+agents/                             # 15 fixtures (v0.8.1 완결)
+hooks/                              # hooks.json + scripts/ (v0.4 ship)
+skills/spec-conversion/             # plan.md → spec.yaml 변환 스킬
+scripts/                            # Python 구현 (v0.7.6 subpackages 정리)
+├── work.py · sync.py · status.py · check.py · events.py · metrics.py · self_check.sh
+├── core/                           # canonical_hash · event_log · plugin_root · project_mode · state
+├── ceremonies/                     # design_review · inbox · kickoff · retro
+├── gate/                           # runner (Gate 0/1/2/3/5 auto)
+├── render/                         # architecture · domain
+├── spec/                           # validate · mode_classifier · explain · diff · conversion_diff
+│                                   # · include_expander · mode_b_extract · upgrade_to_2_3_8
+└── ui/                             # dashboard · feature_resolver · intent_planner · scenarios
+tests/unit/                         # 38 test 파일 · 838+ tests
+tests/regression/conversion-goldens/   # golden samples + MANIFEST
 docs/
-├── schemas/spec.schema.json        # spec v2.3.8 JSONSchema (prefixItems[0] = skeleton)
-├── samples/harness-boot-self/      # self-referential canonical spec (21 features)
-├── templates/starter/              # /harness:init 이 복사하는 4 템플릿
+├── schemas/spec.schema.json        # spec v2.3.8 JSONSchema (Walking Skeleton 강제 + project.mode)
+├── samples/harness-boot-self/      # self-referential canonical spec (24 features → 25 with F-025)
+├── templates/starter/              # /harness-boot:init 이 복사하는 템플릿 (CLAUDE.md.template 등)
 ├── setup/
-│   ├── local-install.md            # 플러그인 설치 스모크
+│   ├── local-install.md            # 플러그인 설치 + dev workflow + self-hosting 부록
 │   └── first-run-checklist.md
-└── release/v0.1.0.md               # 태깅·PR 플레이북
-README.md · CHANGELOG.md · LICENSE · CLAUDE.md (이 파일)
+└── release/v0.1.0.md               # 태깅·플레이북 (v0.10.x 에도 동일 적용)
+.github/workflows/self-check.yml    # Phase 3 CI (v0.8.3) — PR 마다 self_check.sh
+README.md · CHANGELOG.md · LICENSE · CLAUDE.md (이 파일) · requirements-dev.txt
 ```
 
-**트래킹 안 되는 것** (.gitignore): `design/` · `legacy/` · `translations-ko/` · `node_modules/` 등.
+**트래킹 안 되는 것** (.gitignore): `design/` · `legacy/` · `translations-ko/` · `node_modules/` · `.harness/{events.log,harness.yaml,domain.md,architecture.yaml,chapters/}` 등.
 
 ## 4. 현재 git 상태
 
-- **태그**: v0.1.0, v0.1.1, v0.2.0, v0.2.1, v0.3.0 ~ v0.3.9 원격 push 완료. 태그 이동 금지.
-- **develop HEAD**: `830403d feat(metrics): /harness:metrics (F-008) — events.log aggregation — v0.3.9`
-- **main**: develop 과 동기 (default branch · 마켓플레이스 fetch ref)
+- **태그**: v0.1.0 ~ v0.10.3 원격 push 완료. 태그 이동 금지.
+- **main HEAD**: `cac0b55 chore(release): fill CHANGELOG release dates for v0.10.1~v0.10.3`
+- **default branch**: main (마켓플레이스 fetch ref). 작업 브랜치는 `feat/v0.X.Y-*` / `fix/v0.X.Y-*` 패턴, main 으로 fast-forward 머지.
 - **작업 트리**: clean
-- **다음 분기**: `feat/v0.3.10-*` 또는 `feat/v0.4-*` (develop 에서)
+- **다음 분기**: 백로그 (§9) 또는 cosmic-suika ISSUES-LOG 환원 후속.
 
 ## 5. 커밋 히스토리 맥락
 
-0.3.x 핵심 흐름 (가장 최근 → 과거):
-- `830403d feat(metrics): /harness:metrics (F-008) — v0.3.9` (events.log 집계)
-- `b2a5e2c feat(check): add Code / Doc / Anchor drift — v0.3.8` (F-006 8/8 complete)
-- `e95cd82 feat(gate): add gate_5 (runtime smoke) auto-runner — v0.3.7`
-- `4ae74c6 feat(gate): add gate_4 (commit check) auto-runner — v0.3.6`
-- `58dd7ce feat(gate): Gate 3 coverage auto-runner (v0.3.5)`
-- `19fdb43 feat(gate): Gate 2 lint auto-runner (v0.3.4)`
-- `7ef34cd feat(gate): Gate 1 type-check auto-runner (v0.3.3)`
-- `72dfbc7 feat(v0.3.2): Walking Skeleton + Anti-rationalization + README honesty` (4-way 정합 감사)
+**v0.10.x 라인 — cosmic-suika ISSUES-LOG 환원 사이클** (2026-04-27 cluster):
+- `38eba96 feat(v0.10.3): cosmic-suika I-008 — Iron Law D product mode strict` (record 된 gate fail 시 complete 차단)
+- `2a4c66d feat(v0.10.2): cosmic-suika I-001 — npm scripts auto-detection in gate runner`
+- `89c5776 feat(v0.10.1): cosmic-suika ISSUES-LOG patch — AnchorIntegration drift + no-args dashboard candidates`
+- `ede6f98 feat(v0.10.0): two-layer supersession — features[] supersedes/superseded_by + archive flow + Stale drift`
 
-v0.2 핵심 커밋 (Phase 0 · self-describe round trip) · v0.1.0 피벗 (`76da3d5`) · 피벗 이전 TS CLI (`feat/v0.2.0-archive` 브랜치) 는 `git log` 로 소급.
+**v0.9.x 라인 — UX 재구조화 + Iron Law D + 모드 축 도입**:
+- `e969e28 feat(v0.9.0)!: UX re-architecture step 1 — namespace rename + command consolidation` (8 → 2 commands, `harness` → `harness-boot`)
+- `87a490c feat(v0.9.1): feature_resolver module + scripts/ui/ scaffolding`
+- `9d31637 feat(v0.9.2): dashboard + intent_planner — no-args entry point`
+- `1a631ab feat(v0.9.3): Iron Law D — cumulative declared evidence + hotfix override`
+- `8194716 feat(v0.9.4): README overhaul + scenario contract table + plugin description modernization`
+- `db9d0db feat(v0.9.6): project mode axis — prototype/product ceremony lightening`
+
+**v0.8.x 라인 — agent fixtures + ceremonies + CI**:
+- `66c8a25 feat(v0.8.0): design-review auto-wire closes 4/4 ceremony automation`
+- `aae9e8f feat(v0.8.1): complete agent-eval fixtures 15/15`
+- `9746770 feat(v0.8.3): Phase 3 CI — GitHub Actions self-check workflow`
+- `1bc95a8 feat(v0.8.6): events.log monthly rotation`
+
+**v0.7.x 이전** (subpackage 정리 · gate auto-runners) 은 `git log --oneline v0.7.0..HEAD` 또는 태그 목록(`git tag --sort=-version:refname`)으로 소급.
 
 ## 6. 참고 문서 지도
 
 | 무엇을 하려면 | 읽을 파일 |
 |---|---|
 | 현재 상황 30 초 파악 | `README.md` + 이 파일 |
-| **Claude Code 에서 이어 작업** | `design/HANDOFF-to-claude-code.md` (gitignore) |
+| **Claude Code 에서 이어 작업** | `design/HANDOFF-to-claude-code.md` (gitignored) |
 | 첫 실행 검증 | `docs/setup/first-run-checklist.md` |
-| 태깅·마켓 PR 플레이북 | `docs/release/v0.1.0.md` (v0.3.x 에도 동일 적용) |
+| 태깅·릴리즈 플레이북 | `docs/release/v0.1.0.md` (v0.10.x 에도 동일 적용) |
 | 전체 변경 이력 | `CHANGELOG.md` |
-| 슬래시 명령 스펙 | `commands/*.md` (8 개, 모두 preamble 규약 통일) |
-| 스펙 v2.3.8 JSONSchema | `docs/schemas/spec.schema.json` (Walking Skeleton 강제 + BR 패턴) |
-| **self-referential canonical spec** | `docs/samples/harness-boot-self/spec.yaml` — 21 features · self-describe 입력 |
+| 슬래시 명령 스펙 | `commands/{init,work}.md` (preamble 규약 · NO skip / NO shortcut 2 행 BR-014) |
+| 스펙 v2.3.8 JSONSchema | `docs/schemas/spec.schema.json` |
+| **self-referential canonical spec** | `docs/samples/harness-boot-self/spec.yaml` — `.harness/spec.yaml` 의 SSoT |
 | 스킬 v0.5 구현 가이드 | `skills/spec-conversion/SKILL.md` |
-| 스크립트 레이어 테스트 기준 | `tests/unit/test_*.py` — 373 tests, 기능별 분리 |
-| 로컬 메모리 (사용자 스타일 · 진행 기록) | `design/.memory/MEMORY.md` (gitignore) |
+| 스크립트 레이어 테스트 | `tests/unit/test_*.py` (38 파일, 838+ tests) |
+| Project mode 의미론 | `scripts/core/project_mode.py` (prototype vs product 차이 docstring) |
+| Self-hosting 부록 | `docs/setup/local-install.md` 부록 A |
+| 로컬 메모리 (사용자 스타일 · 진행 기록) | `~/.claude/projects/.../memory/MEMORY.md` (gitignored) |
 
 ## 7. 작업 규칙
 
 - **design/ 는 개인 작업 공간**. 절대 `git add` 하지 마세요. 공개할 가치가 있으면 `docs/` 로 승격.
 - **legacy/ 도 동일**. 트래킹된 기존 파일만 유지, 새 파일 추가 금지.
-- **플러그인은 자기 자신에 설치되지 않음**. 이 레포에 `/harness:init` 실행하면 모순.
-- **자체 도그푸드 정책** (v0.3.10+ · 2 단계 설계):
-  - **Phase 1 (현재, v0.3.10~)**: 레포 루트 `.harness/` 는 **observational** — `scripts/self_check.sh` 5 단계 검증 (diff · validate · sync · check · commands 규약) 과 `test_self_dogfood` 만 수행. `sync_completed` 외 feature lifecycle 이벤트는 발생하지 않는 게 정상. `state.yaml` 은 릴리즈 태그 시점에만 갱신 (노이즈 최소화).
-  - **Phase 2 (v0.3.11+ 첫 실 피처 진입부터)**: `.harness/` 가 **active workspace** 로 전환 — `scripts/work.py` / `/harness:work` 를 기여자가 자기 feature 사이클에 **실제로** 사용. 피처 activate → gate 실행 → evidence 기록 → complete 전이를 `.harness/state.yaml` 에 기록, `events.log` (gitignored) 에 실 타임라인 누적. `/harness:metrics` 가 비로소 진짜 lead time · gate pass rate 출력. 이 시점부터 state.yaml 커밋은 feature PR 단위로 같이 나감 (릴리즈 시점 제한 해제).
-  - **공통 규칙** (Phase 무관):
-    - `spec.yaml` 은 `docs/samples/harness-boot-self/spec.yaml` 의 **복사본** (symlink 아님). `scripts/self_check.sh` 가 `diff -q` 로 동기성 강제.
-    - `events.log` · `harness.yaml` · `domain.md` · `architecture.yaml` · `chapters/` 는 gitignored.
-    - `/harness:init` 은 이 repo 에서 **절대 실행 금지** (플러그인 소스 자체 덮어씀).
-    - 사용자 충돌 없음: 사용자가 `/harness:*` 실행 시 `$(pwd)/.harness` 만 참조 — 우리 내부 `.harness/` 는 invisible.
-- **슬래시 명령 사용 경로** (2026-04-23 검증):
-  - ✅ 작동: `/plugin marketplace add qwerfunch/harness-boot` + `/plugin install harness@harness-boot` → `/harness:*` 8 개 명령 전부 사용 가능. 업그레이드는 `/plugin update harness@harness-boot`.
-  - ⚠️ 미확인: `CLAUDE_PLUGIN_ROOT` env 또는 `settings.json plugins[]` 로 **dev checkout 라이브 반영** 시도 → 설치본이 우선하여 작동 안 함 관찰됨.
-  - 결론: 편집 즉시 슬래시 명령 반영은 **현재 불가**. 스크립트 수정 → 커밋 → 릴리즈 → `/plugin update` 의 루프만 동작. 편집-검증 빠르게 하려면 `python3 scripts/*.py` 직접 호출.
-  - 상세 경로: `docs/setup/local-install.md` §2 + 부록 A.
-- **사용자 충돌 없음 보장**: 사용자가 `/harness:*` 실행 시 항상 `$(pwd)/.harness` 만 참조 — 우리 내부 `.harness/` 는 invisible.
-- **태그는 절대 이동 금지**. 깨진 버전은 yank + hotfix (docs/release/v0.1.0.md §5).
-- **main 은 default branch**. 각 릴리즈마다 `git checkout main && git merge --ff-only develop && git push origin main` 으로 fast-forward. `/plugin marketplace add qwerfunch/harness-boot` 가 여기서 fetch.
-- **Patch-first 버전 정책**: 새 기능이라도 0.3.X+1. minor/major 는 사용자 확인 후 큰 마일스톤에 예약.
+- **플러그인은 자기 자신에 설치되지 않음**. 이 레포에 `/harness-boot:init` 실행 금지 — 플러그인 소스 자체를 덮어쓴다.
+
+- **자체 도그푸드 정책 — Phase 2 active** (2026-04-27 부터):
+  - **새 피처는 모두 work.py 사이클을 거친다**. cosmic-suika 외부 dogfood 와 동일 규약. "리팩터" / "문서만" / "작은 fix" 도 예외 아님.
+  - 사용 명령:
+    ```
+    python3 scripts/work.py F-N --harness-dir .harness                        # activate
+    python3 scripts/work.py F-N --harness-dir .harness --run-gate gate_0      # ... 1, 2, 3, 5
+    python3 scripts/work.py F-N --harness-dir .harness --evidence "..."       # declared evidence
+    python3 scripts/work.py F-N --harness-dir .harness --complete             # 전이
+    ```
+  - 슬래시 명령은 **이 레포에서 live-edit 가 안 됨** (설치본이 우선). 따라서 항상 `python3 scripts/work.py` 직접 호출이 dev 진입점. (사용자 프로젝트에서는 `/harness-boot:work` 가 래퍼.)
+  - `.harness/state.yaml` 커밋은 feature PR 단위로 같이 나감 (이전 Phase 1 의 "릴리즈 태그 시점에만" 제한 해제).
+  - `events.log` 에 lifecycle 이벤트 (`feature_activated` · `gate_run` · `evidence_declared` · `feature_completed`) 가 누적되며, `/harness-boot:work` 대시보드 · `scripts/metrics.py` 가 진짜 lead time / gate pass rate 출력.
+  - `project.mode` 는 `prototype` (현재 기본) — Iron Law D 는 evidence ≥ 1 + gate_5 pass. product 로 promote 는 사용자 결정.
+
+- **공통 규칙** (Phase 무관):
+  - `.harness/spec.yaml` 은 `docs/samples/harness-boot-self/spec.yaml` 의 **복사본** (symlink 아님). `scripts/self_check.sh` 가 `diff -q` 로 동기성 강제. 새 피처 추가는 **양쪽 동시에**.
+  - `events.log` · `harness.yaml` · `domain.md` · `architecture.yaml` · `chapters/` · `_workspace/` 는 gitignored.
+  - 사용자 충돌 없음: 사용자가 `/harness-boot:*` 실행 시 항상 `$(pwd)/.harness` 만 참조 — 우리 내부 `.harness/` 는 invisible.
+
+- **슬래시 명령 사용 경로** (2026-04-23 검증, 2026-04-27 재확인):
+  - 작동: `/plugin marketplace add qwerfunch/harness-boot` + `/plugin install harness-boot@harness-boot` → `/harness-boot:{init,work}` 사용 가능. 업그레이드 `/plugin update harness-boot@harness-boot`.
+  - 미작동: `CLAUDE_PLUGIN_ROOT` env / `settings.json plugins[]` 로 dev checkout 라이브 반영 — 설치본이 우선.
+  - 결론: 편집 즉시 슬래시 반영은 불가. **이 레포 내부 dev workflow 는 항상 `python3 scripts/*.py` 직접 호출**. 슬래시 검증은 release → `/plugin update` 루프.
+  - 상세: `docs/setup/local-install.md` §2 + 부록 A.
+
+- **태그는 절대 이동 금지**. 깨진 버전은 yank + hotfix (`docs/release/v0.1.0.md` §5).
+- **main 은 default branch**. 머지는 `feat/v0.X.Y-*` 브랜치에서 PR → main fast-forward.
+- **Patch-first 버전 정책**: 새 기능이라도 X.Y.Z+1. minor/major 는 사용자 확인 + 큰 마일스톤 한정.
+- **버전 릴리즈는 사용자 결정**: 자동 태깅 금지. 커밋·머지는 자유, 태그·release notes 는 사용자 명시 후.
 - **커밋/PR 언어**: 영어. 응답/설명 언어: 한국어 (파일 내용은 문맥에 따라).
-- **Anti-rationalization**: 8 commands 모두 Preamble 3 줄 직후 "NO skip / NO shortcut" 2 행 필수 (BR-014).
-- **CQS 강제**: read-only 명령 (`status` · `check` · `events` · `metrics` · `spec` Mode E) 은 대상 파일 mtime 을 변경하지 않음. 테스트가 mtime 불변을 확인.
+- **Anti-rationalization**: 2 commands 모두 Preamble 3 줄 직후 "NO skip / NO shortcut" 2 행 필수 (BR-014).
+- **CQS 강제**: read-only 명령 (`status` · `check` · `events` · `metrics`) 은 대상 파일 mtime 을 변경하지 않음. 테스트가 mtime 불변을 확인.
 
-## 8. 알려진 제한사항 (v0.3.9 기준)
+## 8. 알려진 제한사항 (v0.10.3 기준)
 
-**닫힘**
-- 0.1.x: NEW-37/39/40/42/44/45 전부 해소.
-- 0.2.x: NEW-50 (plugin_version resolution) 해소.
-- 0.3.x: Gate 자동화 0~5, drift 8/8, Walking Skeleton 스키마 강제, Anti-rationalization 2 행 규약.
+**닫힘 (이전 CLAUDE.md 시점 대비)**
+- v0.4 ~ v0.7: agent fixtures 15/15 · ceremonies 4/4 · subpackages 정리 · gate auto-runners.
+- v0.8.x: Phase 3 CI · events.log monthly rotation · agent fixtures 완결 · design-review autowire.
+- v0.9.x: 명령 통합 (8 → 2) · feature_resolver · no-args dashboard · Iron Law D · README user-friendly · project mode axis.
+- v0.10.x: two-layer supersession + Stale drift · cosmic-suika I-001/I-008/I-010 환원.
+- **Phase 2 self-hosting deferral 해소** (2026-04-27) — 본 레포가 본격 dogfood 진입.
 
-**열림 (v0.3.10+ 또는 v0.4 대상)**
-- 공식 마켓플레이스 PR: anthropic/claude-plugins-official 등록.
-- shipped hooks 세트 (현재 `hooks/` 디렉터리 자체 부재 → fail-open 가정이 공허).
-- integrator 에이전트 (`agents/` 디렉터리 부재).
-- Cross-language canonical hash 테스트 벡터 (부록 D.7).
-- Event log rotation (`events.log.YYYYMM` 분할 미구현).
-- 템플릿 보강 (NEW-51/52/53).
+**열림**
+- Cross-language canonical hash 테스트 벡터 (부록 D.7) — Node/Go 교차 검증 미구현.
+- AC coverage drift (check.py 11 번째 drift candidate).
+- URL → design seed (`/harness-boot:clone <url>` 또는 별도 `harness-seed` 플러그인) — scope 크고 IP 경계 주의 (2026-04-24 검토).
+- gate_perf auto-detect heuristics (lighthouse · k6 · wrk 설정 감지).
 
 ## 9. 다음 Phase 후보
 
-**v0.3.9 완료 (2026-04-23). 다음 작업**:
+**v0.10.3 완료 (2026-04-27). 후속 후보** (우선순위 미고정):
 
 ### 즉시 착수 가능
-- **공식 마켓플레이스 PR** — anthropic/claude-plugins-official 에 harness 등록. 0.3.x 스토리 완결.
-- **v0.3.10 미세 조정** — 템플릿 보강 · init.md §0 `ls -d` 가독성 · CHANGELOG 정리.
+- 본 레포 새 피처를 work.py 사이클에 실어서 가는 것 자체가 가장 큰 작업 (Phase 2 정착).
+- AC coverage drift detector — check.py 11 번째 drift.
+- cosmic-suika ISSUES-LOG 의 다음 환원 가능 항목.
 
-### 큰 다음 마일스톤 (v0.4, minor bump)
-- Shipped hooks 세트 (security-gate · doc-sync-check · coverage-gate · format · test-runner · session-start-bootstrap).
-- integrator 에이전트 — 메인 조립 wire-up 책임 (design doc 기둥 6).
-- Cross-language canonical hash 테스트 벡터 (Node/Go 교차 검증).
-- Event log rotation.
+### 큰 다음 마일스톤 (사용자 확인 후 minor bump 검토)
+- Cross-language canonical hash 테스트 벡터 (Node/Go 교차).
+- URL → design seed (scope 결정 필요).
+- gate_perf auto-detect heuristics.
 
 ## 10. Import
 
-현재 없음. 필요 시 `design/HANDOFF-*.md` 는 개인 노트 (gitignore) 이므로 전역 @import 는 의존하지 말 것.
+현재 없음. 필요 시 `design/HANDOFF-*.md` 는 개인 노트 (gitignored) 이므로 전역 @import 는 의존하지 말 것.

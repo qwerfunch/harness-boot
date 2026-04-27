@@ -7,10 +7,59 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
-**v1.0 릴리즈 체크리스트 (post-1.0 = 공식 마켓 PR 타이밍)**:
+**보류 (사용자 결정 시점에)**:
 
-- Marketplace PR (anthropic/claude-plugins-official) — **v1.0 릴리즈 후** 제출 (사전 제출 없음)
-- v1.0 readiness: design-review auto-wire · 나머지 8 agent fixtures · Known Issues 0 · migration guide · README polish
+- Marketplace PR (anthropic/claude-plugins-official) — 사용자 명시 후 진입.
+
+## [0.10.4] — 2026-04-27
+
+**Phase 2 self-hosting active — harness-boot 자체 도그푸드 활성화 + ergonomics 정리.**
+
+2026-04-25 의 deferral 이 사용자 결정으로 뒤집혀 본 레포의 모든 신규 피처가
+`python3 scripts/work.py` 사이클을 거친다 (cosmic-suika 와 동일 규약).
+`project.mode: prototype` 으로 시작. 활성화 자체를 F-025 로 트래킹, 직후
+발견된 5 갭 (smoke shim · stale doc · dead-ref · CHANGELOG · gate_0 scope) 을
+F-026 으로 묶어 첫 풀 사이클 reference 로 완주.
+
+### Added
+
+- **`scripts/smoke.sh`** — `self_check.sh` 의 thin wrapper. `scripts/gate/runner.py`
+  의 gate_5 auto-detect 가 가장 먼저 잡아 `--override-command` 의존 제거.
+- **`pytest.ini`** — `testpaths = tests/unit` 으로 베어 `python -m pytest` 의
+  scope 고정. 이전엔 `design/oss-refs/` (gitignored 외부 OSS 참조본) 까지
+  recursive collection 시도하다 의존성 부재로 collection error → exit 2.
+  gate_0 가 베어 pytest 를 호출하므로 override 불필요해짐.
+- **F-025 · F-026** in `docs/samples/harness-boot-self/spec.yaml` +
+  `.harness/spec.yaml` — Phase 2 활성화 (F-025) 와 후속 정리 (F-026).
+  features 24 → 26.
+- **`project.mode: prototype`** in spec — Iron Law D 는 evidence ≥ 1 + gate_5 pass.
+  product 로 promote 는 사용자 결정 시점.
+
+### Changed
+
+- **`CLAUDE.md`** v0.3.9 표기 → v0.10.3 reality 로 전면 갱신 (§1~§9). slash
+  명령 8 → 2 (init · work), 자체 도그푸드 정책 Phase 1 observational →
+  Phase 2 active flip. v0.4 ~ v0.10 narrative 추가.
+- **`hooks/session-bootstrap.sh`** dead reference 수정: 안내 명령
+  `/harness:status` (v0.9.0 통합 시 부재화) → `/harness-boot:work` (no-args
+  대시보드, v0.9.2 entry point). **사용자 visible behavior change** —
+  플러그인 설치된 모든 워크스페이스의 SessionStart 배너에 영향.
+- **`.harness/README.md`** · **`scripts/self_check.sh`** 헤더 — Phase 1 표기를
+  Phase 2 active 로 갱신. README 에 work.py 4-verb 사이클 사용 예시 추가.
+- **`.gitignore`** — `.harness/_workspace/` 추가 (kickoff · retro · design_review
+  · questions ceremony 산출 미추적).
+
+### Notes
+
+- F-025 사이클: gate_5 (override 시기) + 1 declared evidence → done.
+- F-026 사이클: gate_0 (838 tests) + gate_5 (smoke shim 자동) + 1 declared
+  evidence → done. **Phase 2 의 첫 풀 사이클 reference**.
+- 회귀: self_check 5/5 + 838 tests OK.
+- 메모리 갱신: `project_self_hosting_deferred` → `_active`,
+  `feedback_cosmic_suika_harness_only` 일반화 (cosmic-suika + harness-boot
+  양쪽 적용).
+- 다음 신규 피처부터는 `--override-command` 없이 `--run-gate gate_0/5` 만으로
+  깔끔하게 굴러감. Phase 2 의 정상 형태 확보.
 
 **v0.8 완결** (PR-α + PR-β):
 
@@ -28,6 +77,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - Cross-language hash test vectors (Appendix D.7)
 - ~~Event log rotation (`events.log.YYYYMM`)~~ ✅ v0.8.6
 - AC coverage drift (check.py 11 번째 drift 후보)
+- pre-commit hook (Phase 2 자동 enforcement) — 디시플린이 흔들릴 때 진입 후보.
 
 ## [0.10.3] — 2026-04-27
 

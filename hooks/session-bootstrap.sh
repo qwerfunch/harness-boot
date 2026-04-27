@@ -18,6 +18,6 @@ fi
 
 # Absolute minimum banner. Users with many sessions-per-day see this often,
 # so keep it under 3 lines and emoji-free per BR-012.
-echo "harness-boot detected .harness/ — try /harness:status for a summary"
+echo "harness-boot detected .harness/ — try /harness-boot:work for the dashboard"
 
 exit 0
