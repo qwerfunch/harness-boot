@@ -20,8 +20,8 @@ from scripts.scan.seed_spec import (
 from scripts.spec.validate import validate
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-FIXTURES = Path(__file__).parent.parent / "fixtures" / "brownfield-repos"
+REPO_ROOT = Path(__file__).resolve().parents[3]
+FIXTURES = Path(__file__).parent.parent.parent / "fixtures" / "brownfield-repos"
 
 
 class TestComposeSeed(unittest.TestCase):

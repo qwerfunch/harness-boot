@@ -1253,6 +1253,33 @@ features:
       - "AC-8: 1077 unit + 26 integration 회귀 0. self_check 5/5."
       - "AC-9: F-045 양쪽 spec.yaml mirror + work.py 4-verb cycle."
 
+  - id: "F-046"
+    name: "tests/ namespace cleanup — work / scan / dashboard / kickoff sub-dirs"
+    type: "feature"
+    description: "전체 리팩토링 6 release 의 5 단계. tests/unit/ 의 20 분산 테스트 파일을 영역별 sub-dir 로 이동 (git mv 로 history 보존). pytest auto-discovery 가 sub-dir 도 picks up — testpaths=tests/unit 그대로. tests/unit/{work,scan,dashboard,kickoff}/ 4 namespace. namespace 만 정리 (silent exception logger 추가는 별도 후속). 1084 unit + 26 integration 회귀 0."
+    modules:
+      - "tests/unit/work/"
+      - "tests/unit/scan/"
+      - "tests/unit/dashboard/"
+      - "tests/unit/kickoff/"
+    test_strategy: "contract"
+    tdd_focus:
+      - "tests/unit/work/ 디렉토리 생성 + 7 파일 이동 (test_work*.py)"
+      - "tests/unit/scan/ 디렉토리 + 6 파일 (test_scan_*.py)"
+      - "tests/unit/dashboard/ 디렉토리 + 4 파일 (test_dashboard*.py)"
+      - "tests/unit/kickoff/ 디렉토리 + 3 파일 (test_kickoff*.py)"
+      - "pytest auto-discovery 그대로 동작 (testpaths=tests/unit + recursive)"
+      - "1084 unit + 26 integration regression 0"
+    acceptance_criteria:
+      - "AC-1: tests/unit/work/test_work_*.py — 7 파일 (autowire/design_review/fog_clear_hook/parallel_routing/routed_agents/routing/ux)."
+      - "AC-2: tests/unit/scan/test_scan_*.py — 6 파일 (area_resolver/chapter_writer/manifest/seed_spec/structure/style_fingerprint)."
+      - "AC-3: tests/unit/dashboard/test_dashboard*.py — 4 파일 (base + agent_chain + i18n + parallel)."
+      - "AC-4: tests/unit/kickoff/test_kickoff*.py — 3 파일 (base + parallel_groups + style_inject)."
+      - "AC-5: 모든 이동은 git mv 로 — git log --follow 가 동작."
+      - "AC-6: pytest tests/unit/ -q 가 1084 PASS (회귀 0)."
+      - "AC-7: bash scripts/self_check.sh 5/5."
+      - "AC-8: F-046 양쪽 spec.yaml mirror + work.py 4-verb cycle."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

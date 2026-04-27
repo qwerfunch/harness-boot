@@ -13,7 +13,7 @@ import yaml
 from scripts.work import _autowire_fog_clear, activate
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def _make_project(tmp: Path, *, with_modules: bool = True, fog_disabled: bool = False) -> Path:

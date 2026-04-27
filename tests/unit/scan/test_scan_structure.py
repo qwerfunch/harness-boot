@@ -9,7 +9,7 @@ from pathlib import Path
 from scripts.scan.structure import scan_structure
 
 
-FIXTURES = Path(__file__).parent.parent / "fixtures" / "brownfield-repos"
+FIXTURES = Path(__file__).parent.parent.parent / "fixtures" / "brownfield-repos"
 
 
 class TestTopDirs(unittest.TestCase):

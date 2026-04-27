@@ -939,8 +939,34 @@ features:
       · 1077 → 1084 누적 · self_check 5/5 · 1077 unit + 26 integration regression 0
   started_at: '2026-04-27T10:25:14Z'
   completed_at: '2026-04-27T10:29:13Z'
+- id: F-046
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-27T10:33:41Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T10:33:42Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T10:33:41Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (9.5s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-27T10:33:42Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.6s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T10:33:42Z'
+    kind: generic
+    summary: F-046 tests/ namespace cleanup · 20 파일 git mv → tests/unit/{work,scan,dashboard,kickoff}/
+      · parents[2]→parents[3] + fixtures path 한 단계 추가 수정 · 1084 unit + 26 integration
+      regression 0 · self_check 5/5
+  started_at: '2026-04-27T10:30:26Z'
+  completed_at: null
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-045
+  last_command: /harness:work F-046
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-046

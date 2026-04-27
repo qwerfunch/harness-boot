@@ -12,7 +12,7 @@ from pathlib import Path
 from scripts.scan.manifest import extract_project_name, extract_tech_stack
 
 
-FIXTURES = Path(__file__).parent.parent / "fixtures" / "brownfield-repos"
+FIXTURES = Path(__file__).parent.parent.parent / "fixtures" / "brownfield-repos"
 
 
 class TestExtractTechStackNode(unittest.TestCase):

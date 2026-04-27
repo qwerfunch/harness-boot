@@ -9,7 +9,7 @@ from scripts.scan.area_resolver import AreaRecord, resolve_areas
 from scripts.scan.structure import scan_structure
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "brownfield-repos"
 
 

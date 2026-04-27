@@ -11,6 +11,30 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 - Marketplace PR (anthropic/claude-plugins-official) — 사용자 명시 후 진입.
 
+## [0.10.20] — 2026-04-27
+
+**Tests namespace cleanup — Phase 5 of the 6-release refactor (F-046).**
+
+`tests/unit/` 의 20 분산 테스트 파일을 영역별 sub-dir 로 이동 (git mv · history 보존). pytest auto-discovery 가 sub-dir picks up.
+
+### Moved (git mv)
+- **`tests/unit/work/`** (7) — autowire · design_review · fog_clear_hook · parallel_routing · routed_agents · routing · ux.
+- **`tests/unit/scan/`** (6) — area_resolver · chapter_writer · manifest · seed_spec · structure · style_fingerprint.
+- **`tests/unit/dashboard/`** (4) — base · agent_chain · i18n · parallel.
+- **`tests/unit/kickoff/`** (3) — base · parallel_groups · style_inject.
+
+### Adjusted
+- 12 파일의 `Path(__file__).resolve().parents[2]` → `parents[3]` (한 단계 더 깊어진 디렉토리 보정).
+- 3 scan 테스트의 fixtures path: `parent.parent / "fixtures"` → `parent.parent.parent / "fixtures"`.
+
+### Tests
+- pytest `testpaths=tests/unit` 그대로 — recursive discovery 자연 동작.
+- 1084 unit + 26 integration · self_check 5/5 · F-038~F-045 회귀 0.
+
+### 효과
+- tests/unit/ 의 시각 부담 ↓ (40+ 파일 → 4 영역별 + base files).
+- 새 테스트 위치 결정 명확 (영역별 디렉토리에 추가).
+
 ## [0.10.19] — 2026-04-27
 
 **Facade-preserving split (sibling alias modules) — Phase 4 of the 6-release refactor (F-045).**

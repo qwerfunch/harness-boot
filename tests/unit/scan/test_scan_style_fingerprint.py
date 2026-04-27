@@ -9,7 +9,7 @@ from pathlib import Path
 from scripts.scan.style_fingerprint import fingerprint
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "brownfield-repos"
 
 
