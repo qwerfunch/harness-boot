@@ -8,6 +8,74 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 ## [Unreleased]
 
 - Marketplace PR (anthropic/claude-plugins-official) — 사용자 명시 후 진입.
+- F-050b — features[] description / AC bodies native-English sweep (~500 KO lines deferred from F-050).
+- F-051 / F-052 — `scripts/` and `tests/` Python docstring native-EN sweeps.
+- F-053 — CHANGELOG English-only-going-forward policy.
+
+## [0.11.2] — 2026-04-27
+
+**Native English consolidation thread — Phases 1 & 2 (F-049 + F-050 partial).**
+
+Continuation of F-041 (commands + agents native-EN masters). Two phases of the post-F-041 thread bundled into a patch release: external contributors now read English on every entry-point dev surface plus the JSONSchema and the top-level spec narrative.
+
+### Added — F-049 (Phase 1, entry-point dev surfaces)
+
+9 modules rewritten in native English (commit `a503a30`):
+- `CLAUDE.md` (also refreshed §2/§4/§5/§8/§9 to v0.11.1)
+- `.harness/README.md`
+- `docs/protocols/README.md` · `docs/protocols/sync-to-work-handoff.md`
+- `docs/templates/hooks/README.md`
+- `docs/samples/harness-boot-self/README.md`
+- `hooks/pre-commit-phase2.sh` · `hooks/prompt-log.sh`
+- `tests/unit/test_audit_pass.py` markers updated (self-doc drift surfaced inline; preview of F-051's planned 13th drift detector)
+
+`docs/i18n/README.md` keeps two intended KO occurrences (`상태:` / `근거: N 개`) that demonstrate the i18n policy itself. `BRAND_TERMS.md` KO column is preserved as bilingual reference.
+
+### Added — F-050 partial (Phase 2, spec mirrors + JSONSchema)
+
+`docs/schemas/spec.schema.json` description bodies fully rewritten (KO 66 → 0). JSONSchema 2020-12 still parses cleanly. (commit `c70f375`)
+
+`docs/samples/harness-boot-self/spec.yaml` (and `.harness/spec.yaml` mirror) rewritten in:
+- `project` block (description, vision, summary, stakeholders.concerns)
+- `domain.overview`
+- `domain.business_rules` BR-001 ~ BR-014 (statement + rationale)
+- `domain.vocabulary` 10 terms
+
+`tests/unit/test_audit_pass.py:test_schema_archived_at_marks_declarative` updated — KO phrase guard `자동 채우지 않음` swapped for `work.py does not auto-fill`.
+
+### Deferred (transparent scope compression)
+
+F-050 AC-2 was compressed mid-flight: the features[] description / acceptance_criteria / tdd_focus bodies (~500 KO lines across 49 features) are deferred to F-050b. Keeping diff -q + validate green across every feature in one phase would have been fragile; F-050b will sweep them incrementally.
+
+### Native EN idiom (F-041 pattern preserved)
+
+- "원천 vs 파생"           → "source of truth vs derived view"
+- "사고의 글 vs 실행의 글" → "author's prose vs engineer's contract"
+- "외울 명령"               → "commands you actually have to memorize"
+- "도그푸드"                → "self-dogfood"
+- "감사성"                  → "auditability"
+- "단일 원천 가정"          → "single-source assumption"
+- "건너뛰기 합리화"         → "plausibly rationalize its own skips"
+
+### Numbers
+
+- spec.yaml KO lines: 747 → 666 (-81 lines, ~11%)
+- spec.schema.json KO lines: 66 → 0 (-66 lines, 100%)
+- 9 entry-point dev files: 100% native EN (8 zero-KO + 1 with intended bilingual examples)
+- 1117 unit + integration tests PASS · self_check 5/5
+- F-049 + F-050 both completed via the work.py 4-verb cycle (Phase 2 dogfood)
+
+### Self-evidence
+
+Both F-049 and F-050 spec entries were written in native English at the moment of addition — the features describing native-EN consolidation are themselves in native EN. F-050's AC-2 was even compressed mid-flight (in English) to keep the scope trace honest.
+
+### Verification
+
+```bash
+bash scripts/self_check.sh             # 5/5 OK
+python3 -m pytest tests/unit/ tests/integration/ -q   # 1117 PASS
+grep -c '[가-힣]' docs/schemas/spec.schema.json       # 0
+```
 
 ## [0.11.1] — 2026-04-27
 
