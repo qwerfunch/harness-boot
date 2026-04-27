@@ -965,8 +965,36 @@ features:
       regression 0 · self_check 5/5
   started_at: '2026-04-27T10:30:26Z'
   completed_at: '2026-04-27T10:34:31Z'
+- id: F-047
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-27T10:44:05Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T10:43:09Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T10:43:09Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.6s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T10:43:10Z'
+    kind: generic
+    summary: F-047 vision consolidation v0.11.0 minor bump · F-001/F-003/F-005/F-007/F-008/F-009/F-010
+      7 historical features 양쪽 spec mirror archived_at + archive_reason 마킹 (F-002/F-004/F-006
+      활성 제외) · CHANGELOG v0.11.0 entry — 6-release thread 통합 release notes · CLAUDE.md
+      현재 릴리즈 갱신 · plugin.json 0.10.20 → 0.11.0 · self_check 5/5 · 1084 unit + 26 integration
+      regression 0 · memory minor-bump confirm 정책 준수
+  - ts: '2026-04-27T10:44:05Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (9.6s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  started_at: '2026-04-27T10:38:02Z'
+  completed_at: null
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-046
-  last_gate_passed: gate_5
-  active_feature_id: null
+  last_command: /harness:work F-047
+  last_gate_passed: gate_0
+  active_feature_id: F-047

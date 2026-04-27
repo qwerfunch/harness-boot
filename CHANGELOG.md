@@ -7,9 +7,57 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
-**보류 (사용자 결정 시점에)**:
-
 - Marketplace PR (anthropic/claude-plugins-official) — 사용자 명시 후 진입.
+
+## [0.11.0] — 2026-04-27
+
+**Refactor thread closes (F-042 → F-047) · minor bump · vision consolidation.**
+
+6 release (v0.10.16 → v0.11.0) 의 리팩토링 thread 종결. 외부 채택 readiness 신호. memory 정책상 minor bump 는 사용자 confirm 받음 — F-047 시작 시점에 명시 동의.
+
+### 6-release thread (F-042~F-047) 한눈
+
+| ver | feature | scope |
+|---|---|---|
+| v0.10.16 | F-042 doc cleanup | 5 stale docs → docs/archive/ · Preamble 단일 source · git mv history 보존 |
+| v0.10.17 | F-043 hardcode externalization | core/{gates,routing}.py · ui/{render,dashboard_config}.py — 분산 hardcode 단일 source |
+| v0.10.18 | F-044 spec archive flow | F-029 의 archived_at / archive_reason 필드 활성화 + dashboard 3-축 archive 인식 |
+| v0.10.19 | F-045 facade-preserving split | work_internals · work_autowire · work_cli · check_detectors (DRIFT_CHECKS registry) · check_report — sibling alias modules |
+| v0.10.20 | F-046 tests namespace | 20 테스트 파일 → tests/unit/{work,scan,dashboard,kickoff}/ git mv |
+| **v0.11.0** | **F-047 vision consolidation** | F-001~F-007/F-009/F-010 in-place archive 마킹 (7 features) + CHANGELOG cleanup + minor bump |
+
+### Added — F-047
+- F-001 (Skeleton init), F-003 (sync), F-005 (status), F-007 (events), F-008 (metrics), F-009 (include_expander), F-010 (canonical_hash) 의 양쪽 spec mirror 에 `archived_at: "2026-04-23T00:00:00Z"` + `archive_reason` 마킹. F-002/F-004/F-006 (활성 개발) 제외.
+
+### Changed
+- `plugin.json` version 0.10.20 → **0.11.0** (minor bump · 사용자 confirm · 6-release refactor 누적).
+- CHANGELOG `[Unreleased]` 정리 — Marketplace PR 한 줄만 남김.
+
+### Cumulative state (v0.11.0)
+- 47 features · done 또는 archived
+- 1084 unit + 26 integration tests · self_check 5/5
+- 41 → 47 features 누적 · 7 archived · 41+ active = 47 - 7 = ... (실제 활성 개발 가능 features 적은 수)
+- 외부 dev access path: `from scripts.work_internals import activate` · `from scripts.check_detectors import DRIFT_CHECKS` · `from scripts.core.gates import STANDARD_GATES`
+- runtime locale: `HARNESS_LANG=ko` · `spec.project.language: ko` · LC_ALL ko_KR (F-040)
+- native-English commands/agents masters (F-041) + KO snapshot in docs/archive (F-042)
+- brownfield reconnaissance: F-036 init seed + F-037 work-activate fog clear
+- routing transparency: F-038 routed_agents · F-039 parallel groups
+
+### 6 release thread 의 의미
+F-036~F-041 의 "외부 dev 마주치는 표면" thread (brownfield seed → fog clear → routing transparency → parallel dispatch → i18n → native English) 가 끝난 후, F-042~F-047 의 "내부 정리" thread 가 6 release 진행. 둘이 합쳐 12 release 가 외부 채택 ready 단계로 끌어올림. 다음 자연 thread: 외부 영어권 dev case study + Marketplace PR (사용자 결정 시점에).
+
+### Verification
+```bash
+bash scripts/self_check.sh             # 5/5 OK
+python3 -m pytest tests/unit/ -q       # 1084 PASS
+python3 -m pytest tests/integration/ -q # 26 PASS
+
+# Archive 확인
+grep -E "archived_at" .harness/spec.yaml | wc -l   # 7
+
+# Sibling modules 확인
+python3 -c "from scripts.work_internals import activate; from scripts.work_autowire import _autowire_kickoff; from scripts.check_detectors import DRIFT_CHECKS; print(len(DRIFT_CHECKS))"
+```
 
 ## [0.10.20] — 2026-04-27
 

@@ -7,7 +7,7 @@
 
 Claude Code 플러그인 `harness-boot` 의 소스. 사용자는 `/harness-boot:init` 로 자기 프로젝트에 `.harness/` 골격을 설치하고, 이후 `/harness-boot:work` 한 명령으로 피처 사이클(activate → gate → evidence → complete)을 돌린다. v0.9.0 의 UX 재구조화로 외울 명령은 2 개로 통합됨.
 
-- **현재 릴리즈**: v0.10.7 (2026-04-27 태그). 마켓플레이스 PR 은 사용자 결정 시점까지 보류.
+- **현재 릴리즈**: v0.11.0 (2026-04-27 태그 · F-047 vision consolidation). 마켓플레이스 PR 은 사용자 결정 시점까지 보류 (memory: marketplace_timing). 누적 이력 상세는 `git log` / `CHANGELOG.md` 참조.
 - **설치 경로**: `/plugin marketplace add qwerfunch/harness-boot` → `/plugin install harness-boot@harness-boot`. 업그레이드 `/plugin update harness-boot@harness-boot`.
 - **SemVer 정책**: patch-first. 새 기능이라도 X.Y.Z+1. minor/major 는 사용자 확인 + 큰 마일스톤 한정.
 - **라이선스**: MIT · Author: qwerfunch

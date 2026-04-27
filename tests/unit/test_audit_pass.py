@@ -65,9 +65,11 @@ class ReadmeRefreshTests(unittest.TestCase):
 class ClaudeMdRootTests(unittest.TestCase):
     """AC-3: 루트 CLAUDE.md v0.10.7 + 883 + v0.10.4~7 narrative."""
 
-    def test_current_release_v_10_7(self):
+    def test_current_release_marker_present(self):
+        # F-047 — track the current-release marker pattern instead of pinning to a
+        # specific version. CLAUDE.md is refreshed every minor bump.
         body = CLAUDE_MD.read_text(encoding="utf-8")
-        self.assertIn("현재 릴리즈**: v0.10.7", body)
+        self.assertRegex(body, r"현재 릴리즈\*\*:\s*v\d+\.\d+\.\d+")
 
     def test_test_count_883(self):
         body = CLAUDE_MD.read_text(encoding="utf-8")

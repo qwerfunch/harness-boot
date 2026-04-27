@@ -300,6 +300,8 @@ features:
     name: "Skeleton — /harness:init 으로 Walking Skeleton 부팅"
     type: "skeleton"
     status: "done"             # v0.1.0 (2026-04-23 태그) · v0.1.1 에서 hardening 완료
+    archived_at: "2026-04-23T00:00:00Z"
+    archive_reason: "v0.1 era walking-skeleton — superseded by F-025 self-dogfood + F-036 brownfield seed (F-047)"
     release_target: "v0.1"
     description: "사용자 프로젝트에 `.harness/` + `.claude/` 설치, spec.yaml stub, CLAUDE.md shim, 훅/에이전트/스킬 기본 세트를 깔고 첫 실행이 Gate 5 까지 성공하도록 만듦."
     modules:
@@ -350,6 +352,8 @@ features:
     name: "/harness:sync — Phase 0(파생) + Phase 1(빌드) 2단계"
     type: "feature"
     status: "done"              # 2026-04-23: Phase 0 구현 완료 (scripts/sync.py + 14 tests).
+    archived_at: "2026-04-23T00:00:00Z"
+    archive_reason: "v0.2 era /harness:sync — derived files generation, foundation stable (F-047)"
                                 # Phase 1 (Gate 실행) 은 F-004 /harness:work 에 분리.
     release_target: "v0.2"
     depends_on: ["F-009", "F-010"]   # include 엔진 + canonical hashing 선행
@@ -398,6 +402,8 @@ features:
     name: "/harness:status (read-only) — v2.3.3 순수 조회"
     type: "feature"
     status: "done"              # 2026-04-23: scripts/status.py + 11 tests (CQS 검증).
+    archived_at: "2026-04-23T00:00:00Z"
+    archive_reason: "v0.3 era /harness:status — CQS read-only, foundation stable (F-047)"
     release_target: "v0.3"
     description: "현재 하네스·피처·게이트·드리프트 요약. 수정 없음."
     modules:
@@ -431,6 +437,8 @@ features:
     name: "/harness:events — 이벤트 로그 조회 (tail/filter)"
     type: "feature"
     status: "done"              # 2026-04-23: scripts/events.py + 12 tests (CQS 검증).
+    archived_at: "2026-04-23T00:00:00Z"
+    archive_reason: "v0.3 era /harness:events — JSON Lines append, foundation stable (F-047)"
     release_target: "v0.3"
     description: "events.log 의 JSONL 레코드를 시간/종류/스코프로 필터하여 출력."
     modules:
@@ -446,6 +454,8 @@ features:
   - id: "F-008"
     name: "/harness:metrics — 집계 지표"
     type: "feature"
+    archived_at: "2026-04-23T00:00:00Z"
+    archive_reason: "v0.3.9 era /harness:metrics — read-only metrics, foundation stable (F-047)"
     description: "feature lead time, gate pass rate, drift 발생 빈도 등 집계."
     modules:
       - "metrics_command"
@@ -461,6 +471,8 @@ features:
     name: "$include 전개 엔진"
     type: "feature"
     status: "done"              # 2026-04-23: scripts/include_expander.py + 23 tests.
+    archived_at: "2026-04-23T00:00:00Z"
+    archive_reason: "v0.2 era include_expander — depth=1 $include enforcement, foundation stable (F-047)"
     release_target: "v0.2"
     description: "spec.yaml 의 $include 노드를 .harness/chapters/*.md 에서 읽어 🗒 필드에 치환."
     modules:
@@ -481,6 +493,8 @@ features:
     name: "Canonical Hashing — Merkle 3층"
     type: "feature"
     status: "done"              # 2026-04-23: scripts/canonical_hash.py + 19 tests.
+    archived_at: "2026-04-23T00:00:00Z"
+    archive_reason: "v0.2 era canonical_hash — 3-layer Merkle SHA-256, foundation stable (F-047)"
     release_target: "v0.2"
     description: "Canonical YAML → Canonical JSON → SHA-256. 전체/스코프/include expanded-vs-raw 3종."
     modules:
@@ -1279,6 +1293,32 @@ features:
       - "AC-6: pytest tests/unit/ -q 가 1084 PASS (회귀 0)."
       - "AC-7: bash scripts/self_check.sh 5/5."
       - "AC-8: F-046 양쪽 spec.yaml mirror + work.py 4-verb cycle."
+
+  - id: "F-047"
+    name: "vision consolidation — 6-release thread close + v0.11.0 minor bump"
+    type: "feature"
+    description: "전체 리팩토링 6 release (F-042~F-047) 의 마지막 단계 + minor bump. (1) F-001~F-010 in-place archive 마킹 (양쪽 spec mirror, Edit-based — yaml round-trip 회피). (2) CHANGELOG [Unreleased] cleanup + 6-release 통합 release notes 한 섹션. (3) CLAUDE.md '현재 상태' 섹션 압축 (v0.10.x 이력 누적 제거 → git log 참조). (4) decisions/risks future-use placeholder 명시. (5) plugin.json 0.11.0 minor bump (memory 정책상 사용자 confirm 받음). 외부 채택 readiness 신호."
+    modules:
+      - ".harness/spec.yaml"
+      - "docs/samples/harness-boot-self/spec.yaml"
+      - "CHANGELOG.md"
+      - "CLAUDE.md"
+      - ".claude-plugin/plugin.json"
+    test_strategy: "contract"
+    tdd_focus:
+      - "F-001~F-010 양쪽 spec.yaml mirror 에 archived_at + archive_reason 추가"
+      - "self_check 5/5 — spec mirror diff -q 통과 + validate"
+      - "1084 unit + 26 integration regression 0"
+      - "CHANGELOG 의 v0.11.0 entry 가 6 release thread (F-042~F-047) 종합 + 이전 thread (F-036~F-041 fog/transparency/parallel/i18n/native-en) 와의 연결"
+    acceptance_criteria:
+      - "AC-1: F-001~F-010 (10 features) 양쪽 spec.yaml mirror 에 archived_at='2026-04-23T00:00:00Z' (v0.1~v0.3 시대 commit 시점 근사) + archive_reason 마킹."
+      - "AC-2: CHANGELOG.md v0.11.0 entry — 6-release (F-042~F-047) 통합 release notes + minor bump 정당화 + memory 정책 준수 (사용자 confirm) 명시."
+      - "AC-3: CHANGELOG [Unreleased] 섹션 비움 (Marketplace PR 보류 한 줄만)."
+      - "AC-4: CLAUDE.md '§2 지금 어디쯤 있나' 섹션 — v0.11.0 reflect + v0.10.x 누적 이력 git log 참조로 압축."
+      - "AC-5: plugin.json version 0.11.0."
+      - "AC-6: bash scripts/self_check.sh 5/5 PASS."
+      - "AC-7: 1084 unit + 26 integration tests 회귀 0."
+      - "AC-8: F-047 양쪽 spec.yaml mirror + work.py 4-verb cycle 완주."
 
 constraints:
   tech_stack:
