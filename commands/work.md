@@ -70,6 +70,10 @@ python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --harness-dir "$(pwd)/.harness" --j
 - `planned` → `in_progress` 전이 + `session.active_feature_id` 설정.
 - 이미 `done` 이면 읽기만 (재활성화 거부).
 
+**F-037 Layer B fog-clear (auto, 2026-04-27)**: brownfield 프로젝트 (`metadata.source.origin == "existing_code"`) 에서 activate 시점에 자동으로 발화. `feature.modules[]` 가 가리키는 영역만 결정론 정찰 → `.harness/chapters/area-{slug}.md` 작성 + `.harness/area_index.yaml` 갱신 + `events.log` 의 `fog_cleared` 이벤트. 이후 같은 activate 의 kickoff 가 chapter 를 자동 참조 ("기존 스타일 컨텍스트" 섹션). idempotent — 같은 area set 두 번째 activate 는 chapter byte-identical + event 중복 X. 사용자 편집은 chapter 의 `<!-- harness:user-edit-begin -->` ~ `end` 영역으로 보존.
+
+**opt-out**: `python3 work.py F-NNN --no-fog` (이번 한 번) 또는 `spec.metadata.fog.disabled: true` (영구). 그린필드 (`origin: idea`) 에서 fog 가 노이즈면 `metadata.fog.disabled: true` 로 비활성.
+
 ### Gate 결과 기록 (수동)
 
 ```bash

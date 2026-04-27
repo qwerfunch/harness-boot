@@ -110,7 +110,10 @@ mkdir -p .harness .harness/hooks .harness/protocols .harness/_workspace/handoff
 mkdir -p .claude/agents .claude/skills
 ```
 
-### 2. starter 템플릿 복사 (3개 파일, CLAUDE.md 는 §3)
+### 2. starter 템플릿 복사 또는 brownfield seed (3 파일, CLAUDE.md 는 §3)
+
+> **옵션 1 · 2** → 그대로 starter 템플릿 복사 (아래 기존 흐름).
+> **옵션 3** → 먼저 §2.A (brownfield seed) 실행. spec.yaml 만 다르게 처리되고, 나머지 2 파일 (harness.yaml · state.yaml) 은 동일하게 복사.
 
 플러그인 레포의 `docs/templates/starter/` 에서 읽어와 **내용을 사용자 프로젝트** 로 씁니다.
 
@@ -184,6 +187,50 @@ jq -r '.plugins | to_entries[] | select(.key | startswith("harness@")) | .value[
 - TS 프로젝트로 감지되면 (`package.json scripts.typecheck` 또는 기존 `tsconfig.json` 존재) 최종 보고에 한 줄 안내: `팁: TS 프로젝트면 docs/templates/starter/tsconfig.json.template 의 권장값 참고 (allowImportingTsExtensions · noEmit · types).`
 
 이 섹션을 건너뛰면 나중에 수동으로 복사해도 됨. `/harness-boot:init --solo` 같은 라이트 모드에서는 기본 skip.
+
+### 2.A. (옵션 3 only) brownfield repo 정찰 + seed (F-036)
+
+옵션 3 (이미 코드가 있는 프로젝트) 으로 라우팅된 경우에만 이 섹션을 실행합니다. **§2 의 spec.yaml 복사 단계를 대체**합니다 (harness.yaml · state.yaml 복사는 §2 그대로 진행).
+
+**전제 — 매니페스트 신호 검증**:
+- §0 에서 수집된 프로젝트 신호 (`package.json` · `pyproject.toml` · `Cargo.toml` · `go.mod`) 가 **0 개**면 brownfield 정찰 부적합. 자동으로 옵션 1 fallback (starter template 그대로 복사) + 사용자에게 한 줄 안내: `매니페스트가 없어 brownfield 정찰을 건너뛰고 빈 스켈레톤으로 진행합니다.`
+
+**1. 결정론 정찰 — preview**:
+```bash
+cd "${PLUGIN_ROOT}" && python3 -m scripts.scan.seed_spec --root "${PROJECT_ROOT}" --preview
+```
+출력: stdout 에 시드 YAML. 다음 슬롯이 자동 채워짐 — `project.name` · `constraints.tech_stack.{runtime,language,test,build,min_version}` · `metadata.source.origin = "existing_code"` · `metadata.source.maturity = "implementation"` · Walking Skeleton F-0.
+
+**2. (선택) LLM 정찰 — entities**: structure 결과 (`metadata.scan.entity_candidate_files`) 가 비어있지 않으면 spec-conversion 의 `adapters/brownfield.md` 를 로드하여 `domain.{overview, entities[]}` 초안 추가. LLM 결과는 모두 `_seed_status: draft` 마커 동반.
+
+**3. 사용자 미리보기 + 4-옵션 선택** (한 번에 하나만):
+```
+🔍 brownfield 정찰 결과 미리보기:
+<seed YAML 본문>
+
+이대로 .harness/spec.yaml 으로 시드할까요?
+  Y = 결정론 + LLM 그대로 진행
+  D = 결정론만 (entities 비움 — LLM 신뢰가 낮을 때)
+  S = 빈 스켈레톤 (옵션 1 동치 — 정찰 시드 폐기)
+  E = 시드 결과를 임시 파일로 저장 후 사용자가 수동 편집
+```
+
+**4. 분기 처리**:
+| 선택 | 동작 |
+|------|------|
+| Y | `python3 -m scripts.scan.seed_spec --root <project> --apply` 호출 → `.harness/spec.yaml` 작성 |
+| D | LLM 시드 entities 제거 후 `--apply` 동등 (compose_seed 의 `llm_entities=None` 분기) |
+| S | `python3 -m scripts.scan.seed_spec --root <project> --skip` 호출 → starter template byte-equal 복사 (옵션 1 정확 동치) |
+| E | seed YAML 을 `<project>/.harness/spec.yaml.draft` 로 저장 + 사용자에게 편집 후 `mv` 안내 |
+
+**5. validate 게이트**: Y/D 분기는 apply 전에 schema 검증. 실패 시 에러 노출 + S fallback 권장.
+
+**6. §5 events.log 추가 이벤트** (한 줄):
+```json
+{"ts":"<ISO8601>","type":"brownfield_seeded","layer":"A","mode":"<Y|D|S|E>","entities_seeded":<N>,"draft":true}
+```
+
+**Anti-rationalization (BR-014)**: 옵션 3 분기는 §0 의 기존 `.harness/spec.yaml` 차단을 우회하지 않음 — 이미 설치된 프로젝트는 §0 에서 중단됨. 옵션 3 은 처음 init 일 때만.
 
 ### 3. CLAUDE.md 생성 또는 병합
 

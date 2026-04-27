@@ -179,6 +179,15 @@
             "type": "string",
             "description": "v0.10.6 additive — 피처의 1~2 줄 LLM-context 요약. 향후 spec.yaml 가 너무 커져서 통째 @import 가 어려울 때 summary index (scripts/spec/summary.py 산출) 가 이 필드만 추출. 미설정이면 name 으로 fallback."
           },
+          "area_scan": {
+            "type": "object",
+            "description": "F-037 additive — per-feature override knob for fog-clear. Allows freezing chapters or pinning the resolved area set for that feature.",
+            "properties": {
+              "areas":  {"type": "array", "items": {"type": "string"}},
+              "freeze": {"type": "boolean", "default": false}
+            },
+            "additionalProperties": true
+          },
           "include_path": {
             "type": "string",
             "description": "v0.10.6 additive — sharding 진입로. 설정되면 이 피처의 detail 은 외부 파일 (예: 'spec/features/auth/F-042.yaml') 에서 로드 — 현재는 무시 가능 (forward-compat). ~1000 features 임계점에서 활성화."
@@ -350,7 +359,11 @@
       "description": "v2.3.8 승격 — 8 블록이 metadata.* 1급 필드. metadata.extensions.* 는 하위 호환 수용 (deprecated).",
 
       "properties": {
-        "source": {"type": "object"},
+        "source": {
+          "type": "object",
+          "description": "Conversion provenance. Common shape: {origin, maturity, revision}. F-036 added 'existing_code' as an expected origin value (brownfield repo seed via /harness-boot:init option 3). Existing values 'idea' / 'planning_doc' / 'architecture_doc' / 'implementation' remain valid. additionalProperties: true is implicit — additive only.",
+          "additionalProperties": true
+        },
         "traceability": {"type": "object"},
         "conversion": {
           "type": "object",
@@ -380,6 +393,48 @@
           "additionalProperties": true
         },
 
+        "style_fingerprint": {
+          "type": "object",
+          "description": "F-037 (Layer B fog-clear) — project-level style cache. Populated deterministically by scripts/scan/style_fingerprint.fingerprint() during work.activate. Read by scripts/ceremonies/kickoff.py to inject style context into the implementer prompt. All sub-fields optional and additive.",
+          "properties": {
+            "language":     {"type": "string"},
+            "formatter":    {"type": "string"},
+            "linter":       {"type": "string"},
+            "test_runner":  {"type": "string"},
+            "test_pattern": {"type": "string"},
+            "naming":       {"type": "object"},
+            "config_files": {"type": "array", "items": {"type": "string"}}
+          },
+          "additionalProperties": true
+        },
+        "area_index": {
+          "type": "array",
+          "description": "F-037 — registry of areas the fog-clear hook has reconnoitered. Canonical persistence is the .harness/area_index.yaml side file; this schema field is reserved for users who choose to inline the registry into spec.yaml. Each entry: slug, label, modules, paths, chapter_path, last_scanned_ts, first_seen_feature_id, _provenance.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "slug":                    {"type": "string"},
+              "label":                   {"type": "string"},
+              "modules":                 {"type": "array", "items": {"type": "string"}},
+              "paths":                   {"type": "array", "items": {"type": "string"}},
+              "chapter_path":            {"type": "string"},
+              "last_scanned_ts":         {"type": "string"},
+              "first_seen_feature_id":   {"type": "string", "pattern": "^F-\\d+$"},
+              "_provenance":             {"type": "object"}
+            },
+            "additionalProperties": true
+          }
+        },
+        "fog": {
+          "type": "object",
+          "description": "F-037 — opt-out + bound knobs for fog-clear. disabled=true skips the autowire entirely. max_chapters caps the .harness/chapters/ growth (default 32). max_paths_per_area caps how many paths each chapter lists (default 16).",
+          "properties": {
+            "disabled":            {"type": "boolean", "default": false},
+            "max_chapters":        {"type": "integer", "minimum": 1, "default": 32},
+            "max_paths_per_area":  {"type": "integer", "minimum": 1, "default": 16}
+          },
+          "additionalProperties": true
+        },
         "command_map": {
           "$ref": "#/$defs/command_map"
         },

@@ -49,6 +49,10 @@ if str(_THIS) not in sys.path:
 from ceremonies import design_review as _design_review  # noqa: E402
 from ceremonies import kickoff as _kickoff  # noqa: E402
 from ceremonies import retro as _retro  # noqa: E402
+from scan import area_resolver as _area_resolver  # noqa: E402
+from scan import chapter_writer as _chapter_writer  # noqa: E402
+from scan import structure as _structure_scan  # noqa: E402
+from scan import style_fingerprint as _style_fingerprint  # noqa: E402
 from core.project_mode import resolve_mode as _resolve_project_mode  # noqa: E402
 from core.state import (  # noqa: E402
     IRON_LAW_D_DEFAULT_WINDOW_DAYS,
@@ -114,6 +118,150 @@ def _find_feature(spec: dict, fid: str) -> dict | None:
     return None
 
 
+def _autowire_fog_clear(
+    harness_dir: Path,
+    fid: str,
+    *,
+    disable: bool = False,
+    force: bool = False,
+) -> None:
+    """F-037 Layer B fog-of-war reconnaissance hook.
+
+    Per-feature reconnaissance of ``feature.modules[]`` paths. Writes one
+    chapter file per resolved area into ``.harness/chapters/area-<slug>.md``
+    and updates ``.harness/area_index.yaml`` (canonical persistence — kept
+    as a side file so spec.yaml stays comment-stable). Emits a single
+    ``fog_cleared`` event into events.log.
+
+    Silent-swallows like sibling autowires. Guards (in order):
+        1. ``--no-fog`` argument or spec.metadata.fog.disabled == true.
+        2. spec.yaml resolves; feature resolves.
+        3. feature.modules[] non-empty.
+        4. Idempotency: when the previous fog_cleared event for ``fid`` covers
+           the same set of area slugs and the chapters are already byte-identical,
+           skip emitting a new event.
+    """
+    try:
+        if disable:
+            return
+        spec = _load_spec(harness_dir)
+        if spec is None:
+            return
+        fog_cfg = (spec.get("metadata") or {}).get("fog") or {}
+        if fog_cfg.get("disabled") is True and not force:
+            return
+        feature = _find_feature(spec, fid)
+        if feature is None:
+            return
+        if not (feature.get("modules") or []):
+            return
+
+        project_root = Path(harness_dir).resolve().parent
+        structure = _structure_scan.scan_structure(project_root)
+        areas = _area_resolver.resolve_areas(
+            feature, project_root=project_root, structure=structure
+        )
+        if not areas:
+            return
+        style = _style_fingerprint.fingerprint(project_root)
+
+        timestamp = _now_iso()
+        for area in areas:
+            _chapter_writer.write_chapter(
+                harness_dir,
+                area=area,
+                style=style,
+                feature_id=fid,
+                timestamp=timestamp,
+            )
+
+        slugs = sorted(area.slug for area in areas)
+        _update_area_index(harness_dir, areas=areas, timestamp=timestamp)
+
+        if not force and _fog_event_already_emitted(harness_dir, fid, slugs):
+            return
+
+        _append_event(
+            harness_dir,
+            {
+                "ts": timestamp,
+                "type": "fog_cleared",
+                "feature": fid,
+                "areas": slugs,
+                "modules": [m for area in areas for m in area.modules],
+            },
+        )
+    except Exception:
+        return
+
+
+def _update_area_index(harness_dir: Path, *, areas, timestamp: str) -> None:
+    """Idempotently merge ``areas`` into .harness/area_index.yaml side file.
+
+    User-edited entries (``_provenance.confidence == "user"``) are preserved
+    verbatim. Generated entries refresh ``last_scanned_ts`` only.
+    """
+    index_path = Path(harness_dir) / "area_index.yaml"
+    existing: dict = {"schema_version": "1.0", "areas": []}
+    if index_path.is_file():
+        try:
+            loaded = yaml.safe_load(index_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                existing = loaded
+                existing.setdefault("schema_version", "1.0")
+                existing.setdefault("areas", [])
+        except yaml.YAMLError:
+            pass
+
+    by_slug = {entry.get("slug"): entry for entry in existing.get("areas", []) if isinstance(entry, dict)}
+
+    for area in areas:
+        prior = by_slug.get(area.slug)
+        if prior and (prior.get("_provenance") or {}).get("confidence") == "user":
+            continue
+        merged = {
+            "slug": area.slug,
+            "label": area.label,
+            "modules": list(area.modules),
+            "paths": list(area.paths),
+            "chapter_path": f"chapters/area-{area.slug}.md",
+            "last_scanned_ts": timestamp,
+            "first_seen_feature_id": prior.get("first_seen_feature_id") if prior else area.feature_id,
+            "_provenance": {"confidence": "generated"},
+        }
+        by_slug[area.slug] = merged
+
+    existing["areas"] = sorted(by_slug.values(), key=lambda entry: entry["slug"])
+
+    index_path.write_text(
+        yaml.safe_dump(existing, sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
+    )
+
+
+def _fog_event_already_emitted(harness_dir: Path, fid: str, slugs: list[str]) -> bool:
+    log = Path(harness_dir) / "events.log"
+    if not log.is_file():
+        return False
+    try:
+        for raw in log.read_text(encoding="utf-8").splitlines():
+            if not raw.strip():
+                continue
+            try:
+                event = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            if event.get("type") != "fog_cleared":
+                continue
+            if event.get("feature") != fid:
+                continue
+            if sorted(event.get("areas") or []) == slugs:
+                return True
+    except OSError:
+        return False
+    return False
+
+
 def _autowire_kickoff(harness_dir: Path, fid: str, *, force: bool = False) -> None:
     """Fire kickoff ceremony when spec.yaml + feature resolve. Never raises — activate must not fail on ceremony errors.
 
@@ -135,6 +283,11 @@ def _autowire_kickoff(harness_dir: Path, fid: str, *, force: bool = False) -> No
         shapes = _kickoff.detect_shapes(feature, spec=spec)
         if not shapes:
             return
+        style_block = ""
+        try:
+            style_block = _kickoff._render_style_block(harness_dir, feature)
+        except Exception:
+            style_block = ""
         _kickoff.generate_kickoff(
             harness_dir,
             feature_id=fid,
@@ -142,6 +295,7 @@ def _autowire_kickoff(harness_dir: Path, fid: str, *, force: bool = False) -> No
             has_audio=_kickoff.has_audio(feature),
             force=force,
             mode=_resolve_project_mode(spec),
+            style_block=style_block,
         )
     except Exception:
         return
@@ -275,8 +429,13 @@ def _warn_if_concurrent(state: State, fid: str) -> None:
         )
 
 
-def activate(harness_dir: Path, fid: str) -> WorkResult:
-    """피처를 active 로 설정 + planned → in_progress 전이."""
+def activate(harness_dir: Path, fid: str, *, disable_fog: bool = False) -> WorkResult:
+    """피처를 active 로 설정 + planned → in_progress 전이.
+
+    ``disable_fog`` (CLI ``--no-fog``) skips the F-037 Layer B reconnaissance
+    autowire — useful for greenfield projects or when the user wants a quiet
+    activate. Other autowires (kickoff, design-review) are unaffected.
+    """
     state = State.load(harness_dir)
     f = state.ensure_feature(fid)
     if f.get("status") == "done":
@@ -303,6 +462,7 @@ def activate(harness_dir: Path, fid: str) -> WorkResult:
             "status": state.get_feature(fid)["status"],
         },
     )
+    _autowire_fog_clear(harness_dir, fid, disable=disable_fog)
     _autowire_kickoff(harness_dir, fid)
     _autowire_design_review(harness_dir, fid)
     res = _summarize(state, fid)
@@ -910,6 +1070,11 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="v0.10 — paired with --archive: short reason / pivot summary recorded in events.log.",
     )
+    parser.add_argument(
+        "--no-fog",
+        action="store_true",
+        help="F-037 — disable Layer B fog-clear for this activate (no chapter, no event, no kickoff style block).",
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
 
@@ -1029,7 +1194,7 @@ def main(argv: list[str] | None = None) -> int:
                         )
                     )
                 return 0
-            res = activate(args.harness_dir, args.feature)
+            res = activate(args.harness_dir, args.feature, disable_fog=args.no_fog)
     except ValueError as e:
         print(f"error: {e}", file=sys.stderr)
         return 3

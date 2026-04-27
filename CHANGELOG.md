@@ -11,6 +11,39 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 - Marketplace PR (anthropic/claude-plugins-official) — 사용자 명시 후 진입.
 
+## [0.10.11] — 2026-04-27
+
+**fog-of-war brownfield reconnaissance — F-036 (Layer A · init seed) + F-037 (Layer B · work-activate fog clear).**
+
+사용자 비유 — *"기존 프로젝트에 이어 신규 피처 작업 시 기존 스타일 그대로 유지 — 깜깜한 미니맵에서 이동하는 곳마다 어둠이 걷히는 느낌"* — 의 메커니즘 정착. 기존 코드 보유 프로젝트 (`metadata.source.origin == "existing_code"`) 에서 `/harness-boot:init` 옵션 3 의 deferred 구현이 닫히고, 이후 매 `python3 work.py F-N` activate 마다 그 피처의 `modules[]` 영역만 결정론 정찰 → `.harness/chapters/area-{slug}.md` 작성 + kickoff prompt 에 자동 inject. 그린필드 사용자 영향 0 (옵션 1/2 byte-equal 보존, `--no-fog` opt-out).
+
+### Added — F-037 brownfield repo seed (work-activate fog clear · Layer B)
+
+사용자 비유 — *"깜깜한 미니맵에서 이동하는 곳마다 어둠이 걷힘"* — 의 본체. F-036 (Layer A · init-time 1회 정찰) 위에서, 매 `python3 scripts/work.py F-N` activate 시점에 그 피처의 `modules[]` 영역만 결정론 정찰 → `.harness/chapters/area-{slug}.md` 작성 + `.harness/area_index.yaml` 갱신 + `events.log` 의 `fog_cleared` 이벤트. 같은 activate 의 kickoff 가 chapter 를 자동 reference ("기존 스타일 컨텍스트" 섹션) — 신규 피처가 기존 스타일 그대로 확장되는 메커니즘의 종착점. fully deterministic (LLM 호출 X).
+
+- **신규 모듈**: `scripts/scan/{area_resolver, style_fingerprint, chapter_writer}.py` — F-036 의 manifest/structure 를 재사용 (추가 walking 비용 0).
+- **work.py**: `_autowire_fog_clear` 추가 + `activate()` 호출 순서 fog → kickoff → design_review (chapter 가 kickoff 시점에 존재해야 inject 가능). `--no-fog` CLI flag.
+- **kickoff.py**: `_render_style_block` + `generate_kickoff(..., style_block="")` — area_index.yaml 의 area 와 feature.modules 매칭 시 "기존 스타일 컨텍스트" 섹션 emit. 미매칭 피처는 zero diff (회귀 0).
+- **schema additive**: `metadata.{style_fingerprint, area_index, fog}` + `features[].area_scan` 4 신규 optional. version label v2.3.8 유지 (patch-first). 11/11 기존 sample validate 회귀 0.
+- **persistence**: area_index 의 canonical store 는 `.harness/area_index.yaml` side file (spec.yaml 무결성 보호). schema 의 `metadata.area_index[]` 는 사용자 명시 inline 시에만 valid.
+- **idempotency**: chapter 는 timestamp-free 이라 같은 area+style+feature 입력에 byte-identical. 사용자 편집은 `<!-- harness:user-edit-begin -->` / `end -->` 영역으로 보존. fog_cleared 이벤트는 같은 area set 두 번째 호출 시 emit X.
+- **opt-out**: `--no-fog` CLI 또는 `metadata.fog.disabled: true`.
+- **tests**: 28 신규 unit (area_resolver 7 + style_fingerprint 8 + chapter_writer 6 + fog_clear hook 7) + 5 신규 integration (init option 3 e2e + F-037 self-cycle). 누적 1001 unit + 6 integration. self_check 5/5 유지.
+- **out-of-scope**: URL → design seed (F-038+), 사용자 코드 자동 수정/lint 강제, cross-language hash 테스트 벡터, F-036 Layer A 분기 변경.
+
+### Added — F-036 brownfield repo seed (init option 3 · Layer A)
+
+`/harness-boot:init` 옵션 3 ("이미 코드가 있는 프로젝트") 의 deferred 구현을 닫는다. init 시점에 1회 정찰 — 결정론으로 `constraints.tech_stack` · `project.name` · directory shape 를 시드, 선택적으로 LLM (spec-conversion 의 brownfield 어댑터) 이 `domain.{overview, entities[]}` 초안 추가. 사용자 미리보기 + 4-옵션 (Y/D/S/E) 게이트. skip 시 옵션 1 동치 (starter template byte-equal).
+
+- **신규 모듈**: `scripts/scan/{__init__,manifest,structure,seed_spec}.py` — 결정론 정찰 + 시드 composer + CLI (`--preview` / `--apply` / `--skip`).
+- **신규 어댑터**: `skills/spec-conversion/adapters/brownfield.md` v0.1 — 입력 형태 어댑터 (도메인 어댑터와 직교).
+- **SKILL.md**: §0 트리거 enum 에 `existing_code` 추가, §8 어댑터 표에 brownfield 행 추가, §12 v0.6 changelog.
+- **schema**: `metadata.source` 에 description 추가 — `existing_code` 가 권장 origin 값임을 명시 (additive only · enum 강제 X · 11/11 기존 spec 호환 유지).
+- **init.md**: §2.A 옵션 3 분기 신설 — 결정론 preview → LLM (선택) → Y/D/S/E 게이트 → events.log 의 `brownfield_seeded` 이벤트.
+- **fixtures**: `tests/fixtures/brownfield-repos/{node-react, python-fastapi, rust-cli, empty-repo}/` — 매니페스트 + README + 도메인 후보 파일.
+- **tests**: 48 신규 unit (manifest 17 + structure 11 + seed_spec 15 + brownfield adapter 5) + 4 integration e2e. 누적 968 unit + integration 4. self_check 5/5 유지.
+- **out-of-scope**: work-time fog clear (Layer B — F-037 candidate), 코드 스타일 학습, 기존 코드 자동 수정.
+
 ## [0.10.10] — 2026-04-27
 
 **gate_5 browser smoke auto-detect — gstack `/qa` 환원 + cosmic-suika I-010 root fix.**

@@ -47,7 +47,8 @@ v0.3 에서 계승된 자산:
 ## 0. 트리거 조건
 
 - 사용자가 "plan.md → spec.yaml" / "기획 → 스펙" / "설계문서 변환" 등 요청
-- `.harness/spec.yaml` 이 비었거나 `metadata.source.origin: planning_doc|architecture_doc` 프로젝트에서 `/harness:spec` Mode B 실행
+- `.harness/spec.yaml` 이 비었거나 `metadata.source.origin: planning_doc|architecture_doc|existing_code` 프로젝트에서 `/harness:spec` Mode B 실행
+- `/harness-boot:init` 옵션 3 (이미 코드가 있는 프로젝트) 라우팅 — `existing_code` 진입점은 `adapters/brownfield.md` 로 위임 (F-036)
 - 사용자가 명시적으로 `@spec-conversion` 호출
 
 ---
@@ -282,9 +283,11 @@ MAY = 도메인 특수적
 | `adapters/game.md` | FPS·스프라이트·게임루프 | G-11/12/13·P-10 |
 | `adapters/library.md` v0.1 | SDK·semver·패키지 | NEW-24·G-08·NEW-25·NEW-26·NEW-27 |
 | `adapters/meta.md` **v0.2** | 플러그인·CLI·slash command·devtool·에디터확장 (self-bootstrap + host-plugin 2형, host-plugin 은 빌드도구·에디터확장 2서브타입) | NEW-28·NEW-33·NEW-30·NEW-29·NEW-34·NEW-35 host_binding·**NEW-36 contribution_points** |
+| `adapters/brownfield.md` **v0.1** (F-036) | **입력 형태** 어댑터 — 기존 코드 (manifest 1+ · `.harness/spec.yaml` 부재 · `existing_code` origin) | 결정론 정찰(scripts/scan/*) 우선 · LLM 은 overview/entities/BR/ADR 만 · `_seed_status: draft` 마커 |
 
 **로딩 규칙**: Stage 0 에서 도메인 판정 후 해당 어댑터를 Read. 복수 도메인이
-해당되면 모두 로드 (예: VAPT = saas + security).
+해당되면 모두 로드 (예: VAPT = saas + security). brownfield 는 *입력 형태*
+어댑터이므로 도메인 어댑터와 직교 — 항상 합성 가능.
 
 ---
 
@@ -372,3 +375,4 @@ MAY = 도메인 특수적
 - **Phase 2.12 / v2.3.8-rfc** (2026-04-23): 위 3/3 meta 재변환 데이터를 근거로 **`design/rfcs/v2.3.8-metadata-extensions-promotion.md`** 저작. 9 블록 등급 판정: command_map/ambient_files/drift_catalog/versioning_axes **P0 MUST-if-present (3/3 HIT)**, host_binding **P0 SHOULD 서브타입 조건부 (2/2 host-plugin)**, contribution_points **P1 SHOULD 서브타입 인식**, preamble_contract **P1 MAY**, changelog **P2 MAY**, gate_chain **P1 MAY (조건부 — self-bootstrap full, host-plugin 은 drift_catalog.action 흡수 허용)**. `metadata.extensions.*` 네임스페이스는 deprecated (v2.5.0 제거 예정).
 - **Phase 2.13 / v2.3.8 구현** (2026-04-23): `docs/schemas/spec.schema.json` v2.3.8 작성 (8 블록 + gate_chain `$defs`, 11/11 샘플 validate). `scripts/upgrade_to_2_3_8.py` 마이그레이션 스크립트 구현 (ruamel.yaml round-trip 으로 주석·순서 보존, `--dry-run` / `--no-backup` 지원). 3 v2 샘플 `metadata.extensions.*` → `metadata.*` 이관 완료 (self-v2: 8 블록 이관 + agent_permissions 유지 [v2.4.0 대기], vite-bb/vscode-cc: 7 블록 이관 + extensions 네임스페이스 완전 제거). conversion_diff 회귀 **8/8 PASS** + JSONSchema 검증 **11/11 OK**. **v2.3.8 승격 조건 충족 상태**.
 - **v0.5 / Phase 2.14-A** (2026-04-23): **v2.3.8 네이티브 전환**. SKILL.md frontmatter version 0.4→0.5, 타겟 스키마 선언을 v2.3.8 로 갱신. §11 을 "v2.3.8 승격 완료 (9 블록) · v2.4.0 대기 (agent_permissions) · v2.4.0 후보 (단일/약한 재현)" 3-티어로 재편. §9 회귀 보장을 시맨틱(conversion_diff) + 스키마(jsonschema draft 2020-12) **2-축** 체계로 정식화. `templates/` 에 **3종 신설** — `spec-skeleton-v2.3.8.yaml` (metadata.* 직접 배치 모범, extensions 경유 금지 주석), `unrepresentable.md` (v2.3.8 승격 완료 필드 목록 + 재변환 라운드 판정 표), `conversion-notes.md` (가설/개선 후보/회귀 체크 6-섹션 표준형). 회귀 **11/11 schema OK + 8/8 semantic PASS** 재확인.
+- **v0.6 / F-036** (2026-04-27): **brownfield 어댑터 신설** (`adapters/brownfield.md` v0.1). `/harness-boot:init` 옵션 3 (이미 코드가 있는 프로젝트) 진입로. 결정론 정찰 (`scripts/scan/{manifest,structure,seed_spec}`) 우선 + LLM 은 `domain.{overview,entities[]}` 만 시드. `_seed_status: draft` 마커 + skip 시 옵션 1 동치 (starter template byte-equal). §0 트리거에 `existing_code` origin enum 추가, §8 어댑터 표에 brownfield 한 줄 (입력 형태 어댑터 — 도메인 어댑터와 직교).

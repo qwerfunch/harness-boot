@@ -656,8 +656,63 @@ features:
       가 여전히 우선).'
   started_at: '2026-04-27T06:00:19Z'
   completed_at: '2026-04-27T06:04:13Z'
+- id: F-036
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-27T06:53:53Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T06:54:00Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T06:53:53Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (8.0s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-27T06:54:00Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.5s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T06:54:10Z'
+    kind: generic
+    summary: F-036 brownfield seed Layer A · scripts/scan/{manifest,structure,seed_spec}.py
+      + brownfield adapter v0.1 + init.md option 3 §2.A · 17+11+15+5 unit tests +
+      4 integration e2e + self_check 5/5 + gate_0/5 PASS · schema additive (metadata.source
+      description hint, no enum lock-in)
+  started_at: '2026-04-27T06:41:36Z'
+  completed_at: '2026-04-27T06:54:15Z'
+- id: F-037
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-27T07:47:38Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T07:47:45Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T07:47:38Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (9.2s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-27T07:47:45Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.5s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T07:47:55Z'
+    kind: generic
+    summary: F-037 fog-of-war Layer B · scripts/scan/{area_resolver,style_fingerprint,chapter_writer}.py
+      + work.py _autowire_fog_clear + kickoff style block + schema additive (style_fingerprint/area_index/fog/area_scan)
+      + commands/work.md doc · 28 unit (area 7 + style 8 + chapter 6 + hook 7) + 5
+      integration · self_check 5/5 · gate_0/5 PASS · idempotent + --no-fog opt-out
+      검증
+  started_at: '2026-04-27T07:34:24Z'
+  completed_at: null
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-035
+  last_command: /harness:work F-037
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-037

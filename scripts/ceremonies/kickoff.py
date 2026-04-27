@@ -27,6 +27,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
+try:
+    import yaml
+except ImportError:
+    yaml = None  # type: ignore[assignment]
+
 
 # Mirrors commands/work.md §Orchestration Routing table.
 # test_ceremony_routing.py (PR-ε) will assert this map stays in sync.
@@ -138,12 +143,69 @@ def agents_for_shapes(shapes: Iterable[str], *, has_audio: bool = False) -> list
     return out
 
 
+def _render_style_block(harness_dir: Path, feature: dict) -> str:
+    """F-037 — render '기존 스타일 컨텍스트' section for the kickoff body.
+
+    Reads ``.harness/area_index.yaml`` (written by ``_autowire_fog_clear`` in
+    work.py) and matches the feature's ``modules[]`` against each area's
+    ``modules[]``. Renders bullets for the overlapping areas and links to
+    their chapter files. Returns an empty string when there is no overlap or
+    when the index file is absent — the kickoff template emits no section
+    in that case (zero diff vs pre-F-037 output).
+    """
+    if yaml is None:
+        return ""
+    harness_dir = Path(harness_dir)
+    index_path = harness_dir / "area_index.yaml"
+    if not index_path.is_file():
+        return ""
+
+    try:
+        loaded = yaml.safe_load(index_path.read_text(encoding="utf-8"))
+    except yaml.YAMLError:
+        return ""
+    areas = []
+    if isinstance(loaded, dict):
+        areas = loaded.get("areas") or []
+
+    feature_modules = set(feature.get("modules") or [])
+    if not feature_modules:
+        return ""
+
+    matched: list[dict] = []
+    for entry in areas:
+        if not isinstance(entry, dict):
+            continue
+        entry_modules = set(entry.get("modules") or [])
+        if entry_modules & feature_modules:
+            matched.append(entry)
+    if not matched:
+        return ""
+
+    lines: list[str] = []
+    lines.append("## 기존 스타일 컨텍스트 (auto · F-037)")
+    lines.append("")
+    lines.append(
+        "> 어둠이 걷힌 영역. 아래 chapter 가 implementer / software-engineer / "
+        "frontend-engineer 의 기본 컨텍스트."
+    )
+    lines.append("")
+    lines.append("### 관련 area chapter")
+    for entry in matched:
+        label = entry.get("label", entry.get("slug", "area"))
+        chapter_path = entry.get("chapter_path", "")
+        lines.append(f"- [{label}](../../{chapter_path})")
+    lines.append("")
+    return "\n".join(lines) + "\n"
+
+
 def _template(
     feature_id: str,
     agents: list[str],
     timestamp: str,
     *,
     mode: str = "product",
+    style_block: str = "",
 ) -> str:
     """Render kickoff.md.
 
@@ -177,6 +239,9 @@ def _template(
     for a in agents:
         lines.append(f"- `@harness:{a}`")
     lines.append("")
+    if style_block:
+        lines.append(style_block.rstrip())
+        lines.append("")
     lines.append("---")
     lines.append("")
     for agent in agents:
@@ -207,6 +272,7 @@ def generate_kickoff(
     timestamp: str | None = None,
     force: bool = False,
     mode: str = "product",
+    style_block: str = "",
 ) -> Path:
     """Create kickoff template + event. Returns path to the kickoff.md.
 
@@ -240,7 +306,7 @@ def generate_kickoff(
         return kickoff_path
 
     kickoff_path.write_text(
-        _template(feature_id, agents, timestamp, mode=mode),
+        _template(feature_id, agents, timestamp, mode=mode, style_block=style_block),
         encoding="utf-8",
     )
 
