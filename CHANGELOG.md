@@ -11,6 +11,32 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 - Marketplace PR (anthropic/claude-plugins-official) — 사용자 명시 후 진입.
 
+## [0.10.18] — 2026-04-27
+
+**Spec archive flow — Phase 3 of the 6-release refactor (F-044).**
+
+F-029 (v0.10.6) 가 정의했지만 41 entry 중 0 개 사용 중이던 `archived_at` / `archive_reason` 필드의 lifecycle 활성화. 외부 dev 가 spec 의 historical features 를 in-place 마킹할 수 있는 도구 + dashboard 의 자동 필터링.
+
+### Added — F-044
+- **`scripts/spec/archive.py`** — `archive_feature(spec_path, feature_id, reason, *, timestamp=None)` 함수. spec.yaml 의 `features[F-N]` entry 에 `archived_at` (ISO8601 UTC) + `archive_reason` 채움. unknown feature 는 KeyError, 빈 reason 은 ValueError.
+- **`is_archived(feature)`** helper — feature dict 의 archived_at 마커 검사.
+
+### Changed
+- **`scripts/ui/dashboard.py::_render_unregistered`** — F-029 의 `archived_at` 마커 가진 feature 도 "next candidates" 에서 자동 제외 (`status=archived` · `superseded_by` 와 함께 3 차단 layer).
+
+### Tests
+- **신규**: 7 `tests/unit/test_spec_archive.py` (archive_feature 4 + is_archived 2 + dashboard filter 1).
+- **누적**: 1077 unit + 26 integration. `self_check 5/5`. F-038~F-043 회귀 0.
+
+### Out-of-scope (의도)
+- **F-001 ~ F-010 in-place 마킹 — F-047 (vision consolidation) 로 미룸**. 이유: 본 레포 spec.yaml 은 1700+ 줄 + 한국어 주석 + edit-wins 형태라 yaml round-trip 으로 자동 mutate 시 주석 / 순서 깨짐. 외부 사용자의 단순 spec 에서는 archive_feature 가 yaml.safe_dump 로 안전 동작; 본 레포는 manual Edit 또는 ruamel 도입 후 F-047 에서 처리.
+- **work.archive() 와의 spec marker wire-up** — 같은 위험. archive_feature 는 외부 dev 가 직접 호출하는 도구로 둠.
+
+### 효과
+- F-029 의 5 dead fields 중 2 개 (`archived_at` + `archive_reason`) 가 살아남.
+- dashboard 의 archive 인식이 3-축 (status · superseded_by · archived_at).
+- 외부 dev 가 historical features 의 lifecycle 명시 도구 확보.
+
 ## [0.10.17] — 2026-04-27
 
 **Hardcode externalization — Phase 2 of the 6-release refactor (F-043).**

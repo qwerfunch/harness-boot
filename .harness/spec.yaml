@@ -1196,6 +1196,33 @@ features:
       - "AC-8: bash scripts/self_check.sh 5/5 PASS."
       - "AC-9: F-043 양쪽 spec.yaml mirror + work.py 4-verb cycle 완주."
 
+  - id: "F-044"
+    name: "spec archive flow — F-029 fields activation + work.py --archive"
+    type: "feature"
+    description: "전체 리팩토링 6 release 의 3 단계. F-029 schema (v0.10.6) 가 정의했지만 41 entry 중 0 개 사용 중인 archived_at / archive_reason / area / digest / include_path 5 fields 의 lifecycle 활성화. (1) work.py --archive F-N --reason 'X' CLI 추가 — feature 의 status 변경 + spec.yaml 의 archived_at / archive_reason 채움 + events.log feature_archived 이벤트. (2) F-001 ~ F-010 (v0.1~v0.3 시대 historical) 을 in-place archive 마킹 (별도 파일 이동 X — F-029 forward-compat 유지). (3) dashboard 에 archived feature 별도 섹션 (현재는 섞여 보임)."
+    modules:
+      - "scripts/spec/archive"
+      - "scripts/work.py"
+      - "scripts/ui/dashboard.py"
+      - ".harness/spec.yaml"
+      - "docs/samples/harness-boot-self/spec.yaml"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "scripts/spec/archive.py: archive_feature(harness_dir, fid, reason) — spec.yaml 에 archived_at + archive_reason 채움 + state.yaml status=archived"
+      - "work.py --archive F-N --reason 'X' CLI 진입로 — 기존 --remove 와 다름 (--remove 는 entry 삭제, --archive 는 lifecycle marker)"
+      - "F-001~F-010 in-place archive 마킹 (양쪽 spec mirror)"
+      - "events.log: feature_archived event"
+      - "dashboard: archived features 가 'pending' / 'in_progress' / 'on hold' 어디에도 안 나타남 (별도 표시 안 해도 OK, 단순 숨김)"
+    acceptance_criteria:
+      - "AC-1: scripts/spec/archive.py 신설 — archive_feature(harness_dir, fid, reason) 함수. spec.yaml 의 features[F-N] 에 archived_at (ISO8601 UTC) + archive_reason 채움."
+      - "AC-2: scripts/work.py 가 --archive F-N --reason 'X' 인자 받아 archive_feature 호출 + state.yaml status=archived + events.log feature_archived event."
+      - "AC-3: F-001~F-010 (10 features) 양쪽 spec.yaml mirror 에 archived_at='2026-04-23' + archive_reason 마킹. F-019 는 이미 archived 표기되어 있어 archived_at 만 채움."
+      - "AC-4: dashboard.py 의 _render_pending / _render_other_in_progress / _render_unregistered 가 archived feature 자동 제외 (F-029 의 archived_at 필드 검사)."
+      - "AC-5: bash scripts/self_check.sh 5/5 PASS — spec validate 통과 (archived_at 추가는 schema additive)."
+      - "AC-6: 신규 unit ≥ 5 (archive_feature 3 + work.py --archive 1 + dashboard exclude 1)."
+      - "AC-7: 1070 unit + 26 integration tests 회귀 0."
+      - "AC-8: F-044 양쪽 spec.yaml mirror + work.py 4-verb cycle 완주."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

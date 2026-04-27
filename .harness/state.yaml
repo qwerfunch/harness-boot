@@ -884,8 +884,35 @@ features:
       동작
   started_at: '2026-04-27T10:00:46Z'
   completed_at: '2026-04-27T10:06:11Z'
+- id: F-044
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-27T10:11:02Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T10:11:03Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T10:11:02Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (9.5s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-27T10:11:03Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.5s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T10:11:03Z'
+    kind: generic
+    summary: F-044 spec archive flow · scripts/spec/archive.py 신설 (archive_feature
+      + is_archived) · dashboard.py _render_unregistered 가 F-029 archived_at 자동 제외
+      · 7 new unit tests · F-001~F-010 manual marking 은 F-047 vision consolidation
+      으로 미룸 (yaml round-trip 의 한국어 주석 깨짐 위험) · 1070 → 1077 누적 · self_check 5/5
+  started_at: '2026-04-27T10:07:18Z'
+  completed_at: null
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-043
+  last_command: /harness:work F-044
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-044

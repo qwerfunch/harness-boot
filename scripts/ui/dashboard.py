@@ -224,6 +224,10 @@ def _render_unregistered(
             continue
         if f.get("superseded_by"):
             continue
+        # F-044 — F-029's archived_at marker (in-place lifecycle archive)
+        # also hides the feature from "next candidates".
+        if f.get("archived_at"):
+            continue
         candidates.append(f)
 
     if not candidates:
