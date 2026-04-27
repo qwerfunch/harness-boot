@@ -1158,7 +1158,7 @@ features:
   - id: "F-042"
     name: "doc cleanup — dead docs + duplicate consolidation + Preamble central spec"
     type: "feature"
-    description: "전체 리팩토링 6 release 의 첫 단계 (lowest risk, code 0). docs/setup/local-install.md (322줄, stale, F-041 후 redundant) · docs/release/v0.1.0.md (212줄, v0.10.x 시대 부적합) 삭제. docs/i18n/ko/ 17 파일 (180 KB freeze) 을 docs/archive/i18n-ko-frozen-f041/ 로 강등 (보존하되 시각적으로 archive). 설치 경로 정보 3 곳 중복 (README + docs/setup/{local-install,first-run-checklist}.md) → README 한 곳으로 통합. Preamble spec central 화 — docs/preamble-spec.md 신설하여 commands + agents 의 4 곳 반복 규약을 한 곳에 모음."
+    description: "First phase of the six-release refactor thread (lowest risk, zero code change). Removes docs/setup/local-install.md (322 lines, stale, redundant after F-041) and docs/release/v0.1.0.md (212 lines, no longer fits the v0.10.x era). Demotes the docs/i18n/ko/ 17-file 180 KB freeze to docs/archive/i18n-ko-frozen-f041/ (preserved but visually archived). Collapses install instructions duplicated in 3 places (README + docs/setup/{local-install,first-run-checklist}.md) into a single README section. Centralizes the Preamble spec — adds docs/preamble-spec.md as the single source for the convention previously repeated 4 times across commands + agents."
     modules:
       - "docs/setup/local-install.md"
       - "docs/release/v0.1.0.md"
@@ -1189,7 +1189,7 @@ features:
   - id: "F-043"
     name: "hardcode externalization — single source of truth for routing/gates/render/limits"
     type: "feature"
-    description: "전체 리팩토링 6 release 의 2 단계. 분산 hardcode 정리: scripts/core/gates.py 신설 (STANDARD_GATES tuple 단일 source — work.py · dashboard.py · check.py 가 import) · scripts/core/routing.py 신설 (kickoff.ROUTING_SHAPES + PARALLEL_GROUPS 이전, kickoff.py 는 wrapper 만, 향후 .harness/routing.yaml override 진입로 marking) · scripts/ui/render.py 신설 (work.py + dashboard.py 의 _render_agent_chain mirror 통합) · scripts/ui/dashboard_config.py 신설 (_MAX_OTHER_LIST 등 magic numbers, env override). backward-compat 보장 — 모든 기존 import path 유지."
+    description: "Second phase of the six-release refactor thread. Cleans up scattered hardcoded values: introduces scripts/core/gates.py (STANDARD_GATES tuple as the single source — imported by work.py, dashboard.py, and check.py), scripts/core/routing.py (moves kickoff.ROUTING_SHAPES + PARALLEL_GROUPS, leaving kickoff.py as a thin wrapper and marking the entry point for a future .harness/routing.yaml override), scripts/ui/render.py (consolidates the _render_agent_chain mirror in work.py + dashboard.py), and scripts/ui/dashboard_config.py (magic numbers like _MAX_OTHER_LIST, with env override). Backward-compat guaranteed — every existing import path continues to work."
     modules:
       - "scripts/core/gates"
       - "scripts/core/routing"
@@ -1221,7 +1221,7 @@ features:
   - id: "F-044"
     name: "spec archive flow — F-029 fields activation + work.py --archive"
     type: "feature"
-    description: "전체 리팩토링 6 release 의 3 단계. F-029 schema (v0.10.6) 가 정의했지만 41 entry 중 0 개 사용 중인 archived_at / archive_reason / area / digest / include_path 5 fields 의 lifecycle 활성화. (1) work.py --archive F-N --reason 'X' CLI 추가 — feature 의 status 변경 + spec.yaml 의 archived_at / archive_reason 채움 + events.log feature_archived 이벤트. (2) F-001 ~ F-010 (v0.1~v0.3 시대 historical) 을 in-place archive 마킹 (별도 파일 이동 X — F-029 forward-compat 유지). (3) dashboard 에 archived feature 별도 섹션 (현재는 섞여 보임)."
+    description: "Third phase of the six-release refactor thread. Activates the lifecycle for the F-029 schema fields (v0.10.6) that were defined but unused across 41 entries: archived_at / archive_reason / area / digest / include_path. (1) Adds work.py --archive F-N --reason 'X' — transitions the feature's status, fills archived_at and archive_reason in spec.yaml, and appends a feature_archived event to events.log. (2) Marks F-001 through F-010 (the v0.1-v0.3 historical features) as archived in place — no file moves, preserving F-029's forward-compat promise. (3) Adds a separate archived section to the dashboard (today they are blended in)."
     modules:
       - "scripts/spec/archive"
       - "scripts/work.py"
@@ -1248,7 +1248,7 @@ features:
   - id: "F-045"
     name: "work.py + check.py facade-preserving split (sibling pattern)"
     type: "feature"
-    description: "전체 리팩토링 6 release 의 4 단계. work.py 1295 줄 + check.py 937 줄 = 2232 줄을 sibling 파일 형태로 분할. 디렉토리 conversion 회피 (git rename 회색지대). work.py 는 facade 로 유지, 실 코드는 work_internals.py · work_autowire.py · work_cli.py 의 sibling 모듈에 분산. check.py 는 check_detectors.py + check_report.py. 외부 import path 그대로 (`from work import activate` 등 모두 동작) — 즉 backward-compat 보장. 1077 unit + 26 integration 회귀 0."
+    description: "Fourth phase of the six-release refactor thread. Splits work.py (1295 lines) + check.py (937 lines) = 2232 lines into sibling files. Avoids directory conversion (which is a git-rename grey area). work.py stays as a facade; the actual code spreads across work_internals.py, work_autowire.py, and work_cli.py. check.py mirrors that with check_detectors.py + check_report.py. External import paths stay the same (`from work import activate` and friends still work) — backward compatibility guaranteed. 1077 unit + 26 integration tests, regression 0."
     modules:
       - "scripts/work.py"
       - "scripts/work_internals.py"
@@ -1278,7 +1278,7 @@ features:
   - id: "F-046"
     name: "tests/ namespace cleanup — work / scan / dashboard / kickoff sub-dirs"
     type: "feature"
-    description: "전체 리팩토링 6 release 의 5 단계. tests/unit/ 의 20 분산 테스트 파일을 영역별 sub-dir 로 이동 (git mv 로 history 보존). pytest auto-discovery 가 sub-dir 도 picks up — testpaths=tests/unit 그대로. tests/unit/{work,scan,dashboard,kickoff}/ 4 namespace. namespace 만 정리 (silent exception logger 추가는 별도 후속). 1084 unit + 26 integration 회귀 0."
+    description: "Fifth phase of the six-release refactor thread. Moves 20 scattered test files under tests/unit/ into per-area sub-directories (using git mv to preserve history). pytest auto-discovery picks up the subdirs — testpaths=tests/unit is unchanged. Four new namespaces: tests/unit/{work,scan,dashboard,kickoff}/. Namespace cleanup only (the silent exception logger is a separate follow-up). 1084 unit + 26 integration tests, regression 0."
     modules:
       - "tests/unit/work/"
       - "tests/unit/scan/"
@@ -1305,7 +1305,7 @@ features:
   - id: "F-047"
     name: "vision consolidation — 6-release thread close + v0.11.0 minor bump"
     type: "feature"
-    description: "전체 리팩토링 6 release (F-042~F-047) 의 마지막 단계 + minor bump. (1) F-001~F-010 in-place archive 마킹 (양쪽 spec mirror, Edit-based — yaml round-trip 회피). (2) CHANGELOG [Unreleased] cleanup + 6-release 통합 release notes 한 섹션. (3) CLAUDE.md '현재 상태' 섹션 압축 (v0.10.x 이력 누적 제거 → git log 참조). (4) decisions/risks future-use placeholder 명시. (5) plugin.json 0.11.0 minor bump (memory 정책상 사용자 confirm 받음). 외부 채택 readiness 신호."
+    description: "Final phase of the six-release refactor thread (F-042~F-047) plus the minor bump. (1) Marks F-001~F-010 as archived in place across both spec.yaml mirrors (Edit-based to avoid yaml round-trip). (2) Cleans up CHANGELOG [Unreleased] and consolidates the six-release thread into a single release notes section. (3) Compresses CLAUDE.md's 'Where we are' section (drops accumulated v0.10.x history in favor of git log references). (4) Marks decisions / risks as future-use placeholders. (5) plugin.json 0.11.0 minor bump (user-confirmed per the memory policy). Signal that external adoption readiness is reached."
     modules:
       - ".harness/spec.yaml"
       - "docs/samples/harness-boot-self/spec.yaml"
@@ -1331,7 +1331,7 @@ features:
   - id: "F-048"
     name: "drift × Iron Law gating — complete() blocks on error-severity drift"
     type: "feature"
-    description: "4 메커니즘 결합 검증 (plan/wondrous-hopping-canyon §Part 10) 에서 발견한 GAP 1 닫기. work.py:complete() 가 check.py:run_check() 를 무호출하여 drift 가 누적된 채로도 feature 완료가 가능했음. 이번 결합으로 severity='error' finding 1+ 발견 시 complete 거부, --hotfix-reason 으로 emergency override 유지. severity 기반이라 prototype/product mode 무관하게 동작 — drift 는 시스템 무결성 신호이므로 mode 가 약화시키지 않음. F-051 (drift severity ranking 정밀화) 의 첫 결합."
+    description: "Closes GAP 1 from the 4-mechanism cohesion analysis (plan/wondrous-hopping-canyon §Part 10): work.py:complete() previously did not invoke check.py:run_check(), so a feature could be completed while drift accumulated. This integration rejects complete() when a severity='error' wire-integrity finding (Code/Stale/AnchorIntegration) is present; --hotfix-reason still bypasses for emergencies. Severity-based, so it operates independently of prototype/product mode — drift is a system-integrity signal that mode does not weaken. First binding into the upcoming severity-ranking refinement thread."
     modules:
       - "scripts/work.py"
       - "scripts/check.py"
@@ -1445,6 +1445,118 @@ features:
       - "AC-6: tests/unit/test_audit_pass.py:test_schema_archived_at_marks_declarative continues to pass — its Korean phrase guard ('자동 채우지 않음') is updated alongside the schema rewrite to its English equivalent."
       - "AC-7: F-050 spec entry itself was written in English at the moment it was added (self-evidence — same pattern as F-048 and F-049)."
       - "AC-8: F-050 completed via the work.py 4-verb cycle (Phase 2 dogfood)."
+
+  - id: "F-051"
+    name: "native English consolidation — Phase 2b: features[] description bodies"
+    type: "feature"
+    description: |
+      Continuation of F-050. Sweeps the features[] description /
+      acceptance_criteria / tdd_focus prose across active features in
+      both spec.yaml mirrors. Archived features (F-001~F-010 with
+      archived_at marker) are left intact as history — only the active
+      54 features are in scope.
+
+      Pragmatic execution: rather than per-feature individual rewrites,
+      this phase replaces the bulk Korean prose in description / AC
+      fields with native-English equivalents while preserving every
+      structural key, F-N reference, code path, and AC numbering. The
+      goal is *sharp Korean reduction*, not full perfection — F-052+
+      can polish further if needed.
+    modules:
+      - "docs/samples/harness-boot-self/spec.yaml"
+      - ".harness/spec.yaml"
+    test_strategy: "contract"
+    tdd_focus:
+      - "Korean character count drops sharply from 666 → < 300 across active features"
+      - "self_check 5/5 PASS — diff -q + validate stay green"
+      - "1117 tests PASS, regression 0"
+      - "Archived features (F-001~F-010 with archived_at) untouched as history"
+    acceptance_criteria:
+      - "AC-1: Korean characters in active features (non-archived) reduced by ≥ 50% from baseline 666."
+      - "AC-2: All structural keys (id / name / type / status / modules / test_strategy / tdd_focus / acceptance_criteria) preserved exactly."
+      - "AC-3: F-N references, AC-N numbering, code paths, and version markers (v0.x.y) preserved exactly."
+      - "AC-4: bash scripts/self_check.sh 5/5 PASS."
+      - "AC-5: 1117 unit + integration tests PASS, regression 0."
+      - "AC-6: Both spec.yaml mirrors byte-identical (diff -q)."
+      - "AC-7: Archived features (with archived_at marker) left untouched."
+      - "AC-8: F-051 completed via the work.py 4-verb cycle."
+
+  - id: "F-052"
+    name: "native English consolidation — Phase 3: scripts/ Python docstrings"
+    type: "feature"
+    description: |
+      Sweeps Korean prose out of Python docstrings and comments under
+      scripts/. ~70 files; only files with [가-힣] residue are touched.
+      Code identifiers stay exactly as they are — only docstrings,
+      comments, and error message strings are rewritten in native
+      English.
+
+      Pragmatic execution: per-file Read → Edit (or batch replace_all
+      where Korean phrases cluster). Tests must continue to pass after
+      every file's edit.
+    modules:
+      - "scripts/"
+    test_strategy: "contract"
+    tdd_focus:
+      - "Korean character count under scripts/ drops to 0 (or near-zero, with any intentional KO clearly marked)"
+      - "1117 tests PASS, regression 0 — no test breakage from docstring changes"
+      - "self_check 5/5 PASS"
+    acceptance_criteria:
+      - "AC-1: grep -rl '[가-힣]' scripts/ returns empty (or only files with intentional bilingual markers)."
+      - "AC-2: All function / class / module names preserved exactly."
+      - "AC-3: All error message strings parseable by their existing tests (any test asserting a Korean string is updated alongside)."
+      - "AC-4: bash scripts/self_check.sh 5/5 PASS."
+      - "AC-5: 1117 unit + integration tests PASS, regression 0."
+      - "AC-6: F-052 completed via the work.py 4-verb cycle."
+
+  - id: "F-053"
+    name: "native English consolidation — Phase 4: tests/ Python docstrings"
+    type: "feature"
+    description: |
+      Sweeps Korean prose out of Python docstrings, comments, and
+      string literals under tests/. ~60 files. Same contract as
+      F-052: identifiers preserved, only prose rewritten.
+
+      Tests asserting Korean string content (rare but they exist) are
+      updated to assert the new English equivalent in the same edit.
+    modules:
+      - "tests/"
+    test_strategy: "contract"
+    tdd_focus:
+      - "Korean character count under tests/ drops to 0 (or near-zero, with any intentional KO clearly marked)"
+      - "1117 tests PASS, regression 0"
+      - "self_check 5/5 PASS"
+    acceptance_criteria:
+      - "AC-1: grep -rl '[가-힣]' tests/ returns empty (or only files with intentional KO assertions)."
+      - "AC-2: All test function / class / module names preserved exactly."
+      - "AC-3: Tests asserting Korean strings updated to assert the English equivalent in the same commit."
+      - "AC-4: bash scripts/self_check.sh 5/5 PASS."
+      - "AC-5: 1117 unit + integration tests PASS, regression 0."
+      - "AC-6: F-053 completed via the work.py 4-verb cycle."
+
+  - id: "F-054"
+    name: "native English consolidation — Phase 5: CHANGELOG English-only-going-forward policy"
+    type: "feature"
+    description: |
+      Closes the post-F-041 native-English consolidation thread. Adds
+      a short policy note to CHANGELOG.md that future entries will be
+      written in English from now on; existing release notes (v0.1.0
+      through v0.11.2) stay as historical Korean+English mix.
+
+      Tiny scope — ~30 minutes. Single CHANGELOG.md edit + a small
+      contributor-facing note.
+    modules:
+      - "CHANGELOG.md"
+    test_strategy: "contract"
+    tdd_focus:
+      - "CHANGELOG header carries an explicit English-only-going-forward marker"
+      - "Existing release notes preserved verbatim (history)"
+    acceptance_criteria:
+      - "AC-1: CHANGELOG.md prepends a short English-language policy note (after the Keep-a-Changelog header) describing the going-forward language convention."
+      - "AC-2: All previous release notes (v0.1.0 — v0.11.2) preserved verbatim as historical record."
+      - "AC-3: bash scripts/self_check.sh 5/5 PASS."
+      - "AC-4: 1117 unit + integration tests PASS, regression 0."
+      - "AC-5: F-054 completed via the work.py 4-verb cycle, closing the F-049~F-054 native-EN thread."
 
 constraints:
   tech_stack:

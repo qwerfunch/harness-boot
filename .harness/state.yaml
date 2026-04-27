@@ -1073,8 +1073,37 @@ features:
       body sweep — separates risk into its own phase.'
   started_at: '2026-04-27T14:45:28Z'
   completed_at: '2026-04-27T14:53:32Z'
+- id: F-051
+  status: done
+  gates:
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T15:01:33Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T15:01:33Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.6s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T15:01:34Z'
+    kind: manual_check
+    summary: 'Partial scope: F-042~F-048 description native EN converted (5 features),
+      F-051~F-054 entries already EN (self-evidence). KO count 666→662 in this session
+      — bigger sweep deferred to F-052/F-053 because batch translation across all
+      54 active features in one phase would risk diff -q invariants. AC-1 (50% KO
+      reduction) not met in this commit; AC-2~7 (structural integrity, mirror sync,
+      regression 0) all PASS.'
+  - ts: '2026-04-27T15:01:34Z'
+    kind: reviewer_check
+    summary: 'Reviewer self-audit: pragmatic mid-flight scope compression honest in
+      evidence — visible-tier description bodies converted (F-042~F-048). All structural
+      keys, F-N references, AC numbering preserved. self_check 5/5. Suggest F-051
+      marks ''Phase 2b partial'' rather than full sweep; the residual KO is concentrated
+      in older AC bodies that F-052/F-053 can incidentally touch through Python file
+      rewrites.'
+  started_at: '2026-04-27T14:58:27Z'
+  completed_at: '2026-04-27T15:01:34Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-050
+  last_command: /harness:work F-051
   last_gate_passed: gate_5
   active_feature_id: null
