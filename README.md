@@ -5,13 +5,12 @@
 Claude Code 위에서 도는 multi-agent 개발 하네스. 다른 AI 도구가 *능력* 을 더할 때, harness-boot 는 *방향* 을 만듭니다.
 
 [![plugin](https://img.shields.io/badge/plugin-v0.11.3-blue)](.claude-plugin/plugin.json)
-[![spec](https://img.shields.io/badge/spec-v2.3.8-green)](docs/schemas/spec.schema.json)
 [![tests](https://img.shields.io/badge/tests-1117%20passing-brightgreen)](tests)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 ---
 
-## 왜 하네스인가
+## 🐎 왜 하네스인가
 
 야생마는 빠르지만 산만합니다. 마구 채운 말은 빠르고 *방향* 이 있습니다.
 
@@ -26,11 +25,11 @@ Claude Code 위에서 도는 multi-agent 개발 하네스. 다른 AI 도구가 *
 
 | # | 강점 | 어떻게 작동하나 | 사용자가 얻는 것 |
 |---|---|---|---|
-| 1 | **변환** | 자연어로 쓴 아이디어를 AI 가 정확히 받아들일 수 있는 형식으로 자동 정리합니다. 자유서술과 계약 항목이 분리되어, AI 는 *해야 할 일* 만 받습니다. | AI 가 문맥을 잃거나 헷갈리지 않습니다. |
-| 2 | **진화** | spec 한 곳에서 다른 모든 문서가 자동 파생됩니다. 코드와 문서 사이에 어긋남이 생기면 여러 방향에서 자동 감지하고, 사용자가 손질한 부분은 덮어쓰지 않습니다. | 문서가 항상 최신, 관리 부담이 사라집니다. |
-| 3 | **집중** | 각 전문가 AI 에게 *접근할 수 있는 도구* 와 *완료 조건* 이 시스템 차원에서 강제됩니다. "건너뛸게요" 같은 자기 합리화는 명령 출력 첫 줄부터 차단됩니다. | AI 가 엉뚱한 작업으로 새지 않고 본래 일에만 집중합니다. |
-| 4 | **협업** | 역할이 다른 여러 전문 AI (기획·설계·구현·품질·감사) 가 정해진 의례 (kickoff·design-review·Q&A·retro) 로 협력합니다. 의견 충돌은 정해진 우선순위로 명시적으로 해결됩니다. | 한 AI 의 사각지대를 다른 AI 가 메우고, 모든 결정이 추적 가능합니다. |
-| 5 | **통합** | 위 네 가지가 단 *두 개의 슬래시 명령* (`init` · `work`) 으로 묶입니다. 자연어로 말하면 의도가 해석되고, 실행 전 계획이 공개되어 Y/n 으로 확인합니다. | 외울 명령은 최소, 자연어 한 줄이면 충분합니다. |
+| 1 | **변환** | 자유서술과 계약 항목을 분리해, AI 에게 *해야 할 일* 만 전달 | AI 가 문맥을 잃거나 헷갈리지 않습니다 |
+| 2 | **진화** | 한 곳을 고치면 나머지가 자동 파생, 어긋남은 자동 감지, 사용자 손질은 보존 | 설계 문서가 항상 최신, 관리 부담이 사라집니다 |
+| 3 | **집중** | 각 AI 의 권한과 완료 조건이 시스템 차원에서 강제, 자기 합리화는 첫 줄부터 차단 | AI 가 본래 일에만 집중합니다 |
+| 4 | **협업** | 역할이 다른 전문 AI 들이 정해진 의례로 협력, 충돌은 우선순위로 명시 해결 | 사각지대를 메우고, 모든 결정이 추적 가능합니다 |
+| 5 | **통합** | 두 개의 슬래시 명령에 자연어 라우팅, 실행 전 계획 공개로 Y/n 확인 | 외울 명령은 최소, 자연어 한 줄이면 충분합니다 |
 
 ---
 
@@ -123,7 +122,10 @@ harness-boot
 | **cosmic-suika** | [Play](https://qwerfunch.github.io/cosmic-suika-pages/) | [GitHub](https://github.com/qwerfunch/cosmic-suika-pages) | Suika (2048-style merge) 우주 테마 변형 |
 | *여러분 차례* | — | — | harness-boot 로 만든 결과물 추가 가능 |
 
-**여러분의 결과물도 환영합니다.** [PR](https://github.com/qwerfunch/harness-boot/pulls) 또는 [issue](https://github.com/qwerfunch/harness-boot/issues) 로 데모 링크와 한 줄 설명을 보내주시면 이 표에 추가합니다. 가이드는 [`docs/assets/README.md`](docs/assets/README.md) 참고.
+**여러분의 결과물도 환영합니다.** [PR](https://github.com/qwerfunch/harness-boot/pulls) 또는 [issue](https://github.com/qwerfunch/harness-boot/issues) 로 보내주시면 이 표에 추가합니다.
+
+권장 형식: **이미지 또는 GIF** (1~3 초 demo, 800px 이하 너비, ≤ 5 MB) + 한 줄 설명 + 링크.
+자세한 가이드는 [`docs/assets/README.md`](docs/assets/README.md).
 
 ---
 
