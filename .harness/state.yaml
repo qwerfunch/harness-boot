@@ -993,8 +993,31 @@ features:
       -m pytest'
   started_at: '2026-04-27T10:38:02Z'
   completed_at: null
+- id: F-048
+  status: done
+  gates:
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T14:20:57Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T14:20:57Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.6s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T14:21:05Z'
+    kind: manual_check
+    summary: 'GAP 1 closed: complete() 가 run_check() 호출하여 _BLOCKING_DRIFT_KINDS={Code,Stale,AnchorIntegration}
+      의 error finding 1+ 시 거부. 6 새 unit test (test_drift_iron_law_gate.py) + 회귀 0
+      (1117 PASS). artificial Code drift fixture 로 거부 동작 직접 확인.'
+  - ts: '2026-04-27T14:21:09Z'
+    kind: reviewer_check
+    summary: 'Reviewer self-audit: 분기 위치 (gate_5 pass 직후, mode resolution 직전) 적절 ·
+      hotfix override 우선 · best-effort fallback (try/except) 으로 fragile env 안전. blocking_kinds
+      좁히기 (3 wire-integrity kinds) 가 false-positive 방지. self_check 5/5 PASS.'
+  started_at: '2026-04-27T14:20:44Z'
+  completed_at: '2026-04-27T14:21:14Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-047
-  last_gate_passed: gate_0
-  active_feature_id: F-047
+  last_command: /harness:work F-048
+  last_gate_passed: gate_5
+  active_feature_id: null

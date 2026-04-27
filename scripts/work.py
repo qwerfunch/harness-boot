@@ -80,6 +80,14 @@ from core.gates import STANDARD_GATES as _STANDARD_GATES  # noqa: E402
 # reason in the evidence trail for audit.
 _IRON_LAW_REQUIRED: dict[str, int] = {"prototype": 1, "product": 3}
 
+# F-048 — drift × Iron Law gating. complete() 가 차단 대상으로 보는 drift
+# kinds. severity="error" 와 결합돼야 차단된다. *진짜 wire 무결성* 위반만
+# 골라서 false-positive 환경 의존성을 피한다 (Generated/Anchor 같은 schema-
+# validation 류 error 는 build state 에 따라 발생할 수 있어 차단 대상 아님).
+_BLOCKING_DRIFT_KINDS: frozenset[str] = frozenset(
+    {"Code", "Stale", "AnchorIntegration"}
+)
+
 
 @dataclass
 class WorkResult:
@@ -689,6 +697,46 @@ def complete(
         res.action = "queried"
         res.message = "cannot complete — gate_5 (runtime_smoke) not pass"
         return res
+
+    # F-048 — drift × Iron Law gating. severity="error" 이면서 *진짜 wire
+    # 누락* 종류 (Code · Stale · AnchorIntegration) 의 finding 이 1+ 시
+    # complete 차단. hotfix_reason 으로 override 가능 (기존 emergency escape
+    # hatch 와 같음). prototype/product mode 무관 — wire 무결성은 mode 가
+    # 약화시키지 않음.
+    #
+    # **Why narrow set, not all error severities**: Generated/Spec/Anchor 같은
+    # 환경/스키마 검증 error 는 build 환경에 따라 false-positive 가능 (예:
+    # harness.yaml 미생성). Code (modules.source 부재) · Stale (done 인데
+    # src 어디서도 미참조) · AnchorIntegration (E2E 미통합) 은 "선언된 done
+    # 인데 실제 코드 베이스가 그걸 wire 하지 않은" 직접 무결성 위반이라
+    # complete 차단의 의미가 명확하다. 다른 kinds 는 `python3 scripts/check.py`
+    # 가 보고하지만 차단 X — F-051 (drift severity ranking 정밀화) 에서
+    # Critical/High/Medium/Low 4 단계로 일반화.
+    #
+    # Best-effort: malformed spec / IO 에러 등 check.py 실행 실패 시 silent
+    # fallback. gate_5 가 이미 runtime smoke 를 증명했으므로 drift 검증이
+    # fragile 한 환경에서 complete 흐름을 막지 않는다.
+    if not hotfix_reason:
+        try:
+            from check import run_check  # local import — work.py / check.py 동거
+            drift_report = run_check(harness_dir)
+            blocking = [
+                d for d in drift_report.findings
+                if d.severity == "error" and d.kind in _BLOCKING_DRIFT_KINDS
+            ]
+            if blocking:
+                res = _summarize(state, fid)
+                res.action = "queried"
+                kinds = sorted({d.kind for d in blocking})
+                res.message = (
+                    f"cannot complete — {len(blocking)} blocking drift(s) "
+                    f"({', '.join(kinds)}). Run "
+                    f"`python3 scripts/check.py --harness-dir {harness_dir}` "
+                    f"for details, fix, or use `--hotfix-reason` for emergency."
+                )
+                return res
+        except Exception:
+            pass
 
     spec = _load_spec(harness_dir)
     mode = _resolve_project_mode(spec)
