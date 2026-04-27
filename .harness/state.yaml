@@ -885,7 +885,7 @@ features:
   started_at: '2026-04-27T10:00:46Z'
   completed_at: '2026-04-27T10:06:11Z'
 - id: F-044
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -910,9 +910,9 @@ features:
       · 7 new unit tests · F-001~F-010 manual marking 은 F-047 vision consolidation
       으로 미룸 (yaml round-trip 의 한국어 주석 깨짐 위험) · 1070 → 1077 누적 · self_check 5/5
   started_at: '2026-04-27T10:07:18Z'
-  completed_at: null
+  completed_at: '2026-04-27T10:12:01Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
   last_command: /harness:work F-044
   last_gate_passed: gate_5
-  active_feature_id: F-044
+  active_feature_id: null
