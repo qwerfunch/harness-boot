@@ -625,7 +625,7 @@ features:
   started_at: '2026-04-27T05:42:48Z'
   completed_at: '2026-04-27T05:43:25Z'
 - id: F-035
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -655,9 +655,9 @@ features:
       cypress > tests/smoke unittest). 920 tests · self_check 5/5. 본 레포 영향 X (smoke.sh
       가 여전히 우선).'
   started_at: '2026-04-27T06:00:19Z'
-  completed_at: null
+  completed_at: '2026-04-27T06:04:13Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
   last_command: /harness:work F-035
   last_gate_passed: gate_5
-  active_feature_id: F-035
+  active_feature_id: null
