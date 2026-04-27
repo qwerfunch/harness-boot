@@ -445,8 +445,92 @@ features:
       5/5.'
   started_at: '2026-04-27T04:47:21Z'
   completed_at: '2026-04-27T04:47:45Z'
+- id: F-029
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-27T05:03:24Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T05:03:24Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T05:03:24Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (6.9s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-27T05:03:24Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.5s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T05:03:34Z'
+    kind: generic
+    summary: 5 additive scaling fields (area · archived_at · archive_reason · digest
+      · include_path) → docs/schemas/spec.schema.json features.items.properties. validate.py
+      호환 + 11 신규 tests (test_schema_scaling_fields). 기존 spec 영향 0, 사용자 마이그레이션 불필요.
+      v0.10.0 supersession 메타와 보완 (archive ↔ supersession 구분).
+  started_at: '2026-04-27T05:03:16Z'
+  completed_at: '2026-04-27T05:03:34Z'
+- id: F-030
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-27T05:03:55Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T05:03:55Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T05:03:55Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (6.9s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-27T05:03:55Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.5s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T05:03:55Z'
+    kind: generic
+    summary: scripts/spec/{shard,unshard,summary}.py 신규 + 8 round-trip/CLI/summary
+      tests. shard 가 spec/features/<area>/F-N.yaml 분할, area 미지정시 misc/ fallback. unshard
+      round-trip yields 원본 dict (json sorted-key 비교). summary 가 LLM-context 용 features
+      index 도출 (id/status/area/digest, name 으로 fallback, archived 마커). 사용자는 ~300 임계점까지
+      안 호출해도 무방 — 도구만 준비된 상태.
+  started_at: '2026-04-27T05:03:48Z'
+  completed_at: '2026-04-27T05:03:56Z'
+- id: F-031
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-27T05:04:16Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T05:04:16Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T05:04:16Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (6.9s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-27T05:04:16Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.5s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T05:04:16Z'
+    kind: generic
+    summary: 'tests/scale/test_scale.py: 100/1000/3000/10000 features 가짜 spec → walltime
+      측정 (yaml_load·dump · validate · canonical_hash · summary). HARNESS_SCALE_FULL=1
+      으로 3000+ 옵트인. 실측 결과 (M-class 머신, 2026-04-27): N=10000 yaml_load 2.4s · validate
+      0.15s · hash 0.03s · summary 0.002s. 가설 조정: scripts 자체 latency 임계점은 ~3000 (yaml_load
+      0.7s) 이며, 진짜 한계는 LLM context (hash/summary 가 무료라 sharding 진입로는 LLM-side 가 우선).
+      tests/unit discover 기본 path 가 tests/scale 잡지 않음 (869 tests OK 회귀 없음).'
+  started_at: '2026-04-27T05:04:09Z'
+  completed_at: '2026-04-27T05:04:16Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-028
+  last_command: /harness:work F-031
   last_gate_passed: gate_5
   active_feature_id: null

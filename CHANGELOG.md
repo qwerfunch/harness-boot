@@ -11,6 +11,81 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 - Marketplace PR (anthropic/claude-plugins-official) — 사용자 명시 후 진입.
 
+## [0.10.6] — 2026-04-27
+
+**Scaling preparedness — 1000~10000 features 도달 전 사후 마이그레이션 비용 회피.**
+
+cosmic-suika 운용 (~100 features) 에서 사용자가 제기한 "방대해질 때 문제 없을까?"
+가설을 (a) additive schema 로 사전 정착, (b) sharding 도구를 미리 빌드, (c) 가짜
+스펙으로 실측 데이터 수집 — 세 단계 pre-emptive 대응. 셋 모두 사용자 영향 0,
+호출 안 해도 무방 (forward-compat infra).
+
+### Added — F-029 (additive schema fields)
+
+- **`features[].area`** (선택, string) — 향후 sharding grouping 키. enum 강제 X,
+  사용자가 자유롭게 채울 수 있음.
+- **`features[].archived_at`** (선택, ISO8601 string) — true archive 시각.
+  v0.10.0 supersession 메타와 보완 (다른 피처가 대체 vs 단순 archive 구분).
+- **`features[].archive_reason`** (선택, string) — archive 사유.
+- **`features[].digest`** (선택, string) — 1~2 줄 LLM-context 요약. summary
+  index 산출 시 사용.
+- **`features[].include_path`** (선택, string) — sharding 진입로. 설정되면
+  detail 이 외부 파일에서 로드 (현재는 무시 가능).
+- 모두 additive — 기존 spec.yaml validate 영향 0. 11 신규 tests
+  (`tests/unit/test_schema_scaling_fields.py`).
+
+### Added — F-030 (sharding tooling)
+
+- **`scripts/spec/shard.py`** — monolithic spec.yaml 을
+  `<output>/features/<area>/F-N.yaml` 로 분할 (idempotent). area 미지정 features
+  는 `misc/` fallback. 잔여 top-level (project · domain · constraints · ...)
+  은 `<output>/spec.yaml` 의 features 가 `[{id, include_path}]` 인덱스로 변환.
+- **`scripts/spec/unshard.py`** — 역방향. round-trip (shard → unshard) 결과가
+  원본 dict 와 byte-identical (json sorted-key 비교).
+- **`scripts/spec/summary.py`** — features index 도출. `id/status/area/digest`
+  최소 + archived 마커. CLAUDE.md @import 가 향후 spec.yaml 통째 대신
+  summary.yaml 로 전환 시 사용.
+- 8 신규 tests (`tests/unit/test_spec_shard.py`) — round-trip · CLI · summary
+  semantics. 사용자는 ~300 임계점까지 안 호출해도 무방.
+
+### Added — F-031 (scaling stress test)
+
+- **`tests/scale/test_scale.py`** — 100/1000/3000/10000 가짜 features 에 대해
+  yaml_load · yaml_dump · validate · canonical_hash · summary 의 walltime
+  측정. unittest discover (tests/unit) 가 잡지 않음 — 수동 호출:
+  `python3 -m unittest tests.scale.test_scale`. 3000+ 는 `HARNESS_SCALE_FULL=1`
+  env 로 옵트인. CI 에 안 들어감 (느림).
+
+**실측 결과 (2026-04-27, M-class 머신)** — 가설 조정의 근거:
+
+| N | yaml_load | yaml_dump | validate | hash | summary |
+|---|---|---|---|---|---|
+| 100 | 0.024s | 0.015s | 0.028s | 0.0004s | 0s |
+| 1000 | 0.22s | 0.13s | 0.04s | 0.003s | 0.0002s |
+| 3000 | 0.68s | 0.41s | 0.06s | 0.008s | 0.0005s |
+| 10000 | 2.40s | 1.43s | 0.15s | 0.027s | 0.002s |
+
+**관찰**:
+
+- **YAML parse 가 가장 큰 병목** — 10000 에서 2.4s. work.py 매 호출마다
+  fresh parse 라 사용성에 영향.
+- **canonical_hash 와 summary 는 사실상 무료** — 10000 도 30ms 미만. Merkle
+  + per-feature 단순 추출의 효과.
+- **validate 도 빠름** — 10000 에서 0.15s.
+- 가설 조정: scripts 자체 latency 임계점은 ~3000 (yaml_load 0.7s) 이며,
+  진짜 한계는 LLM context (hash/summary 가 무료이므로 sharding 진입로는
+  LLM-side 가 우선이지 도구-side 가 아님).
+
+### Notes
+
+- 누적 테스트 850 → 869 (+11 F-029, +8 F-030; F-031 stress 는 unit suite
+  에 미포함).
+- features count 28 → 31.
+- 셋 모두 prototype 모드 풀 사이클 (gate_0 + gate_5 + evidence + complete) 완주.
+- 후속 후보: ~300 features 임계점에서 archival convention 운용 (F-029 archived_at
+  채우기 + spec/archive/YYYY.yaml 이동), ~1000 features 임계점에서 sharding 활성화
+  (shard.py 호출 + CLAUDE.md.template 이 summary import 로 전환).
+
 ## [0.10.5] — 2026-04-27
 
 **Init/work observability — issue logging (F-027) + prompt logging (F-028).**

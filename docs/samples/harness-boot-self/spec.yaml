@@ -772,6 +772,72 @@ features:
       - "AC-4: bash scripts/self_check.sh 5/5 pass · tests/unit OK"
       - "AC-5: F-028 풀 사이클 (gate_0 + gate_5 + evidence + complete) 완주"
 
+  - id: "F-029"
+    name: "Scaling preparedness — features[] additive schema fields"
+    type: "feature"
+    description: "1000~10000 단계 spec 도달 전 사후 마이그레이션 비용 회피용 schema 사전 정착. features[] item 에 5 종 optional 필드 추가: area (grouping 키, 향후 sharding) · archived_at (ISO8601, true archive ↔ supersession 구분) · archive_reason · digest (1~2 줄 LLM-context 절약용 summary) · include_path (외부 per-feature 파일 진입로). 모두 additive — 기존 사용자 spec 호환 0 영향. v0.10.0 supersession metadata 와 보완."
+    modules:
+      - "schema_features_area"
+      - "schema_features_archived_at"
+      - "schema_features_archive_reason"
+      - "schema_features_digest"
+      - "schema_features_include_path"
+    test_strategy: "contract"
+    tdd_focus:
+      - "5 신규 필드 모두 spec.schema.json properties 에 등재 + 타입 명시"
+      - "기존 spec.yaml validate 통과 (필드 없는 features 도 OK)"
+      - "필드 채워진 features 도 validate 통과"
+      - "validate.py 가 잘못된 타입 (예: archived_at 가 비-string) 거부"
+    acceptance_criteria:
+      - "AC-1: docs/schemas/spec.schema.json 의 features.items.properties 에 5 필드 정의"
+      - "AC-2: validate.py 가 새 필드 있는 spec + 없는 spec 모두 통과"
+      - "AC-3: tests/unit/test_schema_scaling_fields.py 신규 — 각 필드 type/optional 검증"
+      - "AC-4: 기존 838+ tests 회귀 없음 · self_check 5/5"
+      - "AC-5: F-029 풀 사이클 완주"
+
+  - id: "F-030"
+    name: "Spec sharding tooling — shard / unshard / summary"
+    type: "feature"
+    description: "F-029 schema 위에 실제 sharding 도구 구현. scripts/spec/shard.py 가 monolithic spec.yaml 을 spec/features/<area>/F-N.yaml 로 분할 (idempotent), unshard.py 가 역방향, summary.py 가 LLM-context 용 features index 도출. 사용자는 ~300 임계점 도달 시까지 안 호출해도 무방 (지금은 도구만 준비). round-trip (shard → unshard) 결과가 원본과 byte-identical 보장."
+    modules:
+      - "scripts_spec_shard"
+      - "scripts_spec_unshard"
+      - "scripts_spec_summary"
+    test_strategy: "contract"
+    tdd_focus:
+      - "shard.py: features[] 를 area 별 디렉터리에 분할 · area 미지정 features 는 'misc/' fallback"
+      - "unshard.py: 분할된 결과를 원본 monolithic 형태로 복원 (round-trip)"
+      - "summary.py: features index 도출 (id · name · status · area · digest 만)"
+      - "shard 가 features 외 top-level (project · domain · constraints · deliverable · metadata) 는 그대로 보존"
+      - "round-trip: yaml.safe_load 의 결과가 원본 spec 의 결과와 동일 (key 순서 무시)"
+    acceptance_criteria:
+      - "AC-1: scripts/spec/shard.py · unshard.py · summary.py 모두 존재 · CLI 호출 가능 (--help)"
+      - "AC-2: shard → unshard round-trip 가 원본 spec 의 parsed dict 와 동일 (json.dumps sorted key 비교)"
+      - "AC-3: summary.py 결과가 features count 만큼 entry 가짐 · 각 entry 에 id/status 최소 포함"
+      - "AC-4: tests/unit/test_spec_shard.py 신규 · self_check 5/5"
+      - "AC-5: F-030 풀 사이클 완주"
+
+  - id: "F-031"
+    name: "Scaling stress test — 1000/3000/10000 features latency 측정"
+    type: "feature"
+    description: "이전 답변의 임계점 가설 (300/500/1000/3000/10000) 을 실측 데이터로 검증/조정. 가짜 spec 생성 → validate · sync · check · work.py · canonical_hash 의 latency 측정. CI 에 안 넣음 (느림); tests/scale/ 디렉터리에 두고 unittest discover 기본 path (tests/unit) 에서 제외. 수동 호출: python3 -m unittest tests.scale.test_scale. 결과는 stdout 로 표 출력 — 후속 결정 (sharding 임계점 확정) 의 근거."
+    modules:
+      - "tests_scale_dir"
+      - "fake_spec_generator"
+      - "latency_table_output"
+    test_strategy: "performance"
+    tdd_focus:
+      - "tests/scale/ 디렉터리 + __init__.py + test_scale.py 존재"
+      - "fake spec 생성 helper: feature 개수 N 받아 valid spec dict 반환"
+      - "각 N (100, 1000, 3000, 10000) 에 대해 validate · canonical_hash · check 의 walltime 측정 + 출력"
+      - "tests/unit unittest discover 가 tests/scale 를 잡지 않음 (수동 호출 only)"
+    acceptance_criteria:
+      - "AC-1: tests/scale/test_scale.py 존재 + python3 -m unittest tests.scale.test_scale 호출 가능"
+      - "AC-2: 100/1000/3000 (10000 은 optional) features 모두 통과 · latency 표 출력"
+      - "AC-3: 기본 unittest discover (tests/unit) 가 stress 테스트를 실행하지 않음 (838+ tests 기준 회귀 없음)"
+      - "AC-4: self_check 5/5"
+      - "AC-5: F-031 풀 사이클 완주 — 실측 latency 한 줄 evidence 로 기록"
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

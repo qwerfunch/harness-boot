@@ -161,6 +161,27 @@
             "type": "array",
             "items": {"type": "string"},
             "description": "v0.10.1 additive — 피처가 살아있다면 (status=done) 이 진입점 파일들에서 modules[].source 의 import/참조가 보여야 한다는 anchor. check.py 의 AnchorIntegration drift 가 검증한다. per-feature smoke 만으로는 잡히지 않는 통합 누락 (e.g. 모든 피처 gate pass 했는데 main 진입점이 비어 있어 end-to-end 동작 안 함) 을 declarative 로 가드. 경로는 project_root 기준 상대."
+          },
+          "area": {
+            "type": "string",
+            "description": "v0.10.6 additive — 피처가 속한 도메인/영역 키 (예: 'auth', 'billing', 'gate', 'observability'). 향후 sharding 시 spec/features/<area>/F-N.yaml 그룹화에 사용. 지금은 documentation 가치만; 사용자가 자유롭게 채울 수 있고 enum 강제 없음."
+          },
+          "archived_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "v0.10.6 additive — 피처가 active spec 에서 archive 로 옮겨진 시각 (ISO8601 UTC, 예: '2026-04-27T00:00:00Z'). v0.10.0 supersession (다른 피처가 대체) 과 구분: archive 는 단순히 더 이상 active 가 아닌 done. 미설정이면 active. 향후 ~300 features 임계점에서 spec/archive/YYYY.yaml 으로 이동 시 사용."
+          },
+          "archive_reason": {
+            "type": "string",
+            "description": "v0.10.6 additive — archive 사유 (1~2 줄). archived_at 와 함께 채워짐. 예: 'feature complete · 6 mo unreferenced', 'replaced by external library', 'scope removed'."
+          },
+          "digest": {
+            "type": "string",
+            "description": "v0.10.6 additive — 피처의 1~2 줄 LLM-context 요약. 향후 spec.yaml 가 너무 커져서 통째 @import 가 어려울 때 summary index (scripts/spec/summary.py 산출) 가 이 필드만 추출. 미설정이면 name 으로 fallback."
+          },
+          "include_path": {
+            "type": "string",
+            "description": "v0.10.6 additive — sharding 진입로. 설정되면 이 피처의 detail 은 외부 파일 (예: 'spec/features/auth/F-042.yaml') 에서 로드 — 현재는 무시 가능 (forward-compat). ~1000 features 임계점에서 활성화."
           }
         },
         "additionalProperties": true
