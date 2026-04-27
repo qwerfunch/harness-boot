@@ -987,6 +987,79 @@ class DetectGate5Tests(ScratchProjectMixin, unittest.TestCase):
             self._restore(orig)
         self.assertEqual(cmd, ["sh", str(smoke)])
 
+    # ---- F-035 (v0.10.10) — playwright/cypress browser smoke auto-detect ----
+
+    def test_playwright_config_ts_detected(self):
+        """v0.10.10 (F-035) — playwright.config.ts 존재 시 npx playwright test."""
+        (self.root / "playwright.config.ts").write_text("export default {};\n", encoding="utf-8")
+        cmd = gr.detect_gate_5_command(self.root)
+        self.assertEqual(cmd, ["npx", "playwright", "test"])
+
+    def test_playwright_config_js_detected(self):
+        """playwright.config.js 변형도 같은 의도."""
+        (self.root / "playwright.config.js").write_text("module.exports = {};\n", encoding="utf-8")
+        cmd = gr.detect_gate_5_command(self.root)
+        self.assertEqual(cmd, ["npx", "playwright", "test"])
+
+    def test_playwright_config_mjs_detected(self):
+        """playwright.config.mjs ESM 변형."""
+        (self.root / "playwright.config.mjs").write_text("export default {};\n", encoding="utf-8")
+        cmd = gr.detect_gate_5_command(self.root)
+        self.assertEqual(cmd, ["npx", "playwright", "test"])
+
+    def test_cypress_config_ts_detected(self):
+        """cypress.config.ts 존재 시 npx cypress run."""
+        (self.root / "cypress.config.ts").write_text("export default {};\n", encoding="utf-8")
+        cmd = gr.detect_gate_5_command(self.root)
+        self.assertEqual(cmd, ["npx", "cypress", "run"])
+
+    def test_cypress_config_js_detected(self):
+        """cypress.config.js 변형."""
+        (self.root / "cypress.config.js").write_text("module.exports = {};\n", encoding="utf-8")
+        cmd = gr.detect_gate_5_command(self.root)
+        self.assertEqual(cmd, ["npx", "cypress", "run"])
+
+    def test_smoke_sh_takes_priority_over_playwright(self):
+        """scripts/smoke.sh 는 explicit override 라 playwright config 보다도 우선."""
+        (self.root / "scripts").mkdir()
+        smoke = self.root / "scripts" / "smoke.sh"
+        smoke.write_text("#!/bin/sh\n", encoding="utf-8")
+        (self.root / "playwright.config.ts").write_text("export default {};\n", encoding="utf-8")
+        cmd = gr.detect_gate_5_command(self.root)
+        self.assertEqual(cmd, ["sh", str(smoke)])
+
+    def test_playwright_takes_priority_over_cypress(self):
+        """둘 다 정의되면 playwright 우선 (선언 순서 안정성)."""
+        (self.root / "playwright.config.ts").write_text("export default {};\n", encoding="utf-8")
+        (self.root / "cypress.config.ts").write_text("export default {};\n", encoding="utf-8")
+        cmd = gr.detect_gate_5_command(self.root)
+        self.assertEqual(cmd, ["npx", "playwright", "test"])
+
+    def test_playwright_takes_priority_over_npm_smoke(self):
+        """v0.10.10 핵심 — playwright.config 가 npm scripts.smoke 보다 우선.
+        직접 framework 채택이 npm script 보다 더 명시적인 e2e 의도 신호."""
+        (self.root / "playwright.config.ts").write_text("export default {};\n", encoding="utf-8")
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"smoke": "node smoke.js"}}), encoding="utf-8"
+        )
+        orig = self._with_which({"npm": "/fake/npm"})
+        try:
+            cmd = gr.detect_gate_5_command(self.root)
+        finally:
+            self._restore(orig)
+        self.assertEqual(cmd, ["npx", "playwright", "test"])
+
+    def test_cypress_takes_priority_over_tests_smoke_unittest(self):
+        """cypress.config 가 tests/smoke unittest fallback 보다 우선."""
+        (self.root / "cypress.config.js").write_text("module.exports = {};\n", encoding="utf-8")
+        (self.root / "tests" / "smoke").mkdir(parents=True)
+        orig = self._with_which({})
+        try:
+            cmd = gr.detect_gate_5_command(self.root)
+        finally:
+            self._restore(orig)
+        self.assertEqual(cmd, ["npx", "cypress", "run"])
+
 
 class RunGate5Tests(ScratchProjectMixin, unittest.TestCase):
     def test_pass_with_override(self):

@@ -624,8 +624,40 @@ features:
       5/5.'
   started_at: '2026-04-27T05:42:48Z'
   completed_at: '2026-04-27T05:43:25Z'
+- id: F-035
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-27T06:02:30Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T06:02:31Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T06:02:30Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (7.5s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-27T06:02:31Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.5s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T06:02:47Z'
+    kind: generic
+    summary: 'gate_5 browser smoke auto-detect — gstack /qa 환원 + cosmic-suika I-010
+      root fix. scripts/gate/runner.py::detect_gate_5_command 우선순위 7-단계로 재배치: smoke.sh
+      > playwright.config.{ts,js,mjs,cjs} > cypress.config.{ts,js,mjs,cjs} > npm.smoke
+      > npm.test:e2e > tests/smoke (pytest/unittest) > Makefile.smoke. _playwright_command
+      + _cypress_command 신규 helper (npx playwright test / npx cypress run 반환). 9 신규
+      tests in test_gate_runner.py: 3 playwright config 변형 + 2 cypress 변형 + 4 우선순위
+      회귀 (smoke.sh > playwright · playwright > cypress · playwright > npm.smoke ·
+      cypress > tests/smoke unittest). 920 tests · self_check 5/5. 본 레포 영향 X (smoke.sh
+      가 여전히 우선).'
+  started_at: '2026-04-27T06:00:19Z'
+  completed_at: null
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-034
+  last_command: /harness:work F-035
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-035

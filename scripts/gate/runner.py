@@ -456,17 +456,36 @@ def detect_gate_5_command(project_root: Path) -> list[str] | None:
     runtime smoke 는 본질적으로 프로젝트별 경로. 공통 도구가 없으므로
     override 또는 convention 기반 감지만 제공하고, 미감지 시 skipped.
 
-    우선순위:
-      1. `scripts/smoke.sh` (실행 권한 무관 — sh 로 wrapping)
-      2. `tests/smoke/` 디렉터리 + pytest → `pytest tests/smoke`
-      3. `tests/smoke/` 디렉터리만 → `python -m unittest discover -s tests/smoke`
-      4. `Makefile` 에 `smoke:` 타겟 → `make smoke`
-      5. `package.json.scripts.smoke` → `npm run smoke`
-      6. 감지 실패 → None (사용자는 harness.yaml override 또는 --override-command 사용)
+    우선순위 (v0.10.10 — F-035 cosmic-suika I-010 root fix):
+      1. `scripts/smoke.sh` (실행 권한 무관 — sh 로 wrapping; 사용자 explicit override)
+      2. `playwright.config.{ts,js,mjs}` → `npx playwright test` (NEW v0.10.10)
+      3. `cypress.config.{ts,js,mjs}` → `npx cypress run` (NEW v0.10.10)
+      4. `package.json.scripts.smoke` → `npm run smoke`
+      5. `package.json.scripts.test:e2e` → `npm run test:e2e`
+      6. `tests/smoke/` 디렉터리 + pytest → `pytest tests/smoke`
+      7. `tests/smoke/` 디렉터리만 → `python -m unittest discover -s tests/smoke`
+      8. `Makefile` 에 `smoke:` 타겟 → `make smoke`
+      9. 감지 실패 → None (사용자는 harness.yaml override 또는 --override-command 사용)
+
+    근거: BR-003 (Walking Skeleton + Gate 5 통과) 의 약속이 진짜 user-facing
+    smoke 가 되어야 의미 있음. playwright/cypress config 가 있으면 "이 프로젝트
+    e2e 가 진짜 의도" 라는 강한 신호 — npm scripts.smoke 보다도 명시적이라
+    더 우선. 단 사용자 explicit override (scripts/smoke.sh) 는 가장 우선.
     """
     smoke_sh = project_root / "scripts" / "smoke.sh"
     if smoke_sh.is_file():
         return ["sh", str(smoke_sh)]
+
+    # v0.10.10 (F-035) — playwright/cypress config 가 있으면 e2e 진짜 의도 신호.
+    # cosmic-suika ISSUES-LOG I-010 (gate_5 too shallow) 의 root fix — 이전엔
+    # AnchorIntegration drift 로 우회 fix 했지만 진짜 원인은 gate_5 가 user-facing
+    # smoke 가 아니라 self_check 같은 구조 검증만 했던 것.
+    pw_cmd = _playwright_command(project_root)
+    if pw_cmd is not None:
+        return pw_cmd
+    cy_cmd = _cypress_command(project_root)
+    if cy_cmd is not None:
+        return cy_cmd
 
     # v0.10.2 — npm scripts.smoke / test:e2e 가 정의돼 있으면 tests/smoke unittest
     # fallback 보다 우선. cosmic-suika 같이 playwright 으로 e2e 돌리려는 의도가
@@ -494,6 +513,45 @@ def detect_gate_5_command(project_root: Path) -> list[str] | None:
         except OSError:
             pass
 
+    return None
+
+
+_PW_CONFIG_NAMES = (
+    "playwright.config.ts",
+    "playwright.config.js",
+    "playwright.config.mjs",
+    "playwright.config.cjs",
+)
+_CY_CONFIG_NAMES = (
+    "cypress.config.ts",
+    "cypress.config.js",
+    "cypress.config.mjs",
+    "cypress.config.cjs",
+)
+
+
+def _playwright_command(project_root: Path) -> list[str] | None:
+    """Return ``['npx', 'playwright', 'test']`` if a playwright config exists.
+
+    v0.10.10 (F-035) — UI 프로젝트의 진짜 user-facing smoke. cosmic-suika 가
+    이미 playwright e2e 사용 — 표준화. config 파일 존재만으로 trigger; npx 가
+    부재면 (호스트에 node 미설치) 명령 실행 단계에서 자연 실패 → 사용자 문맥
+    있는 메시지.
+    """
+    for name in _PW_CONFIG_NAMES:
+        if (project_root / name).is_file():
+            return ["npx", "playwright", "test"]
+    return None
+
+
+def _cypress_command(project_root: Path) -> list[str] | None:
+    """Return ``['npx', 'cypress', 'run']`` if a cypress config exists.
+
+    v0.10.10 (F-035) — playwright 동일 정신. cypress 도 e2e 진짜 의도 신호.
+    """
+    for name in _CY_CONFIG_NAMES:
+        if (project_root / name).is_file():
+            return ["npx", "cypress", "run"]
     return None
 
 

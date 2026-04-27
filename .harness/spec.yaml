@@ -912,6 +912,29 @@ features:
       - "AC-5: bash scripts/self_check.sh 5/5 · 898+ tests OK"
       - "AC-6: F-034 풀 사이클 (gate_0 + gate_5 + evidence + complete) 완주"
 
+  - id: "F-035"
+    name: "gate_5 browser smoke auto-detect (gstack /qa 환원 · cosmic-suika I-010 root fix)"
+    type: "feature"
+    description: "BR-003 (Walking Skeleton + Gate 5 통과) 의 약속을 진짜 user-facing smoke 로 격상. scripts/gate/runner.py::detect_gate_5_command 의 우선순위에 playwright/cypress config 자동 감지 추가. cosmic-suika 가 이미 playwright e2e 사용 → 표준화. 외부 사용자 (UI 프로젝트) 가 매번 --override-command 또는 harness.yaml gate_commands 수동 wire 하던 마찰 제거. cosmic-suika ISSUES-LOG I-010 (gate_5 too shallow to catch 'no real game wired') 의 root cause fix."
+    modules:
+      - "gate_runner_playwright_detect"
+      - "gate_runner_cypress_detect"
+      - "gate_5_priority_reorder"
+    test_strategy: "contract"
+    tdd_focus:
+      - "playwright.config.{ts,js,mjs} 존재 시 detect_gate_5_command 가 ['npx', 'playwright', 'test'] 반환"
+      - "cypress.config.{ts,js,mjs} 존재 시 ['npx', 'cypress', 'run'] 반환"
+      - "scripts/smoke.sh 가 여전히 가장 우선 (회귀 X)"
+      - "playwright/cypress 가 npm scripts.smoke 보다 우선 — 직접 framework 채택이 명시된 npm script 보다 강한 의도 신호"
+      - "tests/smoke/ unittest fallback 은 마지막 (회귀 X)"
+    acceptance_criteria:
+      - "AC-1: scripts/gate/runner.py::detect_gate_5_command 가 7-단계 우선순위 (smoke.sh > playwright > cypress > npm.smoke > npm.test:e2e > tests/smoke > Makefile) 로 재배치"
+      - "AC-2: tempdir + mock playwright.config.ts → detect 가 npx playwright test 반환"
+      - "AC-3: tempdir + mock cypress.config.ts → detect 가 npx cypress run 반환"
+      - "AC-4: 기존 우선순위 회귀 X — smoke.sh 우선 + npm scripts.smoke detect + tests/smoke unittest fallback 모두 기존 tests 통과"
+      - "AC-5: bash scripts/self_check.sh 5/5 · 911+ tests OK"
+      - "AC-6: F-035 풀 사이클 완주 (gate_0 + gate_5 + evidence + complete · F-034 권장 release flow)"
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

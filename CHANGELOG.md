@@ -11,6 +11,55 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 - Marketplace PR (anthropic/claude-plugins-official) — 사용자 명시 후 진입.
 
+## [0.10.10] — 2026-04-27
+
+**gate_5 browser smoke auto-detect — gstack `/qa` 환원 + cosmic-suika I-010 root fix.**
+
+BR-003 (Walking Skeleton + Gate 5 통과) 의 약속이 진짜 user-facing smoke 로
+격상. 이전 gate_5 는 `scripts/smoke.sh` (구조 검증) 또는 unit-test fallback
+만 — Iron Law D 의 "gate_5 pass" 가 실제 동작과 분리. 이제 playwright /
+cypress config 가 있으면 자동으로 e2e 가 gate_5 를 책임.
+
+### Changed
+
+- **`scripts/gate/runner.py::detect_gate_5_command`** 우선순위 재배치 (이전
+  6 단계 → **7 단계**, NEW = ★):
+  1. `scripts/smoke.sh` (사용자 explicit override · 변경 X)
+  2. **★ `playwright.config.{ts,js,mjs,cjs}` → `npx playwright test`**
+  3. **★ `cypress.config.{ts,js,mjs,cjs}` → `npx cypress run`**
+  4. `package.json scripts.smoke` (기존, v0.10.2)
+  5. `package.json scripts.test:e2e` (기존, v0.10.2)
+  6. `tests/smoke/` (pytest 또는 unittest, 기존)
+  7. `Makefile smoke:` 타겟 (기존)
+
+### Added
+
+- **`_playwright_command`** + **`_cypress_command`** helpers in `runner.py` —
+  config 파일 4 변형 (.ts / .js / .mjs / .cjs) 감지 → `npx playwright test`
+  또는 `npx cypress run` 반환. node 부재 시 명령 실행 단계에서 자연 실패
+  (사용자 문맥 있는 메시지).
+- **9 신규 tests** in `tests/unit/test_gate_runner.py`:
+  - 3 × playwright config 변형 (.ts / .js / .mjs)
+  - 2 × cypress config 변형 (.ts / .js)
+  - 4 × 우선순위 회귀 검증: `smoke.sh > playwright`, `playwright > cypress`,
+    `playwright > npm.smoke`, `cypress > tests/smoke unittest`
+
+### Notes
+
+- 이번 release 부터 cosmic-suika 같은 playwright 사용자가 `--override-command`
+  또는 `harness.yaml gate_commands` 수동 wire 부담 없이 `--run-gate gate_5`
+  한 줄로 동작. UI 프로젝트 onboarding 마찰 해소.
+- 본 레포 (`scripts/smoke.sh` shim 으로 self_check 호출) 는 영향 X — 우선순위
+  1 위 유지. 회귀 0.
+- cosmic-suika ISSUES-LOG I-010 (gate_5 too shallow to catch "no real game
+  wired") 의 root cause fix — 이전엔 v0.10.1 의 AnchorIntegration drift
+  로 우회 fix. 진짜 원인은 gate_5 가 user-facing smoke 가 아니라 구조
+  검증만 했던 것.
+- F-034 권장 release flow 첫 적용 — F-035 활성화 → gates → evidence →
+  **commit → push → tag → complete** 순서. pre-commit hook 가 active
+  feature 검증 통과 (자기 자신 안 막음).
+- 누적 테스트 911 → 920 (+9). features count 34 → 35. self_check 5/5 OK.
+
 ## [0.10.9] — 2026-04-27
 
 **Phase 2 pre-commit hook — 자동 enforcement (F-026 후속).**
