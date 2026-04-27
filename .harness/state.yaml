@@ -799,7 +799,7 @@ features:
   started_at: '2026-04-27T08:53:54Z'
   completed_at: '2026-04-27T09:04:53Z'
 - id: F-041
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -827,9 +827,9 @@ features:
       regression 0 · agents.py + cosmic_suika test patterns expanded to accept en/ko
       phrasings + markdown emphasis stripping
   started_at: '2026-04-27T09:17:31Z'
-  completed_at: null
+  completed_at: '2026-04-27T09:43:26Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
   last_command: /harness:work F-041
   last_gate_passed: gate_5
-  active_feature_id: F-041
+  active_feature_id: null
