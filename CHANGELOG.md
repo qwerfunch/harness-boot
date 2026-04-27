@@ -29,7 +29,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - ~~Event log rotation (`events.log.YYYYMM`)~~ ✅ v0.8.6
 - AC coverage drift (check.py 11 번째 drift 후보)
 
-## [0.10.3] — TBD
+## [0.10.3] — 2026-04-27
 
 **Iron Law D — product mode strict (cosmic-suika I-008 환원).**
 
@@ -56,7 +56,7 @@ lighter contract 유지.
 - 8 new tests in `tests/unit/test_iron_law_declared.py`
   (ProductModeFailedGateTests). 누적 838 tests OK.
 
-## [0.10.2] — TBD
+## [0.10.2] — 2026-04-27
 
 **npm scripts auto-detection — gate_runner cosmic-suika I-001 환원.**
 
@@ -102,7 +102,7 @@ npm-only 프로젝트가 `pyproject.toml` 부재 + `tests/` 디렉터리 (vitest
 - 23 new tests (NpmScriptCommandHelperTests + 각 DetectGateNTests 의 npm
   분기 + 우선순위 케이스). 누적 830 tests OK.
 
-## [0.10.1] — TBD
+## [0.10.1] — 2026-04-27
 
 **cosmic-suika ISSUES-LOG 환원 patch — AnchorIntegration drift +
 no-args dashboard 후보 가시화.**
