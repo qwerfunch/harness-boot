@@ -829,7 +829,7 @@ features:
   started_at: '2026-04-27T09:17:31Z'
   completed_at: '2026-04-27T09:43:26Z'
 - id: F-042
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -855,9 +855,9 @@ features:
       갱신 · docs/i18n/README.md path 갱신 · 1062 unit + 26 integration regression 0 ·
       self_check 5/5 PASS · zero stale path refs · git mv 로 history 보존
   started_at: '2026-04-27T09:53:46Z'
-  completed_at: null
+  completed_at: '2026-04-27T09:59:55Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
   last_command: /harness:work F-042
   last_gate_passed: gate_5
-  active_feature_id: F-042
+  active_feature_id: null
