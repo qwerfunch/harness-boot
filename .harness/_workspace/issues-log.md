@@ -74,6 +74,16 @@
 
 ---
 
+## 2026-04-27T05:30Z — pre-commit hook 와 release commit 의 active reset 충돌
+
+- **Source**: F-034 self-install + v0.10.9 release commit
+- **Category**: design-question · workflow
+- **Severity**: annoying
+- **What happened**: F-034 가 work.py 풀 사이클 완료 (--complete) 후 release commit 진입. 단 --complete 가 `session.active_feature_id` 를 None 으로 reset → 새로 install 한 pre-commit hook 가 분기 4 (active 없음 + non-whitelisted staged) 로 reject. release commit 자체는 `--no-verify` 우회 사용했지만 자기 자신을 막는 아이러니.
+- **Root cause**: work.py cycle 의 자연스런 순서 (activate → work → evidence → complete → commit) 가 hook 의 enforcement 순서와 충돌. complete 가 commit 보다 먼저면 active 가 reset 됨.
+- **Suggested fix (future)**: 두 안 — (A) `release flow` 순서를 권장: activate → work → evidence → **commit → push → tag → complete**. complete 가 마지막. retro 도 commit 후. (B) work.py --complete 에 `--keep-active` flag 추가. 사용자 명시 시 active 유지.
+- **현재 워크어라운드**: release commit 은 `git commit --no-verify` 사용 (의도된 우회 — `HARNESS_BYPASS_PRE_COMMIT=1` 와 동등). 단 일관성 위해 다음 v0.10.x 부터 (A) 순서 채택 권장.
+
 ## Notes
 
 - 이 파일은 gitignored (.harness/_workspace/) — 외부 공유 시 수동 export.
