@@ -98,18 +98,53 @@ def _pytest_command() -> list[str] | None:
     return None
 
 
+def _npm_script_command(
+    project_root: Path, script_name: str
+) -> list[str] | None:
+    """v0.10.2 — package.json scripts.<script_name> 을 npm 명령으로 변환.
+
+    user-defined script 가 도구 직접 호출보다 의도적이라는 가정 — 사용자가
+    명시한 lint/typecheck/coverage/smoke 명령은 도구 기본값보다 정확하다.
+
+    cosmic-suika I-001 대응: npm-only 프로젝트의 scripts (typecheck, lint,
+    test:coverage, smoke 등) 가 자동 매핑되도록 한다.
+
+    Returns:
+        ["npm", "test"] for ``script_name == "test"`` (관용),
+        ["npm", "run", <name>] otherwise. None when package.json 부재 ·
+        scripts 부재 · 해당 script 미정의 · npm PATH 부재.
+    """
+    pkg = project_root / "package.json"
+    if not pkg.is_file():
+        return None
+    try:
+        data = json.loads(pkg.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    scripts = data.get("scripts")
+    if not isinstance(scripts, dict) or script_name not in scripts:
+        return None
+    if not shutil.which("npm"):
+        return None
+    if script_name == "test":
+        return ["npm", "test"]
+    return ["npm", "run", script_name]
+
+
 def detect_gate_0_command(project_root: Path) -> list[str] | None:
     """Gate 0 테스트 러너 자동 감지.
 
     우선순위:
       1. pyproject.toml 에 `[tool.pytest]` 섹션 → pytest (binary 또는 module)
-      2. `tests/` 디렉터리 + pytest 있음 → pytest (binary 또는 module)
-      3. `tests/` 디렉터리 → python -m unittest discover
-      4. package.json 에 `scripts.test` → `npm test`
+      2. **package.json scripts.test → npm test (v0.10.2 — tests/ unittest fallback
+         보다 우선; 사용자가 명시한 npm test 가 더 의도적)**
+      3. `tests/` 디렉터리 + pytest 있음 → pytest (binary 또는 module)
+      4. `tests/` 디렉터리 → python -m unittest discover
       5. Makefile 에 `test:` 타겟 → `make test`
       6. 감지 실패 → None
     """
-    # 1+2. pyproject.toml
     pyproject = project_root / "pyproject.toml"
     if pyproject.is_file():
         try:
@@ -120,6 +155,13 @@ def detect_gate_0_command(project_root: Path) -> list[str] | None:
                     return cmd
         except OSError:
             pass
+
+    # v0.10.2 — npm scripts.test 가 정의돼 있으면 tests/ unittest fallback 보다 우선.
+    # cosmic-suika 같은 npm-only 프로젝트가 tests/ (vitest 용) 디렉터리도 갖고 있어
+    # 잘못 unittest 로 잡히던 문제를 해결.
+    npm_test = _npm_script_command(project_root, "test")
+    if npm_test is not None:
+        return npm_test
 
     tests_dir = project_root / "tests"
     if tests_dir.is_dir():
@@ -137,17 +179,6 @@ def detect_gate_0_command(project_root: Path) -> list[str] | None:
             if sub.is_dir() and any(sub.glob("test_*.py")):
                 return [sys.executable, "-m", "unittest", "discover", f"tests.{sub.name}"]
         return [sys.executable, "-m", "unittest", "discover", "-s", "tests"]
-
-    # 4. npm test
-    pkg = project_root / "package.json"
-    if pkg.is_file():
-        try:
-            data = json.loads(pkg.read_text(encoding="utf-8"))
-            if isinstance(data.get("scripts"), dict) and "test" in data["scripts"]:
-                if shutil.which("npm"):
-                    return ["npm", "test"]
-        except (OSError, json.JSONDecodeError):
-            pass
 
     # 5. Makefile
     makefile = project_root / "Makefile"
@@ -260,11 +291,12 @@ def detect_gate_1_command(project_root: Path) -> list[str] | None:
     우선순위:
       1. Python: pyproject.toml + mypy → mypy
       2. Python: pyproject.toml + pyright → pyright
-      3. TypeScript: tsconfig.json + tsc → tsc --noEmit
-      4. TypeScript: tsconfig.json + npx → npx tsc --noEmit
-      5. Rust: Cargo.toml + cargo → cargo check
-      6. Go: go.mod + go → go vet ./...
-      7. 감지 실패 → None
+      3. **npm: package.json scripts.typecheck → npm run typecheck (v0.10.2)**
+      4. TypeScript: tsconfig.json + tsc → tsc --noEmit
+      5. TypeScript: tsconfig.json + npx → npx tsc --noEmit
+      6. Rust: Cargo.toml + cargo → cargo check
+      7. Go: go.mod + go → go vet ./...
+      8. 감지 실패 → None
     """
     pyproject = project_root / "pyproject.toml"
     if pyproject.is_file():
@@ -272,6 +304,10 @@ def detect_gate_1_command(project_root: Path) -> list[str] | None:
             return ["mypy", "--no-incremental", "."]
         if shutil.which("pyright"):
             return ["pyright"]
+
+    npm_cmd = _npm_script_command(project_root, "typecheck")
+    if npm_cmd is not None:
+        return npm_cmd
 
     tsconfig = project_root / "tsconfig.json"
     if tsconfig.is_file():
@@ -297,11 +333,12 @@ def detect_gate_2_command(project_root: Path) -> list[str] | None:
     우선순위:
       1. Python: pyproject.toml + ruff     → ruff check .
       2. Python: pyproject.toml + flake8   → flake8 (legacy fallback)
-      3. TypeScript/JS: package.json + eslint → eslint .
-      4. TypeScript/JS: .eslintrc.* + npx  → npx eslint .
-      5. Rust: Cargo.toml + cargo clippy   → cargo clippy --all-targets -- -D warnings
-      6. Go: go.mod + golangci-lint        → golangci-lint run
-      7. 감지 실패 → None
+      3. **npm: package.json scripts.lint → npm run lint (v0.10.2)**
+      4. TypeScript/JS: package.json + eslint → eslint .
+      5. TypeScript/JS: .eslintrc.* + npx  → npx eslint .
+      6. Rust: Cargo.toml + cargo clippy   → cargo clippy --all-targets -- -D warnings
+      7. Go: go.mod + golangci-lint        → golangci-lint run
+      8. 감지 실패 → None
     """
     pyproject = project_root / "pyproject.toml"
     if pyproject.is_file():
@@ -309,6 +346,10 @@ def detect_gate_2_command(project_root: Path) -> list[str] | None:
             return ["ruff", "check", "."]
         if shutil.which("flake8"):
             return ["flake8"]
+
+    npm_cmd = _npm_script_command(project_root, "lint")
+    if npm_cmd is not None:
+        return npm_cmd
 
     if (project_root / "package.json").is_file():
         if shutil.which("eslint"):
@@ -365,15 +406,14 @@ def detect_gate_3_command(project_root: Path) -> list[str] | None:
             # Prefer module form for coverage wrapper so it inherits the same python.
             return ["sh", "-c", f"coverage run -m pytest && coverage report"]
 
+    # v0.10.2 — common JS/TS conventions: test:coverage > coverage.
+    for name in ("test:coverage", "coverage"):
+        npm_cmd = _npm_script_command(project_root, name)
+        if npm_cmd is not None:
+            return npm_cmd
+
     pkg = project_root / "package.json"
     if pkg.is_file():
-        try:
-            data = json.loads(pkg.read_text(encoding="utf-8"))
-            scripts = data.get("scripts", {}) if isinstance(data.get("scripts"), dict) else {}
-            if "coverage" in scripts and shutil.which("npm"):
-                return ["npm", "run", "coverage"]
-        except (OSError, json.JSONDecodeError):
-            pass
         if shutil.which("npx"):
             return ["npx", "nyc", "npm", "test"]
 
@@ -428,6 +468,15 @@ def detect_gate_5_command(project_root: Path) -> list[str] | None:
     if smoke_sh.is_file():
         return ["sh", str(smoke_sh)]
 
+    # v0.10.2 — npm scripts.smoke / test:e2e 가 정의돼 있으면 tests/smoke unittest
+    # fallback 보다 우선. cosmic-suika 같이 playwright 으로 e2e 돌리려는 의도가
+    # 사용자 정의 script 에 명시된 경우, 빈 tests/smoke/ 디렉터리에 잘못 매핑되던
+    # 문제를 해결.
+    for name in ("smoke", "test:e2e"):
+        npm_cmd = _npm_script_command(project_root, name)
+        if npm_cmd is not None:
+            return npm_cmd
+
     smoke_dir = project_root / "tests" / "smoke"
     if smoke_dir.is_dir():
         if shutil.which("pytest"):
@@ -443,16 +492,6 @@ def detect_gate_5_command(project_root: Path) -> list[str] | None:
                         return ["make", "smoke"]
                     break
         except OSError:
-            pass
-
-    pkg = project_root / "package.json"
-    if pkg.is_file():
-        try:
-            data = json.loads(pkg.read_text(encoding="utf-8"))
-            scripts = data.get("scripts", {}) if isinstance(data.get("scripts"), dict) else {}
-            if "smoke" in scripts and shutil.which("npm"):
-                return ["npm", "run", "smoke"]
-        except (OSError, json.JSONDecodeError):
             pass
 
     return None

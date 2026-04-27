@@ -179,6 +179,43 @@ class DetectCommandTests(ScratchProjectMixin, unittest.TestCase):
             shutil.which = original
         self.assertEqual(cmd, ["npm", "test"])
 
+    def test_npm_test_takes_precedence_over_tests_unittest(self):
+        """v0.10.2 — npm-only 프로젝트가 tests/ (vitest 용) 디렉터리도 가지면
+        unittest fallback 으로 잘못 잡히던 문제를 해결. cosmic-suika I-001."""
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"test": "vitest run"}}), encoding="utf-8"
+        )
+        (self.root / "tests").mkdir()
+        (self.root / "tests" / "smoke.test.ts").write_text("", encoding="utf-8")
+        import shutil
+        original = shutil.which
+        shutil.which = lambda cmd: "/fake/npm" if cmd == "npm" else None
+        original_pytest = gr._pytest_command
+        gr._pytest_command = lambda: None
+        try:
+            cmd = gr.detect_gate_0_command(self.root)
+        finally:
+            shutil.which = original
+            gr._pytest_command = original_pytest
+        self.assertEqual(cmd, ["npm", "test"])
+
+    def test_pyproject_pytest_takes_precedence_over_npm_test(self):
+        """pyproject + pytest config 가 있으면 npm test 보다 우선 (Python 도구 의도)."""
+        (self.root / "pyproject.toml").write_text(
+            "[tool.pytest.ini_options]\n", encoding="utf-8"
+        )
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"test": "vitest run"}}), encoding="utf-8"
+        )
+        import shutil
+        original = shutil.which
+        shutil.which = lambda cmd: f"/fake/{cmd}" if cmd in ("pytest", "npm") else None
+        try:
+            cmd = gr.detect_gate_0_command(self.root)
+        finally:
+            shutil.which = original
+        self.assertEqual(cmd, ["pytest"])
+
     def test_makefile_test_target(self):
         (self.root / "Makefile").write_text("test:\n\t@echo run\n", encoding="utf-8")
         import shutil
@@ -284,6 +321,76 @@ class DispatchTests(ScratchProjectMixin, unittest.TestCase):
         self.assertIn("not yet supported", res.reason)
 
 
+class NpmScriptCommandHelperTests(ScratchProjectMixin, unittest.TestCase):
+    """v0.10.2 — _npm_script_command(): user-defined scripts → npm run command.
+
+    cosmic-suika I-001 환원 (npm-only 프로젝트의 scripts 자동 매핑).
+    """
+
+    def _with_which(self, which_map: dict):
+        import shutil
+        original = shutil.which
+        shutil.which = lambda cmd: which_map.get(cmd)
+        return original
+
+    def _restore_which(self, original):
+        import shutil
+        shutil.which = original
+
+    def test_returns_npm_test_for_test_script(self):
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"test": "vitest run"}}), encoding="utf-8"
+        )
+        orig = self._with_which({"npm": "/fake/npm"})
+        try:
+            cmd = gr._npm_script_command(self.root, "test")
+        finally:
+            self._restore_which(orig)
+        self.assertEqual(cmd, ["npm", "test"])
+
+    def test_returns_npm_run_for_other_scripts(self):
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"lint": "eslint src"}}), encoding="utf-8"
+        )
+        orig = self._with_which({"npm": "/fake/npm"})
+        try:
+            cmd = gr._npm_script_command(self.root, "lint")
+        finally:
+            self._restore_which(orig)
+        self.assertEqual(cmd, ["npm", "run", "lint"])
+
+    def test_no_package_json_returns_none(self):
+        self.assertIsNone(gr._npm_script_command(self.root, "lint"))
+
+    def test_no_scripts_section_returns_none(self):
+        (self.root / "package.json").write_text("{}", encoding="utf-8")
+        self.assertIsNone(gr._npm_script_command(self.root, "lint"))
+
+    def test_script_not_defined_returns_none(self):
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"test": "vitest"}}), encoding="utf-8"
+        )
+        orig = self._with_which({"npm": "/fake/npm"})
+        try:
+            self.assertIsNone(gr._npm_script_command(self.root, "lint"))
+        finally:
+            self._restore_which(orig)
+
+    def test_no_npm_binary_returns_none(self):
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"lint": "eslint"}}), encoding="utf-8"
+        )
+        orig = self._with_which({})
+        try:
+            self.assertIsNone(gr._npm_script_command(self.root, "lint"))
+        finally:
+            self._restore_which(orig)
+
+    def test_invalid_json_returns_none(self):
+        (self.root / "package.json").write_text("not json", encoding="utf-8")
+        self.assertIsNone(gr._npm_script_command(self.root, "lint"))
+
+
 class DetectGate1Tests(ScratchProjectMixin, unittest.TestCase):
     def test_pyproject_with_mypy(self):
         (self.root / "pyproject.toml").write_text("[project]\nname = 'x'\n", encoding="utf-8")
@@ -343,6 +450,65 @@ class DetectGate1Tests(ScratchProjectMixin, unittest.TestCase):
     def test_no_language_detected(self):
         # 빈 프로젝트 → None
         self.assertIsNone(gr.detect_gate_1_command(self.root))
+
+    def test_npm_typecheck_script_detected(self):
+        """v0.10.2 — package.json scripts.typecheck → npm run typecheck."""
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"typecheck": "tsc --noEmit"}}), encoding="utf-8"
+        )
+        import shutil
+        original = shutil.which
+        shutil.which = lambda cmd: "/fake/npm" if cmd == "npm" else None
+        try:
+            cmd = gr.detect_gate_1_command(self.root)
+        finally:
+            shutil.which = original
+        self.assertEqual(cmd, ["npm", "run", "typecheck"])
+
+    def test_npm_typecheck_takes_precedence_over_tsc(self):
+        """npm scripts.typecheck + tsconfig.json + tsc 모두 있으면 npm 우선."""
+        (self.root / "tsconfig.json").write_text("{}", encoding="utf-8")
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"typecheck": "tsc -b"}}), encoding="utf-8"
+        )
+        import shutil
+        original = shutil.which
+        shutil.which = lambda cmd: f"/fake/{cmd}" if cmd in ("npm", "tsc") else None
+        try:
+            cmd = gr.detect_gate_1_command(self.root)
+        finally:
+            shutil.which = original
+        self.assertEqual(cmd, ["npm", "run", "typecheck"])
+
+    def test_pyproject_takes_precedence_over_npm_typecheck(self):
+        """pyproject + mypy 가 있으면 npm scripts.typecheck 보다 우선 (Python 도구 우선)."""
+        (self.root / "pyproject.toml").write_text("[project]\nname = 'x'\n", encoding="utf-8")
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"typecheck": "tsc"}}), encoding="utf-8"
+        )
+        import shutil
+        original = shutil.which
+        shutil.which = lambda cmd: f"/fake/{cmd}" if cmd in ("mypy", "npm") else None
+        try:
+            cmd = gr.detect_gate_1_command(self.root)
+        finally:
+            shutil.which = original
+        self.assertEqual(cmd, ["mypy", "--no-incremental", "."])
+
+    def test_npm_typecheck_falls_through_to_tsc_when_no_npm(self):
+        """scripts.typecheck 정의돼도 npm 미설치면 tsc 직접 호출로 fallback."""
+        (self.root / "tsconfig.json").write_text("{}", encoding="utf-8")
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"typecheck": "tsc"}}), encoding="utf-8"
+        )
+        import shutil
+        original = shutil.which
+        shutil.which = lambda cmd: "/fake/tsc" if cmd == "tsc" else None
+        try:
+            cmd = gr.detect_gate_1_command(self.root)
+        finally:
+            shutil.which = original
+        self.assertEqual(cmd, ["tsc", "--noEmit"])
 
 
 class RunGate1Tests(ScratchProjectMixin, unittest.TestCase):
@@ -428,6 +594,44 @@ class DetectGate2Tests(ScratchProjectMixin, unittest.TestCase):
 
     def test_no_linter(self):
         self.assertIsNone(gr.detect_gate_2_command(self.root))
+
+    def test_npm_lint_script_detected(self):
+        """v0.10.2 — package.json scripts.lint → npm run lint."""
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"lint": "eslint src --max-warnings 0"}}),
+            encoding="utf-8",
+        )
+        orig = self._with_which({"npm": "/fake/npm"})
+        try:
+            cmd = gr.detect_gate_2_command(self.root)
+        finally:
+            self._restore_which(orig)
+        self.assertEqual(cmd, ["npm", "run", "lint"])
+
+    def test_npm_lint_takes_precedence_over_eslint_direct(self):
+        """npm scripts.lint + eslint 둘 다 있으면 npm 우선 (사용자 정의가 더 의도적)."""
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"lint": "eslint src tests"}}), encoding="utf-8"
+        )
+        orig = self._with_which({"npm": "/fake/npm", "eslint": "/fake/eslint"})
+        try:
+            cmd = gr.detect_gate_2_command(self.root)
+        finally:
+            self._restore_which(orig)
+        self.assertEqual(cmd, ["npm", "run", "lint"])
+
+    def test_pyproject_takes_precedence_over_npm_lint(self):
+        """pyproject + ruff 가 있으면 npm scripts.lint 보다 우선."""
+        (self.root / "pyproject.toml").write_text("[project]\nname = 'x'\n", encoding="utf-8")
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"lint": "eslint"}}), encoding="utf-8"
+        )
+        orig = self._with_which({"ruff": "/fake/ruff", "npm": "/fake/npm"})
+        try:
+            cmd = gr.detect_gate_2_command(self.root)
+        finally:
+            self._restore_which(orig)
+        self.assertEqual(cmd, ["ruff", "check", "."])
 
 
 class RunGate2Tests(ScratchProjectMixin, unittest.TestCase):
@@ -528,6 +732,44 @@ class DetectGate3Tests(ScratchProjectMixin, unittest.TestCase):
 
     def test_no_coverage_tool(self):
         self.assertIsNone(gr.detect_gate_3_command(self.root))
+
+    def test_npm_test_coverage_script_detected(self):
+        """v0.10.2 — scripts.test:coverage 가 우선 (vitest/jest 관용)."""
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"test:coverage": "vitest run --coverage"}}),
+            encoding="utf-8",
+        )
+        orig = self._with_which({"npm": "/fake/npm"})
+        try:
+            cmd = gr.detect_gate_3_command(self.root)
+        finally:
+            self._restore(orig)
+        self.assertEqual(cmd, ["npm", "run", "test:coverage"])
+
+    def test_test_coverage_takes_precedence_over_coverage(self):
+        """둘 다 정의되어 있으면 test:coverage 가 우선."""
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"test:coverage": "vitest run --coverage", "coverage": "old"}}),
+            encoding="utf-8",
+        )
+        orig = self._with_which({"npm": "/fake/npm"})
+        try:
+            cmd = gr.detect_gate_3_command(self.root)
+        finally:
+            self._restore(orig)
+        self.assertEqual(cmd, ["npm", "run", "test:coverage"])
+
+    def test_coverage_falls_back_when_no_test_coverage(self):
+        """test:coverage 가 없고 coverage 만 있으면 coverage 사용."""
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"coverage": "jest --coverage"}}), encoding="utf-8"
+        )
+        orig = self._with_which({"npm": "/fake/npm"})
+        try:
+            cmd = gr.detect_gate_3_command(self.root)
+        finally:
+            self._restore(orig)
+        self.assertEqual(cmd, ["npm", "run", "coverage"])
 
 
 class RunGate3Tests(ScratchProjectMixin, unittest.TestCase):
@@ -677,6 +919,60 @@ class DetectGate5Tests(ScratchProjectMixin, unittest.TestCase):
 
     def test_no_detection(self):
         self.assertIsNone(gr.detect_gate_5_command(self.root))
+
+    def test_npm_smoke_takes_precedence_over_tests_smoke_unittest(self):
+        """v0.10.2 — npm scripts.smoke 가 tests/smoke unittest fallback 보다 우선.
+        cosmic-suika 의 playwright e2e 의도 보존."""
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"smoke": "playwright test"}}), encoding="utf-8"
+        )
+        (self.root / "tests" / "smoke").mkdir(parents=True)
+        orig = self._with_which({"npm": "/fake/npm"})
+        try:
+            cmd = gr.detect_gate_5_command(self.root)
+        finally:
+            self._restore(orig)
+        self.assertEqual(cmd, ["npm", "run", "smoke"])
+
+    def test_smoke_sh_takes_precedence_over_npm_smoke(self):
+        """scripts/smoke.sh 가 명시적 entry point 라 npm scripts 보다 더 우선."""
+        (self.root / "scripts").mkdir()
+        smoke = self.root / "scripts" / "smoke.sh"
+        smoke.write_text("#!/bin/sh\n", encoding="utf-8")
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"smoke": "playwright test"}}), encoding="utf-8"
+        )
+        orig = self._with_which({"npm": "/fake/npm"})
+        try:
+            cmd = gr.detect_gate_5_command(self.root)
+        finally:
+            self._restore(orig)
+        self.assertEqual(cmd, ["sh", str(smoke)])
+
+    def test_npm_test_e2e_script_detected(self):
+        """v0.10.2 — scripts.test:e2e (Playwright/Cypress 관용)."""
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"test:e2e": "playwright test"}}), encoding="utf-8"
+        )
+        orig = self._with_which({"npm": "/fake/npm"})
+        try:
+            cmd = gr.detect_gate_5_command(self.root)
+        finally:
+            self._restore(orig)
+        self.assertEqual(cmd, ["npm", "run", "test:e2e"])
+
+    def test_smoke_takes_precedence_over_test_e2e(self):
+        """둘 다 정의되면 smoke 가 우선 (legacy 관용)."""
+        (self.root / "package.json").write_text(
+            json.dumps({"scripts": {"smoke": "node smoke.js", "test:e2e": "playwright"}}),
+            encoding="utf-8",
+        )
+        orig = self._with_which({"npm": "/fake/npm"})
+        try:
+            cmd = gr.detect_gate_5_command(self.root)
+        finally:
+            self._restore(orig)
+        self.assertEqual(cmd, ["npm", "run", "smoke"])
 
     def test_smoke_sh_takes_priority_over_tests_smoke(self):
         # scripts/smoke.sh 가 tests/smoke/ 보다 먼저 감지되어야 함

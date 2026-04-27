@@ -29,6 +29,52 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - ~~Event log rotation (`events.log.YYYYMM`)~~ ✅ v0.8.6
 - AC coverage drift (check.py 11 번째 drift 후보)
 
+## [0.10.2] — TBD
+
+**npm scripts auto-detection — gate_runner cosmic-suika I-001 환원.**
+
+npm-only 프로젝트가 `pyproject.toml` 부재 + `tests/` 디렉터리 (vitest 등의
+관용) 가 있을 때 gate_0 이 unittest fallback 으로 잘못 잡히는 문제 + 사용자
+정의 npm scripts (typecheck/lint/test:coverage/smoke/test:e2e) 가 무시되는
+문제를 해결.
+
+### Added
+
+- **`_npm_script_command(project_root, script_name)`** in
+  `scripts/gate/runner.py` — package.json scripts → `npm run <script>`
+  (또는 `npm test` for `script_name == "test"`). package.json 부재,
+  scripts 부재, script 미정의, npm PATH 부재 모두 None 반환.
+- **gate_1 (typecheck)** — `package.json scripts.typecheck` 매핑 (tsc 직접
+  호출보다 우선, pyproject + mypy/pyright 보다는 후순위).
+- **gate_2 (lint)** — `package.json scripts.lint` 매핑 (eslint 직접 호출 ·
+  npx fallback 보다 우선).
+- **gate_3 (coverage)** — `package.json scripts.test:coverage` (vitest/jest
+  관용) 우선, 없으면 `coverage`. 도구 직접 호출 (nyc) 보다 우선.
+- **gate_5 (smoke)** — `package.json scripts.smoke` 우선, 없으면
+  `test:e2e` (Playwright/Cypress 관용). 단 `scripts/smoke.sh` 는 명시적
+  entry point 라 npm scripts 보다 더 우선.
+
+### Changed
+
+- **gate_0 (test) 우선순위 재배치** — `pyproject + pytest` 다음으로 npm
+  `scripts.test` 가 `tests/` unittest fallback **보다 위**. 이전엔 마지막
+  fallback 이라, npm-only 프로젝트가 vitest 용 `tests/` 디렉터리를 갖고
+  있으면 `python -m unittest discover tests` 로 잘못 잡혔음.
+- **gate_5 우선순위 재배치** — `scripts/smoke.sh` 다음으로 npm
+  `scripts.smoke` / `test:e2e` 가 `tests/smoke/` unittest fallback **보다
+  위**. cosmic-suika 의 playwright e2e 의도 보존.
+
+### Notes
+
+- 우선순위 일반 원칙 (gate_1~5 공통): **pyproject (Python 도구) > 사용자
+  정의 npm scripts > 도구 직접 호출 (eslint, tsc, nyc) > 언어별 polyglot
+  fallback**. mixed (pyproject + package.json) 프로젝트에서는 Python 도구가
+  우선 — 풀스택 monorepo 가 한 root 에 같이 있으면 backend 검증이 더
+  엄격하다는 일반적 expectation 반영.
+- `_npm_script_command` 는 read-only · 부작용 없음. CQS 보존.
+- 23 new tests (NpmScriptCommandHelperTests + 각 DetectGateNTests 의 npm
+  분기 + 우선순위 케이스). 누적 830 tests OK.
+
 ## [0.10.1] — TBD
 
 **cosmic-suika ISSUES-LOG 환원 patch — AnchorIntegration drift +
