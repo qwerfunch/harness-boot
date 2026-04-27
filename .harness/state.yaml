@@ -529,8 +529,38 @@ features:
       tests/unit discover 기본 path 가 tests/scale 잡지 않음 (869 tests OK 회귀 없음).'
   started_at: '2026-04-27T05:04:09Z'
   completed_at: '2026-04-27T05:04:16Z'
+- id: F-032
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-27T05:14:47Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T05:14:47Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T05:14:47Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (7.1s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-27T05:14:47Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.5s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T05:15:08Z'
+    kind: trivial
+    summary: 'cosmic-suika ISSUES-LOG 4 건 일괄 환원 (F-027 issue logging 컨벤션의 첫 실증 사이클):
+      I-003 docs/templates/starter/tsconfig.json.template 신설 (allowImportingTsExtensions/noEmit/types
+      vitest globals 권장값) + init.md §2.5 안내. I-004 spec.schema.json risks[].id pattern
+      을 ^(R|RISK)-\d+$ 로 완화 (additive backward-compat). I-006 work.md kind taxonomy
+      에 trivial 추가 + Iron Law D 면제 X 명시 + work.py --kind argparse help 확장. I-007 spec.schema.json
+      $defs/changelog.items.required 에서 version 제거 — date·note 만 적어도 validate 통과.
+      14 신규 tests (test_cosmic_suika_returns.py) 모두 OK, 883 tests · self_check 5/5.'
+  started_at: '2026-04-27T05:14:39Z'
+  completed_at: '2026-04-27T05:15:09Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-031
+  last_command: /harness:work F-032
   last_gate_passed: gate_5
   active_feature_id: null

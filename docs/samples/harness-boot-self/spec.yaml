@@ -838,6 +838,29 @@ features:
       - "AC-4: self_check 5/5"
       - "AC-5: F-031 풀 사이클 완주 — 실측 latency 한 줄 evidence 로 기록"
 
+  - id: "F-032"
+    name: "cosmic-suika ISSUES-LOG 일괄 환원 (I-003 / I-004 / I-006 / I-007)"
+    type: "feature"
+    description: "F-027 issue logging 컨벤션의 첫 실증 사이클 — cosmic-suika 가 수동 운영해온 ISSUES-LOG 의 미해결 4 건을 한 PR 로 환원. (I-003) starter 에 tsconfig.json.template 신설 + init.md §2.5 안내. (I-004) risks[].id pattern 을 ^(R|RISK)-\\d+$ 로 완화 (additive backward-compat). (I-006) --kind trivial 의 공식 의미 문서화 (work.md + work.py docstring; validation 변경 X). (I-007) metadata.changelog[].version optional 완화 (date · note 만 적어도 spec validate 통과). 모두 small / additive / 사용자 영향 0 (기존 spec 깨짐 없음)."
+    modules:
+      - "starter_tsconfig_template"
+      - "schema_risks_id_pattern_relax"
+      - "kind_trivial_documentation"
+      - "schema_changelog_version_optional"
+    test_strategy: "contract"
+    tdd_focus:
+      - "docs/templates/starter/tsconfig.json.template 존재 + 권장값 (allowImportingTsExtensions: true · types: ['vitest/globals']) + 주석 풍부"
+      - "spec.schema.json 의 risks[].id pattern 이 R-N · RISK-N 양쪽 매치 (테스트가 둘 다 validate 통과)"
+      - "work.md + work.py docstring 에 'kind=trivial' 언급 + 의미 (Iron Law D 면제 X · 단지 의도 표시)"
+      - "spec.schema.json 의 $defs/changelog.items.required 에서 'version' 제거 → version 없는 entry 도 validate"
+      - "기존 869 tests 회귀 없음 + 4 신규 tests"
+    acceptance_criteria:
+      - "AC-1 (I-003): docs/templates/starter/tsconfig.json.template 존재 · TypeScript 권장값 명시"
+      - "AC-2 (I-004): risks: [{id: RISK-001, ...}] 또는 [{id: R-001, ...}] 모두 validate.py 통과"
+      - "AC-3 (I-006): grep '\\bkind=trivial\\b' commands/work.md 양수 · scripts/work.py 의 docstring/help 에도 등장"
+      - "AC-4 (I-007): metadata.changelog: [{date: ..., note: ...}] (version 없음) 가 validate 통과"
+      - "AC-5: F-032 풀 사이클 (gate_0 + gate_5 + 4 + evidence + complete) 완주"
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

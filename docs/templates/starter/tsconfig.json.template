@@ -1,0 +1,26 @@
+{
+  "//": "harness-boot starter tsconfig.json — TypeScript 프로젝트 권장값.",
+  "//": "이 템플릿은 자동 복사되지 않는다 (init 의 §2.5 옵션). TS 프로젝트라면 참고하여 자기 tsconfig.json 에 적용하거나 그대로 복사.",
+  "//": "cosmic-suika ISSUES-LOG I-003 (2026-04-25) 환원 — 외부 npm/TS 프로젝트 첫 dogfood 시 마주친 typecheck friction 정리.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "//": "↓ allowImportingTsExtensions: true 로 *.ts 확장자 import 허용 — vitest · vite-style 워크플로 호환.",
+    "allowImportingTsExtensions": true,
+    "//": "↓ noEmit: true 와 함께 써야 함 (allowImportingTsExtensions 의 사전조건). bundler 가 emit 담당.",
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "//": "↓ types 는 'node' 를 기본 포함하지 않음 — @types/node 미설치 시 typecheck fail 회피. 필요한 경우 npm i -D @types/node 후 추가.",
+    "types": ["vitest/globals"],
+    "//": "↓ project root 의 src/ 를 표준 entry 로 가정. 프로젝트별 조정 가능.",
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src/**/*", "tests/**/*"],
+  "exclude": ["node_modules", "dist", ".harness", ".claude"]
+}

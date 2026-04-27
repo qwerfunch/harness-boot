@@ -177,6 +177,12 @@ jq -r '.plugins | to_entries[] | select(.key | startswith("harness@")) | .value[
 - **이미 `conftest.py` 가 있으면 사용자에게 병합 여부 확인 후 manual merge** (자동 병합 금지 — pytest 설정은 프로젝트마다 민감).
 - `src/` 디렉터리가 없는 프로젝트에는 복사하지 않음 (flat layout 은 필요 없음).
 
+**`tsconfig.json`** — TypeScript 프로젝트 권장값 참고용 (자동 복사 X). cosmic-suika I-003 환원 (v0.10.7) — 외부 npm/TS 프로젝트 첫 dogfood 시 typecheck friction (`@types/node` 미설치 + `*.ts` import 충돌) 정리.
+
+- 대상: **자동 복사 안 함**. 사용자에게 위치 알림만.
+- 원본: `docs/templates/starter/tsconfig.json.template` (권장값 + 주석)
+- TS 프로젝트로 감지되면 (`package.json scripts.typecheck` 또는 기존 `tsconfig.json` 존재) 최종 보고에 한 줄 안내: `팁: TS 프로젝트면 docs/templates/starter/tsconfig.json.template 의 권장값 참고 (allowImportingTsExtensions · noEmit · types).`
+
 이 섹션을 건너뛰면 나중에 수동으로 복사해도 됨. `/harness-boot:init --solo` 같은 라이트 모드에서는 기본 skip.
 
 ### 3. CLAUDE.md 생성 또는 병합

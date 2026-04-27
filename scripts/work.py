@@ -846,7 +846,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--evidence", default=None, help="add evidence with this summary"
     )
-    parser.add_argument("--kind", default="generic", help="kind for --evidence or --block")
+    parser.add_argument(
+        "--kind",
+        default="generic",
+        help=(
+            "kind for --evidence or --block (free string; conventional values: "
+            "test, manual_check, user_feedback, reviewer_check, blocker, hotfix, "
+            "generic, trivial). 'trivial' (v0.10.7, cosmic-suika I-006) marks a "
+            "tiny change for the audit reader — does NOT exempt Iron Law D, "
+            "still counts toward the declared evidence threshold."
+        ),
+    )
     parser.add_argument(
         "--block", default=None, help="block feature with this reason"
     )

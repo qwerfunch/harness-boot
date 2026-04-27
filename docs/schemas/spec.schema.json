@@ -290,7 +290,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "pattern": "^R-\\d+$"
+            "pattern": "^(R|RISK)-\\d+$",
+            "description": "v0.10.7 (cosmic-suika I-004 환원): R-N · RISK-N 양쪽 허용. 다른 ID 컨벤션 (BR-N · ADR-N · F-N · AC-N) 과 일관성 위해 RISK- prefix 도 허용 (additive backward-compat — 기존 R-N 그대로 사용 가능)."
           },
           "statement": {"type": "string"},
           "likelihood": {
@@ -673,7 +674,8 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["version"],
+        "$comment": "v0.10.7 (cosmic-suika I-007 환원): version optional. date · note 만 있는 entry 도 허용 — placeholder 강제 회피.",
+        "required": [],
         "properties": {
           "version": {"type": "string"},
           "date": {"type": "string"},

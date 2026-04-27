@@ -133,7 +133,9 @@ python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --complete --hotfix-reason "prod do
 
 **kind taxonomy**:
 - automatic: `gate_run` · `gate_auto_run` — gate runner 자동 생성, Iron Law D 불인정.
-- declared: `test` · `manual_check` · `user_feedback` · `reviewer_check` · `blocker` · `hotfix` · `generic` · 그 외 — 개발자 의도 신호, Iron Law D 인정.
+- declared: `test` · `manual_check` · `user_feedback` · `reviewer_check` · `blocker` · `hotfix` · `generic` · `trivial` · 그 외 — 개발자 의도 신호, Iron Law D 인정.
+
+**`kind=trivial`** (v0.10.7, cosmic-suika I-006 환원): 정말 작은 변경 (한 줄 wiring · typo · doc-only · style fix) 의 evidence 라는 의도 신호. **Iron Law D 면제 X** — 여전히 카운트되고 evidence ≥ N 임계값에 포함됨. 단지 reviewer / audit reader 가 "이건 ceremony 가 아니라 진짜 trivial 이었다" 를 알 수 있게 하는 의미적 마커. ceremony 한 줄도 아까운 cleanup PR 에 사용. 진짜 emergency 우회는 `--hotfix-reason` 사용.
 
 ### 현재 active 조회 (CQS — 읽기만)
 

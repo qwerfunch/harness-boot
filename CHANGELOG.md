@@ -11,6 +11,47 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 - Marketplace PR (anthropic/claude-plugins-official) — 사용자 명시 후 진입.
 
+## [0.10.7] — 2026-04-27
+
+**cosmic-suika ISSUES-LOG 일괄 환원 (I-003 / I-004 / I-006 / I-007).**
+
+F-027 issue logging 컨벤션 (v0.10.5) 의 첫 실증 사이클 — cosmic-suika 가
+수동 운영해온 ISSUES-LOG 의 미해결 4 건을 한 PR 로 환원. 모두 small,
+additive, 기존 사용자 spec 영향 0. F-032 단일 피처로 묶어 work.py 풀
+사이클 (gate_0 + gate_5 + `--kind trivial` evidence + complete) 완주 —
+도그푸드 도구가 자기 fix 의 audit trail 도 책임진다.
+
+### Added
+
+- **`docs/templates/starter/tsconfig.json.template`** (I-003 환원) —
+  TypeScript 프로젝트용 권장값 템플릿. `allowImportingTsExtensions: true`
+  · `noEmit: true` · `types: ["vitest/globals"]` (없으면 `@types/node`
+  미설치 시 typecheck fail) · `strict` 등. 자동 복사 X — `init.md` §2.5
+  의 안내만 (TS 프로젝트로 감지되면 `팁:` 한 줄). cosmic-suika 첫 sync
+  시 마주친 typecheck friction.
+
+### Changed
+
+- **`docs/schemas/spec.schema.json` risks[].id pattern** (I-004 환원):
+  `^R-\d+$` → `^(R|RISK)-\d+$`. 다른 ID 컨벤션 (BR-N · ADR-N · F-N ·
+  AC-N) 과 일관. **backward-compat** — 기존 R-N 그대로 사용 가능.
+- **`docs/schemas/spec.schema.json` $defs/changelog.items.required**
+  (I-007 환원): `["version"]` → `[]`. `metadata.changelog: [{date, note}]`
+  같이 version 없는 entry 도 validate 통과 — placeholder 강제 회피.
+- **`commands/work.md` kind taxonomy** (I-006 환원): `trivial` 추가 +
+  의미 명시 ("Iron Law D 면제 X · 단지 ceremony vs 진짜 trivial 의도
+  signal"). `scripts/work.py` 의 `--kind` argparse help 도 확장.
+- **`commands/init.md` §2.5**: `tsconfig.json.template` 안내 한 단락 추가.
+
+### Notes
+
+- I-005 (Three.js 외부 의존성) · I-009 (cosmic-suika 자체 tooling) 은
+  harness-boot 변경 대상 아님 — ISSUES-LOG 에 그대로 닫힘 처리 권장.
+- F-032 evidence 가 `--kind trivial` 로 기록된 첫 사례 — Iron Law D 가
+  여전히 1 declared 카운트 (prototype 모드) 통과.
+- 누적 테스트 869 → 883 (14 신규 in `tests/unit/test_cosmic_suika_returns.py`).
+- features count 31 → 32. self_check 5/5 OK.
+
 ## [0.10.6] — 2026-04-27
 
 **Scaling preparedness — 1000~10000 features 도달 전 사후 마이그레이션 비용 회피.**
