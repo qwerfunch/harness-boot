@@ -1002,6 +1002,31 @@ features:
       - "AC-10: F-037 dogfood — entry mirrored in both .harness/spec.yaml + docs/samples/harness-boot-self/spec.yaml (diff -q PASS); work.py 4-verb cycle 완주 (activate → run-gate gate_5 → evidence → complete)."
       - "AC-11: bash scripts/self_check.sh 5/5 + 누적 968 tests + 신규 ~35 tests + integration e2e 모두 PASS."
 
+  - id: "F-038"
+    name: "work agent routing transparency"
+    type: "feature"
+    description: "사용자 실 사용 피드백 — work 안에서 다양한 의도 (질문/디자인/기획/구현/리뷰) 가 처리되는데, 어떤 에이전트가 라우팅됐는지 명시되어야 한다는 요청. 현재 kickoff.ROUTING_SHAPES + agents_for_shapes 가 이미 견고한 라우팅 인프라이고 events.log 의 kickoff_started 이벤트가 agents 배열을 박지만, 사용자는 kickoff.md 를 직접 열어야 본다 → 이 갭 메우기. (a) WorkResult 에 routed_agents 추가, format_human/--json 둘 다 노출. (b) dashboard 가 active feature 있을 때 라우팅된 에이전트 체인 섹션 표시. (c) commands/work.md 의 Orchestration Routing 섹션에 자유 텍스트 의도 (질문/디자인/기획) → 적절한 에이전트 라우팅 가이드 단락 추가."
+    modules:
+      - "scripts/work.py"
+      - "scripts/ui/dashboard.py"
+      - "commands/work.md"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "WorkResult.routed_agents (list[str]) — activate 시점에 kickoff.detect_shapes + agents_for_shapes 결과로 채움"
+      - "format_human(): activate 액션이면 'routed agents: backend-engineer, software-engineer, ...' 한 줄 출력"
+      - "JSON 출력에도 routed_agents 키 (downstream tooling 친화)"
+      - "dashboard: active feature 가 있으면 'agent chain' 섹션 — kickoff.detect_shapes + agents_for_shapes"
+      - "회귀 0 — 비-activate 액션 (gate / evidence / complete) 의 출력은 그대로"
+    acceptance_criteria:
+      - "AC-1: scripts/work.py::WorkResult — routed_agents (list[str]) 필드 신설. activate() 가 spec 의 feature shape → agents 매핑을 채워서 반환."
+      - "AC-2: format_human(activate result) 의 출력에 'routed agents: <comma-list>' 한 줄. agents 가 비면 (e.g. shapes 0) 라인 생략."
+      - "AC-3: --json 출력 dict 에 routed_agents 키 포함."
+      - "AC-4: scripts/ui/dashboard.py — active feature 가 있을 때 'agent chain' 섹션 (라우팅된 에이전트 + 매칭 shape) 표시. active 없으면 zero diff."
+      - "AC-5: commands/work.md 의 Orchestration Routing 섹션에 단락 추가 — 자유 텍스트 의도 (질문/디자인/기획/리뷰) 가 어떻게 적절한 에이전트로 라우팅되는지 + kickoff.md 가 곧 라우팅의 계약이라는 사실 명시."
+      - "AC-6: 비-activate 액션 (gate/evidence/complete/dashboard 빈 호출) 의 출력은 회귀 0. 기존 26 integration + 1001 unit tests 모두 PASS."
+      - "AC-7: 신규 unit tests ≥ 5 (WorkResult routed_agents 채움 + format_human 라인 + JSON 키 + dashboard 섹션 + 회귀)."
+      - "AC-8: bash scripts/self_check.sh 5/5 + F-038 양쪽 spec mirror (diff -q PASS) + work.py 4-verb cycle 완주."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

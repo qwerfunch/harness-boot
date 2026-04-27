@@ -711,8 +711,38 @@ features:
       검증
   started_at: '2026-04-27T07:34:24Z'
   completed_at: '2026-04-27T08:05:07Z'
+- id: F-038
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-27T08:16:09Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T08:16:09Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T08:16:09Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (9.0s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-27T08:16:09Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.5s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T08:16:20Z'
+    kind: generic
+    summary: F-038 routing transparency · WorkResult.routed_agents (default_factory=list)
+      + activate() resolves via kickoff.detect_shapes/agents_for_shapes + format_human
+      emits 'routed agents:' line for activated action only + _result_to_dict carries
+      routed_agents · dashboard._render_active_block adds 'agent chain:' line via
+      _resolve_agent_chain · commands/work.md '자유 텍스트 의도 라우팅' table + transparency
+      note · 10 new tests (7 routed_agents + 3 dashboard agent_chain) + 1011 unit
+      / 26 integration regression 0 · self_check 5/5 · gate_0/5 PASS
+  started_at: '2026-04-27T08:11:53Z'
+  completed_at: null
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-037
+  last_command: /harness:work F-038
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-038

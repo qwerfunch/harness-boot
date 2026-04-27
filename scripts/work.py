@@ -32,7 +32,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -86,6 +86,9 @@ class WorkResult:
     gates_failed: list[str]
     evidence_count: int
     message: str = ""
+    # F-038 — populated only when action == "activated" so the user can see
+    # which agents are routed for the feature without opening kickoff.md.
+    routed_agents: list[str] = field(default_factory=list)
 
 
 def _now_iso() -> str:
@@ -467,7 +470,31 @@ def activate(harness_dir: Path, fid: str, *, disable_fog: bool = False) -> WorkR
     _autowire_design_review(harness_dir, fid)
     res = _summarize(state, fid)
     res.action = "activated"
+    res.routed_agents = _resolve_routed_agents(harness_dir, fid)
     return res
+
+
+def _resolve_routed_agents(harness_dir: Path, fid: str) -> list[str]:
+    """F-038 — surface the kickoff agent chain to the activate caller.
+
+    Mirrors what ``_autowire_kickoff`` already computes (so the rendered
+    kickoff.md and the user-visible routed list cannot drift). Returns ``[]``
+    when spec / feature missing or no shapes match — same silent semantics as
+    the autowires.
+    """
+    spec = _load_spec(harness_dir)
+    if spec is None:
+        return []
+    feature = _find_feature(spec, fid)
+    if feature is None:
+        return []
+    try:
+        shapes = _kickoff.detect_shapes(feature, spec=spec)
+        if not shapes:
+            return []
+        return list(_kickoff.agents_for_shapes(shapes, has_audio=_kickoff.has_audio(feature)))
+    except Exception:
+        return []
 
 
 def deactivate(harness_dir: Path) -> WorkResult:
@@ -959,6 +986,7 @@ def _result_to_dict(r: WorkResult) -> dict:
         "gates_failed": r.gates_failed,
         "evidence_count": r.evidence_count,
         "message": r.message,
+        "routed_agents": r.routed_agents,
     }
 
 
@@ -970,6 +998,8 @@ def format_human(r: WorkResult) -> str:
     if r.gates_failed:
         lines.append(f"failed: {', '.join(r.gates_failed)}")
     lines.append(f"evidence: {r.evidence_count} entries")
+    if r.action == "activated" and r.routed_agents:
+        lines.append(f"routed agents: {', '.join(r.routed_agents)}")
     if r.message:
         lines.append("")
         lines.append(r.message)

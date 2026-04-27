@@ -96,7 +96,36 @@ def _render_active_block(f: dict, spec: dict | None) -> list[str]:
     blocker = _latest_blocker_note(f)
     if blocker:
         lines.append(f"  차단: {blocker}")
+    agents = _resolve_agent_chain(fid, spec)
+    if agents:
+        lines.append(f"  agent chain: {', '.join(agents)}")
     return lines
+
+
+def _resolve_agent_chain(fid: str, spec: dict | None) -> list[str]:
+    """F-038 — same kickoff routing the autowire uses, exposed for the dashboard."""
+    if not isinstance(spec, dict):
+        return []
+    feature = next(
+        (f for f in (spec.get("features") or []) if isinstance(f, dict) and f.get("id") == fid),
+        None,
+    )
+    if feature is None:
+        return []
+    try:
+        from scripts.ceremonies import kickoff as _kickoff
+    except ImportError:
+        try:
+            from ceremonies import kickoff as _kickoff  # type: ignore[no-redef]
+        except ImportError:
+            return []
+    try:
+        shapes = _kickoff.detect_shapes(feature, spec=spec)
+        if not shapes:
+            return []
+        return list(_kickoff.agents_for_shapes(shapes, has_audio=_kickoff.has_audio(feature)))
+    except Exception:
+        return []
 
 
 def _render_other_in_progress(

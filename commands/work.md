@@ -240,6 +240,20 @@ test_strategy: tdd | contract | property | smoke
 ui_surface: {present, platforms, has_audio}  # (있을 때만)
 ```
 
+**자유 텍스트 의도 라우팅 (F-038, 2026-04-27)**: 사용자가 work 안에서 자유 텍스트로 던지는 의도 — *질문 / 디자인 / 기획 / 구현 / 리뷰* — 는 **이 표의 shape 키에 흡수**된다. orchestrator 가 shape 에 매칭된 전문가 chain 을 호출하므로 별도 의도 분류기 없이도 자연스럽게 분기됨:
+
+| 사용자 의도 | 매핑되는 shape / 에이전트 |
+|---|---|
+| "이 도메인 어떻게 모델링?" / "엔티티 관계 질문" | `pure_domain_logic` → `backend-engineer` (+ `software-engineer`) |
+| "이 화면 흐름 디자인" / "버튼 위치 검토" | `ui_surface.present` → `ux-architect` → `visual-designer` → `a11y-auditor` → `frontend-engineer` |
+| "기획 검토" / "이 기능 vs 다른 기능 우선순위" | `baseline-empty-vague` (스펙 미정) → `researcher` → `product-planner` |
+| "성능 / 응답시간 목표" | `performance_budget` → `performance-engineer` |
+| "보안 / 인증 / 결제" | `sensitive_or_auth` → `security-engineer` ∥ `reviewer` |
+| "구현해 / 코드 짜 / 테스트 추가" | feature shape 의 engineer + `qa-engineer` |
+| "리뷰 / 검수 / 마무리" | `feature_completion` → `qa-engineer` → engineers → `integrator` → `tech-writer` → `reviewer` |
+
+**라우팅 투명성 (F-038)**: `python3 work.py F-N` activate 직후 출력에 `routed agents: <chain>` 한 줄이 자동 추가되고, no-args dashboard 에도 active feature 의 `agent chain:` 섹션이 노출된다. 즉 **사용자가 kickoff.md 를 직접 열지 않아도 이번 activate 가 어떤 에이전트를 호출하는지 즉시 본다**. 머신 체크: `tests/unit/test_work_routed_agents.py` + `test_dashboard_agent_chain.py` 가 routed_agents 일치를 검증.
+
 ## Kickoff Ceremony (v0.6 + v0.8.2 idempotency)
 
 `/harness-boot:work F-N activate` state 전이 직후 `scripts/work.py` 가 **자동으로** `kickoff.generate_kickoff` 를 호출한다 (v0.7 auto-wire). spec.yaml 이 resolve 되고 해당 feature 가 존재할 때만 발화 — spec 미존재 시 silent skip (backward compat). Discovery 단계(spec 최초 작성)는 해당 없음.

@@ -11,6 +11,24 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 - Marketplace PR (anthropic/claude-plugins-official) — 사용자 명시 후 진입.
 
+## [0.10.12] — 2026-04-27
+
+**Agent routing transparency in `/harness-boot:work` outputs (F-038).**
+
+사용자 실 사용 피드백 — *"work 안에서 질문 / 디자인 / 기획 / 구현 / 리뷰 같은 다양한 의도가 처리되는데, 어떤 에이전트가 라우팅됐는지 정확히 명시되어야 한다"* — 의 갭 메우기. 라우팅 인프라 (`kickoff.ROUTING_SHAPES` + `agents_for_shapes`) 는 이미 견고했지만 사용자는 `kickoff.md` 를 직접 열어야 봤다. 이제 `activate` 출력과 dashboard 둘 다에 라우팅 결과가 노출됨.
+
+### Added — F-038 work agent routing transparency
+
+- **`scripts/work.py::WorkResult.routed_agents`** (`list[str]`, `default_factory=list`) — `activate()` 가 `kickoff.detect_shapes` + `agents_for_shapes` 결과를 채워서 반환. `_resolve_routed_agents` 헬퍼가 autowire 와 동일 입력으로 계산 → kickoff.md 와 사용자 표시가 drift 없음.
+- **`format_human()`**: `action == "activated"` + `routed_agents` 비지 않을 때 `routed agents: <chain>` 한 줄 출력. 다른 액션 (gate/evidence/complete) 은 zero diff.
+- **`_result_to_dict()`**: `routed_agents` 키 추가 — `--json` 출력 다운스트림 친화.
+- **`scripts/ui/dashboard.py::_render_active_block`**: active feature 가 있으면 `agent chain:` 줄 추가. `_resolve_agent_chain` 가 kickoff routing 을 그대로 호출 (single source of truth).
+- **`commands/work.md` Orchestration Routing 섹션**: "자유 텍스트 의도 라우팅" 표 신설 — 질문/디자인/기획/성능/보안/구현/리뷰 7 의도 → shape 매핑 + 결과적으로 호출되는 에이전트 체인. "라우팅 투명성" 노트로 activate 출력 한 줄 + dashboard `agent chain:` 섹션을 사용자 contract 로 명시.
+
+### Tests
+- **신규**: 7 `tests/unit/test_work_routed_agents.py` (activate 가 routed_agents 채움 · UI shape · format_human 라인 · 비-activate 액션 회귀 · JSON 키) + 3 `tests/unit/test_dashboard_agent_chain.py` (active 시 agent chain 노출 · 미-active 시 zero diff · UI 체인 검증).
+- **누적**: 1011 unit + 6 integration. `self_check 5/5`. F-036/F-037 회귀 0.
+
 ## [0.10.11] — 2026-04-27
 
 **fog-of-war brownfield reconnaissance — F-036 (Layer A · init seed) + F-037 (Layer B · work-activate fog clear).**
