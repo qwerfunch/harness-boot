@@ -40,6 +40,7 @@ _STANDARD_GATES: tuple[str, ...] = (
 )
 _MAX_OTHER_LIST: int = 5
 _MAX_PENDING_LIST: int = 5
+_MAX_UNREGISTERED_LIST: int = 5
 
 
 def _feature_title(fid: str, spec: dict | None) -> str:
@@ -129,6 +130,65 @@ def _render_pending(features: list, spec: dict | None) -> list[str]:
     return [f"대기: {' · '.join(titles)}"]
 
 
+def _render_unregistered(
+    state_features: list, spec: dict | None,
+) -> tuple[list[str], int]:
+    """v0.10.2 — spec 에 정의됐으나 state 에 아직 등록되지 않은 피처들.
+
+    cosmic-suika I-002 대응: 31 개 피처가 spec.yaml 에 있어도 state.yaml 에는
+    activate 가 일어난 피처만 들어가므로, 빈 호출 대시보드가 후보를 가시화하지
+    못했다. 이 섹션이 spec 의 차집합을 spec 순서로 표시.
+
+    Returns:
+        (lines, total_count) — total_count 는 _MAX_UNREGISTERED_LIST 상한 적용
+        전 전체 후보 수. lines 는 빈 리스트일 수 있음 (후보 없음).
+
+    면제:
+      - spec.feature.status == "archived" (이미 lifecycle 종결)
+      - spec.feature.superseded_by 명시 (다른 피처가 대체)
+    """
+    if not isinstance(spec, dict):
+        return [], 0
+    spec_features = spec.get("features") or []
+    if not isinstance(spec_features, list):
+        return [], 0
+
+    registered_ids: set[str] = set()
+    for f in state_features:
+        if isinstance(f, dict) and isinstance(f.get("id"), str):
+            registered_ids.add(f["id"])
+
+    candidates: list[dict] = []
+    for f in spec_features:
+        if not isinstance(f, dict):
+            continue
+        fid = f.get("id")
+        if not isinstance(fid, str) or not fid:
+            continue
+        if fid in registered_ids:
+            continue
+        if f.get("status") == "archived":
+            continue
+        if f.get("superseded_by"):
+            continue
+        candidates.append(f)
+
+    if not candidates:
+        return [], 0
+
+    titles = [
+        f'"{_feature_title(f.get("id", "?"), spec)}"'
+        for f in candidates[:_MAX_UNREGISTERED_LIST]
+    ]
+    header = f"다음 후보 (spec 정의 · 미시작, {len(candidates)} 개):"
+    lines = [header, "  " + " · ".join(titles)]
+    if len(candidates) > _MAX_UNREGISTERED_LIST:
+        lines.append(
+            f"  … 외 {len(candidates) - _MAX_UNREGISTERED_LIST} 개 (spec.yaml 참조)"
+        )
+    return lines, len(candidates)
+
+
 def _render_blocked(
     features: list, active_id: str | None, spec: dict | None,
 ) -> list[str]:
@@ -205,14 +265,19 @@ def render(
     if pending_block:
         sections.append(pending_block)
 
+    unregistered_block, unregistered_count = _render_unregistered(features, spec)
+    if unregistered_block:
+        sections.append(unregistered_block)
+
     # Empty-state hint when no features are tracked at all.
-    if not by_id and not features:
+    if not by_id and not features and not unregistered_count:
         sections.append(["아직 피처가 없습니다."])
     elif (
         (not isinstance(active_id, str) or active_id not in by_id)
         and not other_block
         and not blocked_block
         and not pending_block
+        and not unregistered_block
     ):
         done_count = sum(
             1 for f in features

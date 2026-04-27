@@ -9,17 +9,19 @@ check.py — /harness:check (F-006) drift 탐지. Read-only, CQS.
 
 CQS: 파일 수정 없음. Spec 드리프트 발견 시 자동 수정 제안도 없음 (BR 참조).
 
-v0.7.3 범위 — 10/10 드리프트:
-  1. Generated — harness.yaml 자체가 올바른 구조/버전을 유지하는지
-  2. Derived   — domain.md/architecture.yaml 의 output_hash 와 현재 파일 해시 비교
-  3. Spec      — spec.yaml 의 canonical hash 와 harness.yaml.generation.spec_hash 비교
-  4. Include   — harness.yaml.include_sources 의 파일 존재 + 내용 해시 비교
-  5. Evidence  — state.yaml 의 done 피처에 evidence 가 기록돼 있는지 (BR-004)
-  6. Code      — features[].modules 에 dict 형태로 `source` 필드가 있으면 그 경로가 존재하는지
-  7. Doc       — project_root/CLAUDE.md 의 `@` import 타겟이 실제 존재하는지 + derived 파일 비어있지 않은지
-  8. Anchor    — features[].id 포맷/유일성 + depends_on 참조가 존재하는 피처 ID 인지
-  9. Protocol  — .harness/protocols/*.md 각 파일이 frontmatter.protocol_id == 파일명 stem (F-017 AC-2)
-  10. Adr      — decisions[].supersedes 가 가리키는 ADR 의 status 가 'superseded' 인지 (v0.7.3)
+v0.7.3 범위 — 11/11 드리프트:
+  1. Generated         — harness.yaml 자체가 올바른 구조/버전을 유지하는지
+  2. Derived           — domain.md/architecture.yaml 의 output_hash 와 현재 파일 해시 비교
+  3. Spec              — spec.yaml 의 canonical hash 와 harness.yaml.generation.spec_hash 비교
+  4. Include           — harness.yaml.include_sources 의 파일 존재 + 내용 해시 비교
+  5. Evidence          — state.yaml 의 done 피처에 evidence 가 기록돼 있는지 (BR-004)
+  6. Code              — features[].modules 에 dict 형태로 `source` 필드가 있으면 그 경로가 존재하는지
+  7. Doc               — project_root/CLAUDE.md 의 `@` import 타겟이 실제 존재하는지 + derived 파일 비어있지 않은지
+  8. Anchor            — features[].id 포맷/유일성 + depends_on 참조가 존재하는 피처 ID 인지
+  9. Protocol          — .harness/protocols/*.md 각 파일이 frontmatter.protocol_id == 파일명 stem (F-017 AC-2)
+  10. Adr              — decisions[].supersedes 가 가리키는 ADR 의 status 가 'superseded' 인지 (v0.7.3)
+  11. AnchorIntegration — features[].integration_anchor 에 선언된 진입점 파일들에서 modules[].source 가
+                          참조되는지 (v0.10.1 — per-feature smoke 만으로는 잡히지 않는 통합 누락 가드)
 
 종료 코드:
   0 = clean (no drift)
@@ -53,7 +55,7 @@ from core.state import State  # noqa: E402
 from spec import include_expander as ie  # noqa: E402
 
 
-DriftKind = str  # "Generated" | "Derived" | "Spec" | "Include" | "Evidence" | "Code" | "Doc" | "Anchor" | "Protocol" | "Adr" | "Stale"
+DriftKind = str  # "Generated" | "Derived" | "Spec" | "Include" | "Evidence" | "Code" | "Doc" | "Anchor" | "Protocol" | "Adr" | "Stale" | "AnchorIntegration"
 
 _FEATURE_ID_PATTERN = re.compile(r"^F-\d+$")
 _CLAUDE_IMPORT_PATTERN = re.compile(r"^@([^\s]+)", re.MULTILINE)
@@ -319,6 +321,140 @@ def check_stale(
                         f"{fid}::{rel_str}",
                         f"피처 {fid} (status=done) 의 모듈 {rel_str} 가 src/ 어디에서도 참조되지 않음 — "
                         "실제로 사용되지 않는 dead code 거나 archived/superseded_by 처리가 필요",
+                        "warn",
+                    )
+                )
+
+    return findings
+
+
+def check_anchor_integration(
+    harness_dir: Path,
+    spec: dict,
+    project_root: Path | None = None,
+) -> list[DriftFinding]:
+    """v0.10.1 — AnchorIntegration drift.
+
+    피처가 ``integration_anchor: [...]`` 을 선언했다면, status=done 인 시점에
+    그 anchor 파일들 중 적어도 하나에서 피처의 ``modules[].source`` 의 basename
+    또는 path-token stem 이 등장해야 한다.
+
+    동기: per-feature gate_5 (smoke) 만으로는 통합 진입점 (e.g. ``src/main.ts``)
+    에서의 wiring 누락을 잡지 못한다. 35 개 피처가 독립적으로 모두 pass 하면서
+    통합 시점에 blank screen 인 상황 (cosmic-suika I-010) 의 declarative 가드.
+
+    조건:
+      - ``feature.status == "done"``
+      - ``feature.integration_anchor`` 가 비어 있지 않은 list
+      - ``feature.modules[].source`` 중 적어도 하나가 실재함
+
+    면제:
+      - status != "done"
+      - status == "archived"
+      - superseded_by 명시
+      - integration_anchor 미선언 또는 빈 배열
+      - modules 비어 있거나 source 없음
+
+    심각도:
+      - anchor 파일 부재: error (선언이 잘못됨 — 사용자가 명시적으로 적은 경로)
+      - 모든 anchor 파일에서 module 참조 못 찾음: warn (통합 누락 신호)
+
+    Detection 휴리스틱: anchor 파일 텍스트 안에 source 의 basename ("earth.ts")
+    또는 path-token stem ("/earth", '"earth', "'earth") 이 등장하면 referenced
+    로 인정. import system / 패키저 무관 — Stale drift 와 동일.
+    """
+    findings: list[DriftFinding] = []
+    if project_root is None:
+        project_root = harness_dir.parent
+
+    features = spec.get("features") or []
+    project_resolved = project_root.resolve()
+
+    for f in features:
+        if not isinstance(f, dict):
+            continue
+        if f.get("status") != "done":
+            continue
+        if f.get("superseded_by"):
+            continue
+        anchors = f.get("integration_anchor")
+        if not isinstance(anchors, list) or not anchors:
+            continue
+
+        modules = f.get("modules") or []
+        declared_sources: list[Path] = []
+        for m in modules:
+            if not isinstance(m, dict):
+                continue
+            src = m.get("source")
+            if not isinstance(src, str) or not src.strip():
+                continue
+            target = (project_root / src).resolve()
+            if target.is_file():
+                declared_sources.append(target)
+        if not declared_sources:
+            continue
+
+        fid = f.get("id", "?")
+
+        anchor_paths: list[Path] = []
+        for anchor in anchors:
+            if not isinstance(anchor, str) or not anchor.strip():
+                continue
+            ap = (project_root / anchor).resolve()
+            if not ap.is_file():
+                findings.append(
+                    DriftFinding(
+                        "AnchorIntegration",
+                        f"{fid}::{anchor}",
+                        f"피처 {fid} 의 integration_anchor 파일 부재: {anchor}",
+                        "error",
+                    )
+                )
+                continue
+            anchor_paths.append(ap)
+        if not anchor_paths:
+            continue
+
+        anchor_rels: list[str] = []
+        for ap in anchor_paths:
+            try:
+                anchor_rels.append(str(ap.relative_to(project_resolved)))
+            except ValueError:
+                anchor_rels.append(ap.name)
+        anchor_list = ", ".join(anchor_rels)
+
+        for target in declared_sources:
+            stem = target.stem
+            base = target.name
+            try:
+                rel_str = str(target.relative_to(project_resolved))
+            except ValueError:
+                rel_str = target.name
+
+            referenced = False
+            for ap in anchor_paths:
+                try:
+                    text = ap.read_text(encoding="utf-8", errors="ignore")
+                except OSError:
+                    continue
+                if base in text:
+                    referenced = True
+                    break
+                if (
+                    f"/{stem}" in text
+                    or f'"{stem}' in text
+                    or f"'{stem}" in text
+                ):
+                    referenced = True
+                    break
+            if not referenced:
+                findings.append(
+                    DriftFinding(
+                        "AnchorIntegration",
+                        f"{fid}::{rel_str}",
+                        f"피처 {fid} (status=done) 의 모듈 {rel_str} 가 integration_anchor "
+                        f"({anchor_list}) 에서 참조되지 않음 — 통합 wiring 누락 가능성",
                         "warn",
                     )
                 )
@@ -741,6 +877,8 @@ def run_check(harness_dir: Path, project_root: Path | None = None) -> CheckRepor
         report.checked.append("Adr")
         report.findings.extend(check_stale(harness_dir, spec_yaml, project_root))
         report.checked.append("Stale")
+        report.findings.extend(check_anchor_integration(harness_dir, spec_yaml, project_root))
+        report.checked.append("AnchorIntegration")
 
     report.findings.extend(check_doc(harness_dir, project_root))
     report.checked.append("Doc")

@@ -182,6 +182,42 @@ def _suggestions_for_active(f: dict, spec: dict | None) -> list[Suggestion]:
     return [Suggestion(label="다른 작업으로 전환", action="deactivate")]
 
 
+def _first_unregistered_in_spec(
+    features: list, spec: dict | None,
+) -> str | None:
+    """v0.10.2 — spec 에 정의됐으나 state 에 등록되지 않은 첫 피처 id.
+
+    cosmic-suika I-002 대응: idle 분기에서 state 에 in_progress · planned 가
+    모두 없을 때, spec 의 미시작 후보를 surface 한다. 면제: archived,
+    superseded_by 명시.
+    """
+    if not isinstance(spec, dict):
+        return None
+    spec_features = spec.get("features") or []
+    if not isinstance(spec_features, list):
+        return None
+
+    registered: set[str] = set()
+    for f in features:
+        if isinstance(f, dict) and isinstance(f.get("id"), str):
+            registered.add(f["id"])
+
+    for f in spec_features:
+        if not isinstance(f, dict):
+            continue
+        fid = f.get("id")
+        if not isinstance(fid, str) or not fid:
+            continue
+        if fid in registered:
+            continue
+        if f.get("status") == "archived":
+            continue
+        if f.get("superseded_by"):
+            continue
+        return fid
+    return None
+
+
 def _suggestions_for_idle(
     features: list, spec: dict | None,
 ) -> list[Suggestion]:
@@ -214,6 +250,15 @@ def _suggestions_for_idle(
             action="start_feature",
             feature_id=fid,
         ))
+    else:
+        # No state-level planned — fall back to spec-level unregistered.
+        unregistered_fid = _first_unregistered_in_spec(features, spec)
+        if unregistered_fid is not None:
+            out.append(Suggestion(
+                label=f'다음 피처 시작: "{_feature_title(unregistered_fid, spec)}"',
+                action="start_feature",
+                feature_id=unregistered_fid,
+            ))
 
     if not out:
         out.append(Suggestion(

@@ -156,6 +156,11 @@
             "type": "string",
             "pattern": "^F-\\d+$",
             "description": "v0.10 additive — 이 피처를 대체한 피처 id (있을 때). work.py --archive --superseded-by 가 supersedes 역방향으로 채움."
+          },
+          "integration_anchor": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "v0.10.1 additive — 피처가 살아있다면 (status=done) 이 진입점 파일들에서 modules[].source 의 import/참조가 보여야 한다는 anchor. check.py 의 AnchorIntegration drift 가 검증한다. per-feature smoke 만으로는 잡히지 않는 통합 누락 (e.g. 모든 피처 gate pass 했는데 main 진입점이 비어 있어 end-to-end 동작 안 함) 을 declarative 로 가드. 경로는 project_root 기준 상대."
           }
         },
         "additionalProperties": true

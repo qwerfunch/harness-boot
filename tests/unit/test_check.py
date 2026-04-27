@@ -563,6 +563,142 @@ class StaleDriftTests(HarnessScratch, unittest.TestCase):
         self.assertEqual(findings, [])
 
 
+class AnchorIntegrationDriftTests(HarnessScratch, unittest.TestCase):
+    """v0.10.1 — features[].integration_anchor 가 declarative 통합 wiring 가드.
+
+    done 피처가 anchor 파일들에서 참조 안 되면 warn. anchor 파일 자체 부재는 error.
+    archived/superseded_by 면제. anchor 미선언 시 silent.
+    """
+
+    def _write_files(self, files: dict[str, str]) -> None:
+        for rel, content in files.items():
+            target = self.tmp / rel
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content, encoding="utf-8")
+
+    def _spec(self, feature_overrides: dict) -> dict:
+        return {
+            "features": [
+                {"id": "F-001", "type": "skeleton"},
+                {
+                    "id": "F-100",
+                    "modules": [{"name": "earth", "source": "src/earth.ts"}],
+                    **feature_overrides,
+                },
+            ]
+        }
+
+    def test_anchor_not_declared_silent(self):
+        self._write_files({"src/earth.ts": "x", "src/main.ts": "no import"})
+        spec = self._spec({"status": "done"})
+        findings = check.check_anchor_integration(self.harness, spec, project_root=self.tmp)
+        self.assertEqual(findings, [])
+
+    def test_anchor_empty_list_silent(self):
+        self._write_files({"src/earth.ts": "x", "src/main.ts": "no import"})
+        spec = self._spec({"status": "done", "integration_anchor": []})
+        findings = check.check_anchor_integration(self.harness, spec, project_root=self.tmp)
+        self.assertEqual(findings, [])
+
+    def test_module_referenced_by_basename_clean(self):
+        self._write_files({
+            "src/earth.ts": "export const earth = 1;\n",
+            "src/main.ts": "import './earth.ts';\n",
+        })
+        spec = self._spec({"status": "done", "integration_anchor": ["src/main.ts"]})
+        findings = check.check_anchor_integration(self.harness, spec, project_root=self.tmp)
+        self.assertEqual(findings, [])
+
+    def test_module_referenced_by_path_token_stem_clean(self):
+        self._write_files({
+            "src/earth.ts": "export const earth = 1;\n",
+            "src/main.ts": "import { earth } from './earth';\n",
+        })
+        spec = self._spec({"status": "done", "integration_anchor": ["src/main.ts"]})
+        findings = check.check_anchor_integration(self.harness, spec, project_root=self.tmp)
+        self.assertEqual(findings, [])
+
+    def test_module_not_referenced_warns(self):
+        self._write_files({
+            "src/earth.ts": "export const earth = 1;\n",
+            "src/main.ts": "console.log('hi')\n",
+        })
+        spec = self._spec({"status": "done", "integration_anchor": ["src/main.ts"]})
+        findings = check.check_anchor_integration(self.harness, spec, project_root=self.tmp)
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].kind, "AnchorIntegration")
+        self.assertEqual(findings[0].severity, "warn")
+        self.assertIn("F-100", findings[0].path)
+        self.assertIn("earth.ts", findings[0].path)
+        self.assertIn("integration_anchor", findings[0].message)
+
+    def test_anchor_file_missing_is_error(self):
+        self._write_files({"src/earth.ts": "x"})  # main.ts 없음
+        spec = self._spec({"status": "done", "integration_anchor": ["src/main.ts"]})
+        findings = check.check_anchor_integration(self.harness, spec, project_root=self.tmp)
+        errors = [f for f in findings if f.severity == "error"]
+        self.assertEqual(len(errors), 1)
+        self.assertIn("src/main.ts", errors[0].path)
+
+    def test_status_not_done_silent(self):
+        self._write_files({"src/earth.ts": "x", "src/main.ts": "no ref"})
+        spec = self._spec({"status": "in_progress", "integration_anchor": ["src/main.ts"]})
+        findings = check.check_anchor_integration(self.harness, spec, project_root=self.tmp)
+        self.assertEqual(findings, [])
+
+    def test_archived_silent(self):
+        self._write_files({"src/earth.ts": "x", "src/main.ts": "no ref"})
+        spec = self._spec({"status": "archived", "integration_anchor": ["src/main.ts"]})
+        findings = check.check_anchor_integration(self.harness, spec, project_root=self.tmp)
+        self.assertEqual(findings, [])
+
+    def test_superseded_by_silent(self):
+        self._write_files({"src/earth.ts": "x", "src/main.ts": "no ref"})
+        spec = self._spec({
+            "status": "done",
+            "superseded_by": "F-200",
+            "integration_anchor": ["src/main.ts"],
+        })
+        findings = check.check_anchor_integration(self.harness, spec, project_root=self.tmp)
+        self.assertEqual(findings, [])
+
+    def test_no_modules_silent(self):
+        self._write_files({"src/main.ts": "empty"})
+        spec = {
+            "features": [
+                {"id": "F-001", "type": "skeleton"},
+                {
+                    "id": "F-100",
+                    "status": "done",
+                    "modules": [],
+                    "integration_anchor": ["src/main.ts"],
+                },
+            ]
+        }
+        findings = check.check_anchor_integration(self.harness, spec, project_root=self.tmp)
+        self.assertEqual(findings, [])
+
+    def test_any_of_anchor_satisfies(self):
+        """여러 anchor 중 하나라도 module 참조하면 clean."""
+        self._write_files({
+            "src/earth.ts": "x",
+            "src/main.ts": "no ref",
+            "src/bootstrap.ts": "import './earth';\n",
+        })
+        spec = self._spec({
+            "status": "done",
+            "integration_anchor": ["src/main.ts", "src/bootstrap.ts"],
+        })
+        findings = check.check_anchor_integration(self.harness, spec, project_root=self.tmp)
+        self.assertEqual(findings, [])
+
+    def test_run_check_includes_anchor_integration(self):
+        """run_check 가 AnchorIntegration 카테고리를 checked 에 등록."""
+        self.write_spec()
+        report = check.run_check(self.harness, project_root=self.tmp)
+        self.assertIn("AnchorIntegration", report.checked)
+
+
 class IntegrationTests(HarnessScratch, unittest.TestCase):
     def test_clean_run_reports_no_findings(self):
         # 정상 시나리오: harness.yaml 있고 spec 해시 맞고 파생 없음 (미파생 상태지만 해시도 기록 안 된 이상 warn 안 나옴)

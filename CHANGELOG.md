@@ -29,6 +29,67 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - ~~Event log rotation (`events.log.YYYYMM`)~~ ✅ v0.8.6
 - AC coverage drift (check.py 11 번째 drift 후보)
 
+## [0.10.1] — TBD
+
+**cosmic-suika ISSUES-LOG 환원 patch — AnchorIntegration drift +
+no-args dashboard 후보 가시화.**
+
+dogfood 프로젝트 (cosmic-suika) 에서 누적된 이슈 중 플러그인 코드/스키마
+부족함으로 환원 가능한 두 건 (I-010, I-002) 을 묶어서 처리.
+
+### Added
+
+#### I-010 — AnchorIntegration drift (declarative integration wiring guard)
+
+35 개 피처가 독립적으로 모두 gate_5 (smoke) 를 통과했음에도 통합 진입점
+(`src/main.ts`) 이 비어 있어 end-to-end 동작이 안 됐다. per-feature smoke
+만으로는 검출 불가능한 통합 wiring 누락을 declarative 로 가드한다.
+
+- **`features[].integration_anchor: string[]`** schema field in
+  `docs/schemas/spec.schema.json` — optional list of project-relative
+  anchor file paths. Feature 가 ship (`status=done`) 시 declared
+  module 의 basename 또는 path-token stem 이 anchor 파일들 중 적어도
+  하나에 등장해야 한다. Backward-compatible — 기존 spec 은 변경 없이 검증.
+- **`AnchorIntegration` drift in `scripts/check.py`** (drift catalog
+  11/11) — `Stale` 과 동일한 grep-level 휴리스틱 (`basename`, `/stem`,
+  `"stem`, `'stem`). Severity:
+  - `error` — anchor 파일이 부재 (사용자가 잘못된 경로를 적음).
+  - `warn` — 어떤 anchor 에서도 module 참조 못 찾음 (통합 누락 가능성;
+    Iron Law 위반은 아님).
+  - silent — `archived`, `superseded_by`, status≠`done`,
+    `integration_anchor` 미선언/빈 배열, `modules` 비어 있음.
+- 12 new tests in `tests/unit/test_check.py` (basename/stem 매칭,
+  any-of 시맨틱, 면제 조건, anchor 부재 error, run_check 등록).
+
+#### I-002 — `/harness:work` 빈 호출 대시보드에 spec 미등록 후보 노출
+
+기존 빈 호출 대시보드는 `state.yaml` 에 등록된 피처만 표시 → spec.yaml 에
+정의된 31 개 피처 중 아직 activate 가 일어나지 않은 후보가 비가시화. 사용자가
+무엇을 다음에 시작해야 하는지 발견 어려움.
+
+- **`scripts/ui/dashboard.py::_render_unregistered`** — spec features ∖
+  state by_id 차집합을 spec 순서로 표시. 헤더에 총 후보 수, 5 개 초과 시
+  `… 외 N 개 (spec.yaml 참조)` 힌트. archived / superseded_by 면제.
+- **`scripts/ui/intent_planner.py::_first_unregistered_in_spec`** — idle
+  분기에서 state-level planned 가 없을 때 spec-level 첫 미등록 피처를
+  `start_feature` 액션으로 추천. in_progress 가 있으면 resume 이 우선,
+  unregistered 가 보조로 따라옴.
+- empty-state hint (`아직 피처가 없습니다`) 는 unregistered 후보가 있으면
+  표시 안 됨 (사용자가 곧바로 후보를 보게 됨).
+- 13 new tests in `tests/unit/test_dashboard.py` · `test_intent_planner.py`.
+
+누적 807 tests OK.
+
+### Notes
+
+- `integration_anchor` 는 opt-in. 기존 프로젝트는 바꾸지 않으면 드리프트
+  없음. 사용자가 anchor 를 적는 순간부터 검증.
+- 휴리스틱은 import graph 를 파싱하지 않는다 — false negative (런타임
+  문자열 조립으로 import) 와 false positive (anchor 파일에 동명 식별자가
+  무관하게 등장) 모두 가능. Pragmatic by design.
+- Dashboard 변경은 CQS 보존 — 파일 수정 없음. work.py main() 의 빈 호출
+  분기는 그대로이며, ui 모듈 두 곳만 수정.
+
 ## [0.10.0] — 2026-04-25
 
 **Two-layer supersession — features[] supersedes/superseded_by + archive flow + Stale drift.**

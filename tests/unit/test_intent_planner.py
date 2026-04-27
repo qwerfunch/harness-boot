@@ -96,6 +96,64 @@ class IdleTests(unittest.TestCase):
         self.assertEqual(out[0].action, "start_feature")
 
 
+class IdleUnregisteredTests(unittest.TestCase):
+    """v0.10.2 — state 에 in_progress · planned 가 모두 없을 때 spec 의 첫 미등록 피처 추천."""
+
+    def test_empty_state_with_spec_features_proposes_start(self):
+        spec = _spec(("F-1", "첫 피처"), ("F-2", "둘째"))
+        st = _state(features=[])
+        out = suggest(st, spec)
+        self.assertEqual(out[0].action, "start_feature")
+        self.assertEqual(out[0].feature_id, "F-1")
+        self.assertIn("첫 피처", out[0].label)
+
+    def test_planned_in_state_takes_precedence_over_spec_unregistered(self):
+        spec = _spec(("F-1", "첫째"), ("F-2", "둘째"))
+        st = _state(features=[_feature("F-1", status="planned")])
+        out = suggest(st, spec)
+        self.assertEqual(out[0].action, "start_feature")
+        self.assertEqual(out[0].feature_id, "F-1")
+        self.assertEqual(len(out), 1)
+
+    def test_archived_spec_feature_skipped(self):
+        spec = {
+            "features": [
+                {"id": "F-1", "name": "옛것", "status": "archived"},
+                {"id": "F-2", "name": "현재"},
+            ]
+        }
+        st = _state(features=[])
+        out = suggest(st, spec)
+        self.assertEqual(out[0].feature_id, "F-2")
+
+    def test_superseded_by_spec_feature_skipped(self):
+        spec = {
+            "features": [
+                {"id": "F-1", "name": "구버전", "superseded_by": "F-2"},
+                {"id": "F-2", "name": "신버전"},
+            ]
+        }
+        st = _state(features=[])
+        out = suggest(st, spec)
+        self.assertEqual(out[0].feature_id, "F-2")
+
+    def test_all_spec_features_already_in_state_falls_back_to_init(self):
+        spec = _spec(("F-1", "유일"))
+        st = _state(features=[_feature("F-1", status="done")])
+        out = suggest(st, spec)
+        self.assertEqual(out[0].action, "init_feature")
+
+    def test_resume_with_spec_unregistered_keeps_resume_first(self):
+        """in_progress 가 있으면 resume 이 #1, unregistered 가 #2 로 따라옴."""
+        spec = _spec(("F-1", "진행중"), ("F-9", "후보"))
+        st = _state(features=[_feature("F-1", status="in_progress")])
+        out = suggest(st, spec)
+        self.assertEqual(out[0].action, "resume")
+        self.assertEqual(out[0].feature_id, "F-1")
+        self.assertEqual(out[1].action, "start_feature")
+        self.assertEqual(out[1].feature_id, "F-9")
+
+
 class ActiveGateProgressTests(unittest.TestCase):
     def test_no_gates_run_proposes_gate_0(self):
         st = _state(

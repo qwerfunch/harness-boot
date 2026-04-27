@@ -187,6 +187,74 @@ class RenderOtherAndPendingTests(unittest.TestCase):
         self.assertNotIn("보류: ", out)
 
 
+class RenderUnregisteredTests(unittest.TestCase):
+    """v0.10.2 — spec 의 미등록 피처가 빈 호출 대시보드에 노출 (cosmic-suika I-002)."""
+
+    def test_unregistered_spec_features_listed(self):
+        spec = _spec(("F-1", "로그인"), ("F-2", "로그아웃"), ("F-3", "설정"))
+        st = _state(features=[_feature("F-1", status="in_progress")])
+        out = dashboard.render(st, spec, [])
+        self.assertIn("다음 후보", out)
+        self.assertIn("미시작", out)
+        self.assertIn('"로그아웃"', out)
+        self.assertIn('"설정"', out)
+        self.assertIn("2 개", out)
+
+    def test_no_unregistered_when_all_in_state(self):
+        spec = _spec(("F-1", "로그인"))
+        st = _state(features=[_feature("F-1", status="in_progress")])
+        out = dashboard.render(st, spec, [])
+        self.assertNotIn("다음 후보", out)
+
+    def test_no_spec_silent(self):
+        st = _state(features=[_feature("F-1", status="in_progress")])
+        out = dashboard.render(st, None, [])
+        self.assertNotIn("다음 후보", out)
+
+    def test_archived_excluded(self):
+        spec = {
+            "features": [
+                {"id": "F-1", "name": "로그인"},
+                {"id": "F-2", "name": "옛 결제", "status": "archived"},
+                {"id": "F-3", "name": "신 결제"},
+            ]
+        }
+        st = _state(features=[_feature("F-1", status="in_progress")])
+        out = dashboard.render(st, spec, [])
+        self.assertIn('"신 결제"', out)
+        self.assertNotIn('"옛 결제"', out)
+
+    def test_superseded_by_excluded(self):
+        spec = {
+            "features": [
+                {"id": "F-1", "name": "로그인"},
+                {"id": "F-2", "name": "구버전", "superseded_by": "F-3"},
+                {"id": "F-3", "name": "신버전"},
+            ]
+        }
+        st = _state(features=[_feature("F-1", status="in_progress")])
+        out = dashboard.render(st, spec, [])
+        self.assertIn('"신버전"', out)
+        self.assertNotIn('"구버전"', out)
+
+    def test_truncates_with_hint(self):
+        pairs = tuple((f"F-{i}", f"피처{i}") for i in range(1, 9))  # 8 features
+        spec = _spec(*pairs)
+        st = _state(features=[])
+        out = dashboard.render(st, spec, [])
+        self.assertIn("8 개", out)  # total
+        self.assertIn("외 3 개", out)  # truncated count (8 - 5 cap)
+
+    def test_unregistered_suppresses_empty_hint(self):
+        """state 가 비었어도 spec 후보가 있으면 '아직 피처가 없습니다' 안 나옴."""
+        spec = _spec(("F-1", "로그인"))
+        st = _state(features=[])
+        out = dashboard.render(st, spec, [])
+        self.assertIn('"로그인"', out)
+        self.assertNotIn("아직 피처가 없습니다", out)
+        self.assertNotIn("진행 중 · 대기 피처 없음", out)
+
+
 class RenderSuggestionTests(unittest.TestCase):
     def test_suggestions_numbered_with_recommended_marker(self):
         suggestions = [
