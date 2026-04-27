@@ -127,13 +127,14 @@ class DogfoodIssuesLogTests(unittest.TestCase):
 
 
 class SchemaArchiveDocClarificationTests(unittest.TestCase):
-    """AC-4: archived_at / archive_reason 의 declarative 의미 명시."""
+    """AC-4: archived_at / archive_reason carry the declarative semantics."""
 
     def test_schema_archived_at_marks_declarative(self):
         body = (REPO_ROOT / "docs" / "schemas" / "spec.schema.json").read_text(encoding="utf-8")
-        # description 안에 'declarative' + 'work.py 가 자동 채우지 않음' 명시.
+        # The description must call out 'declarative' and the explicit
+        # statement that work.py does not auto-fill the field.
         self.assertIn("declarative", body)
-        self.assertIn("자동 채우지 않음", body)
+        self.assertIn("work.py does not auto-fill", body)
 
 
 if __name__ == "__main__":

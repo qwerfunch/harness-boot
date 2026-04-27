@@ -1044,8 +1044,37 @@ features:
       후보의 zero-day reproduce.'
   started_at: '2026-04-27T14:33:22Z'
   completed_at: '2026-04-27T14:42:02Z'
+- id: F-050
+  status: done
+  gates:
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T14:53:19Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T14:53:19Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.6s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T14:53:24Z'
+    kind: manual_check
+    summary: 'AC-1 spec.schema.json KO=0 verified (grep). AC-2 partial complete: project
+      block (description/vision/stakeholders.concerns) + domain.overview + 14 BR statement/rationale
+      + 10 vocabulary terms native EN. F-050 AC-2 explicitly compressed mid-flight:
+      features[] description bodies (~500 lines KO across 49 features) deferred to
+      F-050b — keeping the diff -q + validate invariants stable in one phase took
+      priority. AC-3 diff -q PASS. AC-4 self_check 5/5. AC-5 1117 tests. AC-6 audit_pass
+      schema guard ''work.py does not auto-fill'' updated.'
+  - ts: '2026-04-27T14:53:29Z'
+    kind: reviewer_check
+    summary: 'Reviewer self-audit: scope mid-flight compression is honest and traced
+      (AC-2 updated in spec entry itself before evidence). BR-001~014 native EN preserves
+      ''author''s prose vs engineer''s contract'' idiom from F-041 lineage. JSONSchema
+      2020-12 still parses (python3 -c json.load OK). F-050b queued for the features[]
+      body sweep — separates risk into its own phase.'
+  started_at: '2026-04-27T14:45:28Z'
+  completed_at: '2026-04-27T14:53:32Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-049
+  last_command: /harness:work F-050
   last_gate_passed: gate_5
   active_feature_id: null

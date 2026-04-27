@@ -35,61 +35,69 @@ version: "2.3.8"
 project:
   name: "harness-boot"
   mode: "prototype"                          # v0.9.6 — Phase 2 self-hosting (2026-04-27): lighter Iron Law
-  summary: "Claude Code 용 하네스 플러그인 — spec.yaml 을 SSoT 로 Walking Skeleton 부터 진화까지 자동화"
+  summary: "Claude Code harness plugin — drives a project from Walking Skeleton through ongoing evolution with spec.yaml as the single source of truth."
   description: |
-    Anthropic Claude Code 의 플러그인으로 동작하는 "하네스(harness)" 도구.
-    하나의 spec.yaml 만 주어지면 (1) 빌드 가능한 Walking Skeleton 을 만들어
-    런타임 스모크(Gate 5)까지 통과시키고, (2) 이후 피처 추가·리팩터·
-    스펙 갱신 사이클(진화)을 자동화한다. 핵심은 "사고의 글(한국어 설계서)"
-    과 "실행의 글(YAML 계약 + 코드)" 을 스키마 수준에서 분리해, LLM 이
-    복사가 아닌 변환 을 하도록 강제하는 것.
+    A "harness" tool that runs as a plugin inside Anthropic Claude Code.
+    Given a single spec.yaml, it (1) generates a buildable Walking
+    Skeleton and drives it through the runtime smoke gate (Gate 5), then
+    (2) automates the ongoing cycle of adding features, refactoring, and
+    re-rolling the spec. The key idea is to separate "author's prose
+    (the human design narrative)" from "engineer's contract (the YAML
+    plus code)" at the schema level so the LLM is forced to *transform*
+    rather than copy.
   vision: |
-    사용자가 spec.yaml 을 매번 수정하는 대신, /harness:init → /harness:spec →
-    /harness:sync → /harness:work 네 명령만으로 아이디어에서 배포 가능 코드까지
-    한 방향 흐름으로 끌고 간다. 플러그인이 업그레이드되어도 사용자 프로젝트는
-    CLAUDE.md shim 만 갱신하면 되며, 모든 결정은 영속 로그(events.log) 와
-    상태 파일(state.yaml) 로 감사 가능해야 한다. 최종적으로 "Claude Code +
-    harness-boot 조합이 개별 개발자 1인을 팀 수준 생산성으로 끌어올린다"
-    를 목표로 한다.
+    Instead of asking the user to edit spec.yaml by hand every time, the
+    four commands /harness:init → /harness:spec → /harness:sync →
+    /harness:work carry an idea all the way to deployable code in a
+    single forward flow. When the plugin upgrades, a user project only
+    needs to refresh the CLAUDE.md shim, and every decision must remain
+    auditable via the persistent log (events.log) and the state file
+    (state.yaml). The end goal: the combination of Claude Code and
+    harness-boot lifts a single developer to team-level productivity.
   stakeholders:
-    - role: "project_initiator"          # 이 문서의 현재 유일 사용자(jungsoo.kim)
+    - role: "project_initiator"          # the document's only current user (jungsoo.kim)
       concerns:
-        - "설계 의도가 명령 한 줄로 재현 가능 (/harness:check 로 검증)"
-        - "의사결정 이력이 events.log 에 남아 나중에도 '왜' 를 추적"
-        - "플러그인 업그레이드가 기존 프로젝트를 깨지 않음(CLAUDE.md shim 모델)"
-    - role: "ai_implementer"             # Claude 자신(Sonnet/Opus)
+        - "Design intent is reproducible from a single command (verified by /harness:check)."
+        - "Decision history persists in events.log so the 'why' stays recoverable later."
+        - "Plugin upgrades never break an existing project (the CLAUDE.md shim model)."
+    - role: "ai_implementer"             # Claude itself (Sonnet / Opus)
       concerns:
-        - "명령어 부트 시 3줄 preamble 을 빠짐없이 출력(투명성 계약)"
-        - "에이전트별 Tool 권한 매트릭스를 지켜 scope 밖 파일 수정 금지"
-        - "Gate 0~5 를 순서대로 통과; runtime smoke 실패 시 작업 중단"
-    - role: "future_user"                # harness-boot 를 깔아서 쓰게 될 외부 개발자
+        - "Every command boot emits the 3-line preamble (the transparency contract)."
+        - "The per-agent tool permission matrix is honored — no edits outside scope."
+        - "Gates 0-5 pass in order; a runtime smoke failure halts work."
+    - role: "future_user"                # external developers who install harness-boot
       concerns:
-        - "명령 4개(init/spec/sync/work) + 진단 4개(status/check/events/metrics) 로 학습 부담 최소화"
-        - "spec.yaml 편집 시 IDE 스키마(v2.3.7) 가 자동 완성/검증 지원"
-        - "$include 로 긴 서사를 별도 md 로 분리해 YAML 이 비대해지지 않음"
-    - role: "plugin_developer"           # harness-boot 자체를 fork/contribute 하는 개발자
+        - "Surface stays small: 4 core commands (init / spec / sync / work) + 4 diagnostic (status / check / events / metrics)."
+        - "Editing spec.yaml is supported by IDE schema completion and validation (v2.3.7)."
+        - "$include splits long narrative into separate md files so YAML stays manageable."
+    - role: "plugin_developer"           # contributors who fork or extend harness-boot
       concerns:
-        - "commands/ 와 docs/ 관계가 §11.2 에 명시되어 바뀌지 않음"
-        - "템플릿 변경이 사용자 프로젝트에 즉시 반영되는 범위가 명확(§11.3)"
-        - "부록 D canonical hashing 구현이 언어별 테스트 벡터를 통과"
-    - role: "downstream_tooling"         # SARIF/CI 등 harness-boot 산출물을 소비하는 측 (v2 이후)
+        - "The commands/ ↔ docs/ relationship is fixed by §11.2 and does not drift."
+        - "The scope of template changes that propagate into user projects is clear (§11.3)."
+        - "Appendix D canonical-hashing implementation passes language-specific test vectors."
+    - role: "downstream_tooling"         # SARIF / CI consumers of harness-boot output (post-v2)
       concerns:
-        - "state.yaml 스키마가 semver 를 지켜 외부 파서가 깨지지 않음"
-        - "events.log 가 append-only JSONL 로 스트리밍 파이프에 직결"
-        - "architecture.yaml 의 layer/component 모델이 아키텍처 린트 도구와 호환"
+        - "state.yaml's schema follows semver so external parsers don't break."
+        - "events.log is append-only JSONL — pipes straight into streaming pipelines."
+        - "architecture.yaml's layer/component model is compatible with architecture-linter tools."
 
 domain:
   overview: |
-    핵심 엔티티는 Harness(하네스 인스턴스 단위) 아래에 Spec(제품 명세, SSoT),
-    Domain·Architecture(Spec 으로부터 파생된 뷰), HarnessConfig(실행 환경
-    계약), State(피처·모드 상태), Event(영속 로그), Feature(개발 단위),
-    Hook(검증 스크립트), Protocol(에이전트 간 규약), Agent(Claude sub-agent),
-    Skill(절차 번들), Command(/harness:xxx), Include(외부 md 참조),
-    Drift(8종 불일치), Gate(0~5 품질 관문), Preamble(3줄 출력 계약). 각
-    엔티티는 파일 시스템 상에서 `.harness/` 또는 `.claude/` 디렉터리에 실체를
-    갖고, 이 디렉터리 자체가 `/harness:init` 에 의해 생성된다. spec.yaml 만이
-    사용자가 "사고의 글" 로 수정하고, 다른 파일은 대부분 파생이거나 기계가
-    유지한다 (edit-wins 예외 2곳: domain.md, architecture.yaml).
+    The core entity is the Harness (one harness-boot instance per
+    project), and underneath it sit Spec (the product spec, the SSoT),
+    Domain and Architecture (derived views of Spec), HarnessConfig (the
+    runtime contract), State (feature / mode state), Event (persistent
+    log), Feature (the unit of development), Hook (validation scripts),
+    Protocol (inter-agent contracts), Agent (a Claude sub-agent), Skill
+    (a procedure bundle), Command (the /harness:xxx surface), Include
+    (a reference to external md), Drift (twelve kinds of mismatch),
+    Gate (the 0-5 quality gates), and Preamble (the 3-line output
+    contract). Every entity has a concrete shape on disk under
+    `.harness/` or `.claude/`, and those directories are created by
+    `/harness:init` itself. spec.yaml is the only file the user
+    edits as "author's prose"; everything else is either derived or
+    machine-maintained (the two edit-wins exceptions are domain.md and
+    architecture.yaml).
   entities:
     - name: "Harness"
       description: "한 사용자 프로젝트에 설치된 harness-boot 인스턴스. `.harness/` + `.claude/` 2 디렉터리의 합."
@@ -232,68 +240,68 @@ domain:
       sensitive: false
   business_rules:
     - id: "BR-001"
-      statement: "사고의 글과 실행의 글을 스키마 수준에서 분리한다(🔒 vs 🗒)."
-      rationale: "LLM 이 자연어를 YAML 구조로 복사하지 않고 의도적으로 변환 하도록 강제."
+      statement: "Author's prose and engineer's contract are separated at the schema level (🔒 vs 🗒)."
+      rationale: "Forces the LLM to deliberately *transform* natural language rather than copy it into a YAML structure."
     - id: "BR-002"
-      statement: "spec.yaml 은 유일한 제품 명세 SSoT 이며, 다른 모든 파일은 파생/실행/로그다."
-      rationale: "drift 탐지 로직이 단일 원천 가정 위에서만 동작; 이원화 금지."
+      statement: "spec.yaml is the single product-spec SSoT; every other file is derived, executed, or logged."
+      rationale: "Drift detection is built on a single-source assumption — duplication breaks it."
     - id: "BR-003"
-      statement: "features[0] 은 반드시 type='skeleton' 이고, Walking Skeleton 은 Gate 5(runtime smoke) 까지 통과해야 한다."
-      rationale: "계획 페이퍼웨어 방지; 먼저 뭔가가 부팅되고 나서 확장."
+      statement: "features[0] must be type='skeleton', and the Walking Skeleton has to pass through gate_5 (runtime smoke)."
+      rationale: "Prevents planning paperware — something has to boot first, then we extend on top of it."
     - id: "BR-004"
-      statement: "모든 /harness:xxx 명령은 실행 직후 3줄 preamble 을 stdout 에 출력한다."
-      rationale: "투명성 — 사용자가 컨텍스트·다음 단계를 한눈에 확인. v2.3.1 에서 도입."
+      statement: "Every /harness:xxx command emits a 3-line preamble to stdout immediately on invocation."
+      rationale: "Transparency — the user reads context and next step at a glance. Introduced in v2.3.1."
     - id: "BR-005"
-      statement: "domain.md 와 architecture.yaml 은 파생이지만 사용자 수정 시 edit-wins 로 보존한다."
-      rationale: "렌더러가 사용자의 추가 통찰을 덮어쓰지 않도록; 단 SSoT 불일치는 drift 로 리포트."
+      statement: "domain.md and architecture.yaml are derived but preserved by edit-wins when the user has edited them."
+      rationale: "Stops the renderer from overwriting the user's added insight; SSoT divergence is reported as drift instead."
     - id: "BR-006"
-      statement: "hook 은 fail-open 이다. 훅 자체 버그가 사용자 작업을 차단하지 않는다."
-      rationale: "훅 실패가 개발 흐름을 인질로 잡는 경험을 방지; 단 hook-fail 은 반드시 events.log 에 적재."
+      statement: "Hooks are fail-open — a bug in a hook never blocks the user's work."
+      rationale: "Hook failures must not hold the development flow hostage; the failure itself is recorded into events.log as a hook-fail."
     - id: "BR-007"
-      statement: "canonical hashing 은 Canonical YAML → Canonical JSON → SHA-256 순서로 산출하고, include expanded/raw 두 해시를 함께 기록한다."
-      rationale: "언어 간 재현성(§D.7) + include 전개 변화를 별도 추적(§D.4)."
+      statement: "Canonical hashing follows Canonical YAML → Canonical JSON → SHA-256, and both the include-expanded and raw hashes are recorded."
+      rationale: "Cross-language reproducibility (§D.7) plus separate tracking of include expansion (§D.4)."
     - id: "BR-008"
-      statement: "$include 는 🗒 free-text 필드에만, 깊이 1 까지만 허용한다."
-      rationale: "중첩 include 는 해시 재현성·토큰 예측성·IDE 점프 난이도를 무너뜨림(§13.11)."
+      statement: "$include is allowed only in 🗒 free-text fields, and only to depth 1."
+      rationale: "Nested includes break hash reproducibility, token predictability, and IDE jump usability (§13.11)."
     - id: "BR-009"
-      statement: "v1 호환은 CLAUDE.md shim 모델로만 제공하며, 기존 .harness/ 내용은 덮어쓰지 않는다."
-      rationale: "사용자 저장물 보존; 업그레이드 트리거를 사용자 명시 동작으로 한정(§12)."
+      statement: "v1 compatibility is delivered only through the CLAUDE.md shim model — existing .harness/ content is never overwritten."
+      rationale: "Preserves user-owned files; upgrades stay tied to an explicit user action (§12)."
     - id: "BR-010"
-      statement: "sensitive: true 엔티티가 있는 피처는 Gate 0 에 TDD 전략이 강제된다."
-      rationale: "민감 데이터 경로의 회귀를 계약 수준에서 막기 위함."
+      statement: "Features touching `sensitive: true` entities are forced into the TDD strategy at gate_0."
+      rationale: "Catches regressions on sensitive-data paths at the contract level."
     - id: "BR-011"
-      statement: "에이전트는 Tool 권한 매트릭스(§6.3.1) 의 상한을 초과하는 tools 를 frontmatter 에 선언할 수 없다."
-      rationale: "scope 밖 파일 수정·네트워크 호출이 조용히 섞이는 것을 차단."
+      statement: "An agent cannot declare tools beyond the upper bound of the tool permission matrix (§6.3.1) in its frontmatter."
+      rationale: "Stops out-of-scope file edits and silent network calls from sneaking in."
     - id: "BR-012"
-      statement: "명령은 CQS 원칙을 지킨다 — 진단 계열(status/check/events/metrics) 은 파일을 수정하지 않는다."
-      rationale: "진단 중 의도치 않은 변이가 보고 내용을 무의미하게 만드는 것을 방지(§7.3.8 v2.3.3 보정)."
+      statement: "Commands honor the CQS principle — the diagnostic family (status / check / events / metrics) never mutates files."
+      rationale: "Unintended mutation during diagnosis would render the report meaningless (§7.3.8, refined in v2.3.3)."
     - id: "BR-013"
-      statement: "events.log 는 append-only JSONL 이며 기존 레코드 수정·삭제를 금지한다."
-      rationale: "감사성 — 나중 '왜 이렇게 되었는가' 추적 가능성이 사라지면 하네스의 핵심 가치가 붕괴."
+      statement: "events.log is append-only JSONL; existing records cannot be modified or deleted."
+      rationale: "Auditability — losing the 'why this happened' trail later collapses the harness's core value."
     - id: "BR-014"
-      statement: "anti-rationalization 2행을 preamble 직후에 항상 출력한다(v2.3.1 신설)."
-      rationale: "LLM 이 스스로의 건너뛰기를 그럴듯하게 합리화하지 못하도록 스텝 엔포스."
+      statement: "The two anti-rationalization lines are always emitted right after the preamble (introduced in v2.3.1)."
+      rationale: "Forces step compliance so the LLM can't plausibly rationalize its own skips."
   vocabulary:
     - term: "Walking Skeleton"
-      meaning: "첫 피처(F-001)는 기술 스택 전 경로를 가로지르는 최소 구현이어야 한다. Gate 5 까지 통과 필수."
+      meaning: "The first feature (F-001) must be a minimal end-to-end implementation that crosses the entire stack and passes through gate_5."
     - term: "Transparency-by-Preamble"
-      meaning: "모든 명령은 3줄 요약을 명시 출력한다(mode/scope/next). v2.3.1 의 투명성 우선 원칙."
+      meaning: "Every command emits a 3-line summary (mode / scope / next). The transparency-first principle from v2.3.1."
     - term: "Edit-wins"
-      meaning: "파생 파일이라도 사용자 수정이 있으면 재생성이 덮어쓰지 않는다(domain.md, architecture.yaml 에 한정)."
+      meaning: "Even derived files are preserved when the user has edited them (limited to domain.md and architecture.yaml)."
     - term: "Fail-open hook"
-      meaning: "hook 실패가 사용자 작업을 막지 않는다. 실패는 로그에만 남는다."
+      meaning: "A hook failure never blocks the user's work; the failure is only logged."
     - term: "$include"
-      meaning: "spec.yaml 의 🗒 필드에서 외부 md 파일을 불러오는 v2.3.7 신설 문법. 깊이 1 고정."
+      meaning: "v2.3.7 syntax for pulling an external md file into a 🗒 field of spec.yaml. Fixed at depth 1."
     - term: "Canonical hashing"
-      meaning: "Canonical YAML → Canonical JSON → SHA-256 파이프라인(§부록 D)."
+      meaning: "Canonical YAML → Canonical JSON → SHA-256 pipeline (Appendix D)."
     - term: "Mode A/B/R/E"
-      meaning: "/harness:spec 의 자동 분기 — Addition / Baseline / Refine / Explain."
-    - term: "Gate 0~5"
-      meaning: "tests → compile → style → coverage → commit → runtime smoke 순서 품질 관문."
+      meaning: "Auto-routing for /harness:spec — Addition / Baseline / Refine / Explain."
+    - term: "Gate 0-5"
+      meaning: "Quality gates in order: tests → compile → style → coverage → commit → runtime smoke."
     - term: "CQS"
-      meaning: "Command-Query Separation. 상태 변경 명령과 조회 명령의 분리 원칙."
+      meaning: "Command-Query Separation — the principle of separating state-mutating commands from read-only queries."
     - term: "SSoT"
-      meaning: "Single Source of Truth. harness-boot 에서는 spec.yaml 하나."
+      meaning: "Single Source of Truth. In harness-boot it is a single file: spec.yaml."
 
 features:
   - id: "F-001"
@@ -1394,6 +1402,49 @@ features:
       - "AC-6: F-049 spec entry itself written in English (self-evidence — the feature describing native-EN consolidation is itself in native EN)."
       - "AC-7: F-049 completed via work.py 4-verb cycle (activate → run-gate gate_5 → declared evidence → complete) — Phase 2 dogfood."
       - "AC-8: F-049 mirrored on both spec.yaml copies (docs/samples + .harness)."
+
+  - id: "F-050"
+    name: "native English consolidation — Phase 2: spec mirrors + JSONSchema"
+    type: "feature"
+    description: |
+      Phase 2 of the post-F-041 native-English thread. Rewrites the
+      remaining Korean prose inside both spec.yaml mirrors and the
+      JSONSchema description bodies. The structural keys and YAML shape
+      stay untouched — only the human-readable values (description,
+      acceptance_criteria, tdd_focus, business_rules text, decisions /
+      risks bodies, schema description fields) are recast in native
+      English.
+
+      The two mirrors must remain identical (self_check.sh diff -q).
+      Workflow: edit docs/samples/harness-boot-self/spec.yaml as the
+      canonical source, then `cp` to .harness/spec.yaml. JSONSchema
+      validation must continue to pass after every edit.
+
+      Out of scope (intentional): glossary KO column rows that are
+      bilingual on purpose, archived feature entries whose
+      archive_reason is already English (F-001…F-010), and any test
+      fixture spec.yaml in tests/regression/conversion-goldens/ (those
+      are golden references for past versions and should remain
+      faithful to the original Korean source).
+    modules:
+      - "docs/schemas/spec.schema.json"
+      - "docs/samples/harness-boot-self/spec.yaml"
+      - ".harness/spec.yaml"
+    test_strategy: "contract"
+    tdd_focus:
+      - "Korean characters drop dramatically across the three module files (precise zero is a stretch goal — bilingual glossary entries stay)"
+      - "self_check 5/5 PASS — both mirrors identical, validate happy, sync clean, drift zero, preamble grep green"
+      - "1117 unit + integration tests PASS, regression 0"
+      - "JSONSchema description fields parse as valid JSONSchema 2020-12"
+    acceptance_criteria:
+      - "AC-1: docs/schemas/spec.schema.json description bodies rewritten in native English. Korean residue: 0 (this file has no bilingual exception)."
+      - "AC-2: docs/samples/harness-boot-self/spec.yaml — project block (description / vision / stakeholders.concerns), domain.overview, and the business_rules `intent` / `enforcement` prose are rewritten in native English. Header conversion comments (lines 1-32) and features[] description / AC bodies are deferred to a follow-up F-050b — the volume (~500 KO lines across 49 features) is too large for a single phase to keep its self_check + diff -q invariants safely; F-050b will pick them up incrementally."
+      - "AC-3: .harness/spec.yaml byte-identical to docs/samples/harness-boot-self/spec.yaml — verified by `diff -q` (self_check.sh step 1)."
+      - "AC-4: bash scripts/self_check.sh 5/5 PASS."
+      - "AC-5: 1117 unit + integration tests PASS, regression 0."
+      - "AC-6: tests/unit/test_audit_pass.py:test_schema_archived_at_marks_declarative continues to pass — its Korean phrase guard ('자동 채우지 않음') is updated alongside the schema rewrite to its English equivalent."
+      - "AC-7: F-050 spec entry itself was written in English at the moment it was added (self-evidence — same pattern as F-048 and F-049)."
+      - "AC-8: F-050 completed via the work.py 4-verb cycle (Phase 2 dogfood)."
 
 constraints:
   tech_stack:
