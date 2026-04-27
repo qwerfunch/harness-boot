@@ -857,7 +857,7 @@ features:
   started_at: '2026-04-27T09:53:46Z'
   completed_at: '2026-04-27T09:59:55Z'
 - id: F-043
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -883,9 +883,9 @@ features:
       + 1062 → 1070 누적 · self_check 5/5 + integration 26 PASS · env override (HARNESS_DASHBOARD_MAX_*)
       동작
   started_at: '2026-04-27T10:00:46Z'
-  completed_at: null
+  completed_at: '2026-04-27T10:06:11Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
   last_command: /harness:work F-043
   last_gate_passed: gate_5
-  active_feature_id: F-043
+  active_feature_id: null
