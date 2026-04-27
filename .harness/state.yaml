@@ -940,7 +940,7 @@ features:
   started_at: '2026-04-27T10:25:14Z'
   completed_at: '2026-04-27T10:29:13Z'
 - id: F-046
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -964,9 +964,9 @@ features:
       · parents[2]→parents[3] + fixtures path 한 단계 추가 수정 · 1084 unit + 26 integration
       regression 0 · self_check 5/5
   started_at: '2026-04-27T10:30:26Z'
-  completed_at: null
+  completed_at: '2026-04-27T10:34:31Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
   last_command: /harness:work F-046
   last_gate_passed: gate_5
-  active_feature_id: F-046
+  active_feature_id: null
