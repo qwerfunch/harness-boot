@@ -25,11 +25,11 @@ Claude Code 위에서 도는 multi-agent 개발 하네스. 다른 AI 도구가 *
 
 | # | 강점 | 어떻게 작동하나 | 사용자가 얻는 것 |
 |---|---|---|---|
-| 1 | **변환** | 자유서술과 계약 항목을 분리해, AI 에게 *해야 할 일* 만 전달 | AI 가 문맥을 잃거나 헷갈리지 않습니다 |
-| 2 | **진화** | 한 곳을 고치면 나머지가 자동 파생, 어긋남은 자동 감지, 사용자 손질은 보존 | 설계 문서가 항상 최신, 관리 부담이 사라집니다 |
-| 3 | **집중** | 각 AI 의 권한과 완료 조건이 시스템 차원에서 강제, 자기 합리화는 첫 줄부터 차단 | AI 가 본래 일에만 집중합니다 |
-| 4 | **협업** | 역할이 다른 전문 AI 들이 정해진 의례로 협력, 충돌은 우선순위로 명시 해결 | 사각지대를 메우고, 모든 결정이 추적 가능합니다 |
-| 5 | **통합** | 두 개의 슬래시 명령에 자연어 라우팅, 실행 전 계획 공개로 Y/n 확인 | 외울 명령은 최소, 자연어 한 줄이면 충분합니다 |
+| 1 | **변환** | 아이디어와 규칙을 따로 적어, AI 에게 *규칙* 만 전달 | AI 가 헷갈리지 않습니다 |
+| 2 | **진화** | 한 곳을 고치면 다른 문서가 자동 갱신, 어긋남은 자동 감지, 사용자 손질은 보존 | 설계 문서가 항상 최신, 관리 부담이 사라집니다 |
+| 3 | **집중** | 각 AI 의 권한과 완료 조건을 시스템이 직접 강제 | AI 가 본래 일에만 집중합니다 |
+| 4 | **협업** | 역할이 다른 전문 AI 들이 정해진 절차로 협력, 충돌은 명시적으로 해결 | 사각지대를 메우고, 모든 결정이 추적 가능합니다 |
+| 5 | **통합** | 두 개의 슬래시 명령에 자연어 입력, 실행 전 계획 공개로 Y/n 확인 | 외울 명령은 최소, 자연어 한 줄이면 충분합니다 |
 
 ---
 
@@ -40,9 +40,9 @@ Claude Code 위에서 도는 multi-agent 개발 하네스. 다른 AI 도구가 *
                   │
                   ▼
    ┌──────────────────────────────────────────┐
-   │  spec.yaml  (단일 원천 · SSoT)            │
-   │   ├─ 자유 서술 — 비전 · 사용자            │
-   │   └─ 계약 항목 — 기능 · 규칙 · 결정       │
+   │  spec.yaml  (단일 원천)                   │
+   │   ├─ 아이디어 — 비전 · 사용자             │
+   │   └─ 규칙     — 기능 · 결정 · 제약        │
    └──────────┬─────────────────┬─────────────┘
               │                 │
        자동 파생            전문가 협업
@@ -67,7 +67,7 @@ Claude Code 위에서 도는 multi-agent 개발 하네스. 다른 AI 도구가 *
 
 ## 빠른 시작
 
-Claude Code 2.1+ 에서:
+Claude Code 에서:
 
 ```bash
 /plugin marketplace add qwerfunch/harness-boot
@@ -119,7 +119,7 @@ harness-boot
 
 | 프로젝트 | 데모 | 소스 | 설명 |
 |---|---|---|---|
-| **cosmic-suika** | [Play](https://qwerfunch.github.io/cosmic-suika-pages/) | [GitHub](https://github.com/qwerfunch/cosmic-suika-pages) | Suika (2048-style merge) 우주 테마 변형 |
+| **cosmic-suika** | [Play](https://qwerfunch.github.io/cosmic-suika-pages/) | [GitHub](https://github.com/qwerfunch/cosmic-suika-pages) | 우주 테마 머지 게임 |
 | *여러분 차례* | — | — | harness-boot 로 만든 결과물 추가 가능 |
 
 **여러분의 결과물도 환영합니다.** [PR](https://github.com/qwerfunch/harness-boot/pulls) 또는 [issue](https://github.com/qwerfunch/harness-boot/issues) 로 보내주시면 이 표에 추가합니다.
@@ -147,10 +147,10 @@ harness-boot/
 
 ## 현재 상태
 
-**v0.11.3** — drift × Iron Law gating · native English consolidation · self_check 통과.
+**v0.11.3** — 외부 채택 준비 단계, 자체 도그푸드 운영 중.
 
 - 변경 이력 — [CHANGELOG.md](CHANGELOG.md)
-- 기여자 가이드 — [CLAUDE.md](CLAUDE.md)
+- 개발자 가이드 — [CLAUDE.md](CLAUDE.md)
 - 문제 보고 — [GitHub Issues](https://github.com/qwerfunch/harness-boot/issues)
 
 ```bash
