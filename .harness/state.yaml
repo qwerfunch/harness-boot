@@ -684,7 +684,7 @@ features:
   started_at: '2026-04-27T06:41:36Z'
   completed_at: '2026-04-27T06:54:15Z'
 - id: F-037
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -710,9 +710,9 @@ features:
       integration · self_check 5/5 · gate_0/5 PASS · idempotent + --no-fog opt-out
       검증
   started_at: '2026-04-27T07:34:24Z'
-  completed_at: null
+  completed_at: '2026-04-27T08:05:07Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
   last_command: /harness:work F-037
   last_gate_passed: gate_5
-  active_feature_id: F-037
+  active_feature_id: null
