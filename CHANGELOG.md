@@ -11,6 +11,82 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 - Marketplace PR (anthropic/claude-plugins-official) — 사용자 명시 후 진입.
 
+## [0.10.15] — 2026-04-27
+
+**Native-English rewrite of `commands/` and `agents/` (F-041).**
+
+User feedback called for the slash-command definitions and sub-agent
+fixtures to read **as if a native English-speaking dev wrote them from
+scratch** — not as translation. F-040 (v0.10.14) localized the *runtime
+output*; F-041 closes the gap on the *system prompts Claude Code loads*,
+the loudest-Korean surface a non-Korean adopter encountered.
+
+### Added — F-041 native-English rewrite
+
+- **`commands/init.md`** + **`commands/work.md`** — rewritten end-to-end at
+  native level. Preamble + `NO skip:` / `NO shortcut:` line prefixes
+  preserved (self_check step 5 invariant). Single glossary backlink near
+  the top.
+- **`agents/*.md`** (15 sub-agents + `README.md`) — same treatment.
+  Headers follow the `# <agent-name> — <one-liner role>` pattern;
+  frontmatter (`name`, `description`, `tools`) preserved with the
+  `description` field also rewritten in English.
+- **`docs/glossary/BRAND_TERMS.md`** — new bilingual reference (28 terms:
+  Walking Skeleton · Iron Law D · BR-NNN · F-NNN · gate_0–5 · drift ·
+  sigil · fog-clear · routed agents · parallel groups · STRIDE · OWASP
+  ASVS · WCAG 2.2 · OAuth 2.1 · FIDO2 · Mom Test · etc.). Each entry has
+  EN gloss + KO gloss + a primary-file backlink. Rewritten files link
+  here once instead of inline-defining each term.
+- **`docs/i18n/ko/`** — frozen byte-exact snapshot of the pre-rewrite
+  Korean source. `commands/{init,work}.md` + `agents/*.md`. Kept as a
+  translation reference; **not synced** with the English masters.
+- **`docs/i18n/README.md`** — one-paragraph policy: English is the source
+  of truth; the KO snapshot is a frozen reference; runtime Korean output
+  goes through `scripts/ui/messages.py` (F-040), unaffected here.
+
+### Tests
+- **Updated**: `tests/unit/test_agents.py` exclusion-phrase regex expanded
+  to accept both legacy Korean (`spec.yaml 직접 참조 금지` · `읽지 않`
+  · `접근 금지`) and the F-041 native-English forms (`Don't read … directly`
+  · `off-limits` · `not in the allow-list` · etc.). Markdown emphasis
+  (`**`/`*`) stripped before matching. `tests/unit/test_cosmic_suika_returns.py`
+  `kind=trivial` exemption-clarification check accepts both phrasings the
+  same way.
+- **Cumulative**: 1062 unit + 26 integration. `self_check 5/5`.
+  F-040 runtime locale switching unaffected — `HARNESS_LANG=ko` still
+  emits `상태:` / `통과:` / `근거: N 개` / `라우팅된 팀:`.
+
+### Out-of-scope (intentional)
+- `CLAUDE.md` (this repo's ops context — Korean primary by design).
+- Historical CHANGELOG entries (history not rewritten; new entries in English).
+- `scripts/` Python source — already English.
+- F-040 message catalog (`scripts/ui/messages.py`) — runtime axis,
+  separate concern; KO + EN both stay.
+
+### Verification
+```bash
+# Zero Korean script in masters
+python3 -c "
+import re, pathlib, sys
+patt = re.compile(r'[가-힯]')
+violators = [str(p) for p in [*pathlib.Path('commands').glob('*.md'),
+                              *pathlib.Path('agents').glob('*.md')]
+             if patt.search(p.read_text(encoding='utf-8'))]
+print('violators:', violators); sys.exit(1 if violators else 0)
+"
+
+# KO snapshot still byte-identical with the pre-rewrite source
+ls docs/i18n/ko/commands/ docs/i18n/ko/agents/
+
+# Self-check + tests
+bash scripts/self_check.sh
+python3 -m pytest tests/unit/ -q   # 1062 PASS
+python3 -m pytest tests/integration/ -q   # 26 PASS
+
+# F-040 KO runtime catalog still works
+HARNESS_LANG=ko python3 scripts/work.py F-041 --harness-dir .harness
+```
+
 ## [0.10.14] — 2026-04-27
 
 **User-friendly plugin output — i18n, glossary, visual signature (F-040).**

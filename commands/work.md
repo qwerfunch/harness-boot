@@ -1,88 +1,115 @@
 ---
-description: 피처 단위 개발 사이클 관리 — 활성화 · Gate 결과 기록 · 증거 수집 · done 전이 (F-004). Phase 1 Gate 실행 자체는 사용자 · CI 가 담당.
+description: Per-feature TDD lifecycle manager — activate · record gate result · gather evidence · transition to done (F-004). In Phase 1 the actual gate execution is on you (or CI); this command tracks the result.
 allowed-tools: [Read, Write, Bash]
 argument-hint: "<F-ID> [--gate NAME RESULT] [--evidence SUMMARY] [--complete] [--block REASON] [--current]"
 ---
 
-# /harness-boot:work — 피처 개발 사이클 (F-004)
+# /harness-boot:work — feature lifecycle (F-004)
 
-이 명령은 **피처 단위 TDD 사이클의 상태 관리자**. v0.3 범위에서 Gate 실행 자체는 사용자 또는 CI 가 수행하고 결과만 `state.yaml` + `events.log` 에 기록.
+This command is the **state manager for a feature's TDD cycle**. In v0.3
+scope you (or CI) run the actual gate; this command records the result in
+`state.yaml` + `events.log` and transitions the feature.
 
-**v0.3 경계**:
-- 실제 테스트 러너 · 커버리지 계산 · Gate 5 runtime smoke 자동화는 **범위 밖** (v0.4+).
-- 이 명령은 result 기록과 상태 전이에 집중.
+For unfamiliar terms (Walking Skeleton, Iron Law D, drift, gate_0–5,
+kickoff, retro, autowire, fog-clear, …), see
+[`docs/glossary/BRAND_TERMS.md`](../docs/glossary/BRAND_TERMS.md).
 
-## Preamble (출력 맨 앞 3 줄)
+**v0.3 boundary**:
+- Actual test runners · coverage computation · gate_5 runtime smoke automation
+  are **out of scope** (v0.4+).
+- This command focuses on result recording and state transitions.
+
+## Preamble (top 3 lines of every output)
 
 ```
-🛠 /harness-boot:work · <action on F-ID> · <근거 5~10 단어>
-NO skip: BR-004 Iron Law — gate_5=pass + evidence ≥ 1 없이 done 거부
-NO shortcut: 모든 상태 전이는 scripts/work.py 경유 — state.yaml 수동 편집 금지 (work.py 가 events.log 자동 append)
+🛠 /harness-boot:work · <action on F-ID> · <5–10 word reason>
+NO skip: BR-004 Iron Law — cannot complete without gate_5=pass + evidence ≥ 1
+NO shortcut: all state transitions go through scripts/work.py — no manual state.yaml edits (work.py auto-appends to events.log)
 ```
 
-**1 줄**: 이모지 · 명령 · <action on F-ID> · 근거.
-**2-3 줄 (Anti-rationalization, BR-014)**: Iron Law 우회 · 이벤트 로그 skip 을 명시 거부.
+**Line 1**: emoji · command · `<action on F-ID>` · short reason.
+**Lines 2-3 (Anti-rationalization, BR-014)**: explicit refusal to bypass
+Iron Law or skip the event log.
 
-예: `🛠 /harness-boot:work · activate F-003 · sync 완료 후 spec 변경 대응`.
+Example: `🛠 /harness-boot:work · activate F-003 · spec changed after sync`.
 
-## 역할별 서브커맨드
+## Subcommands
 
-Claude 는 인자에 따라 `scripts/work.py` 를 호출. `$PLUGIN_ROOT` 는 `commands/init.md §2` 의 4-전략 체인 (또는 `scripts/core/plugin_root.py`) 으로 해석.
+Claude shells out to `scripts/work.py` based on the args. Resolve `$PLUGIN_ROOT`
+via the 4-strategy chain in `commands/init.md §2` (or `scripts/core/plugin_root.py`).
 
-### 대시보드 (v0.9.2 — 빈 호출)
+### Dashboard (v0.9.2 — empty call)
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/work.py" --harness-dir "$(pwd)/.harness"
 python3 "$PLUGIN_ROOT/scripts/work.py" --harness-dir "$(pwd)/.harness" --json
 ```
 
-인자 없이 호출하면 **읽기 전용 대시보드**가 출력된다.
+With no arguments, you get a **read-only dashboard**.
 
 ```
 📊 harness-boot
 
-작업 중: "로그인 흐름"
-  진행: 검증 3/6 통과 · 근거 1 개
-  차단: 접근성 · Space 키 동작 미정
+working on: "login flow"
+  progress: 3/6 gates passed · 1 evidence entries
+  blocker: a11y · Space-key behavior undefined
 
-진행 중 (다른):
-  "대시보드"
+in progress (others):
+  "dashboard"
 
-보류: "결제"
+on hold: "billing"
 
-대기: "로그아웃" · "설정"
+pending: "logout" · "settings"
 
-다음 할 일:
-  (1) 검증 실행: gate_3 (추천)
-  (2) 다른 작업으로 전환
+next actions:
+  (1) run gate_3 (recommended)
+  (2) switch to another feature
 
-Enter = 1 (추천)
+Enter = 1 (recommended)
 ```
 
-CQS — `state.yaml` · `events.log` mtime 불변. "다음 할 일" 1~3 안은 `scripts/ui/intent_planner.py` 의 결정론 규칙 산출물 (LLM 호출 없음): active feature 의 gate 진행 · evidence 상태 · blocker 를 읽어 **다음 논리적 단계** 한 개를 추천으로 제시. 사용자가 자연어로 수정 요청하거나 명시 명령을 보내면 해당 분기로 진입.
+CQS — `state.yaml` and `events.log` mtimes don't change. The "next
+actions" 1-3 list is produced deterministically by
+`scripts/ui/intent_planner.py` (no LLM call): it reads the active
+feature's gate progress, evidence state, and any blocker, then proposes
+**one logical next step** as the recommended option. If you free-text or
+issue an explicit subcommand, control routes to that branch.
 
-### 활성화
+### Activate
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --harness-dir "$(pwd)/.harness" --json
 ```
 
-- `planned` → `in_progress` 전이 + `session.active_feature_id` 설정.
-- 이미 `done` 이면 읽기만 (재활성화 거부).
+- Transitions `planned` → `in_progress` and sets `session.active_feature_id`.
+- If the feature is already `done`, this becomes a read (no re-activation).
 
-**F-037 Layer B fog-clear (auto, 2026-04-27)**: brownfield 프로젝트 (`metadata.source.origin == "existing_code"`) 에서 activate 시점에 자동으로 발화. `feature.modules[]` 가 가리키는 영역만 결정론 정찰 → `.harness/chapters/area-{slug}.md` 작성 + `.harness/area_index.yaml` 갱신 + `events.log` 의 `fog_cleared` 이벤트. 이후 같은 activate 의 kickoff 가 chapter 를 자동 참조 ("기존 스타일 컨텍스트" 섹션). idempotent — 같은 area set 두 번째 activate 는 chapter byte-identical + event 중복 X. 사용자 편집은 chapter 의 `<!-- harness:user-edit-begin -->` ~ `end` 영역으로 보존.
+**F-037 Layer B fog-clear (auto, 2026-04-27)**: in brownfield projects
+(`metadata.source.origin == "existing_code"`), activate auto-fires
+fog-clear. It reconnoiters only the paths in `feature.modules[]` →
+writes `.harness/chapters/area-{slug}.md`, updates
+`.harness/area_index.yaml`, and appends a `fog_cleared` event to
+`events.log`. The kickoff that runs in the same activate auto-references
+the chapter (the "existing style context" section). Idempotent — a
+second activate on the same area set produces a byte-identical chapter
+and no duplicate event. User edits inside
+`<!-- harness:user-edit-begin --> ... <!-- harness:user-edit-end -->`
+survive regeneration.
 
-**opt-out**: `python3 work.py F-NNN --no-fog` (이번 한 번) 또는 `spec.metadata.fog.disabled: true` (영구). 그린필드 (`origin: idea`) 에서 fog 가 노이즈면 `metadata.fog.disabled: true` 로 비활성.
+**Opt out**: `python3 work.py F-NNN --no-fog` (this run only) or
+`spec.metadata.fog.disabled: true` (permanent). On greenfield
+(`origin: idea`) where fog adds noise, set `metadata.fog.disabled: true`.
 
-### Gate 결과 기록 (수동)
+### Record gate result (manual)
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --gate gate_0 pass --note "19 unit tests" --json
 ```
 
-결과 ∈ {pass, fail, skipped}. `pass` 면 `session.last_gate_passed` 갱신.
+Result ∈ {pass, fail, skipped}. On `pass`, `session.last_gate_passed`
+updates.
 
-### Gate 자동 실행 (v0.3.1+, Phase 1)
+### Auto-run a gate (v0.3.1+, Phase 1)
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --run-gate gate_0 --json
@@ -90,86 +117,127 @@ python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --run-gate gate_0 --override-comman
 python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --run-gate gate_0 --project-root ../other --timeout 60
 ```
 
-`scripts/gate/runner.py` 가 러너를 자동 감지:
+`scripts/gate/runner.py` auto-detects the runner:
 
 - **gate_0 (tests)**: pyproject+pytest → tests/+unittest → npm test → make test
-- **gate_1 (type check)**: pyproject+mypy → pyproject+pyright → tsconfig+tsc → Cargo+cargo check → go.mod+go vet
-- **gate_2 (lint)**: pyproject+ruff → pyproject+flake8 → package.json+eslint → .eslintrc+npx → Cargo+cargo clippy → go.mod+golangci-lint
-- **gate_3 (coverage, v0.3.5+)**: pyproject+pytest-cov → coverage+pytest → package.json.scripts.coverage → npx nyc → Cargo+tarpaulin → Cargo+llvm-cov → go test -cover. threshold 는 도구 자체 설정 (`[tool.coverage]` 등) 을 따름.
-- **gate_4 (commit check, v0.3.6+)**: `git diff --quiet && git diff --cached --quiet` — working tree + staging area 모두 clean 이어야 pass. git repo 아니거나 `git` 바이너리 부재 시 `skipped`.
-- **gate_5 (runtime smoke, v0.3.7+)**: `scripts/smoke.sh` → `tests/smoke/` + pytest → `tests/smoke/` + unittest → Makefile `smoke:` → package.json `scripts.smoke`. runtime smoke 는 프로젝트별 특성이 강하므로 **`harness.yaml.gate_commands.gate_5` override 권장**. 감지 실패 시 `skipped` (reason 에 override 안내 포함). 기본 timeout 600s.
-- **gate_perf (performance, v0.7.3+)**: auto-detect 없음 (perf 도구 다양성). `harness.yaml.gate_commands.gate_perf` 또는 `--override-command` 필수. pass 시 evidence summary 에 feature 의 `performance_budget` (lcp_ms · inp_ms · bundle_kb · custom[]) 이 자동 주입. 기본 timeout 900s.
+- **gate_1 (type check)**: pyproject+mypy → pyproject+pyright → tsconfig+tsc
+  → Cargo+cargo check → go.mod+go vet
+- **gate_2 (lint)**: pyproject+ruff → pyproject+flake8 →
+  package.json+eslint → .eslintrc+npx → Cargo+cargo clippy →
+  go.mod+golangci-lint
+- **gate_3 (coverage, v0.3.5+)**: pyproject+pytest-cov → coverage+pytest
+  → package.json scripts.coverage → npx nyc → Cargo+tarpaulin →
+  Cargo+llvm-cov → go test -cover. Threshold follows the tool's own
+  config (e.g. `[tool.coverage]`).
+- **gate_4 (commit check, v0.3.6+)**: `git diff --quiet && git diff --cached --quiet`
+  — both working tree and staging area must be clean to pass. Without a
+  git repo or `git` binary, the result is `skipped`.
+- **gate_5 (runtime smoke, v0.3.7+)**: `scripts/smoke.sh` →
+  `tests/smoke/` + pytest → `tests/smoke/` + unittest → Makefile
+  `smoke:` → package.json `scripts.smoke`. Runtime smoke is highly
+  project-specific, so we **recommend a `harness.yaml.gate_commands.gate_5`
+  override**. On detection failure the result is `skipped` (the reason
+  string includes the override hint). Default timeout 600s.
+- **gate_perf (performance, v0.7.3+)**: no auto-detect (perf tooling is
+  diverse). `harness.yaml.gate_commands.gate_perf` or `--override-command`
+  is required. On pass, the evidence summary auto-injects the feature's
+  `performance_budget` (lcp_ms · inp_ms · bundle_kb · custom[]). Default
+  timeout 900s.
 
-결과 자동 기록 + pass 시 evidence 자동 추가. Override 우선순위: `--override-command` → `harness.yaml.gate_commands.<gate>` → auto-detect.
+The result records automatically; on pass, evidence is added too.
+Override priority: `--override-command` → `harness.yaml.gate_commands.<gate>`
+→ auto-detect.
 
-**현재 범위**: gate_0~5 + gate_perf 자동화. gate_0~5 는 BR-004 Iron Law 필수 경로, gate_perf 는 `performance_budget` 선언된 피처의 orchestrator routing (performance-engineer) 에서 호출.
+**Current scope**: gate_0–5 + gate_perf are automated. gate_0–5 are on
+the BR-004 Iron Law required path; gate_perf is invoked by the
+orchestrator routing (performance-engineer) for any feature that
+declares a `performance_budget`.
 
-### 증거 추가
+### Add evidence
 
 ```bash
-python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --evidence "도메인 스모크 통과" --kind test --json
+python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --evidence "domain smoke passes" --kind test --json
 ```
 
-### 블록
+### Block
 
 ```bash
-python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --block "외부 API 미배포" --kind blocker --json
+python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --block "external API not deployed yet" --kind blocker --json
 ```
 
-→ 상태 `blocked` + evidence 에 reason 기록 + events.log 에 `feature_blocked`.
+→ status `blocked` + reason recorded as evidence + `feature_blocked`
+event appended to events.log.
 
-### 완료 (done 전이)
+### Complete (transition to done)
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --complete --json
 python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --complete --hotfix-reason "prod down — redis race"
 ```
 
-**Iron Law D** (v0.9.3 — BR-004 강화):
+**Iron Law D** (v0.9.3 — BR-004 reinforcement):
 
-1. `gate_5` (runtime smoke) 결과 = `pass`
-2. 최근 **7 일 declared evidence** (kind != `gate_run` · `gate_auto_run`) 개수 ≥ 요구치:
-   - `product` 모드 (default): **3 개**
-   - `prototype` 모드 (`spec.project.mode: prototype`): **1 개**
-3. `--hotfix-reason "..."`: product 모드에서도 1 개 허용. 사유가 `kind=hotfix` evidence 로 자동 기록되어 audit trail 남김.
+1. `gate_5` (runtime smoke) result = `pass`
+2. **Declared evidence in the last 7 days** (kind != `gate_run` ·
+   `gate_auto_run`) ≥ the threshold:
+   - `product` mode (default): **3**
+   - `prototype` mode (`spec.project.mode: prototype`): **1**
+3. `--hotfix-reason "..."`: even in product mode, 1 entry is enough.
+   The reason is auto-recorded as a `kind=hotfix` evidence entry, so
+   the audit trail is preserved.
 
-거부 시 이유 반환 (상태 불변 · 재호출 가능). 통과 시 `done` 전이 + `active_feature_id` 해제 + `feature_done` 이벤트에 `iron_law_mode` · `declared_count` · `required` · (있다면) `hotfix_reason` 첨부.
+If the law isn't met, complete returns the reason (status unchanged,
+re-callable). On pass, the feature transitions to `done`,
+`active_feature_id` clears, and the `feature_done` event carries
+`iron_law_mode` · `declared_count` · `required` · (when supplied)
+`hotfix_reason`.
 
 **kind taxonomy**:
-- automatic: `gate_run` · `gate_auto_run` — gate runner 자동 생성, Iron Law D 불인정.
-- declared: `test` · `manual_check` · `user_feedback` · `reviewer_check` · `blocker` · `hotfix` · `generic` · `trivial` · 그 외 — 개발자 의도 신호, Iron Law D 인정.
+- automatic: `gate_run` · `gate_auto_run` — emitted by the gate runner;
+  Iron Law D doesn't count these.
+- declared: `test` · `manual_check` · `user_feedback` · `reviewer_check`
+  · `blocker` · `hotfix` · `generic` · `trivial` · anything else —
+  developer intent signal; Iron Law D counts these.
 
-**`kind=trivial`** (v0.10.7, cosmic-suika I-006 환원): 정말 작은 변경 (한 줄 wiring · typo · doc-only · style fix) 의 evidence 라는 의도 신호. **Iron Law D 면제 X** — 여전히 카운트되고 evidence ≥ N 임계값에 포함됨. 단지 reviewer / audit reader 가 "이건 ceremony 가 아니라 진짜 trivial 이었다" 를 알 수 있게 하는 의미적 마커. ceremony 한 줄도 아까운 cleanup PR 에 사용. 진짜 emergency 우회는 `--hotfix-reason` 사용.
+**`kind=trivial`** (v0.10.7, cosmic-suika I-006 return): an intent
+marker for genuinely tiny changes (one-line wiring · typo · doc-only ·
+style fix). **Not** an Iron Law D exemption — it still counts toward
+the evidence ≥ N threshold. The marker just lets a reviewer or audit
+reader see "this wasn't ceremony, this was actually trivial". Use it
+on cleanup PRs where a full ceremony entry feels like overkill. For a
+real emergency bypass, use `--hotfix-reason`.
 
-### 현재 active 조회 (CQS — 읽기만)
+### Query the active feature (CQS — read-only)
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/work.py" --current --json
 ```
 
-## 코딩 스타일 (구현 전 숙지)
+## Coding style (read before implementing)
 
-Python 코드는 **Google Python Style Guide** 를 따름. **spec reference (F-NNN · AC-N · BR-NNN) 는 docstring 또는 주석에만** — 함수/클래스 이름은 도메인 의미로.
+Python code follows the **Google Python Style Guide**. **Spec
+references (F-NNN · AC-N · BR-NNN) belong in docstrings or comments
+only** — never in function or class names. Pick names from the domain.
 
 ```python
 # ✅
 class StrictestRuleTests(unittest.TestCase):
-    """BR-004: 복수 rule 매칭 시 가장 엄격한 max 채택."""
+    """BR-004: when multiple rules match, the strictest max wins."""
 
 # ❌
 class BR004_StrictestRuleTests(unittest.TestCase): ...
 class AC1_CodeFormatTests(unittest.TestCase): ...
 ```
 
-상세: `agents/software-engineer.md § 코딩 스타일`.
+Details: `agents/software-engineer.md § Coding style`.
 
-## 전형 시나리오
+## Typical scenario
 
-피처 1 개의 풀 사이클:
+A full cycle for one feature:
 
 ```
 /harness-boot:work F-004                                 → activated
-... (사용자가 TDD red/green/refactor 수행) ...
+... (you write tests, then code, then refactor) ...
 /harness-boot:work F-004 --gate gate_0 pass --note "19 tests green"
 /harness-boot:work F-004 --gate gate_1 pass --note "type check clean"
 /harness-boot:work F-004 --gate gate_2 pass
@@ -180,56 +248,81 @@ class AC1_CodeFormatTests(unittest.TestCase): ...
 /harness-boot:work F-004 --complete                      → done
 ```
 
-## 실패 조건
+## Failure conditions
 
-- harness_dir 미존재 → 중단.
-- `--complete` 인데 gate_5 미통과 또는 evidence 없음 → action=queried + 이유 메시지 반환 (실패 아님, 재호출 가능).
-- invalid gate result → exit 3.
+- harness_dir doesn't exist → stop.
+- `--complete` without gate_5 pass or any evidence → action=queried with
+  a reason message (not a failure; you can re-call).
+- Invalid gate result → exit 3.
 
-## Activate UX 경고 (v0.7.1)
+## Activate UX warnings (v0.7.1)
 
-`activate` 는 아래 상황에서 stderr 경고를 찍고도 진행한다 (backward compat — 실패 아님):
+`activate` emits a stderr warning and continues (backward compat — not
+a failure) in these cases:
 
-- **ghost feature**: `spec.yaml` 은 존재하나 해당 `F-N` 이 그 안에 없음. `/harness-boot:work` 으로 등록하거나 `--remove F-N` 으로 되돌릴 것을 안내.
-- **concurrent in_progress**: 다른 피처가 이미 `in_progress`. 새 피처 activate 전에 완료·block 또는 무시하고 병렬 작업.
+- **ghost feature**: `spec.yaml` exists but the `F-N` you named isn't
+  in it. The warning suggests registering it via `/harness-boot:work`
+  or undoing with `--remove F-N`.
+- **concurrent in_progress**: another feature is already `in_progress`.
+  The warning lets you finish or block it before activating the new
+  one — or work in parallel by ignoring the warning.
 
-## Session pointer 정리 (v0.7.1)
+## Session pointer cleanup (v0.7.1)
 
 ```bash
-/harness-boot:work --deactivate              # session.active_feature_id 만 비움. 피처 status 유지
-/harness-boot:work --remove F-99             # state.yaml features[] 에서 항목 삭제 (유령 정리). done 피처는 보호
+/harness-boot:work --deactivate              # clears session.active_feature_id only; feature status unchanged
+/harness-boot:work --remove F-99             # removes the entry from state.yaml features[] (ghost cleanup); done features are protected
 ```
 
-- `--deactivate` 는 단일 작업 세션을 닫을 때 (상태는 나중에 재개 가능).
-- `--remove` 는 ghost 나 오타로 만들어진 엔트리 회수. `feature_removed` event 가 log 에 남아 audit 가능.
+- `--deactivate` closes the work session; you can resume the status
+  later.
+- `--remove` reclaims a ghost or typo entry. A `feature_removed` event
+  goes to the log so the change is auditable.
 
 ## Orchestration Routing (v0.5)
 
-orchestrator 가 피처 shape 에 따라 소환 체인을 결정한다. 아래 표는 **머신 체크 가능한 계약** — `tests/unit/test_work_routing.py` 가 이 표를 파싱해 6 행 존재 + shape_key + agent_chain 컬럼을 assert.
+The orchestrator picks the agent chain based on the feature's shape.
+The table below is a **machine-checkable contract** —
+`tests/unit/test_work_routing.py` parses it and asserts six rows with
+the expected `shape_key` and `agent_chain` columns.
 
 | shape_key | agent_chain |
 |---|---|
 | baseline-empty-vague | `@harness:researcher` → `@harness:product-planner` → `/harness-boot:work <plan.md>` |
 | ui_surface.present | `@harness:ux-architect` → (`@harness:visual-designer` ∥ `@harness:audio-designer` if has_audio) → `@harness:a11y-auditor` → `@harness:frontend-engineer` (+ `@harness:software-engineer` for logic) |
 | sensitive_or_auth | `@harness:security-engineer` ∥ `@harness:reviewer` (parallel audit; security BLOCK vetoes) |
-| performance_budget | `@harness:performance-engineer` (v0.6 schema field 연동, v0.5 는 inline payload 전달 시만) |
-| pure_domain_logic | `@harness:backend-engineer` (+ `@harness:software-engineer` 보조) |
+| performance_budget | `@harness:performance-engineer` (binds via the v0.6 schema field; v0.5 only with an inline payload) |
+| pure_domain_logic | `@harness:backend-engineer` (+ `@harness:software-engineer` as backup) |
 | feature_completion | `@harness:qa-engineer` → engineers (tests) → `@harness:integrator` → `@harness:tech-writer` → `@harness:reviewer` (final) |
 
-**Conflict resolution (orchestrator 책임)**:
-- `security-engineer` vs `reviewer` 불일치 → security BLOCK 이 **veto** (민감성 우위)
-- `ux-architect` flow 와 `visual-designer` tokens 충돌 → ux-architect authoritative; 2회 반복 시 orchestrator 가 사용자에게 결정 요청
-- `a11y-auditor` 는 read-only 이므로 BLOCK 만 발행 — PASS 판정에 다른 에이전트 영향 없음
+**Conflict resolution (orchestrator's job)**:
+- `security-engineer` vs `reviewer` disagree → security BLOCK is
+  **veto** (sensitivity wins).
+- `ux-architect` flow vs `visual-designer` tokens → ux-architect is
+  authoritative; if the disagreement repeats twice, the orchestrator
+  escalates to you.
+- `a11y-auditor` is read-only — it only emits BLOCK; it doesn't
+  influence other agents' PASS verdicts.
 
-**Skip 정책 (v0.5.1 명시화)**:
-- `security-engineer` — 피처에 `entities[].sensitive=true` 또는 auth/payment 표면이 없으면 skip. 단, **skip 사유를 `.harness/state.yaml` feature 항목의 `skipped_agents[]` 에 기록** (추후 audit 가능). 사유 예: `"no sensitive entity, static client only"`.
-- `performance-engineer` — `features[].performance_budget` 선언 없을 시 skip. 동일하게 사유 기록.
-- `audio-designer` — `features[].ui_surface.has_audio=false` 이면 skip.
-- `integrator` · `tech-writer` — 이 둘은 **완료 직전 chain 에서 skip 금지**. 아주 작은 피처라도 1 줄 단위 wire-up · changelog 반영 책임은 유지. 예외적으로 문서-only 변경 피처(test_strategy=none)에서만 skip 허용 · 사유 기록.
-- 원칙: **명시 skip 과 조용한 누락을 구분**. skip 은 state.yaml 에 trace 남김.
+**Skip policy (v0.5.1, made explicit)**:
+- `security-engineer` — skip when the feature has no
+  `entities[].sensitive=true` and no auth/payment surface. **Record
+  the skip reason** in `.harness/state.yaml` `feature.skipped_agents[]`
+  for the audit trail. Example: `"no sensitive entity, static client only"`.
+- `performance-engineer` — skip when `features[].performance_budget`
+  isn't declared. Same skip-record discipline.
+- `audio-designer` — skip when `features[].ui_surface.has_audio=false`.
+- `integrator` and `tech-writer` — **don't skip these in the completion
+  chain**. Even on a tiny feature, the one-line wire-up and changelog
+  entry stay their responsibility. The only allowed skip is on
+  doc-only changes (`test_strategy=none`) — and even then, record the
+  reason.
+- Principle: **explicit skip vs. silent omission are different**. A
+  skip leaves a trace in state.yaml; an omission is a bug.
 
 **Feature context payload (orchestrator → expert)**:
-에이전트 호출 시 프롬프트에 아래 prose 로 인라인 삽입. 전문가는 spec.yaml 을 뒤져 찾지 않음.
+When calling an agent, inline this prose in the prompt. The expert
+shouldn't have to dig through spec.yaml.
 ```
 feature_id: F-NNN
 ac_summary:
@@ -237,45 +330,83 @@ ac_summary:
   - AC-2: ...
 modules: [...]
 test_strategy: tdd | contract | property | smoke
-ui_surface: {present, platforms, has_audio}  # (있을 때만)
+ui_surface: {present, platforms, has_audio}  # only when present
 ```
 
-**자유 텍스트 의도 라우팅 (F-038, 2026-04-27)**: 사용자가 work 안에서 자유 텍스트로 던지는 의도 — *질문 / 디자인 / 기획 / 구현 / 리뷰* — 는 **이 표의 shape 키에 흡수**된다. orchestrator 가 shape 에 매칭된 전문가 chain 을 호출하므로 별도 의도 분류기 없이도 자연스럽게 분기됨:
+**Free-text intent routing (F-038, 2026-04-27)**: the various intents
+you throw at /work — *question / design / planning / implementation /
+review* — **collapse into the shape keys above**. The orchestrator
+calls the chain matched to the shape, so there's no separate intent
+classifier; the routing falls out naturally:
 
-| 사용자 의도 | 매핑되는 shape / 에이전트 |
+| Your intent | Shape / agents |
 |---|---|
-| "이 도메인 어떻게 모델링?" / "엔티티 관계 질문" | `pure_domain_logic` → `backend-engineer` (+ `software-engineer`) |
-| "이 화면 흐름 디자인" / "버튼 위치 검토" | `ui_surface.present` → `ux-architect` → `visual-designer` → `a11y-auditor` → `frontend-engineer` |
-| "기획 검토" / "이 기능 vs 다른 기능 우선순위" | `baseline-empty-vague` (스펙 미정) → `researcher` → `product-planner` |
-| "성능 / 응답시간 목표" | `performance_budget` → `performance-engineer` |
-| "보안 / 인증 / 결제" | `sensitive_or_auth` → `security-engineer` ∥ `reviewer` |
-| "구현해 / 코드 짜 / 테스트 추가" | feature shape 의 engineer + `qa-engineer` |
-| "리뷰 / 검수 / 마무리" | `feature_completion` → `qa-engineer` → engineers → `integrator` → `tech-writer` → `reviewer` |
+| "how should I model this domain?" / "entity relationship question" | `pure_domain_logic` → `backend-engineer` (+ `software-engineer`) |
+| "design this screen flow" / "review the button placement" | `ui_surface.present` → `ux-architect` → `visual-designer` → `a11y-auditor` → `frontend-engineer` |
+| "review this plan" / "feature A vs B priority" | `baseline-empty-vague` (spec undecided) → `researcher` → `product-planner` |
+| "performance / response-time target" | `performance_budget` → `performance-engineer` |
+| "security / auth / payments" | `sensitive_or_auth` → `security-engineer` ∥ `reviewer` |
+| "build it / write the code / add a test" | the engineer matched to the shape + `qa-engineer` |
+| "review / sign-off / wrap up" | `feature_completion` → `qa-engineer` → engineers → `integrator` → `tech-writer` → `reviewer` |
 
-**라우팅 투명성 (F-038)**: `python3 work.py F-N` activate 직후 출력에 `routed agents: <chain>` 한 줄이 자동 추가되고, no-args dashboard 에도 active feature 의 `agent chain:` 섹션이 노출된다. 즉 **사용자가 kickoff.md 를 직접 열지 않아도 이번 activate 가 어떤 에이전트를 호출하는지 즉시 본다**. 머신 체크: `tests/unit/test_work_routed_agents.py` + `test_dashboard_agent_chain.py` 가 routed_agents 일치를 검증.
+**Routing transparency (F-038)**: right after `python3 work.py F-N`
+activate, the output adds a `routed agents: <chain>` line, and the
+no-args dashboard surfaces an `agent chain:` section for the active
+feature. **You don't have to open kickoff.md to know which agents
+this activate just engaged.** Machine-checked by
+`tests/unit/test_work_routed_agents.py` and
+`test_dashboard_agent_chain.py`.
 
-**Parallel dispatch (F-039, 2026-04-27)**: orchestrator 가 같은 메시지에서 여러 Agent tool call 을 보내면 Claude Code 가 **native 로 병렬 실행**한다. write conflict 가 없는 read-only 감사 또는 독립 산출물 에이전트끼리만 병렬화하면 안전. 현재 명시된 그룹:
+**Parallel dispatch (F-039, 2026-04-27)**: when the orchestrator
+emits multiple Agent tool calls in a single message, Claude Code
+runs them **natively in parallel**. Only safe for read-only audits
+or independent-output agents (no write conflict). The currently
+declared groups:
 
-- `sensitive_or_auth` → `(@harness:security-engineer ∥ @harness:reviewer)` — 둘 다 read-only 감사. security BLOCK 이 veto.
-- `ui_surface.present` (has_audio=true) → `(@harness:visual-designer ∥ @harness:audio-designer)` — 둘 다 ux-architect 의 `flows.md` 의존, 출력 파일 분리 (tokens.yaml · audio.yaml).
+- `sensitive_or_auth` →
+  `(@harness:security-engineer ∥ @harness:reviewer)` — both are
+  read-only audits; security BLOCK vetoes.
+- `ui_surface.present` (has_audio=true) →
+  `(@harness:visual-designer ∥ @harness:audio-designer)` — both
+  depend on ux-architect's `flows.md`, write to separate output
+  files (tokens.yaml · audio.yaml).
 
-라우팅 표기: 병렬 그룹은 `(a ∥ b)` 로 묶이고, 순차 단계는 `→` 로 연결됨. `routed agents:` (activate 출력) 와 `agent chain:` (dashboard) 둘 다 동일 문법. 머신 체크: `kickoff.PARALLEL_GROUPS` 상수 + `parallel_groups_for_shapes()` helper + `tests/unit/test_kickoff_parallel_groups.py` · `test_work_parallel_routing.py` · `test_dashboard_parallel.py` 가 그룹 매핑 + 렌더링을 검증. 안전 규칙: **새 병렬 그룹 추가 전 write conflict 가능성 검토** — 두 에이전트가 같은 파일을 동시 작성하면 마지막 writer wins 위험. orchestrator 책임.
+Routing notation: parallel groups are wrapped `(a ∥ b)`; sequential
+steps are joined with `→`. Both the activate `routed agents:` line
+and the dashboard `agent chain:` section use the same syntax.
+Machine-checked by the `kickoff.PARALLEL_GROUPS` constant +
+`parallel_groups_for_shapes()` helper +
+`tests/unit/test_kickoff_parallel_groups.py` ·
+`test_work_parallel_routing.py` · `test_dashboard_parallel.py`.
+Safety rule: **before adding a new parallel group, audit for write
+conflicts** — two agents writing the same file create a
+last-writer-wins hazard. The orchestrator owns this check.
 
 ## Kickoff Ceremony (v0.6 + v0.8.2 idempotency)
 
-`/harness-boot:work F-N activate` state 전이 직후 `scripts/work.py` 가 **자동으로** `kickoff.generate_kickoff` 를 호출한다 (v0.7 auto-wire). spec.yaml 이 resolve 되고 해당 feature 가 존재할 때만 발화 — spec 미존재 시 silent skip (backward compat). Discovery 단계(spec 최초 작성)는 해당 없음.
+Right after the state transition, `/harness-boot:work F-N activate`
+**auto-fires** `kickoff.generate_kickoff` (v0.7 auto-wire). It only
+fires when spec.yaml resolves and the feature exists; if spec.yaml is
+missing, it silent-skips (backward compat). The discovery phase (when
+spec.yaml is first being authored) doesn't apply.
 
-**Idempotency (v0.8.2)**: `.harness/_workspace/kickoff/F-N.md` 이 이미 존재하면 **덮어쓰지 않음**. 사용자(또는 orchestrator)가 heading 을 채운 뒤 재-activate 해도 내용 보존. 재생성이 필요하면 `--kickoff` 플래그로 force:
+**Idempotency (v0.8.2)**: if `.harness/_workspace/kickoff/F-N.md`
+already exists, kickoff **doesn't overwrite it**. Once you (or the
+orchestrator) has filled in the headings, re-activating preserves the
+content. To force regeneration use the `--kickoff` flag:
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/work.py" F-N --kickoff --harness-dir .harness
 ```
 
-이 플래그는 shape 변화 등으로 agent 라인업을 다시 뽑아야 할 때 사용. (design-review 의 `--design-review` 와 같은 패턴)
+Use this when the agent lineup needs to refresh — typically because
+the feature's shape changed. (Same pattern as `--design-review`.)
 
-**실행 메커니즘** (v0.7 auto-wire):
+**Execution mechanism** (v0.7 auto-wire):
 
-`activate()` 내부가 `_autowire_kickoff()` 를 호출 → `spec.yaml` 파싱 → `kickoff.detect_shapes(feature)` 로 shape list 산출 → `kickoff.generate_kickoff()` 발화. CLI 로도 수동 재현 가능:
+`activate()` calls `_autowire_kickoff()` → parses `spec.yaml` →
+`kickoff.detect_shapes(feature)` returns the shape list →
+`kickoff.generate_kickoff()` fires. Manual reproduction via the CLI:
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/ceremonies/kickoff.py" \
@@ -286,30 +417,46 @@ python3 "$PLUGIN_ROOT/scripts/ceremonies/kickoff.py" \
     [--has-audio]
 ```
 
-Shape 감지 규칙 (`kickoff.detect_shapes`):
-- title · AC · modules 전부 비어 있음 → `["baseline-empty-vague"]`
-- `ui_surface.present=true` → `ui_surface.present` (+ `has_audio=true` 면 audio-designer 포함)
-- `performance_budget` 선언 있음 → `performance_budget`
-- `sensitive=true` 또는 도메인의 sensitive entity 참조 → `sensitive_or_auth`
-- 위 전문가 shape 모두 없음 → `pure_domain_logic`
-- 항상 최종에 `feature_completion` 추가
+Shape detection rules (`kickoff.detect_shapes`):
 
-Python 은 **템플릿만 생성**하고 orchestrator 에게 제어를 반환:
+- `title` · `AC` · `modules` all empty → `["baseline-empty-vague"]`
+- `ui_surface.present=true` → `ui_surface.present` (+ audio-designer
+  when `has_audio=true`)
+- `performance_budget` declared → `performance_budget`
+- `sensitive=true` or domain references a sensitive entity →
+  `sensitive_or_auth`
+- None of the specialty shapes → `pure_domain_logic`
+- Always append `feature_completion` to the end
 
-1. `.harness/_workspace/kickoff/F-N.md` — per-role heading · 빈 bullet 자리.
-2. `.harness/events.log` 에 `kickoff_started` append (agents list 포함).
+Python **only generates the template** and hands control back to the
+orchestrator:
 
-이후 orchestrator 가 prose-contract 으로 각 agent 를 순서대로 소환 ("F-N 의 당신 관점 우려 3 bullet. [Tier anchor] 를 80 단어 내로.") → 응답을 해당 heading 아래 append.
+1. `.harness/_workspace/kickoff/F-N.md` — per-role headings with empty
+   bullet slots.
+2. `.harness/events.log` — `kickoff_started` appended (with the agents
+   list).
 
-**참여 범위**: 위 Orchestration Routing 표 + feature shape 매칭. 전 14 agent 소환 금지. `kickoff.py` 의 `ROUTING_SHAPES` 상수가 이 표와 1:1 일치 (test_ceremony_routing.py 로 정합성 검증).
+Then the orchestrator calls each agent in order via prose contract:
+"For F-N, give me your three concerns from your perspective. Pull
+from your [Tier anchor]. 80 words max." Each response gets appended
+under that role's heading.
 
-**소비**: 이후 이 feature 의 모든 agent 는 `.harness/_workspace/kickoff/F-N.md` 를 briefing 의 일부로 참조 (cross-role empathy 제공).
+**Participation scope**: only the shapes in the routing table that
+matched. Don't summon all 14 agents. The `ROUTING_SHAPES` constant in
+`kickoff.py` is the 1:1 source of truth for the table
+(`test_ceremony_routing.py` enforces alignment).
+
+**Consumption**: every later agent on this feature reads
+`.harness/_workspace/kickoff/F-N.md` as part of its briefing
+(cross-role empathy).
 
 ## Q&A File-Drop Protocol (v0.6)
 
-에이전트가 작업 중 불명확·상충을 발견하면 **직접 다른 agent 를 호출하지 않고** 파일 기반 inbox 에 질문을 떨어뜨린다. orchestrator 가 stage 경계에서 poll.
+When an agent encounters ambiguity or conflict mid-work, **don't
+call another agent directly** — drop a question into the file-based
+inbox. The orchestrator polls between stages.
 
-**파일 규약**: `.harness/_workspace/questions/F-N--<from>--<to>.md`
+**File convention**: `.harness/_workspace/questions/F-N--<from>--<to>.md`
 
 ```markdown
 ---
@@ -319,139 +466,172 @@ needs_reply_by: design-review
 ---
 ## Question (2026-04-25T10:00:00Z · from frontend-engineer)
 
-AC-2 "즉시 전이" 가 150ms 내인가 300ms 내인가. design tokens/motion/session-start 은
-200ms 인데 AC 문서에 명시 없음.
+AC-2 says "instant transition" — is that 150ms or 300ms? design
+tokens/motion/session-start says 200ms but the AC doesn't pin it.
 
 ## Answer (2026-04-25T10:30:00Z · from ux-architect)
 
-200ms 로 통일. flows.md 의 motion/session-start 기준이 canonical.
+200ms across the board. flows.md's motion/session-start is canonical.
 ```
 
-**폴링**:
+**Polling**:
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/ceremonies/inbox.py" --harness-dir .harness --feature F-N
 # → 🔒/⬜️ · 🔒 blocking · F-N · from → to · path
 ```
 
-`--json` 으로 machine-parse · `--all` 로 answered 포함.
+`--json` for machine parsing · `--all` to include answered.
 
-**이벤트**: orchestrator 는 새 question 파일 감지 시 `question_opened` · answer append 시 `question_answered` 를 `events.log` 에 append (PR-ε retro 에서 집계).
+**Events**: when the orchestrator sees a new question file it appends
+`question_opened` to `events.log`; when an answer is appended,
+`question_answered` follows (the retro PR-ε aggregates them).
 
-**왜 파일 기반**: daemon · routing 복잡도 0, `git grep` 으로 이력 추적, PR diff 로 리뷰 가능. Slack 스레드의 로컬 등가물.
+**Why a file-based queue**: zero daemon · zero routing complexity,
+`git grep` for history, PR diffs for review. The local-disk
+equivalent of a Slack thread.
 
 ## Design Review Ceremony (v0.8 auto-wire)
 
-v0.8 부터 `scripts/work.py` 가 자동 발화. 트리거는 단일 lifecycle 이벤트가 아니라 **3 조건 readiness check** — state-mutating work.py 호출 (activate · record_gate · add_evidence · run_and_record_gate) 말미에서 평가.
+Starting in v0.8 `scripts/work.py` auto-fires this ceremony. The
+trigger isn't a single lifecycle event — it's a **3-condition
+readiness check**, evaluated at the end of any state-mutating call
+(activate · record_gate · add_evidence · run_and_record_gate).
 
-**자동 발화 3 조건** (AND):
+**Auto-fire conditions (all three must hold)**:
 
-1. `features[F-N].ui_surface.present == true` — UI 없는 피처는 design-review 의미 없음
-2. `.harness/_workspace/design/flows.md` 존재 — ux-architect 가 delivered
-3. `.harness/_workspace/design-review/F-N.md` 미존재 — **idempotent**, 한 번만 발화
+1. `features[F-N].ui_surface.present == true` — design review is
+   meaningless on non-UI features.
+2. `.harness/_workspace/design/flows.md` exists — ux-architect has
+   delivered.
+3. `.harness/_workspace/design-review/F-N.md` doesn't exist —
+   **idempotent**, fires once per feature.
 
-셋 다 참이면 `ceremonies.design_review.generate_design_review` 가 호출되어 template + `design_review_opened` event 를 생성. 하나라도 거짓이면 silent skip.
+When all three hold, `ceremonies.design_review.generate_design_review`
+runs, producing the template + a `design_review_opened` event. If any
+fails, silent skip.
 
-**수동 재생성** (예: flows.md 업데이트 후 design-review 갱신):
+**Manual regeneration** (e.g. flows.md changed and the design review
+needs a refresh):
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/work.py" F-N --design-review --harness-dir .harness
 ```
 
-`--design-review` 플래그는 idempotent 조건 (3) 을 우회해 덮어쓴다. 조건 (1)(2) 는 여전히 적용 — UI 없는 피처엔 강제 재생성도 발화 안 함.
+The `--design-review` flag bypasses condition (3) and rewrites.
+Conditions (1) and (2) still apply — forcing a regeneration on a
+non-UI feature still does nothing.
 
-**CLI 직접 호출** (raw template 생성):
+**Direct CLI** (raw template only):
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/ceremonies/design_review.py" \
     --harness-dir .harness --feature F-N [--has-audio]
 ```
 
-**참여**: `visual-designer` + `frontend-engineer` + `a11y-auditor` (+ `audio-designer` if has_audio). 그 외 agent 는 flows.md 접근 권한 없음 (Tier 규약).
+**Participants**: `visual-designer` + `frontend-engineer` +
+`a11y-auditor` (+ `audio-designer` when has_audio). No other agent
+gets read access to flows.md (Tier policy).
 
-**산출**: `.harness/_workspace/design-review/F-N.md` — reviewer 별 concerns 섹션 + orchestrator "Decisions" 푸터. 충돌 2회 반복 시 사용자 escalate.
+**Output**: `.harness/_workspace/design-review/F-N.md` — one
+concerns section per reviewer + an orchestrator "Decisions" footer.
+On a second round of disagreement the orchestrator escalates.
 
-**이벤트**: `design_review_opened`.
+**Event**: `design_review_opened`.
 
 ## Retrospective Ceremony (v0.6 + v0.8.7 idempotency)
 
-`/harness-boot:work F-N --complete` 성공(gate_5 + evidence) 직후 `scripts/work.py::complete()` 가 **자동으로** `retro.generate_retro` 를 호출한다 (v0.7 auto-wire). spec.yaml 미존재 시 silent skip (kickoff 와 대칭).
+Right after `/harness-boot:work F-N --complete` succeeds (gate_5 +
+evidence), `scripts/work.py::complete()` **auto-fires**
+`retro.generate_retro` (v0.7 auto-wire). When spec.yaml is missing,
+it silent-skips (symmetric with kickoff).
 
 **Idempotency (v0.8.7)**:
 
-- `--complete` 를 **이미 done 인 피처에 재호출** 시 no-op + `action=queried` 반환. `feature_done` · `feature_retro_written` event 중복 발화 없음.
-- `.harness/_workspace/retro/F-N.md` 이 이미 존재하면 덮어쓰지 않음 — orchestrator 가 reviewer → tech-writer 로 채운 prose 가 재생성으로 날아가지 않음.
-- 재생성이 필요하면 `--retro` 플래그로 force:
+- Calling `--complete` on a feature that's already done is a no-op
+  + `action=queried`. No duplicate `feature_done` ·
+  `feature_retro_written` events.
+- If `.harness/_workspace/retro/F-N.md` exists, the auto-fire
+  doesn't overwrite — prose the orchestrator collected from
+  reviewer → tech-writer survives.
+- Force regeneration with `--retro`:
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/work.py" F-N --retro --harness-dir .harness
 ```
 
-(kickoff 의 `--kickoff` · design-review 의 `--design-review` 와 같은 패턴. 3 ceremony 모두 일관.)
+(Same pattern as `--kickoff` and `--design-review`. All three
+ceremonies behave identically.)
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/ceremonies/retro.py" --harness-dir .harness --feature F-N
 ```
 
-**산출**: `.harness/_workspace/retro/F-N.md`
-- 머신 섹션 (retro.py 자동 채움): What Shipped · First Gate to Fail · Ceremonies summary (kickoff/design-review/questions 카운트).
-- LLM 섹션 (orchestrator 가 reviewer → tech-writer 순차 호출): Risks Materialized vs plan.md · Decisions Revised · Kickoff Predictions Right/Wrong · Reviewer Reflection · Copy Polish.
+**Output**: `.harness/_workspace/retro/F-N.md`
+- Machine sections (retro.py auto-fills): What Shipped · First Gate
+  to Fail · Ceremonies summary (kickoff / design-review / questions
+  counts).
+- LLM sections (orchestrator calls reviewer → tech-writer in order):
+  Risks Materialized vs plan.md · Decisions Revised · Kickoff
+  Predictions Right/Wrong · Reviewer Reflection · Copy Polish.
 
-**author 순서**: reviewer 가 draft **prose 반환** (read-only 유지 · CQS — BR-012), orchestrator 가 Reviewer Reflection 섹션에 draft 를 write. 이어 tech-writer 가 Copy Polish 섹션에서 prose 를 직접 다듬음 (tech-writer tools 에 Write/Edit 있음). 순차 고정.
+**Author order**: reviewer drafts the **prose return** (read-only
+preserved · CQS — BR-012); the orchestrator writes the draft into
+the Reviewer Reflection section. Then tech-writer polishes prose
+directly in Copy Polish (tech-writer has Write/Edit). Order is
+fixed.
 
-**이벤트**: `feature_retro_written` (분석 summary 포함).
+**Event**: `feature_retro_written` (with the analysis summary).
 
-**향후 활용**: retro 코퍼스는 cross-feature learning · `/harness-boot:work` 기반 입력.
+**Future use**: the retro corpus feeds cross-feature learning,
+which `/harness-boot:work` consumes as input.
 
-## 참조
+## References
 
-- `scripts/work.py` — 실제 구현.
+- `scripts/work.py` — the actual implementation.
 - `scripts/core/state.py` — state.yaml helper.
 - `docs/samples/harness-boot-self/spec.yaml` — F-004 AC · modules.
 - BR-004 (Iron Law): "NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE".
-- `agents/*.md` — 각 전문가 에이전트의 `## Context` · `## 산출 규약`.
+- `agents/*.md` — each expert agent's `## Context` and `## Output contract`.
 
-## Issue logging — harness-boot 개선 피드백 루프 (F-027)
+## Issue logging — harness-boot improvement feedback loop (F-027)
 
-이 명령을 실행하면서 **harness-boot 플러그인 자체의 마찰** (Gate 자동 감지 실패 · spec/state 부정합 · ceremony 산출 깨짐 · stale doc · dead reference · 어색한 UX · 빠진 자동화) 을 발견하면 **즉시 한 항목씩** `.harness/_workspace/issues-log.md` 에 append. 사용자가 메인테이너에게 공유 시 다음 plugin 릴리즈 (예: cosmic-suika I-001/I-008/I-010 → v0.10.x 환원) 의 trigger.
+While running this command, if you spot **friction in the
+harness-boot plugin itself** (gate auto-detect failure · spec/state
+mismatch · ceremony output broken · stale doc · dead reference ·
+awkward UX · missing automation), append **one entry per friction**
+to `.harness/_workspace/issues-log.md`. Sharing this file with the
+maintainer triggers the next plugin release (cosmic-suika
+I-001/I-008/I-010 → v0.10.x return is the precedent).
 
-`.harness/_workspace/issues-log.md` 가 없으면 새로 만들고 짧은 헤더 (`# harness-boot ISSUES-LOG — <project name>`) 만 1 회 작성.
+If the file doesn't exist, create it once with a short header
+(`# harness-boot ISSUES-LOG — <project name>`).
 
-**Entry 템플릿 (markdown, append-only)**:
+**Entry template (markdown, append-only)**:
 
 ```markdown
-## YYYY-MM-DDTHH:MM:SSZ — <한 줄 제목>
+## YYYY-MM-DDTHH:MM:SSZ — <one-line title>
 - **Source**: /harness-boot:work [F-N]
 - **Category**: ergonomics | bug | missing-feature | dead-reference | docs-stale | gate-detect
 - **Severity**: blocker | annoying | trivial
-- **What happened**: <1~3 줄 — Claude 가 본 사실 + 관련 명령/파일 경로>
-- **Suggested fix**: <선택 — 떠오르면 1 줄>
+- **What happened**: <1–3 lines — what Claude saw + the relevant command/file path>
+- **Suggested fix**: <optional — one line if it's obvious>
 ```
 
-**언제 안 적나**: 사용자 피처 자체의 버그 (그건 사용자가 F-N evidence 로 기록) · 단순 git 충돌 같은 일반 dev 마찰 · gate 가 정당하게 fail 한 경우 (사용자 코드가 잘못됨). 의심스러우면 한 줄로 적되 Severity=trivial.
+**When not to log**: actual feature-code bugs (you record those as
+F-N evidence) · plain git conflicts and other dev-environment
+friction · gates that legitimately fail because your code is wrong.
+When in doubt, write a one-liner with `Severity=trivial`.
 
-**NO skip**: 이 섹션은 fail-open 이지만 (logging 실패가 사이클을 막지 않음) **Claude 가 마찰을 봤는데 적지 않으면** 다음 사용자가 같은 마찰을 또 만남 — 디시플린.
+**NO skip**: this section is fail-open (a logging error doesn't
+block the cycle), but **if Claude saw friction and didn't write it
+down**, the next user hits the same friction — discipline.
 
 ---
 
-## Glossary / 용어집 (F-040)
+## Glossary
 
-플러그인 출력 + 문서에서 자주 보이는 용어를 사용자 친화 표현으로 풀어 둡니다. 백엔드 코드 / 스키마 / commit 은 영어 jargon 을 그대로 유지 (drift 위험 회피); 사용자 노출 출력은 `HARNESS_LANG=ko` · `spec.project.language: ko` 또는 시스템 한국어 locale 시 친화 표현으로 자동 전환.
-
-| 용어 (jargon) | 짧은 풀이 (EN) | 짧은 풀이 (KO) |
-|---|---|---|
-| **Walking Skeleton** | the smallest end-to-end slice that proves the system is wired | 시스템이 연결됐음을 증명하는 가장 작은 끝-끝 골격 |
-| **Iron Law D** | "no done without walking skeleton + N declared evidence + gate_5 pass" | "기본 골격 + 근거 N 개 + 검증 5단계 통과 없이 완료 불가" |
-| **gate_0 ~ gate_5** | staged checks (lint → unit → integration → coverage → clean tree → smoke) | 단계별 검증 (린트 → 단위 → 통합 → 커버리지 → 깨끗한 작업 트리 → 동작 확인) |
-| **evidence** | a recorded artifact that this AC passed (test run / contract / smoke) | 이 인수기준이 통과했음을 기록한 산출물 |
-| **drift** | spec ↔ code/doc/state divergence detected by check.py | 스펙과 코드/문서/상태의 어긋남 (check.py 가 자동 검출) |
-| **kickoff** | per-feature ceremony that names participating agents and their concerns | 피처별 시작 회의 — 참여 에이전트와 우려사항 |
-| **retro** | per-feature retrospective written after `--complete` | 피처 완료 후 회고 |
-| **autowire** | implicit ceremony fired by `work.py activate` (kickoff / fog-clear / design-review) | activate 시점에 자동 발화하는 부수 작업 |
-| **preamble** | the 3-line header every command emits (BR-014 anti-rationalization) | 모든 명령이 출력 맨 앞에 박는 3줄 안내 (NO skip / NO shortcut) |
-| **fog-clear** (F-037) | per-feature reconnaissance that fills `.harness/chapters/area-*.md` | 피처마다 영역 정찰 — 지도의 어둠을 걷어냄 |
-| **routed agents** (F-038) | the agents the orchestrator will engage for this feature | 이번 피처에 참여할 팀 |
-| **parallel groups** (F-039) | agent pairs orchestrator may dispatch in one message (e.g. `(security ∥ reviewer)`) | 한 메시지에서 동시 호출 가능한 에이전트 묶음 |
-| **mode = prototype \| product** | ceremony weight switch — prototype is lighter, product strict | 디시플린 강도 — prototype 은 가벼움, product 는 엄격 |
-| **shape** | feature classification driving the agent chain (UI / sensitive / pure-domain / etc.) | 피처 유형 — 어떤 에이전트 체인이 호출될지 결정 |
-| **sigil region** | `<!-- harness:user-edit-begin -->` … `<!-- harness:user-edit-end -->` block preserved across regen | 자동 재생성에도 보존되는 사용자 편집 보호 영역 |
+For brand jargon, see [`docs/glossary/BRAND_TERMS.md`](../docs/glossary/BRAND_TERMS.md).
+That file holds the bilingual (en + ko) gloss for terms like Walking
+Skeleton · Iron Law D · drift · sigil · fog-clear · routed agents ·
+parallel groups, with one primary-file backlink per term.

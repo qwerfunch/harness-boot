@@ -1,127 +1,148 @@
 ---
-description: harness-boot 플러그인을 현재 프로젝트에 설치 — .harness/ 골격 + CLAUDE.md 편성. 프로젝트당 1회. 자연어 또는 3 옵션 메뉴로 진입.
+description: Install the harness-boot plugin into the current project — scaffold .harness/ + wire CLAUDE.md. Run once per project. Enter via natural language or a 3-option menu.
 allowed-tools: [Read, Write, Edit, Bash, Glob]
-argument-hint: "[자연어 설명 또는 빈 호출 (메뉴)]  # 예: 트위터 같은 거 만들래 · 대충 프로토타입 · plan.md 있어"
+argument-hint: "[free-text intent or empty (menu)]  # e.g. build something like Twitter · quick prototype · I have a plan.md"
 ---
 
-# /harness-boot:init — 하네스 설치 (v0.9)
+# /harness-boot:init — install the harness (v0.9)
 
-이 명령은 **현재 작업 디렉터리에 harness-boot 골격을 생성**합니다. **한 프로젝트에 평생 1 회** 실행.
+This command **scaffolds harness-boot into the current working directory**.
+Run it **once in a project's lifetime**.
 
-## 진입 2 방식
+For unfamiliar terms (Walking Skeleton, Iron Law D, drift, gate, kickoff, …),
+see [`docs/glossary/BRAND_TERMS.md`](../docs/glossary/BRAND_TERMS.md).
 
-**A · 자연어 직접 (권장)**
+## Two ways to start
+
+**A · Free text (preferred)**
 
 ```
-/harness-boot:init 솔로 음악인 연습용 포모도로 타이머
-/harness-boot:init 트위터 같은 거 만들래
-/harness-boot:init 빨리 대충 프로토타입
-/harness-boot:init plan.md 기반으로 시작
-/harness-boot:init 이미 만들던 코드에 적용
+/harness-boot:init pomodoro timer for solo musicians practicing
+/harness-boot:init build something like Twitter
+/harness-boot:init quick prototype, throwaway
+/harness-boot:init start from this plan.md
+/harness-boot:init apply to my existing codebase
 ```
 
-Claude 는 자연어를 읽어 **3 옵션 중 하나로 라우팅** + 필요한 힌트 주입. 라우팅 결과를 사용자에게 plan 으로 공개 → Y/n → 진행.
+Claude reads the prompt, **routes it to one of three options**, and injects
+the right hints. Routing is shown to you as a plan → confirm Y/n → proceed.
 
-### 자연어 → 라우팅 규칙
+### Free-text routing rules
 
-| 사용자 말 | 라우팅 |
+| What you said | Route |
 |---|---|
-| 단순 아이디어 | 옵션 1 (아이디어만) |
-| "~~~ 같은 거" · "~~~ 처럼" · 참고 제품 언급 | 옵션 1 + 레퍼런스 맥락 주입 |
-| "대충" · "빨리" · "프로토타입" · "실험" | 옵션 1 + `project.mode: prototype` hint |
-| "제대로" · "크게" · "장기" · "정식" | 옵션 1 + `project.mode: product` (default) 명시 |
-| "plan.md" · "기획 문서" · "기획서" · "요구사항" | 옵션 2 |
-| "기존 코드" · "이미 만들던" · "기존 프로젝트" | 옵션 3 |
-| (모호 · 다의적) | 3 옵션 메뉴 fallback |
+| Plain idea | Option 1 (idea-first) |
+| "like X" / "similar to Y" / reference product | Option 1 + reference context |
+| "quick" / "rough" / "prototype" / "experiment" | Option 1 + `project.mode: prototype` hint |
+| "real" / "long-term" / "production" | Option 1 + `project.mode: product` (default) noted |
+| "plan.md" / "spec doc" / "requirements" | Option 2 |
+| "existing code" / "already have" / "brownfield" | Option 3 |
+| Ambiguous / unclear | Fall back to the 3-option menu |
 
-**Plan 공개 예**:
-
-```
-사용자: /harness-boot:init 트위터 같은 거 만들래
-
-Claude 해석:
-  • 아이디어 있음 + 레퍼런스 언급 (Twitter)
-  • → 옵션 1 (아이디어부터) + 레퍼런스 맥락 주입
-
-실행 계획:
-  1. .harness/ 골격 생성
-  2. researcher 에게 "Twitter 참고 · MVP 축소" context 주입
-  3. 배경 조사 → 로드맵 → 첫 피처 준비
-
-이 해석 맞나요?
-  Y = 그대로 진행
-  n = 다시 설명해 주세요
-  다른 자연어 = Claude 가 재해석
-```
-
-**B · 빈 호출 → 3 옵션 메뉴 (fallback)**
-
-자연어 없이 `/harness-boot:init` 만 실행 · 또는 라우팅 모호 시:
+**Plan disclosure example**:
 
 ```
-🚀 harness-boot 을 이 프로젝트에 처음 적용합니다
+You: /harness-boot:init build something like Twitter
 
-어떤 상황이세요?
+Claude reads:
+  • idea present + reference product (Twitter)
+  • → Option 1 (idea-first) + reference context injected
 
-  1) 아이디어만 있어요
-     → 함께 기획부터 · 대화로 진행
+Plan:
+  1. scaffold .harness/
+  2. brief researcher with "Twitter as reference · MVP-scoped"
+  3. background research → roadmap → first feature
 
-  2) 기획 문서가 이미 있어요
-     → 문서 기반으로 빠르게 설계 만들기
-
-  3) 이미 코드가 있는 프로젝트에 적용
-     → 현재 상태부터 정리 · 앞으로의 로드맵
-
-  0) 어떤 차이인지 잘 모르겠어요
-     → 각 옵션 간단 설명
+Does this match what you want?
+  Y = proceed as-is
+  n = let me clarify
+  any other text = re-interpret
 ```
 
-## Preamble (출력 맨 앞 3 줄)
+**B · Empty call → 3-option menu (fallback)**
+
+When `/harness-boot:init` is invoked with no arguments, or the routing is
+ambiguous:
 
 ```
-🧰 /harness-boot:init · <mode=solo|team> · <근거 5~10 단어>
-NO skip: §0-2 기존 .harness/spec.yaml 검사 — 재실행 시 덮어쓰기 금지
-NO shortcut: §5 events.log 에 harness_initialized 이벤트 append
+🚀 Starting harness-boot in this project for the first time.
+
+Where are you?
+
+  1) I just have an idea
+     → plan with me, conversational
+
+  2) I already have a planning document
+     → fast-path the design from the doc
+
+  3) I have an existing codebase
+     → reconcile current state, then plan forward
+
+  0) Not sure which fits
+     → short summary of each option
 ```
 
-**1 줄**: 이모지 · 명령 · mode · 근거.
-**2-3 줄 (Anti-rationalization, BR-014)**: 이 명령이 건너뛸 수 없는 제약 2 개를 명시적으로 선언. LLM 이 "이미 됐다" 로 skip 하는 경로 차단.
+## Preamble (top 3 lines of every output)
 
-예: `🧰 /harness-boot:init · solo · 빈 디렉터리에 .harness/ 최초 스캐폴딩`
+```
+🧰 /harness-boot:init · <mode=solo|team> · <5–10 word reason>
+NO skip: §0-2 checks for an existing .harness/spec.yaml — never overwrite on re-run
+NO shortcut: §5 must append a harness_initialized event to events.log
+```
 
-## 단계
+**Line 1**: emoji · command · mode · short reason.
+**Lines 2-3 (Anti-rationalization, BR-014)**: declare the two constraints
+this command cannot bypass. Blocks the LLM from quietly skipping with an
+"already done" excuse.
 
-### 0. 전처리 — 기존 설치 확인
+Example: `🧰 /harness-boot:init · solo · first-time scaffold into empty dir`
 
-1. `Bash: pwd` 로 현재 디렉터리 확인.
-2. `Bash: ls package.json pyproject.toml Cargo.toml .git 2>/dev/null` 로 프로젝트 루트 신호 4 종 중 존재하는 것을 수집 — **정보성만**. 판정 결과에 따라 중단하지 않음 (사용자가 `/harness-boot:init` 을 명시적으로 호출한 이상 현재 디렉터리 설치 의도로 간주).
-   - 하나라도 존재: 최종 보고의 "모드" 라인 앞에 `프로젝트 신호: <감지된 파일 목록>` 한 줄 추가.
-   - 하나도 없음: 최종 보고의 끝에 **한 줄 권고** 만 추가 — `팁: 'git init' 로 저장소 초기화를 권장합니다.` (중단 없음, 바로 다음 단계로 진행).
-3. `Glob: .harness/**` 로 기존 하네스 존재 여부 확인.
-   - 이미 `.harness/spec.yaml` 가 있으면 **경고 출력 후 중단**: "하네스가 이미 설치되어 있습니다. `.harness/spec.yaml` 을 직접 편집하세요. (v0.2+ 에서 `/harness-boot:work`·`/harness-boot:work` 활성화 예정)"
-4. 인자 문자열 파싱: 인자에 `--team` 이 포함되면 `mode=team` (state.yaml 을 `.gitignore` 에 추가), `--solo` 이거나 인자 없으면 `mode=solo` (커밋 대상 유지). 이외 인자는 무시 + 말미 보고에 "인식 안 된 인자: X" 경고.
+## Steps
 
-### 1. 디렉터리 생성
+### 0. Pre-flight — detect existing install
 
-`Bash` 로:
+1. Run `Bash: pwd` to confirm the working directory.
+2. Run `Bash: ls package.json pyproject.toml Cargo.toml .git 2>/dev/null` to
+   collect any of the four root signals — **informational only**. Don't
+   abort based on the result; the user invoked `/harness-boot:init`
+   explicitly, so install intent is assumed.
+   - At least one signal: prepend `project signals: <files>` to the "mode"
+     line of the final report.
+   - None: append a one-line tip to the final report — `Tip: 'git init' is
+     recommended to initialize the repo.` Don't block; continue.
+3. Run `Glob: .harness/**` to detect a prior install.
+   - If `.harness/spec.yaml` already exists, **print a warning and stop**:
+     "harness is already installed. Edit `.harness/spec.yaml` directly. Use
+     `/harness-boot:work` for the lifecycle (v0.2+)."
+4. Parse the argument string: `--team` flips `mode=team` (adds `state.yaml`
+   to `.gitignore`); `--solo` or no flag means `mode=solo` (state.yaml
+   stays committed). Unknown flags get ignored, with a `unknown argument: X`
+   note in the final report.
+
+### 1. Create directories
+
+Via `Bash`:
 
 ```
 mkdir -p .harness .harness/hooks .harness/protocols .harness/_workspace/handoff
 mkdir -p .claude/agents .claude/skills
 ```
 
-### 2. starter 템플릿 복사 또는 brownfield seed (3 파일, CLAUDE.md 는 §3)
+### 2. Copy starter templates or seed from brownfield (3 files; CLAUDE.md is §3)
 
-> **옵션 1 · 2** → 그대로 starter 템플릿 복사 (아래 기존 흐름).
-> **옵션 3** → 먼저 §2.A (brownfield seed) 실행. spec.yaml 만 다르게 처리되고, 나머지 2 파일 (harness.yaml · state.yaml) 은 동일하게 복사.
+> **Options 1 · 2** → straight starter-template copy (default flow below).
+> **Option 3** → run §2.A (brownfield seed) first. Only `spec.yaml` differs;
+> `harness.yaml` and `state.yaml` still copy as in §2.
 
-플러그인 레포의 `docs/templates/starter/` 에서 읽어와 **내용을 사용자 프로젝트** 로 씁니다.
+Read from the plugin repo's `docs/templates/starter/` and **write into the
+user project**.
 
-**플러그인 루트 경로 해석** (Claude Code 2.1.x 관찰 — NEW-37 · NEW-44 기반):
+**Plugin-root path resolution** (Claude Code 2.1.x — see NEW-37 / NEW-44):
 
-Claude 는 다음 순서로 시도, **첫 성공값** 을 사용:
+Claude tries the strategies below in order and uses the **first that
+returns a real path**:
 
-**전략 A — `$PATH` 역산** (가장 신뢰 높음):
+**Strategy A — `$PATH` reverse lookup** (most reliable):
 ```bash
 echo "$PATH" | tr ':' '\n' | grep -E '/plugins/.*/bin$' | while IFS= read -r bin_dir; do
   root="${bin_dir%/bin}"
@@ -134,141 +155,182 @@ echo "$PATH" | tr ':' '\n' | grep -E '/plugins/.*/bin$' | while IFS= read -r bin
 done
 ```
 
-**전략 B — 레지스트리 `installPath`**:
+**Strategy B — registry `installPath`**:
 ```bash
 jq -r '.plugins | to_entries[] | select(.key | startswith("harness@")) | .value[0].installPath // empty' \
   ~/.claude/plugins/installed_plugins.json
 ```
-→ 결과 경로가 실존할 때만 사용 (`[ -d "$path" ]`).
+→ Only use the result when the path actually exists (`[ -d "$path" ]`).
 
-**전략 C — 마켓플레이스 `source.path` fallback** (NEW-44, directory-type 전용):
-- `~/.claude/settings.json` 의 `extraKnownMarketplaces[<marketplace>].source.path` 획득.
-- 해당 경로의 `.claude-plugin/marketplace.json` 을 읽어 `plugins[] | select(.name == "harness") | .source` 의 상대 경로를 marketplace 루트에 결합.
-- `~` 는 `$HOME` 으로 확장. symlink 는 `realpath` 로 해결.
+**Strategy C — marketplace `source.path` fallback** (NEW-44, directory-type
+only):
+- Read `extraKnownMarketplaces[<marketplace>].source.path` from `~/.claude/settings.json`.
+- Read `.claude-plugin/marketplace.json` at that path; resolve
+  `plugins[] | select(.name == "harness") | .source` against the marketplace
+  root.
+- Expand `~` to `$HOME`; resolve symlinks with `realpath`.
 
-**전략 D — 사용자 프롬프트** (최후 fallback):
-"플러그인 루트 경로를 직접 입력하세요 (예: `~/Developer/harness-boot`):"
+**Strategy D — prompt the user** (last resort):
+"Enter the plugin root path (e.g. `~/Developer/harness-boot`):"
 
-**환경변수 주의**: `$CLAUDE_PLUGIN_ROOT` 는 CC 2.1.x 에서 **설정되지 않음** (첫 실행 스모크 2026-04-23 에서 확정). 이 변수에 의존하지 말 것.
+**Heads-up on env vars**: `$CLAUDE_PLUGIN_ROOT` is **not set** in CC 2.1.x
+(confirmed by the first-run smoke on 2026-04-23). Don't depend on it.
 
-템플릿 매핑 (§2 에서 처리하는 3 파일):
+Template mapping (the 3 files §2 handles):
 
-| 원본 (플러그인 내) | 대상 (사용자 프로젝트) |
+| Source (in plugin) | Destination (in user project) |
 |---|---|
 | `docs/templates/starter/spec.yaml.template` | `.harness/spec.yaml` |
 | `docs/templates/starter/harness.yaml.template` | `.harness/harness.yaml` |
 | `docs/templates/starter/state.yaml.template` | `.harness/state.yaml` |
 
-각 파일에 대해:
-1. `Read` 플러그인 내 템플릿.
-2. `Write` 대상 경로 (내용 수정 없음).
+For each file:
+1. `Read` the template from the plugin.
+2. `Write` it to the destination (no content modifications).
 
-`CLAUDE.md` 는 병합 로직이 섞여있으므로 §3 이 전담합니다.
+`CLAUDE.md` has merge logic and is owned by §3.
 
-### 2.5. 선택 파일 — `.gitignore` + `conftest.py` (v0.8.9)
+### 2.5. Optional files — `.gitignore` + `conftest.py` (v0.8.9)
 
-**`.gitignore`** — 프로젝트 루트. `.harness/` 안의 파생물 (events.log · state.yaml · harness.yaml · domain.md · architecture.yaml · _workspace/) 과 로테이션된 `events.log.YYYYMM*` 를 무시하는 설정 포함. 이게 없으면 `/harness-boot:work --run-gate gate_4` 가 매번 dirty working tree 로 fail — v0.8.6 e2e 실증에서 확인된 gap.
+**`.gitignore`** — project root. Ignores derivatives inside `.harness/`
+(events.log · state.yaml · harness.yaml · domain.md · architecture.yaml ·
+_workspace/) and rotated `events.log.YYYYMM*`. Without these entries,
+`/harness-boot:work --run-gate gate_4` fails every time on a dirty working
+tree — the gap caught by the v0.8.6 e2e smoke.
 
-- 대상: 프로젝트 루트 `.gitignore`
-- 원본: `docs/templates/starter/.gitignore.template`
-- **이미 `.gitignore` 가 있으면 **append 병합** (중복 라인은 생략 · "# harness-boot —" 섹션 헤더로 구분)**. 새로 만들면 전체 복사.
+- Target: project root `.gitignore`
+- Source: `docs/templates/starter/.gitignore.template`
+- If `.gitignore` already exists, **append-merge** (skip duplicate lines;
+  delimit with the section header `# harness-boot —`). On a fresh repo,
+  copy the whole template.
 
-**`conftest.py`** — Python 프로젝트만. `src/<pkg>/` 레이아웃에서 pytest 수집 + subprocess smoke 의 PYTHONPATH 전파 처리. Node/다른 런타임이면 건너뜀.
+**`conftest.py`** — Python projects only. Handles pytest collection in
+`src/<pkg>/` layouts and PYTHONPATH propagation for subprocess smokes.
+Skip on Node/other runtimes.
 
-- 대상: 프로젝트 루트 `conftest.py`
-- 원본: `docs/templates/starter/conftest.py.template`
-- **이미 `conftest.py` 가 있으면 사용자에게 병합 여부 확인 후 manual merge** (자동 병합 금지 — pytest 설정은 프로젝트마다 민감).
-- `src/` 디렉터리가 없는 프로젝트에는 복사하지 않음 (flat layout 은 필요 없음).
+- Target: project root `conftest.py`
+- Source: `docs/templates/starter/conftest.py.template`
+- If `conftest.py` already exists, **prompt the user and let them merge
+  manually** (no automatic merge — pytest config is project-sensitive).
+- Skip projects without a `src/` directory (flat layouts don't need it).
 
-**`tsconfig.json`** — TypeScript 프로젝트 권장값 참고용 (자동 복사 X). cosmic-suika I-003 환원 (v0.10.7) — 외부 npm/TS 프로젝트 첫 dogfood 시 typecheck friction (`@types/node` 미설치 + `*.ts` import 충돌) 정리.
+**`tsconfig.json`** — TypeScript projects, recommended values for
+reference (no auto-copy). cosmic-suika I-003 return (v0.10.7): the first
+external npm/TS dogfood hit typecheck friction (`@types/node` missing +
+`*.ts` import collision); this template captures the resolution.
 
-- 대상: **자동 복사 안 함**. 사용자에게 위치 알림만.
-- 원본: `docs/templates/starter/tsconfig.json.template` (권장값 + 주석)
-- TS 프로젝트로 감지되면 (`package.json scripts.typecheck` 또는 기존 `tsconfig.json` 존재) 최종 보고에 한 줄 안내: `팁: TS 프로젝트면 docs/templates/starter/tsconfig.json.template 의 권장값 참고 (allowImportingTsExtensions · noEmit · types).`
+- Target: **not auto-copied**. The final report just points to it.
+- Source: `docs/templates/starter/tsconfig.json.template` (recommended
+  values + comments)
+- If a TS project is detected (via `package.json scripts.typecheck` or an
+  existing `tsconfig.json`), append a one-line tip to the final report:
+  `Tip: TS project detected — see docs/templates/starter/tsconfig.json.template
+  for recommended values (allowImportingTsExtensions · noEmit · types).`
 
-이 섹션을 건너뛰면 나중에 수동으로 복사해도 됨. `/harness-boot:init --solo` 같은 라이트 모드에서는 기본 skip.
+Skipping this section is fine; copy manually later. Light modes like
+`/harness-boot:init --solo` skip it by default.
 
-### 2.A. (옵션 3 only) brownfield repo 정찰 + seed (F-036)
+### 2.A. (Option 3 only) Brownfield repo recon + seed (F-036)
 
-옵션 3 (이미 코드가 있는 프로젝트) 으로 라우팅된 경우에만 이 섹션을 실행합니다. **§2 의 spec.yaml 복사 단계를 대체**합니다 (harness.yaml · state.yaml 복사는 §2 그대로 진행).
+Run this section **only when routing landed on Option 3**. It **replaces
+the spec.yaml step in §2**; `harness.yaml` and `state.yaml` still copy as
+in §2.
 
-**전제 — 매니페스트 신호 검증**:
-- §0 에서 수집된 프로젝트 신호 (`package.json` · `pyproject.toml` · `Cargo.toml` · `go.mod`) 가 **0 개**면 brownfield 정찰 부적합. 자동으로 옵션 1 fallback (starter template 그대로 복사) + 사용자에게 한 줄 안내: `매니페스트가 없어 brownfield 정찰을 건너뛰고 빈 스켈레톤으로 진행합니다.`
+**Pre-check — manifest signals**:
+- If §0 collected **zero** project signals (`package.json` ·
+  `pyproject.toml` · `Cargo.toml` · `go.mod`), brownfield recon doesn't
+  apply. Auto-fall-back to Option 1 (straight starter copy) and tell the
+  user: `No manifest detected — skipping brownfield recon, using the
+  empty skeleton.`
 
-**1. 결정론 정찰 — preview**:
+**1. Deterministic recon — preview**:
 ```bash
 cd "${PLUGIN_ROOT}" && python3 -m scripts.scan.seed_spec --root "${PROJECT_ROOT}" --preview
 ```
-출력: stdout 에 시드 YAML. 다음 슬롯이 자동 채워짐 — `project.name` · `constraints.tech_stack.{runtime,language,test,build,min_version}` · `metadata.source.origin = "existing_code"` · `metadata.source.maturity = "implementation"` · Walking Skeleton F-0.
+Output: a seed YAML on stdout. The following slots fill automatically —
+`project.name` · `constraints.tech_stack.{runtime,language,test,build,min_version}`
+· `metadata.source.origin = "existing_code"` ·
+`metadata.source.maturity = "implementation"` · Walking Skeleton F-0.
 
-**2. (선택) LLM 정찰 — entities**: structure 결과 (`metadata.scan.entity_candidate_files`) 가 비어있지 않으면 spec-conversion 의 `adapters/brownfield.md` 를 로드하여 `domain.{overview, entities[]}` 초안 추가. LLM 결과는 모두 `_seed_status: draft` 마커 동반.
+**2. (Optional) LLM recon — entities**: when structure recon
+(`metadata.scan.entity_candidate_files`) isn't empty, load the
+spec-conversion `adapters/brownfield.md` to draft `domain.{overview,
+entities[]}`. Every LLM-seeded entry carries a `_seed_status: draft` marker.
 
-**3. 사용자 미리보기 + 4-옵션 선택** (한 번에 하나만):
+**3. Show the user a preview + 4-option pick** (single choice):
 ```
-🔍 brownfield 정찰 결과 미리보기:
-<seed YAML 본문>
+🔍 Brownfield recon preview:
+<seed YAML body>
 
-이대로 .harness/spec.yaml 으로 시드할까요?
-  Y = 결정론 + LLM 그대로 진행
-  D = 결정론만 (entities 비움 — LLM 신뢰가 낮을 때)
-  S = 빈 스켈레톤 (옵션 1 동치 — 정찰 시드 폐기)
-  E = 시드 결과를 임시 파일로 저장 후 사용자가 수동 편집
+Seed this as .harness/spec.yaml?
+  Y = use deterministic + LLM as-is
+  D = deterministic only (drop entities — when LLM confidence is low)
+  S = empty skeleton (Option 1 equivalent — discard the recon)
+  E = save the seed to a draft file and let me edit it before applying
 ```
 
-**4. 분기 처리**:
-| 선택 | 동작 |
-|------|------|
-| Y | `python3 -m scripts.scan.seed_spec --root <project> --apply` 호출 → `.harness/spec.yaml` 작성 |
-| D | LLM 시드 entities 제거 후 `--apply` 동등 (compose_seed 의 `llm_entities=None` 분기) |
-| S | `python3 -m scripts.scan.seed_spec --root <project> --skip` 호출 → starter template byte-equal 복사 (옵션 1 정확 동치) |
-| E | seed YAML 을 `<project>/.harness/spec.yaml.draft` 로 저장 + 사용자에게 편집 후 `mv` 안내 |
+**4. Branch behavior**:
+| Choice | Action |
+|---|---|
+| Y | run `python3 -m scripts.scan.seed_spec --root <project> --apply` → write `.harness/spec.yaml` |
+| D | drop LLM-seeded entities, then run the same `--apply` (compose_seed with `llm_entities=None`) |
+| S | run `python3 -m scripts.scan.seed_spec --root <project> --skip` → byte-equal copy of the starter template (exact Option 1 parity) |
+| E | save the seed to `<project>/.harness/spec.yaml.draft` and tell the user to edit, then `mv` it into place |
 
-**5. validate 게이트**: Y/D 분기는 apply 전에 schema 검증. 실패 시 에러 노출 + S fallback 권장.
+**5. Validate gate**: Y/D paths schema-validate before writing. On
+failure, surface the error and recommend the S fallback.
 
-**6. §5 events.log 추가 이벤트** (한 줄):
+**6. Extra event in §5 events.log** (one line):
 ```json
 {"ts":"<ISO8601>","type":"brownfield_seeded","layer":"A","mode":"<Y|D|S|E>","entities_seeded":<N>,"draft":true}
 ```
 
-**Anti-rationalization (BR-014)**: 옵션 3 분기는 §0 의 기존 `.harness/spec.yaml` 차단을 우회하지 않음 — 이미 설치된 프로젝트는 §0 에서 중단됨. 옵션 3 은 처음 init 일 때만.
+**Anti-rationalization (BR-014)**: Option 3 doesn't bypass §0's existing
+`.harness/spec.yaml` guard — already-installed projects stop in §0.
+Option 3 only fires on first init.
 
-### 3. CLAUDE.md 생성 또는 병합
+### 3. Generate or merge CLAUDE.md
 
-**신규 생성** 케이스 (CLAUDE.md 가 프로젝트 루트에 없을 때):
-1. `Read` 플러그인 내 `docs/templates/starter/CLAUDE.md.template`.
-2. `{{PROJECT_NAME}}` 을 실제 프로젝트 이름으로 치환. 다음 순서로 **첫 유효값** 을 사용 (유효 = 비어있지 않고 공백만도 아닌 문자열):
-   - `package.json` 의 `name` 필드 (존재 + 유효 시)
-   - `pyproject.toml` 의 `[project].name` (존재 + 유효 시)
-   - `pyproject.toml` 의 `[tool.poetry].name` (존재 + 유효 시)
-   - 현재 디렉터리 이름 (`basename "$PWD"`) — 결과가 `.` · 공백 포함 · 빈 문자열이면 건너뜀
-   - 위 모두 실패 시 사용자에게 프롬프트: "프로젝트 이름을 입력하세요 (kebab-case 권장):"
+**New-file case** (no CLAUDE.md at the project root):
+1. `Read` `docs/templates/starter/CLAUDE.md.template` from the plugin.
+2. Replace `{{PROJECT_NAME}}` with the real project name. Use the **first
+   valid value** below (valid = non-empty, non-whitespace string):
+   - `package.json` `name` (when present + valid)
+   - `pyproject.toml` `[project].name` (when present + valid)
+   - `pyproject.toml` `[tool.poetry].name` (when present + valid)
+   - Current directory basename (`basename "$PWD"`) — skip if it's `.`,
+     contains whitespace, or is empty
+   - All else fails → prompt: "Enter a project name (kebab-case
+     recommended):"
 
-   추출된 이름을 **kebab-case 로 정규화**:
-   - 공백 · `_` · `.` → `-`
-   - 연속 `-` → 단일 `-`
-   - 앞뒤 `-` 제거
-   - 소문자 변환
-   - 정규화 후 빈 문자열이면 사용자 프롬프트로 fallback
-3. `Write` 대상 `CLAUDE.md`.
+   Then **normalize to kebab-case**:
+   - whitespace · `_` · `.` → `-`
+   - collapse repeated `-` to a single `-`
+   - strip leading/trailing `-`
+   - lowercase
+   - if the normalized result is empty, fall back to a user prompt
+3. `Write` the result to `CLAUDE.md`.
 
-**이미 존재** 케이스: 기존 파일 끝에 다음 1줄을 **덧붙이고** (중복이면 스킵):
+**Existing-file case**: append the following line to the end (skip if
+already present):
 
 ```
 @.harness/spec.yaml
 ```
 
-그리고 별도로 한 단락을 추가:
+Then append a section:
 
 ```
 ## harness-boot
 
-이 프로젝트는 harness-boot 플러그인으로 관리됩니다. `/harness-boot:work` 으로 제품 설명을 편집하세요.
+This project is managed by the harness-boot plugin. Use
+`/harness-boot:work` to edit the product description.
 ```
 
-### 4. .gitignore 편성
+### 4. .gitignore wiring
 
-1. 기존 `.gitignore` 가 없으면 `.gitignore` 를 `Write`.
-2. 다음 엔트리가 없으면 추가 (공백줄 구분):
+1. If `.gitignore` doesn't exist, `Write` it.
+2. Append the entries below if missing (separated by a blank line):
 
 ```
 # harness-boot
@@ -278,100 +340,128 @@ cd "${PLUGIN_ROOT}" && python3 -m scripts.scan.seed_spec --root "${PROJECT_ROOT}
 .harness.backup/
 ```
 
-3. `--team` 인자면 추가:
+3. With the `--team` flag, also append:
 
 ```
 .harness/state.yaml
 ```
 
-### 5. 초기 이벤트 로그
+### 5. Initial event log
 
-`.harness/events.log` 를 **신규** 로 작성 (JSON Lines, 1줄):
+Write `.harness/events.log` **fresh** (JSON Lines, one line):
 
 ```json
 {"ts":"<ISO8601 UTC>","type":"harness_initialized","plugin_version":"0.1.0","mode":"<team|solo>"}
 ```
 
-타임스탬프 (UTC ISO8601) 획득은 다음 순서로 시도 — **첫 성공값** 사용:
+Get the timestamp (UTC ISO8601) by trying these in order — **first one
+that works** wins:
 
-1. `Bash: date -u +%Y-%m-%dT%H:%M:%SZ` (POSIX `date` — macOS · Linux · Git Bash on Windows).
-2. 실패 시 `Bash: python3 -c 'import datetime; print(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))'` (Python 3 설치 시).
-3. 실패 시 `Bash: node -e 'console.log(new Date().toISOString().replace(/\.\d{3}Z$/, "Z"))'` (Node 설치 시).
-4. 모두 실패 시 사용자에게 현재 UTC 시각 입력 프롬프트 (`YYYY-MM-DDTHH:MM:SSZ` 형식).
+1. `Bash: date -u +%Y-%m-%dT%H:%M:%SZ` (POSIX `date` — macOS · Linux ·
+   Git Bash on Windows).
+2. On failure: `Bash: python3 -c 'import datetime; print(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))'`
+   (when Python 3 is installed).
+3. On failure: `Bash: node -e 'console.log(new Date().toISOString().replace(/\.\d{3}Z$/, "Z"))'`
+   (when Node is installed).
+4. All failed → prompt the user for the current UTC timestamp in
+   `YYYY-MM-DDTHH:MM:SSZ` form.
 
-또한 `plugin_version` 값은 `.claude-plugin/plugin.json` 의 `version` 필드에서 동적으로 읽되 실패 시 하드코딩 `"0.1.0"` fallback.
+Read `plugin_version` dynamically from `.claude-plugin/plugin.json`'s
+`version` field; fall back to the hardcoded `"0.1.0"` on failure.
 
-### 6. 최종 보고 (사용자 향)
+### 6. Final report (user-facing)
 
-아래 요약을 **한 번만** 출력:
+Print the summary below **once**:
 
 ```
-✅ harness-boot 설치 완료 (v0.1.0)
+✅ harness-boot installed (v0.1.0)
 
-생성된 파일:
-  .harness/spec.yaml          ← 당신이 편집할 유일한 파일
-  .harness/harness.yaml       ← 도구 관리
-  .harness/state.yaml         ← 진행 상태
-  .harness/events.log         ← 이벤트 스트림
-  CLAUDE.md                   ← Claude 세션 컨텍스트 (spec.yaml import 포함)
-  .gitignore                  ← 병합됨
+Files created:
+  .harness/spec.yaml          ← the only file you'll edit
+  .harness/harness.yaml       ← tool config
+  .harness/state.yaml         ← progress state
+  .harness/events.log         ← event stream
+  CLAUDE.md                   ← Claude session context (imports spec.yaml)
+  .gitignore                  ← merged
 
-다음 단계 (v0.1.0 기준 — /harness-boot:work 등은 v0.2+ 예정):
-  1. `.harness/spec.yaml` 을 직접 편집하세요. 예시는 docs/samples/ 참고.
-     이미 `plan.md` 가 있다면: skills/spec-conversion 을 활성화하고 "이 plan.md 를 spec.yaml 로 변환해줘" 요청.
-  2. 편집 완료 후 세션을 재시작하면 CLAUDE.md 의 @ import 가 새 spec 을 로드합니다.
+What's next (v0.1.0 — /harness-boot:work etc. land in v0.2+):
+  1. Edit `.harness/spec.yaml` directly. See `docs/samples/` for examples.
+     If you already have a `plan.md`, activate skills/spec-conversion and
+     ask: "convert this plan.md into spec.yaml".
+  2. Restart the session after editing — CLAUDE.md's @ import will load
+     the new spec.
 
-문서: https://github.com/qwerfunch/harness-boot
-v0.2 로드맵: /harness-boot:work (파생) · /harness-boot:work (구현) · /harness-boot:work (드리프트)
+Docs: https://github.com/qwerfunch/harness-boot
+v0.2 roadmap: /harness-boot:work (derive · build · drift)
 ```
 
-## 실패 조건 (fail-fast)
+## Failure conditions (fail-fast)
 
-- 쓰기 권한 없음 → 사용자에게 권한 확인 요청, 다른 단계 진행 중단.
-- `.harness/spec.yaml` 이미 존재 → §0-2 경고로 중단.
-- starter 템플릿 Read 실패 (플러그인 경로 못 찾음) → 사용자에게 플러그인 설치 확인 요청, 수동 경로 입력 프롬프트.
+- No write permission → ask the user to fix permissions, then stop.
+- `.harness/spec.yaml` already exists → §0-2 warning + stop.
+- Starter-template `Read` fails (plugin path not resolvable) → ask the
+  user to confirm install, then prompt for the path manually.
 
-## v0.1.0 범위 제한
+## v0.1.0 scope limit
 
-이 최소판은 **파일 생성** 까지만 합니다. 다음은 **미구현 — v0.2+**:
+This minimal release **only creates files**. Below are **not yet
+implemented — v0.2+**:
 
-- `scripts/hash-fixtures.mjs` 호출로 초기 spec 해시 계산
-- `.claude/settings.json` + `.claude/agents/*.md` + `.claude/skills/*.md` 자동 생성
-- `.harness/hooks/*.mjs` 자동 복사
-- 6개 핵심 훅 (security-gate, doc-sync-check, coverage-gate, format, test-runner, session-start-bootstrap)
+- Calling `scripts/hash-fixtures.mjs` to compute the initial spec hash
+- Auto-generating `.claude/settings.json` + `.claude/agents/*.md` +
+  `.claude/skills/*.md`
+- Auto-copying `.harness/hooks/*.mjs`
+- Six core hooks (security-gate, doc-sync-check, coverage-gate, format,
+  test-runner, session-start-bootstrap)
 
-v0.1.0 단계에서는 사용자가 spec.yaml 을 채운 후 `/harness-boot:work` · `/harness-boot:work` 로 수동 진전하면 됩니다. `.claude/` 는 비어있어도 Claude Code 가 경고하지 않습니다.
+In v0.1.0 you fill in `spec.yaml` by hand, then drive forward with
+`/harness-boot:work`. An empty `.claude/` won't make Claude Code complain.
 
-## Issue logging — harness-boot 개선 피드백 루프 (F-027)
+## Issue logging — harness-boot improvement feedback loop (F-027)
 
-이 명령을 실행하면서 **harness-boot 플러그인 자체의 마찰** (어색한 UX · 작동 안 하는 명령 · 헷갈리는 안내 · stale doc · dead reference · 빠진 자동화 · 갑자기 막힘) 을 발견하면 **즉시 한 항목씩** `.harness/_workspace/issues-log.md` 에 append. 사용자가 메인테이너에게 공유 시 다음 plugin 릴리즈 (예: cosmic-suika I-001/I-008/I-010 → v0.10.x 환원) 의 trigger.
+While running this command, if you spot **friction in the harness-boot
+plugin itself** (awkward UX · broken command · confusing guidance ·
+stale docs · dead reference · missing automation · sudden block),
+append **one entry per friction** to
+`.harness/_workspace/issues-log.md`. When you share the file with the
+maintainer it triggers the next plugin release (cosmic-suika
+I-001/I-008/I-010 → v0.10.x return is the precedent).
 
-`.harness/_workspace/issues-log.md` 가 없으면 새로 만들고 짧은 헤더 (`# harness-boot ISSUES-LOG — <project name>`) 만 1 회 작성.
+If `.harness/_workspace/issues-log.md` doesn't exist, create it with a
+short header (`# harness-boot ISSUES-LOG — <project name>`) once.
 
-**Entry 템플릿 (markdown, append-only)**:
+**Entry template (markdown, append-only)**:
 
 ```markdown
-## YYYY-MM-DDTHH:MM:SSZ — <한 줄 제목>
+## YYYY-MM-DDTHH:MM:SSZ — <one-line title>
 - **Source**: /harness-boot:init
 - **Category**: ergonomics | bug | missing-feature | dead-reference | docs-stale
 - **Severity**: blocker | annoying | trivial
-- **What happened**: <1~3 줄 — Claude 가 본 사실>
-- **Suggested fix**: <선택 — 떠오르면 1 줄>
+- **What happened**: <1–3 lines — what Claude saw>
+- **Suggested fix**: <optional — one line if it's obvious>
 ```
 
-**언제 안 적나**: 사용자 코드/스펙 자체의 문제 (그건 사용자가 고친다) · 단순 사용자 오타 · 일반 Claude Code 사용법 (harness-boot 무관). 의심스러우면 한 줄로 적되 Severity=trivial.
+**When not to log**: actual user-code or user-spec problems (the user
+fixes those) · plain typos · general Claude Code questions unrelated to
+harness-boot. When in doubt, write a one-liner with `Severity=trivial`.
 
-**NO skip**: 이 섹션은 fail-open 이지만 (logging 실패가 명령을 막지 않음) **Claude 가 마찰을 봤는데 적지 않으면** 다음 사용자가 같은 마찰을 또 만남 — 디시플린.
+**NO skip**: this section is fail-open (a logging error doesn't block
+the command), but **if Claude saw friction and didn't write it down**,
+the next user hits the same friction — discipline.
 
 ---
 
-## 사용자 언어 (F-040)
+## User language (F-040)
 
-플러그인 출력은 사용자 언어로 자동 매칭됩니다 — 정해진 우선순위:
+Plugin output auto-matches the user's language by this priority order:
 
-1. `HARNESS_LANG` env (`ko` 또는 `en`) — 명시적 override
-2. `.harness/spec.yaml` 의 `project.language` (`ko` / `en` / `auto`)
-3. 시스템 locale (`LC_ALL` 또는 `LANG` 의 `ko_KR` 패턴 → 한국어)
-4. 영어 fallback (외부 영어권 사용자 보호)
+1. `HARNESS_LANG` env (`ko` or `en`) — explicit override
+2. `.harness/spec.yaml` `project.language` (`ko` / `en` / `auto`)
+3. System locale (`LC_ALL` or `LANG` matching `ko_KR` → Korean)
+4. English fallback (protects English-speaking adopters)
 
-설치 직후 default 는 영어. `init.md` 가 만든 starter spec.yaml 에 `project.language: ko` 한 줄을 추가하면 그 프로젝트는 항상 한국어 출력. 어려운 jargon (Walking Skeleton / Iron Law / drift / kickoff 등) 의 사용자 친화 풀이는 `commands/work.md` 의 Glossary 섹션 참조.
+Right after install the default is English. Add `project.language: ko`
+to the starter `spec.yaml` and the project speaks Korean from then on.
+Friendly explanations for jargon (Walking Skeleton / Iron Law / drift /
+kickoff / …) live in
+[`docs/glossary/BRAND_TERMS.md`](../docs/glossary/BRAND_TERMS.md).

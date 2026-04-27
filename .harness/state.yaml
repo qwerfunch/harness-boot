@@ -798,8 +798,38 @@ features:
       8 + dashboard_i18n 4) + 1062 unit regression 0 · self_check 5/5
   started_at: '2026-04-27T08:53:54Z'
   completed_at: '2026-04-27T09:04:53Z'
+- id: F-041
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-27T09:41:56Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T09:41:57Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T09:41:56Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (9.3s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-27T09:41:57Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.5s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T09:41:57Z'
+    kind: generic
+    summary: F-041 native English rewrite — commands/{init,work}.md + 15 agents/*.md
+      + agents/README.md (17 files, ~2400 body lines, 0 Korean script remaining) +
+      docs/glossary/BRAND_TERMS.md (28 brand terms · en+ko) + docs/i18n/ko/ snapshot
+      (byte-equal with pre-rewrite source) + docs/i18n/README.md (en-master / ko-frozen
+      policy) · self_check 5/5 · 1062 unit + 26 integration · F-040 ko runtime catalog
+      regression 0 · agents.py + cosmic_suika test patterns expanded to accept en/ko
+      phrasings + markdown emphasis stripping
+  started_at: '2026-04-27T09:17:31Z'
+  completed_at: null
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-040
+  last_command: /harness:work F-041
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-041

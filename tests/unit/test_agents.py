@@ -204,14 +204,22 @@ class ExpertAgentContractTests(unittest.TestCase):
             self.assertIn("NO shortcut:", body)
 
     def test_stage_xeqi_experts_forbid_direct_spec_read(self):
-        """Stage X/E/Q/I body 에 `spec.yaml` 직접 참조 금지 규약 문구 필수."""
+        """Stage X/E/Q/I body must explicitly forbid direct `spec.yaml` reads.
+
+        Accepts the legacy Korean phrasing (`spec.yaml 직접 참조 금지`) and the
+        F-041 native-English forms (e.g. ``Don't read spec.yaml directly``).
+        Markdown emphasis (`**`/`*`) is stripped before matching.
+        """
         for name in _EXPERT_AGENTS:
             if name in _DISCOVERY_EXEMPT:
                 continue
             body = (AGENTS_DIR / f"{name}.md").read_text(encoding="utf-8")
+            plain = body.replace("**", "").replace("*", "")
             self.assertRegex(
-                body,
-                r"`?spec\.yaml`?\s*직접\s*참조\s*금지",
+                plain,
+                r"(?s)(?:`?spec\.yaml`?\s*직접\s*참조\s*금지"
+                r"|(?:[Dd]on't|[Dd]o\s*not|[Nn]o).{0,120}?read.{0,120}?`?spec\.yaml`?"
+                r"|`?spec\.yaml`?.{0,120}?(?:[Dd]on't|[Dd]o\s*not|[Nn]o).{0,120}?read)",
                 f"{name}: must explicitly forbid direct spec.yaml read",
             )
 
@@ -242,34 +250,52 @@ class TierMappingTests(unittest.TestCase):
         return (AGENTS_DIR / f"{name}.md").read_text(encoding="utf-8")
 
     def _context_section(self, name: str) -> str:
-        """Extract the ## Context block for grepping."""
+        """Extract the ## Context block, with markdown emphasis stripped."""
         body = self._body(name)
         start = body.find("## Context")
         if start < 0:
             return ""
         rest = body[start:]
         end = rest.find("\n## ", 10)
-        return rest if end < 0 else rest[:end]
+        block = rest if end < 0 else rest[:end]
+        return block.replace("**", "").replace("*", "")
+
+    # F-041 — exclusion phrases now match Korean ("읽지 않" / "접근 금지") and
+    # the native-English equivalents ("don't read" / "no access" / etc.).
+    _EXCLUSION_RE = (
+        r"(?:읽지\s*않|접근\s*금지"
+        r"|[Dd]on't\s+read|[Dd]o\s*not\s+read|[Nn]o\s+(?:read|access)"
+        r"|off-limits|out\s+of\s+(?:scope|the\s+allow-list)"
+        r"|raw\s+`?architecture\.yaml`?|raw\s+`?plan\.md`?)"
+    )
+
+    def _has_exclusion_near(self, ctx: str, target: str) -> bool:
+        """True if ``target`` (e.g. plan.md) appears within ~200 chars of an
+        exclusion phrase, in either direction. Markdown emphasis already
+        stripped; line breaks tolerated since context blocks wrap prose."""
+        pre = re.compile(self._EXCLUSION_RE + r".{0,200}?" + re.escape(target), re.DOTALL)
+        post = re.compile(re.escape(target) + r".{0,200}?" + self._EXCLUSION_RE, re.DOTALL)
+        return bool(pre.search(ctx) or post.search(ctx))
 
     def test_design_agents_skip_architecture_and_plan(self):
-        """Design stage 는 architecture.yaml · plan.md 원본 읽기 금지.
+        """Design-stage agents must not pull from architecture.yaml or plan.md.
 
-        exclusion 명시("읽지 않음" · "접근 금지") 는 허용 — 오히려 필수.
+        Either omit the file from Context entirely, or call out an explicit
+        exclusion ("don't read" / "읽지 않음" / "off-limits" / "raw … not
+        consumed"), in either direction relative to the filename.
         """
         for name in self._TIER_1_ONLY:
             ctx = self._context_section(name)
             self.assertIn("domain.md", ctx, f"{name}: Tier 1 required")
             if "architecture.yaml" in ctx:
-                self.assertRegex(
-                    ctx,
-                    r"architecture\.yaml.{0,120}(?:읽지\s*않|접근\s*금지)",
-                    f"{name}: architecture.yaml 언급 시 exclusion 명시 필요 (Design stage)",
+                self.assertTrue(
+                    self._has_exclusion_near(ctx, "architecture.yaml"),
+                    f"{name}: architecture.yaml mention requires an explicit exclusion (Design stage)",
                 )
             if "plan.md" in ctx:
-                self.assertRegex(
-                    ctx,
-                    r"plan\.md.{0,120}(?:읽지\s*않|접근\s*금지)",
-                    f"{name}: plan.md 언급 시 exclusion 명시 필요 (Design stage)",
+                self.assertTrue(
+                    self._has_exclusion_near(ctx, "plan.md"),
+                    f"{name}: plan.md mention requires an explicit exclusion (Design stage)",
                 )
 
     def test_engineering_quality_integration_read_architecture(self):
@@ -279,10 +305,9 @@ class TierMappingTests(unittest.TestCase):
             self.assertIn("domain.md", ctx, f"{name}: Tier 1 required")
             self.assertIn("architecture.yaml", ctx, f"{name}: Tier 2 required")
             if "plan.md" in ctx:
-                self.assertRegex(
-                    ctx,
-                    r"plan\.md.{0,120}(?:읽지\s*않|접근\s*금지)",
-                    f"{name}: plan.md 언급 시 exclusion 명시 필요 (Tier 3 제외)",
+                self.assertTrue(
+                    self._has_exclusion_near(ctx, "plan.md"),
+                    f"{name}: plan.md mention requires an explicit exclusion (Tier 3 excluded)",
                 )
 
     def test_techwriter_reads_plan_md_not_architecture(self):
