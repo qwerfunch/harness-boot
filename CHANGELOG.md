@@ -11,6 +11,36 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 - Marketplace PR (anthropic/claude-plugins-official) — 사용자 명시 후 진입.
 
+## [0.10.19] — 2026-04-27
+
+**Facade-preserving split (sibling alias modules) — Phase 4 of the 6-release refactor (F-045).**
+
+`scripts/work.py` (1295 줄) + `scripts/check.py` (937 줄) = 2232 줄을 디렉토리 conversion 없이 sibling alias module 형태로 분할. 위험 관리 결정: 본체 파일은 그대로 두고 5 sibling 이 stable access path 제공 → 외부 dev / 미래 refactor 가 새 path 사용 시 본체 분할이 visible 영향 0. 즉 외부 API 변경 0, backward-compat 100%, migration 진입로 확보.
+
+### Added — F-045
+- **`scripts/work_internals.py`** — `WorkResult` · `activate` · `record_gate` · `add_evidence` · `complete` · `archive` · `block` · `current` · `deactivate` · `remove_feature` · `run_and_record_gate` · `format_human` 12 public 이름 re-export.
+- **`scripts/work_autowire.py`** — `_autowire_design_review` · `_autowire_fog_clear` · `_autowire_kickoff` · `_autowire_retro` 4 함수 re-export.
+- **`scripts/work_cli.py`** — `main()` re-export.
+- **`scripts/check_detectors.py`** — 12 detect_* 함수 + `DRIFT_CHECKS = {"Generated": fn, ...}` registry. 새 drift 종류 추가 비용: 함수 1 + registry 한 줄.
+- **`scripts/check_report.py`** — `DriftFinding` dataclass re-export.
+
+### Changed
+- 본체 (`work.py`, `check.py`) 변경 0. 외부 callsite 모두 그대로 동작.
+- alias 는 `is` 식 동일성 보장 (`work_internals.activate is scripts.work.activate`).
+
+### Tests
+- **신규**: 7 `tests/unit/test_facade_split.py` — alias 동일성 검증 (work_internals 12 names · work_autowire 4 names · work_cli 1 · check_detectors registry 12 entries + alias · check_report 1).
+- **누적**: 1084 unit + 26 integration. `self_check 5/5`. F-038~F-044 회귀 0.
+
+### Out-of-scope (의도)
+- **본체 물리 분할** — work.py 1295 줄 / check.py 937 줄을 실제 sibling 으로 옮기는 작업은 별도 release 권장. alias 가 먼저 자리잡고 외부 사용자 마이그레이션이 일어난 후 본체 축소가 안전.
+- **`DRIFT_CHECKS` registry 가 `check.py::main()` 의 dispatch 흐름을 대체** — main() 의 hardcoded 호출 그대로. registry 는 외부 자동화 / 통계용 진입로.
+
+### 효과
+- 외부 dev 가 `from scripts.work_autowire import _autowire_kickoff` 같은 stable path 사용 가능.
+- 새 drift 종류 추가: 함수 작성 + DRIFT_CHECKS dict 한 줄.
+- 본체 분할 시점은 외부 사용 패턴 측정 후 결정 (점진적 path).
+
 ## [0.10.18] — 2026-04-27
 
 **Spec archive flow — Phase 3 of the 6-release refactor (F-044).**

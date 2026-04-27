@@ -911,8 +911,36 @@ features:
       으로 미룸 (yaml round-trip 의 한국어 주석 깨짐 위험) · 1070 → 1077 누적 · self_check 5/5
   started_at: '2026-04-27T10:07:18Z'
   completed_at: '2026-04-27T10:12:01Z'
+- id: F-045
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-27T10:28:11Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T10:28:12Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T10:28:11Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (9.8s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-27T10:28:12Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.6s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T10:28:12Z'
+    kind: generic
+    summary: F-045 facade-preserving split (sibling pattern · alias modules) — 위험
+      관리상 work.py 1295줄 / check.py 937줄 본체 그대로 유지하고, work_internals.py / work_autowire.py
+      / work_cli.py / check_detectors.py (12-entry DRIFT_CHECKS registry) / check_report.py
+      5 sibling 이 stable access path 제공 · 외부 dev migration 진입로 · 7 new unit tests
+      · 1077 → 1084 누적 · self_check 5/5 · 1077 unit + 26 integration regression 0
+  started_at: '2026-04-27T10:25:14Z'
+  completed_at: null
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-044
+  last_command: /harness:work F-045
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-045

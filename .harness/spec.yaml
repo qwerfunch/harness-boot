@@ -1223,6 +1223,36 @@ features:
       - "AC-7: 1070 unit + 26 integration tests 회귀 0."
       - "AC-8: F-044 양쪽 spec.yaml mirror + work.py 4-verb cycle 완주."
 
+  - id: "F-045"
+    name: "work.py + check.py facade-preserving split (sibling pattern)"
+    type: "feature"
+    description: "전체 리팩토링 6 release 의 4 단계. work.py 1295 줄 + check.py 937 줄 = 2232 줄을 sibling 파일 형태로 분할. 디렉토리 conversion 회피 (git rename 회색지대). work.py 는 facade 로 유지, 실 코드는 work_internals.py · work_autowire.py · work_cli.py 의 sibling 모듈에 분산. check.py 는 check_detectors.py + check_report.py. 외부 import path 그대로 (`from work import activate` 등 모두 동작) — 즉 backward-compat 보장. 1077 unit + 26 integration 회귀 0."
+    modules:
+      - "scripts/work.py"
+      - "scripts/work_internals.py"
+      - "scripts/work_autowire.py"
+      - "scripts/work_cli.py"
+      - "scripts/check.py"
+      - "scripts/check_detectors.py"
+      - "scripts/check_report.py"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "scripts/work.py: 100 줄 안쪽 facade — 모든 public 이름이 sibling 에서 re-export"
+      - "기존 callsite (from work import activate / WorkResult 등) 모두 동작"
+      - "scripts/check.py: facade + 8 drift detectors → registry pattern (DRIFT_CHECKS dict)"
+      - "1077 unit + 26 integration tests 회귀 0"
+      - "self_check.sh 5/5 PASS (commands/*.md preamble 검증)"
+    acceptance_criteria:
+      - "AC-1: scripts/work.py — 100 줄 안쪽 facade. WorkResult / activate / record_gate / add_evidence / complete / archive / deactivate / remove_feature / format_human / main 모두 sibling 에서 re-export."
+      - "AC-2: scripts/work_internals.py — WorkResult dataclass + state helpers + _resolve_routing + format_human + _result_to_dict."
+      - "AC-3: scripts/work_autowire.py — _autowire_kickoff / _autowire_design_review / _autowire_retro / _autowire_fog_clear 4 함수 + 공통 helper."
+      - "AC-4: scripts/work_cli.py — main() + argparse setup."
+      - "AC-5: scripts/check.py — facade. 8 drift detectors 가 check_detectors.py 의 DRIFT_CHECKS registry 에서 dispatch."
+      - "AC-6: scripts/check_detectors.py — 8 detect_* 함수 + DRIFT_CHECKS = {'Generated': fn, ...}."
+      - "AC-7: scripts/check_report.py — DriftFinding / CheckReport + reporting."
+      - "AC-8: 1077 unit + 26 integration 회귀 0. self_check 5/5."
+      - "AC-9: F-045 양쪽 spec.yaml mirror + work.py 4-verb cycle."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
