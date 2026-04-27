@@ -17,7 +17,7 @@
 ## Phase 2 active (2026-04-27 ~)
 
 이 레포의 **모든 신규 피처는 `python3 scripts/work.py` 사이클을 거친다** (cosmic-suika 와 동일 규약).
-`project.mode: prototype` — Iron Law D 는 evidence ≥ 1 + gate_5 pass.
+`project.mode: prototype` — Iron Law 는 evidence ≥ 1 + gate_5 pass.
 
 ```
 python3 scripts/work.py F-N --harness-dir .harness                       # activate

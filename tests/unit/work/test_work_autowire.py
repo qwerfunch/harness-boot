@@ -314,7 +314,7 @@ class PerfGateBudgetIntegrationTests(ScratchHarness, unittest.TestCase):
 
 class CompleteAutowireTests(ScratchHarness, unittest.TestCase):
     def _seed_done_precondition(self, fid: str) -> None:
-        """Satisfy Iron Law D (v0.9.3): gate_5 pass + 3 declared evidence (product default)."""
+        """Satisfy Iron Law (v0.9.3): gate_5 pass + 3 declared evidence (product default)."""
         work.activate(self.harness, fid)
         work.record_gate(self.harness, fid, "gate_5", "pass", note="smoke ok")
         work.add_evidence(self.harness, fid, "test", "smoke passes")

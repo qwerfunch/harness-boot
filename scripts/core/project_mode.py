@@ -3,7 +3,7 @@
 The ``spec.project.mode`` field is a single switch that tightens or relaxes
 several ceremony / quality behaviors at once:
 
-- **Iron Law D** (Iron Law of declared evidence) — product requires 3
+- **Iron Law** (Iron Law of declared evidence) — product requires 3
   declared evidences in the trailing window, prototype requires 1.
   See ``scripts/work.py::complete``.
 - **Kickoff template** — product writes a 3-bullet section per matched

@@ -34,7 +34,7 @@ version: "2.3.8"
 
 project:
   name: "harness-boot"
-  mode: "prototype"                          # v0.9.6 — Phase 2 self-hosting (2026-04-27): lighter Iron Law D
+  mode: "prototype"                          # v0.9.6 — Phase 2 self-hosting (2026-04-27): lighter Iron Law
   summary: "Claude Code 용 하네스 플러그인 — spec.yaml 을 SSoT 로 Walking Skeleton 부터 진화까지 자동화"
   description: |
     Anthropic Claude Code 의 플러그인으로 동작하는 "하네스(harness)" 도구.
@@ -717,7 +717,7 @@ features:
       - "AC-2: docs/samples/harness-boot-self/spec.yaml 의 features 길이 == 25 · `.harness/spec.yaml` 와 diff -q 일치"
       - "AC-3: project.mode == 'prototype' 명시 · scripts/core/project_mode.resolve_mode 가 prototype 반환"
       - "AC-4: bash scripts/self_check.sh 종료코드 0"
-      - "AC-5: F-025 가 work.py 4-verb 사이클 (activate → run-gate gate_5 → evidence → complete) 을 완주 — Iron Law D (prototype: gate_5 pass + evidence ≥ 1) 준수"
+      - "AC-5: F-025 가 work.py 4-verb 사이클 (activate → run-gate gate_5 → evidence → complete) 을 완주 — Iron Law (prototype: gate_5 pass + evidence ≥ 1) 준수"
 
   - id: "F-026"
     name: "Phase 2 후속 정리 — smoke shim + stale doc/dead-ref + 첫 풀 사이클 reference"
@@ -865,7 +865,7 @@ features:
     tdd_focus:
       - "docs/templates/starter/tsconfig.json.template 존재 + 권장값 (allowImportingTsExtensions: true · types: ['vitest/globals']) + 주석 풍부"
       - "spec.schema.json 의 risks[].id pattern 이 R-N · RISK-N 양쪽 매치 (테스트가 둘 다 validate 통과)"
-      - "work.md + work.py docstring 에 'kind=trivial' 언급 + 의미 (Iron Law D 면제 X · 단지 의도 표시)"
+      - "work.md + work.py docstring 에 'kind=trivial' 언급 + 의미 (Iron Law 면제 X · 단지 의도 표시)"
       - "spec.schema.json 의 $defs/changelog.items.required 에서 'version' 제거 → version 없는 entry 도 validate"
       - "기존 869 tests 회귀 없음 + 4 신규 tests"
     acceptance_criteria:
@@ -1097,14 +1097,14 @@ features:
       - "AC-4: format_human() 가 lang 결정 후 messages.t() 호출. lang=ko 시 'status:' → '상태:', 'passed:' → '통과:', 'evidence: N entries' → '근거: N 개', 'routed agents:' → '라우팅된 팀:'."
       - "AC-5: dashboard.render() 가 동일 catalog 사용 — lang=ko 시 '진행:'/'근거:'/'agent chain:' → '에이전트 체인:'. work.py 와 일관."
       - "AC-6: docs/schemas/spec.schema.json::project.language 추가 (enum: ['en', 'ko', 'auto'], 기본 미설정). 11 sample 회귀 0."
-      - "AC-7: commands/work.md + commands/init.md 끝에 'Glossary / 용어집' 섹션 — Walking Skeleton/Iron Law D/drift/kickoff/retro/preamble/sigil/fog-clear/autowire/gate 의 사용자 친화 풀이 (영어/한국어 한 줄씩)."
+      - "AC-7: commands/work.md + commands/init.md 끝에 'Glossary / 용어집' 섹션 — Walking Skeleton/Iron Law/drift/kickoff/retro/preamble/sigil/fog-clear/autowire/gate 의 사용자 친화 풀이 (영어/한국어 한 줄씩)."
       - "AC-8: 신규 unit ≥ 12 (lang 4 + messages 4 + work 2 + dashboard 2). 누적 1029 + 12 ≈ 1041. self_check 5/5."
       - "AC-9: F-040 양쪽 spec.yaml mirror (diff -q PASS) + work.py 4-verb cycle 완주."
 
   - id: "F-041"
     name: "commands/ + agents/ rewrite at native-English level"
     type: "feature"
-    description: "User feedback — '영어 번역이 아니라 영어 모국어 수준으로 작성해줘야함'. F-040 localized runtime output; F-041 closes the gap on the system prompts Claude Code loads (commands/ slash-command definitions + agents/ sub-agent fixtures), the loudest-Korean surface a non-Korean adopter encounters. 17 files, ~2400 body lines, 10–22% Korean density, rewritten as native English (not translation). Korean source frozen at docs/i18n/ko/ as a reference snapshot. New docs/glossary/BRAND_TERMS.md collapses jargon (Walking Skeleton / Iron Law D / drift / sigil / fog-clear / etc.) into a single bilingual reference each rewritten file backlinks to. Preamble + NO skip / NO shortcut prefixes preserved (self_check step 5 invariant)."
+    description: "User feedback — '영어 번역이 아니라 영어 모국어 수준으로 작성해줘야함'. F-040 localized runtime output; F-041 closes the gap on the system prompts Claude Code loads (commands/ slash-command definitions + agents/ sub-agent fixtures), the loudest-Korean surface a non-Korean adopter encounters. 17 files, ~2400 body lines, 10–22% Korean density, rewritten as native English (not translation). Korean source frozen at docs/i18n/ko/ as a reference snapshot. New docs/glossary/BRAND_TERMS.md collapses jargon (Walking Skeleton / Iron Law / drift / sigil / fog-clear / etc.) into a single bilingual reference each rewritten file backlinks to. Preamble + NO skip / NO shortcut prefixes preserved (self_check step 5 invariant)."
     modules:
       - "commands/init.md"
       - "commands/work.md"

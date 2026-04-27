@@ -9,7 +9,7 @@ argument-hint: "[free-text intent or empty (menu)]  # e.g. build something like 
 This command **scaffolds harness-boot into the current working directory**.
 Run it **once in a project's lifetime**.
 
-For unfamiliar terms (Walking Skeleton, Iron Law D, drift, gate, kickoff, …),
+For unfamiliar terms (Walking Skeleton, Iron Law, drift, gate, kickoff, …),
 see [`docs/glossary/BRAND_TERMS.md`](../docs/glossary/BRAND_TERMS.md).
 
 ## Two ways to start

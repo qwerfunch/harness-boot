@@ -8,7 +8,7 @@ they don't re-explain on every page. If you add a new term, update this file
 | Term | EN gloss | KO gloss | Where it lives |
 |---|---|---|---|
 | **Walking Skeleton** | Smallest end-to-end slice that proves the whole pipeline is wired together. | 시스템이 끝-끝으로 연결됐음을 증명하는 가장 작은 골격. | BR-003, `commands/init.md`, `commands/work.md` |
-| **Iron Law D** | "No `done` without Walking Skeleton + N declared evidence + `gate_5=pass`." | "기본 골격 + 근거 N 개 + 검증 5단계 통과 없이 완료 불가." | BR-004, `scripts/work.py` (complete guard) |
+| **Iron Law** | "No `done` without Walking Skeleton + N declared evidence + `gate_5=pass`." | "기본 골격 + 근거 N 개 + 검증 5단계 통과 없이 완료 불가." | BR-004, `scripts/work.py` (complete guard) |
 | **BR-001 … BR-014** | Business-rule IDs. The fourteen non-negotiables. | 14 개 비즈니스 규칙 ID. | `.harness/spec.yaml` `domain.business_rules[]` |
 | **F-NNN** | Feature ID — `F-` followed by zero-padded digits. | 피처 ID. | `spec.yaml` `features[].id` |
 | **AC-N** | Acceptance Criterion — one numbered, testable bullet under a feature. | 인수기준. | `spec.yaml` `features[].acceptance_criteria[]` |

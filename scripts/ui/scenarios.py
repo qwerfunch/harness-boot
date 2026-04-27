@@ -76,7 +76,7 @@ SCENARIOS: tuple[ScenarioMapping, ...] = (
         category="일상",
         phrases=("됐어", "끝났어", "완료", "done"),
         action="complete",
-        description="완료 전이 — Iron Law D 누적 근거 체크",
+        description="완료 전이 — Iron Law 누적 근거 체크",
         read_only=False,
     ),
     ScenarioMapping(
@@ -113,7 +113,7 @@ SCENARIOS: tuple[ScenarioMapping, ...] = (
         category="근거",
         phrases=("확인했어", "수동 확인", "리뷰 받았어"),
         action="add_evidence",
-        description="declared evidence 추가 (Iron Law D 카운트)",
+        description="declared evidence 추가 (Iron Law 카운트)",
         read_only=False,
     ),
     # === 정리 ===========================================================

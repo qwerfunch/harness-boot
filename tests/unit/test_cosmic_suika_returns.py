@@ -113,18 +113,17 @@ class I006KindTrivialTests(unittest.TestCase):
 
     def test_work_md_clarifies_no_exemption(self):
         body = WORK_MD.read_text(encoding="utf-8")
-        # The doc must clarify that trivial does NOT exempt Iron Law D.
-        # Accept both legacy Korean phrasing ("Iron Law D 면제 X") and the
-        # F-041 native-English equivalent ("Not an Iron Law D exemption").
+        # The doc must clarify that trivial does NOT exempt Iron Law.
+        # Accept legacy "Iron Law D" phrasing and the simplified "Iron Law" form.
         # Strip markdown emphasis tokens before matching so '**Not**' reads as 'Not'.
         plain = body.replace("**", "").replace("*", "")
         self.assertRegex(
             plain,
-            r"(?:Iron\s+Law\s+D\s+면제\s*X"
-            r"|[Nn]ot\s+an\s+Iron\s+Law\s+D\s+exemption"
-            r"|Iron\s+Law\s+D[^.\n]*?\s+(?:no|not)\s+exempt"
-            r"|does\s+not\s+exempt[^.\n]*?Iron\s+Law\s+D)",
-            "work.md must clarify that --kind=trivial does NOT exempt Iron Law D",
+            r"(?:Iron\s+Law(?:\s+D)?\s+면제\s*X"
+            r"|[Nn]ot\s+an\s+Iron\s+Law(?:\s+D)?\s+exemption"
+            r"|Iron\s+Law(?:\s+D)?[^.\n]*?\s+(?:no|not)\s+exempt"
+            r"|does\s+not\s+exempt[^.\n]*?Iron\s+Law(?:\s+D)?)",
+            "work.md must clarify that --kind=trivial does NOT exempt Iron Law",
         )
 
     def test_work_py_help_mentions_trivial(self):

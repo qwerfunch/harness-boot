@@ -10,7 +10,7 @@ This command is the **state manager for a feature's TDD cycle**. In v0.3
 scope you (or CI) run the actual gate; this command records the result in
 `state.yaml` + `events.log` and transitions the feature.
 
-For unfamiliar terms (Walking Skeleton, Iron Law D, drift, gate_0–5,
+For unfamiliar terms (Walking Skeleton, Iron Law, drift, gate_0–5,
 kickoff, retro, autowire, fog-clear, …), see
 [`docs/glossary/BRAND_TERMS.md`](../docs/glossary/BRAND_TERMS.md).
 
@@ -179,7 +179,7 @@ python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --complete --json
 python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --complete --hotfix-reason "prod down — redis race"
 ```
 
-**Iron Law D** (v0.9.3 — BR-004 reinforcement):
+**Iron Law** (v0.9.3 — BR-004 reinforcement):
 
 1. `gate_5` (runtime smoke) result = `pass`
 2. **Declared evidence in the last 7 days** (kind != `gate_run` ·
@@ -198,14 +198,14 @@ re-callable). On pass, the feature transitions to `done`,
 
 **kind taxonomy**:
 - automatic: `gate_run` · `gate_auto_run` — emitted by the gate runner;
-  Iron Law D doesn't count these.
+  Iron Law doesn't count these.
 - declared: `test` · `manual_check` · `user_feedback` · `reviewer_check`
   · `blocker` · `hotfix` · `generic` · `trivial` · anything else —
-  developer intent signal; Iron Law D counts these.
+  developer intent signal; Iron Law counts these.
 
 **`kind=trivial`** (v0.10.7, cosmic-suika I-006 return): an intent
 marker for genuinely tiny changes (one-line wiring · typo · doc-only ·
-style fix). **Not** an Iron Law D exemption — it still counts toward
+style fix). **Not** an Iron Law exemption — it still counts toward
 the evidence ≥ N threshold. The marker just lets a reviewer or audit
 reader see "this wasn't ceremony, this was actually trivial". Use it
 on cleanup PRs where a full ceremony entry feels like overkill. For a
@@ -637,5 +637,5 @@ down**, the next user hits the same friction — discipline.
 
 For brand jargon, see [`docs/glossary/BRAND_TERMS.md`](../docs/glossary/BRAND_TERMS.md).
 That file holds the bilingual (en + ko) gloss for terms like Walking
-Skeleton · Iron Law D · drift · sigil · fog-clear · routed agents ·
+Skeleton · Iron Law · drift · sigil · fog-clear · routed agents ·
 parallel groups, with one primary-file backlink per term.

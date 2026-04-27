@@ -1,4 +1,4 @@
-"""Iron Law D — cumulative declared evidence tests (v0.9.3).
+"""Iron Law — cumulative declared evidence tests (v0.9.3).
 
 Covers ``scripts/core/state.py`` helpers (``is_declared_evidence``,
 ``count_declared_evidence``) and ``scripts/work.py::complete`` enforcement:
@@ -153,7 +153,7 @@ class ProductModeCompleteTests(HarnessScratch, unittest.TestCase):
         work.record_gate(self.harness, "F-1", "gate_5", "pass")
         res = work.complete(self.harness, "F-1")
         self.assertEqual(res.action, "queried")
-        self.assertIn("Iron Law D", res.message)
+        self.assertIn("Iron Law", res.message)
         self.assertIn("0/3", res.message)
         self.assertIn("product", res.message)
 

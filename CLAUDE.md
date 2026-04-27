@@ -19,8 +19,8 @@ Claude Code 플러그인 `harness-boot` 의 소스. 사용자는 `/harness-boot:
 핵심 누적:
 - **2 슬래시 명령** (`/harness-boot:init` · `/harness-boot:work`) — v0.9.0 통합. init 은 자연어 직진 또는 3 옵션 메뉴, work 는 무인자(no-args dashboard, v0.9.2) · 인텐트 자연어 · F-ID 직접 호출 모두 지원.
 - **Gate 자동화 0/1/2/3/5 전부** — `scripts/gate/runner.py` 가 pyproject pytest · npm scripts (typecheck/lint/test:coverage/smoke/test:e2e, v0.10.2) · 도구 직접 호출 · 언어별 polyglot fallback 순으로 자동 감지. **BR-004 Iron Law (gate_5=pass + 선언 evidence ≥ N) 전 구간 자동.**
-- **Iron Law D — cumulative declared evidence** (v0.9.3) + **product mode strict** (v0.10.3) — `project.mode == product` 일 때 record 된 모든 gate 의 last_result 가 fail 이 아닐 것까지 강제. prototype 은 lighter contract.
-- **Project mode 축** (v0.9.6) — `spec.project.mode ∈ {prototype, product}` 단일 스위치가 Iron Law D 임계값 · kickoff/retro 템플릿 · design-review autowire 전부를 결정. 미지정 → product (strict default).
+- **Iron Law — cumulative declared evidence** (v0.9.3) + **product mode strict** (v0.10.3) — `project.mode == product` 일 때 record 된 모든 gate 의 last_result 가 fail 이 아닐 것까지 강제. prototype 은 lighter contract.
+- **Project mode 축** (v0.9.6) — `spec.project.mode ∈ {prototype, product}` 단일 스위치가 Iron Law 임계값 · kickoff/retro 템플릿 · design-review autowire 전부를 결정. 미지정 → product (strict default).
 - **Drift 탐지 8/8** + **Two-layer supersession metadata + Stale drift** (v0.10.0) — `features[].supersedes` / `superseded_by` 와 archive flow.
 - **Ceremonies 자동화 4/4** — kickoff · retro · design-review · inbox.
 - **자체 도그푸드 Phase 2 active** (2026-04-27) — `.harness/` 가 active workspace. 본 레포의 새 피처도 `python3 scripts/work.py F-N --harness-dir .harness` 사이클을 거침. 자세한 규약은 §7 참조.
@@ -65,7 +65,7 @@ docs/
 ├── schemas/spec.schema.json        # spec v2.3.8 JSONSchema (Walking Skeleton 강제 + project.mode)
 ├── samples/harness-boot-self/      # self-referential canonical spec (24 features → 25 with F-025)
 ├── templates/starter/              # /harness-boot:init 이 복사하는 템플릿 (CLAUDE.md.template 등)
-├── glossary/BRAND_TERMS.md         # F-041 — 28 brand jargon (Walking Skeleton · Iron Law D · …)
+├── glossary/BRAND_TERMS.md         # F-041 — 28 brand jargon (Walking Skeleton · Iron Law · …)
 ├── i18n/README.md                  # F-040 — runtime locale 정책
 ├── preamble-spec.md                # F-042 — Preamble + NO skip / NO shortcut 단일 source
 └── archive/                        # F-042 — historical (local-install · first-run · v0.1.0 / v0.4 plans · i18n-ko-frozen-f041/)
@@ -95,7 +95,7 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (이 파일) · requirements-d
 - `89c5776 feat(v0.10.1): cosmic-suika ISSUES-LOG patch — AnchorIntegration drift + no-args dashboard candidates`
 - `ede6f98 feat(v0.10.0): two-layer supersession — features[] supersedes/superseded_by + archive flow + Stale drift`
 
-**v0.9.x 라인 — UX 재구조화 + Iron Law D + 모드 축 도입**:
+**v0.9.x 라인 — UX 재구조화 + Iron Law + 모드 축 도입**:
 - `e969e28 feat(v0.9.0)!: UX re-architecture step 1 — namespace rename + command consolidation` (8 → 2 commands, `harness` → `harness-boot`)
 - `87a490c feat(v0.9.1): feature_resolver module + scripts/ui/ scaffolding`
 - `9d31637 feat(v0.9.2): dashboard + intent_planner — no-args entry point`
@@ -147,7 +147,7 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (이 파일) · requirements-d
   - 슬래시 명령은 **이 레포에서 live-edit 가 안 됨** (설치본이 우선). 따라서 항상 `python3 scripts/work.py` 직접 호출이 dev 진입점. (사용자 프로젝트에서는 `/harness-boot:work` 가 래퍼.)
   - `.harness/state.yaml` 커밋은 feature PR 단위로 같이 나감 (이전 Phase 1 의 "릴리즈 태그 시점에만" 제한 해제).
   - `events.log` 에 lifecycle 이벤트 (`feature_activated` · `gate_run` · `evidence_declared` · `feature_completed`) 가 누적되며, `/harness-boot:work` 대시보드 · `scripts/metrics.py` 가 진짜 lead time / gate pass rate 출력.
-  - `project.mode` 는 `prototype` (현재 기본) — Iron Law D 는 evidence ≥ 1 + gate_5 pass. product 로 promote 는 사용자 결정.
+  - `project.mode` 는 `prototype` (현재 기본) — Iron Law 는 evidence ≥ 1 + gate_5 pass. product 로 promote 는 사용자 결정.
 
 - **공통 규칙** (Phase 무관):
   - `.harness/spec.yaml` 은 `docs/samples/harness-boot-self/spec.yaml` 의 **복사본** (symlink 아님). `scripts/self_check.sh` 가 `diff -q` 로 동기성 강제. 새 피처 추가는 **양쪽 동시에**.
@@ -173,7 +173,7 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (이 파일) · requirements-d
 **닫힘 (이전 CLAUDE.md 시점 대비)**
 - v0.4 ~ v0.7: agent fixtures 15/15 · ceremonies 4/4 · subpackages 정리 · gate auto-runners.
 - v0.8.x: Phase 3 CI · events.log monthly rotation · agent fixtures 완결 · design-review autowire.
-- v0.9.x: 명령 통합 (8 → 2) · feature_resolver · no-args dashboard · Iron Law D · README user-friendly · project mode axis.
+- v0.9.x: 명령 통합 (8 → 2) · feature_resolver · no-args dashboard · Iron Law · README user-friendly · project mode axis.
 - v0.10.0~3: two-layer supersession + Stale drift · cosmic-suika I-001/I-008/I-010 환원.
 - v0.10.4: **Phase 2 self-hosting deferral 해소** (2026-04-27) — 본 레포가 본격 dogfood 진입.
 - v0.10.5: init/work observability — F-027 issue logging convention + F-028 prompt log hook.

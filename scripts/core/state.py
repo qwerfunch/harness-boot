@@ -53,8 +53,8 @@ _FEATURE_STATUSES: frozenset[str] = frozenset(
 )
 _GATE_RESULTS: frozenset[str] = frozenset({"pass", "fail", "skipped"})
 
-# Iron Law D (v0.9.3) — evidence kinds produced by machines (gate runner auto-
-# emits ``gate_run`` on pass). These do NOT count toward Iron Law D because the
+# Iron Law (v0.9.3) — evidence kinds produced by machines (gate runner auto-
+# emits ``gate_run`` on pass). These do NOT count toward Iron Law because the
 # whole point is that **human-declared signals** (manual checks, reviews, user
 # feedback, tests the author chose to record) prove genuine verification.
 # Kinds not in this set — including ``test``, ``manual_check``,
@@ -63,9 +63,9 @@ _GATE_RESULTS: frozenset[str] = frozenset({"pass", "fail", "skipped"})
 # existing state.yaml files stay forward-compatible with no migration.
 _AUTOMATIC_EVIDENCE_KINDS: frozenset[str] = frozenset({"gate_run", "gate_auto_run"})
 
-# Iron Law D — default trailing window (days) for counting declared evidence.
+# Iron Law — default trailing window (days) for counting declared evidence.
 # v0.9.3 hardcodes 7; v0.9.4+ may override via ``.harness/.config.toml``.
-IRON_LAW_D_DEFAULT_WINDOW_DAYS: int = 7
+IRON_LAW_WINDOW_DAYS: int = 7
 
 
 def _now() -> str:
@@ -301,12 +301,12 @@ def _parse_ts(value: Any) -> datetime | None:
 def count_declared_evidence(
     feature: dict,
     *,
-    window_days: int = IRON_LAW_D_DEFAULT_WINDOW_DAYS,
+    window_days: int = IRON_LAW_WINDOW_DAYS,
     now: datetime | None = None,
 ) -> int:
     """Count declared evidence entries within the trailing time window.
 
-    Iron Law D (v0.9.3): at ``/harness-boot:work --complete`` time, this
+    Iron Law (v0.9.3): at ``/harness-boot:work --complete`` time, this
     function tallies how many declared signals the feature has accumulated in
     the last ``window_days`` days. Entries with unparseable or missing ``ts``
     are counted as recent (conservative — the absence of a timestamp should
@@ -342,5 +342,5 @@ __all__ = [
     "GateResult",
     "is_declared_evidence",
     "count_declared_evidence",
-    "IRON_LAW_D_DEFAULT_WINDOW_DAYS",
+    "IRON_LAW_WINDOW_DAYS",
 ]

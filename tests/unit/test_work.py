@@ -98,7 +98,7 @@ class BlockTests(HarnessScratch, unittest.TestCase):
 
 
 class CompleteTests(HarnessScratch, unittest.TestCase):
-    """Iron Law D (v0.9.3): default product mode requires 3 declared evidence."""
+    """Iron Law (v0.9.3): default product mode requires 3 declared evidence."""
 
     def _seed_evidence(self, fid: str, n: int = 3) -> None:
         for i in range(n):
@@ -115,7 +115,7 @@ class CompleteTests(HarnessScratch, unittest.TestCase):
         work.activate(self.harness, "F-004")
         work.record_gate(self.harness, "F-004", "gate_5", "pass")
         res = work.complete(self.harness, "F-004")
-        self.assertIn("Iron Law D", res.message)
+        self.assertIn("Iron Law", res.message)
         self.assertIn("0/3", res.message)
 
     def test_complete_transitions_to_done(self):

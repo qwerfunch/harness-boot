@@ -55,7 +55,7 @@ from scan import structure as _structure_scan  # noqa: E402
 from scan import style_fingerprint as _style_fingerprint  # noqa: E402
 from core.project_mode import resolve_mode as _resolve_project_mode  # noqa: E402
 from core.state import (  # noqa: E402
-    IRON_LAW_D_DEFAULT_WINDOW_DAYS,
+    IRON_LAW_WINDOW_DAYS,
     State,
     _FEATURE_STATUSES,
     _GATE_RESULTS,
@@ -72,13 +72,13 @@ from ui.messages import t as _t  # noqa: E402
 # for backward-compat with any external import.
 from core.gates import STANDARD_GATES as _STANDARD_GATES  # noqa: E402
 
-# Iron Law D (v0.9.3) — minimum declared evidence count per project mode.
+# Iron Law (v0.9.3) — minimum declared evidence count per project mode.
 # `product` demands 3 independent human signals in the trailing window so that
 # a completion claim is backed by genuine verification, not a single checkbox.
 # `prototype` lowers to 1 for exploratory work where rigor would be theater.
 # Hotfix override (`--hotfix-reason`) collapses product to 1 but records the
 # reason in the evidence trail for audit.
-_IRON_LAW_D_REQUIRED: dict[str, int] = {"prototype": 1, "product": 3}
+_IRON_LAW_REQUIRED: dict[str, int] = {"prototype": 1, "product": 3}
 
 
 @dataclass
@@ -659,9 +659,9 @@ def complete(
     *,
     hotfix_reason: str | None = None,
 ) -> WorkResult:
-    """done 전이. Iron Law D (v0.9.3) — gate_5 pass + 누적 declared evidence.
+    """done 전이. Iron Law (v0.9.3) — gate_5 pass + 누적 declared evidence.
 
-    Iron Law D (BR-004 강화):
+    Iron Law (BR-004 강화):
       - ``gate_5.last_result == "pass"`` 필수.
       - 최근 7 일 declared evidence (kind != ``gate_run`` / ``gate_auto_run``)
         개수 ≥ mode-specific 요구치.
@@ -692,7 +692,7 @@ def complete(
 
     spec = _load_spec(harness_dir)
     mode = _resolve_project_mode(spec)
-    required_default = _IRON_LAW_D_REQUIRED[mode]
+    required_default = _IRON_LAW_REQUIRED[mode]
     required = 1 if hotfix_reason else required_default
 
     # v0.10.3 — product mode strict: any declared gate currently failing blocks
@@ -737,7 +737,7 @@ def complete(
         f = state.get_feature(fid) or f
 
     declared = count_declared_evidence(
-        f, window_days=IRON_LAW_D_DEFAULT_WINDOW_DAYS,
+        f, window_days=IRON_LAW_WINDOW_DAYS,
     )
     if declared < required:
         # Keep state.yaml untouched on reject. If hotfix added an entry above
@@ -751,8 +751,8 @@ def complete(
         res.action = "queried"
         reason_suffix = f", hotfix" if hotfix_reason else ""
         res.message = (
-            f"cannot complete — Iron Law D: {declared}/{required} declared evidence "
-            f"in last {IRON_LAW_D_DEFAULT_WINDOW_DAYS} days (mode: {mode}{reason_suffix}). "
+            f"cannot complete — Iron Law: {declared}/{required} declared evidence "
+            f"in last {IRON_LAW_WINDOW_DAYS} days (mode: {mode}{reason_suffix}). "
             f"Add more with --evidence, or use --hotfix-reason for emergency override."
         )
         return res
@@ -1069,7 +1069,7 @@ def main(argv: list[str] | None = None) -> int:
             "kind for --evidence or --block (free string; conventional values: "
             "test, manual_check, user_feedback, reviewer_check, blocker, hotfix, "
             "generic, trivial). 'trivial' (v0.10.7, cosmic-suika I-006) marks a "
-            "tiny change for the audit reader — does NOT exempt Iron Law D, "
+            "tiny change for the audit reader — does NOT exempt Iron Law, "
             "still counts toward the declared evidence threshold."
         ),
     )
@@ -1077,12 +1077,12 @@ def main(argv: list[str] | None = None) -> int:
         "--block", default=None, help="block feature with this reason"
     )
     parser.add_argument(
-        "--complete", action="store_true", help="transition to done (requires gate_5 pass + Iron Law D declared evidence)"
+        "--complete", action="store_true", help="transition to done (requires gate_5 pass + Iron Law declared evidence)"
     )
     parser.add_argument(
         "--hotfix-reason",
         default=None,
-        help="Iron Law D hotfix override (v0.9.3): collapse product mode to 1 declared evidence. Reason is logged as kind=hotfix evidence. Use for true emergencies only — audit trail records the reason.",
+        help="Iron Law hotfix override (v0.9.3): collapse product mode to 1 declared evidence. Reason is logged as kind=hotfix evidence. Use for true emergencies only — audit trail records the reason.",
     )
     parser.add_argument(
         "--deactivate",

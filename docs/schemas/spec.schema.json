@@ -27,7 +27,7 @@
         "mode": {
           "type": "string",
           "enum": ["prototype", "product"],
-          "description": "v0.9.6 — quality / ceremony tier switch. `prototype` lightens kickoff (1 bullet per agent), retro (machine sections only), design-review (skip autowire), and Iron Law D (1 declared evidence). `product` (default when omitted) keeps the full strict path."
+          "description": "v0.9.6 — quality / ceremony tier switch. `prototype` lightens kickoff (1 bullet per agent), retro (machine sections only), design-review (skip autowire), and Iron Law (1 declared evidence). `product` (default when omitted) keeps the full strict path."
         },
         "language": {
           "type": "string",

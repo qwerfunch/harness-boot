@@ -185,7 +185,7 @@ class EndToEndSmokeTests(HarnessFixture, unittest.TestCase):
         st = State.load(self.harness)
         self.assertEqual(len(st.get_feature("F-1")["evidence"]), 1)
 
-    def test_complete_action_enforces_iron_law_d(self):
+    def test_complete_action_enforces_iron_law(self):
         """Prototype mode — 1 declared suffices, gate_5 required."""
         work.activate(self.harness, "F-1")
         work.record_gate(self.harness, "F-1", "gate_5", "pass")

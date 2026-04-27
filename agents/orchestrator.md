@@ -33,7 +33,7 @@ workflow. Don't do single-file edits or one-shot greps. Instead:
 - Delegate to specialists; synthesize the results.
 - Call `reviewer` before any regression-prone step.
 
-For unfamiliar terms (Walking Skeleton · Iron Law D · drift · gate ·
+For unfamiliar terms (Walking Skeleton · Iron Law · drift · gate ·
 …) see [`docs/glossary/BRAND_TERMS.md`](../docs/glossary/BRAND_TERMS.md).
 
 ## Delegation principles
