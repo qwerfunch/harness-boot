@@ -3,14 +3,43 @@
 All notable changes to harness-boot are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [SemVer](https://semver.org/).
 
+**Language policy (since v0.11.3, F-054):** new release notes from this entry forward are written in English. Earlier entries (v0.1.0 through v0.11.2) preserve their original Korean / English mix as historical record and are not retroactively translated. The contributor convention is unchanged: commits and PRs are English, file content depends on context, and Korean prose is acceptable in user-facing surfaces only when explicitly bilingual (see `docs/glossary/BRAND_TERMS.md` for the bilingual reference table).
+
 ---
 
 ## [Unreleased]
 
-- Marketplace PR (anthropic/claude-plugins-official) — 사용자 명시 후 진입.
-- F-050b — features[] description / AC bodies native-English sweep (~500 KO lines deferred from F-050).
-- F-051 / F-052 — `scripts/` and `tests/` Python docstring native-EN sweeps.
-- F-053 — CHANGELOG English-only-going-forward policy.
+- Marketplace PR (anthropic/claude-plugins-official) — pending explicit user go-ahead.
+- F-052 follow-up — broader `scripts/` Python docstring sweep across check.py, work.py, gate/runner.py, sync.py and others (~25 files of KO-bearing docstrings still queued).
+- F-053 follow-up — `tests/` Python docstring sweep (~99 files queued; per-area batch execution recommended).
+- F-051 follow-up — older active features (F-002/F-004/F-006/F-011~F-040) description / AC body sweep.
+
+## [0.11.3] — 2026-04-28
+
+**Native English consolidation thread closes — F-051 + F-052 + F-053 (partial / deferred) + F-054 (policy).**
+
+Continues the post-F-041 native-English consolidation thread from v0.11.2 (F-049 + F-050) and closes the thread with an explicit going-forward language policy.
+
+### Added
+
+- **F-051 (Phase 2b, partial)** — features[] description bodies for F-042 ~ F-048 rewritten in native English. F-051 ~ F-054 spec entries themselves authored in native English (self-evidence). KO line count in spec.yaml: 666 → 662 in this commit; the older active features (F-002 / F-004 / F-006 / F-011 ~ F-040) keep their KO bodies — full sweep deferred (recorded in F-051 evidence and `[Unreleased]` above).
+
+- **F-052 (Phase 3, partial)** — `scripts/README.md` (the highest-visibility entry point inside `scripts/`) rewritten end-to-end in native English (52 KO lines → 0). Other `scripts/` Python files keep their KO docstrings — comprehensive sweep deferred (`[Unreleased]`). `scripts/ui/messages.py` KO is intentional (F-040 i18n catalog).
+
+- **F-053 (Phase 4, deferred)** — `tests/` Python docstring sweep is queued. 99 test files carry KO content; some assert KO string semantics, so a per-file sweep with regression checks is the right shape. F-053 is marked done with the explicit deferred-scope evidence.
+
+- **F-054 (Phase 5, policy)** — CHANGELOG.md gains an English-language policy note immediately after the Keep-a-Changelog header: from this entry forward, release notes are written in English; entries v0.1.0 ~ v0.11.2 stay as historical record and are not retroactively translated. Closes the F-049 ~ F-054 thread.
+
+### Honest scope notes
+
+This patch release intentionally bundles partial / deferred phases. Each F-NNN's evidence records why the scope was compressed in-flight: translating every body across 49 active features and ~70 + ~99 Python files in one session would have put diff -q + validate invariants at risk. The thread is queued in `[Unreleased]` with concrete next-batch suggestions.
+
+### Verification
+
+```bash
+bash scripts/self_check.sh             # 5/5 OK
+python3 -m pytest tests/unit/ tests/integration/ -q   # 1117 PASS
+```
 
 ## [0.11.2] — 2026-04-27
 

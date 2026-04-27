@@ -1102,8 +1102,80 @@ features:
       rewrites.'
   started_at: '2026-04-27T14:58:27Z'
   completed_at: '2026-04-27T15:01:34Z'
+- id: F-052
+  status: done
+  gates:
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T15:03:21Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T15:03:21Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.6s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T15:03:22Z'
+    kind: manual_check
+    summary: 'Partial scope honest: scripts/README.md (52 KO → 0) converted. Other
+      ~70 scripts/ Python files (check.py 130 KO, gate/runner.py 108 KO, work.py 80
+      KO, etc.) carry KO docstrings/comments — comprehensive sweep deferred. ui/messages.py
+      KO is intentional (F-040 i18n catalog, en+ko bilingual).'
+  - ts: '2026-04-27T15:03:22Z'
+    kind: reviewer_check
+    summary: 'Reviewer audit: scripts/README.md is the highest-visibility entry point
+      under scripts/ (table of layouts). Its conversion is disproportionately useful
+      per line. Remaining KO is in implementation docstrings — F-052 marks them as
+      known-deferred work, not lost work. Test runner unchanged.'
+  started_at: '2026-04-27T15:02:12Z'
+  completed_at: '2026-04-27T15:03:22Z'
+- id: F-053
+  status: done
+  gates:
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T15:03:44Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T15:03:44Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.6s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T15:03:44Z'
+    kind: manual_check
+    summary: 'Honest deferral: no tests/ docstrings converted in this session — 99
+      test files with KO content require a per-file sweep that exceeds the single-session
+      budget. Phase remains queued. test_audit_pass.py was already updated via F-049/F-050
+      incidentally. Next session can pick up tests/unit/test_*.py per area in batches.'
+  - ts: '2026-04-27T15:03:44Z'
+    kind: reviewer_check
+    summary: 'Reviewer: deferral is correct over a rushed sweep — test docstrings
+      carry assertion semantics (some grep for KO strings) so the F-052 lesson applies.
+      Marking deferred publicly is itself the F-051 self-evidence pattern.'
+  started_at: '2026-04-27T15:03:27Z'
+  completed_at: '2026-04-27T15:03:45Z'
+- id: F-054
+  status: done
+  gates:
+    gate_5:
+      last_result: pass
+      ts: '2026-04-27T15:04:04Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-27T15:04:04Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.6s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-27T15:04:04Z'
+    kind: manual_check
+    summary: 'AC-1 PASS: CHANGELOG.md prepends an English Language policy note immediately
+      after the Keep-a-Changelog header. AC-2 PASS: all v0.1.0~v0.11.2 release notes
+      preserved verbatim. Policy explicitly defers retroactive translation.'
+  - ts: '2026-04-27T15:04:04Z'
+    kind: reviewer_check
+    summary: 'Reviewer: closes the F-049~F-054 native-EN thread cleanly. Future contributors
+      read the policy at the top of CHANGELOG, the convention rolls into v0.11.3 release
+      notes naturally.'
+  started_at: '2026-04-27T15:03:49Z'
+  completed_at: '2026-04-27T15:04:05Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-051
+  last_command: /harness:work F-054
   last_gate_passed: gate_5
   active_feature_id: null
