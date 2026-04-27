@@ -712,7 +712,7 @@ features:
   started_at: '2026-04-27T07:34:24Z'
   completed_at: '2026-04-27T08:05:07Z'
 - id: F-038
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -740,9 +740,9 @@ features:
       note · 10 new tests (7 routed_agents + 3 dashboard agent_chain) + 1011 unit
       / 26 integration regression 0 · self_check 5/5 · gate_0/5 PASS
   started_at: '2026-04-27T08:11:53Z'
-  completed_at: null
+  completed_at: '2026-04-27T08:18:36Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
   last_command: /harness:work F-038
   last_gate_passed: gate_5
-  active_feature_id: F-038
+  active_feature_id: null
