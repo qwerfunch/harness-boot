@@ -1675,8 +1675,37 @@ features:
       5/5 OK.
   started_at: '2026-04-28T16:39:08Z'
   completed_at: '2026-04-28T16:40:58Z'
+- id: F-076
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-28T16:48:54Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-28T16:48:55Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-28T16:48:54Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (12.4s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-28T16:48:55Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.7s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-28T16:49:02Z'
+    kind: manual_check
+    summary: TryInitialSyncTests + SoftCliTests + MarkdownContractTests 11/11 PASS
+      — try_initial_sync exists with status-dict contract · sync.py --soft CLI exits
+      0 on success/skip/schema-fail · init.md and SKILL.md both contain --soft invocation.
+      F-075's InitialSyncAutowireTests 5/5 still PASS after autowire refactor delegated
+      to try_initial_sync (stderr [warn] contract preserved). Total 1120 unit tests
+      pass · self_check 5/5 OK.
+  started_at: '2026-04-28T16:45:42Z'
+  completed_at: '2026-04-28T16:50:05Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-075
+  last_command: /harness:work F-076
   last_gate_passed: gate_5
   active_feature_id: null
