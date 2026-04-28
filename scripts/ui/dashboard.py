@@ -30,11 +30,26 @@ Output shape (illustrative):
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Sequence
+
+try:
+    import yaml
+except ImportError:  # pragma: no cover — pyyaml is a hard runtime dep
+    yaml = None  # type: ignore[assignment]
 
 from .intent_planner import Suggestion
 from .lang import resolve_lang
 from .messages import t
+
+
+# F-079 — same default as F-078 (scripts/check.py:_DEFAULT_COVERAGE_THRESHOLD).
+# Kept duplicated rather than imported to avoid pulling check.py into the
+# dashboard import path; if both ever drift, tests for either side will
+# surface the inconsistency.
+_DEFAULT_COVERAGE_THRESHOLD = 0.80
+# Number of below-threshold features that triggers the red alert line.
+_DEBT_ALERT_THRESHOLD = 5
 
 
 # F-043 — single sources of truth moved out:
@@ -49,6 +64,55 @@ from .dashboard_config import (  # noqa: E402
     max_pending_list as _max_pending_list,
     max_unregistered_list as _max_unregistered_list,
 )
+
+
+def _load_coverage(
+    harness_dir: Path | None, fid: str
+) -> tuple[float | None, list[dict]]:
+    """F-079 — read F-077 fingerprint and compute coverage ratio.
+
+    Returns ``(coverage, mismatches)`` where ``coverage`` is the
+    arithmetic mean of ``ac_value / description_value`` across recorded
+    mismatches (1.0 when the mismatches list is empty), or ``None`` if
+    the fingerprint file is missing / unparseable. ``mismatches`` is
+    the raw list passed back so callers can render per-metric detail.
+    """
+    if harness_dir is None or yaml is None:
+        return None, []
+    fp_path = harness_dir / "_workspace" / "coverage" / f"{fid}.yaml"
+    if not fp_path.is_file():
+        return None, []
+    try:
+        fp = yaml.safe_load(fp_path.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return None, []
+    mismatches = fp.get("mismatches") or []
+    if not mismatches:
+        return 1.0, []
+    ratios: list[float] = []
+    detailed: list[dict] = []
+    for m in mismatches:
+        try:
+            d = int(m.get("description_value", 0))
+            a = int(m.get("ac_value", 0))
+        except (TypeError, ValueError):
+            continue
+        if d <= 0:
+            continue
+        ratios.append(a / d)
+        detailed.append({"metric": m.get("metric", ""), "ac": a, "desc": d})
+    if not ratios:
+        return None, []
+    return sum(ratios) / len(ratios), detailed
+
+
+def _format_coverage_line(coverage: float, detailed: list[dict]) -> str:
+    pct = int(round(coverage * 100))
+    parts = [f"{d['ac']}/{d['desc']} {d['metric']}" for d in detailed]
+    detail = ", ".join(parts)
+    if detail:
+        return f"  coverage: {pct}% ({detail})"
+    return f"  coverage: {pct}%"
 
 
 def _feature_title(fid: str, spec: dict | None) -> str:
@@ -90,7 +154,11 @@ def _latest_blocker_note(f: dict) -> str | None:
     return None
 
 
-def _render_active_block(f: dict, spec: dict | None, lang: str) -> list[str]:
+def _render_active_block(
+    f: dict, spec: dict | None, lang: str,
+    *,
+    harness_dir: Path | None = None,
+) -> list[str]:
     fid = f.get("id", "?")
     title = _feature_title(fid, spec)
     gates = f.get("gates", {}) or {}
@@ -107,6 +175,9 @@ def _render_active_block(f: dict, spec: dict | None, lang: str) -> list[str]:
             evidence=evidence_count,
         )
     )
+    coverage, detailed = _load_coverage(harness_dir, fid)
+    if coverage is not None and coverage < 1.0:
+        lines.append(_format_coverage_line(coverage, detailed))
     blocker = _latest_blocker_note(f)
     if blocker:
         lines.append(t("blocker_line", lang=lang, note=blocker))
@@ -114,6 +185,48 @@ def _render_active_block(f: dict, spec: dict | None, lang: str) -> list[str]:
     if agents:
         lines.append(f"  {t('agent_chain', lang=lang)}: {_render_chain(agents, groups)}")
     return lines
+
+
+def _render_coverage_debt(
+    features: list, harness_dir: Path | None,
+    threshold: float, lang: str,
+) -> list[str]:
+    """F-079 — aggregate "Coverage debt" section.
+
+    Counts features whose F-077 fingerprint has at least one mismatch
+    and the subset whose mean ratio falls below the threshold. When the
+    below-threshold count exceeds ``_DEBT_ALERT_THRESHOLD``, emits a
+    leading alert line so the user sees the backpressure even when
+    looking at an unrelated active feature.
+    """
+    if harness_dir is None:
+        return []
+    with_mismatches: list[str] = []
+    below_threshold: list[str] = []
+    for f in features:
+        if not isinstance(f, dict):
+            continue
+        fid = f.get("id")
+        if not isinstance(fid, str):
+            continue
+        coverage, detailed = _load_coverage(harness_dir, fid)
+        if coverage is None or coverage >= 1.0:
+            continue
+        with_mismatches.append(fid)
+        if coverage < threshold:
+            below_threshold.append(fid)
+    if not with_mismatches:
+        return []
+    block: list[str] = []
+    if len(below_threshold) > _DEBT_ALERT_THRESHOLD:
+        block.append(
+            f"⚠ Coverage debt high — review carry-forward before next feature"
+        )
+    block.append(
+        f"Coverage debt: {len(with_mismatches)} features with mismatches "
+        f"({len(below_threshold)} below threshold {threshold:.2f})"
+    )
+    return block
 
 
 def _resolve_agent_chain(
@@ -283,6 +396,7 @@ def render(
     suggestions: Sequence[Suggestion],
     *,
     lang: str | None = None,
+    harness_dir: Path | None = None,
 ) -> str:
     """Render the dashboard as a single string ending with a newline.
 
@@ -320,7 +434,11 @@ def render(
     }
 
     if isinstance(active_id, str) and active_id in by_id:
-        sections.append(_render_active_block(by_id[active_id], spec, lang))
+        sections.append(
+            _render_active_block(
+                by_id[active_id], spec, lang, harness_dir=harness_dir,
+            )
+        )
 
     other_block = _render_other_in_progress(features, active_id, spec, lang)
     if other_block:
@@ -337,6 +455,12 @@ def render(
     unregistered_block, unregistered_count = _render_unregistered(features, spec, lang)
     if unregistered_block:
         sections.append(unregistered_block)
+
+    debt_block = _render_coverage_debt(
+        features, harness_dir, _DEFAULT_COVERAGE_THRESHOLD, lang,
+    )
+    if debt_block:
+        sections.append(debt_block)
 
     # Empty-state hint when no features are tracked at all.
     if not by_id and not features and not unregistered_count:

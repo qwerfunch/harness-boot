@@ -380,5 +380,115 @@ class WorkDashboardCliTests(unittest.TestCase):
         self.assertEqual(code, 2)
 
 
+class CoverageGaugeTests(unittest.TestCase):
+    """F-079 — dashboard surfaces coverage % from F-077 fingerprints.
+
+    Reads `_workspace/coverage/F-N.yaml` (written by
+    `_autowire_quant_lint`) and renders a coverage line in the active
+    block, plus an aggregate "Coverage debt" section with an alert when
+    too many features fall below threshold.
+    """
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp = Path(self._tmp.name)
+        self.harness = self.tmp / ".harness"
+        self.harness.mkdir()
+        self.coverage_dir = self.harness / "_workspace" / "coverage"
+        self.coverage_dir.mkdir(parents=True)
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def _write_fp(self, fid: str, mismatches: list[dict]) -> None:
+        (self.coverage_dir / f"{fid}.yaml").write_text(
+            yaml.safe_dump(
+                {
+                    "feature_id": fid,
+                    "description_claims": [],
+                    "ac_claims": [],
+                    "mismatches": mismatches,
+                },
+                allow_unicode=True,
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+    def test_coverage_line_rendered_for_active_with_mismatches(self):
+        self._write_fp(
+            "F-1",
+            [{"metric": "chaintemplate", "description_value": 13, "ac_value": 5}],
+        )
+        st = _state(
+            active="F-1",
+            features=[_feature("F-1", status="in_progress")],
+        )
+        out = dashboard.render(
+            st, _spec(("F-1", "Templates")), [], lang="ko",
+            harness_dir=self.harness,
+        )
+        self.assertIn("coverage:", out)
+        self.assertIn("38%", out)  # 5/13 ≈ 0.385
+        self.assertIn("chaintemplate", out)
+
+    def test_no_coverage_line_when_full_match(self):
+        self._write_fp("F-1", [])  # no mismatches
+        st = _state(
+            active="F-1",
+            features=[_feature("F-1", status="in_progress")],
+        )
+        out = dashboard.render(
+            st, _spec(("F-1", "Templates")), [], lang="ko",
+            harness_dir=self.harness,
+        )
+        self.assertNotIn("coverage:", out)
+
+    def test_no_coverage_line_when_fingerprint_missing(self):
+        st = _state(
+            active="F-1",
+            features=[_feature("F-1", status="in_progress")],
+        )
+        out = dashboard.render(
+            st, _spec(("F-1", "Templates")), [], lang="ko",
+            harness_dir=self.harness,
+        )
+        self.assertNotIn("coverage:", out)
+
+    def test_coverage_debt_section_with_high_alert(self):
+        # 6 features with mismatches, all below 0.80 threshold → alert
+        for i in range(1, 7):
+            self._write_fp(
+                f"F-{i}",
+                [{"metric": "rule", "description_value": 100, "ac_value": 10}],
+            )
+        st = _state(
+            features=[_feature(f"F-{i}", status="in_progress") for i in range(1, 7)],
+        )
+        out = dashboard.render(
+            st, _spec(*[(f"F-{i}", f"Feat{i}") for i in range(1, 7)]), [],
+            lang="ko", harness_dir=self.harness,
+        )
+        self.assertIn("Coverage debt", out)
+        self.assertIn("6 features", out)
+        # Alert when below-threshold count > 5
+        self.assertIn("⚠", out)
+
+    def test_render_without_harness_dir_is_unchanged(self):
+        # Back-compat: existing callers that omit harness_dir get the same
+        # output as before.
+        st = _state(
+            active="F-1",
+            features=[_feature("F-1", status="in_progress")],
+        )
+        out_with = dashboard.render(
+            st, _spec(("F-1", "F1")), [], lang="ko", harness_dir=None,
+        )
+        out_without = dashboard.render(
+            st, _spec(("F-1", "F1")), [], lang="ko",
+        )
+        self.assertEqual(out_with, out_without)
+
+
 if __name__ == "__main__":
     unittest.main()

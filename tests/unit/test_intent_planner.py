@@ -347,5 +347,56 @@ class TitleLookupTests(unittest.TestCase):
         self.assertIn("F-42", out[0].label)
 
 
+class CoverageRecommendationTests(unittest.TestCase):
+    """F-079 — when active feature coverage < threshold, intent_planner
+    surfaces a 'review carry-forward' recommendation ahead of the usual
+    gate / completion suggestions. This pre-empts the F-078 complete()
+    rejection by giving the user a chance to either raise coverage or
+    document explicit carry-forward in the retro.
+    """
+
+    def test_below_threshold_prepends_carry_forward_suggestion(self):
+        st = _state(
+            active="F-1",
+            features=[
+                _feature(
+                    "F-1",
+                    status="in_progress",
+                    gates={"gate_5": {"last_result": "pass"}},
+                    evidence=[{"kind": "test", "summary": "x"}],
+                )
+            ],
+        )
+        out = suggest(st, None, coverage=0.38)
+        self.assertTrue(out)
+        self.assertIn("carry-forward", out[0].label.lower())
+        self.assertIn("38", out[0].label)
+        self.assertEqual(out[0].action, "review_carry_forward")
+
+    def test_coverage_none_unchanged(self):
+        st = _state(
+            active="F-1",
+            features=[_feature("F-1", status="in_progress")],
+        )
+        baseline = suggest(st, None)
+        with_none = suggest(st, None, coverage=None)
+        self.assertEqual(
+            [s.label for s in with_none],
+            [s.label for s in baseline],
+        )
+
+    def test_coverage_full_unchanged(self):
+        st = _state(
+            active="F-1",
+            features=[_feature("F-1", status="in_progress")],
+        )
+        baseline = suggest(st, None)
+        with_full = suggest(st, None, coverage=1.0)
+        self.assertEqual(
+            [s.label for s in with_full],
+            [s.label for s in baseline],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

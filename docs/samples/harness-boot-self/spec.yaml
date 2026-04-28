@@ -2537,6 +2537,75 @@ features:
       - "AC-7: F-078 mirrored on both spec.yaml copies. bash scripts/self_check.sh 5/5 PASS · regression 0 across the existing 1134 unit tests."
       - "AC-8: F-078 completed via the work.py 4-verb cycle (activate → run-gate gate_0 + gate_5 → declared evidence → complete) — Phase 2 dogfood."
 
+  - id: "F-079"
+    name: "Dashboard coverage gauge — surface F-077 fingerprint percentages without invoking check.py"
+    type: "feature"
+    description: |
+      Third and final step in the F-077 → F-078 → F-079 thread. F-077
+      surfaced description-vs-AC quantitative mismatches as stderr hints
+      at activate time; F-078 promoted the mismatch into a blocking drift
+      kind so complete() rejects under-covered transitions. F-079 closes
+      the loop on visibility: the no-args dashboard now reads the same
+      fingerprint files and shows the coverage percentage per feature
+      so the gauge is always one keystroke away.
+
+      `scripts/ui/dashboard.render()` gains an optional `harness_dir`
+      kwarg. When provided, the active-block renderer reads
+      `_workspace/coverage/F-N.yaml` and appends one line:
+
+          coverage: 38% (5/13 chaintemplate, 14/74 rule)
+
+      Coverage is computed as the arithmetic mean of `ac_value /
+      description_value` across recorded mismatches. A feature without
+      any mismatches (or without a fingerprint file) shows no coverage
+      line — the assumption is that no quantitative claims means no
+      coverage gauge to compute.
+
+      A new dashboard section "Coverage debt" surfaces aggregate stats:
+      the count of features with at least one mismatch and the count
+      whose coverage percentage falls below the configured threshold
+      (default 0.80, same as F-078). When the under-threshold count
+      exceeds 5 a red alert line is rendered above the section so the
+      user sees backpressure even when looking at a different active
+      feature.
+
+      `scripts/ui/intent_planner.suggest()` gains a coverage-aware
+      recommendation. When the active feature's coverage falls below
+      the threshold, the intent_planner surfaces "review carry-forward
+      debt before completing" as the top suggestion — pre-empting the
+      complete() rejection from F-078 by giving the user a chance to
+      either increase coverage or document explicit carry-forward in
+      the retro.
+
+      `scripts/work.py` propagates harness_dir to dashboard.render so
+      the existing call site picks up the new kwarg without further
+      wiring.
+    modules:
+      - "scripts/ui/dashboard.py"
+      - "scripts/ui/intent_planner.py"
+      - "scripts/work.py"
+      - "tests/unit/test_dashboard.py"
+      - "tests/unit/test_intent_planner.py"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "_load_coverage(harness_dir, fid) returns float in [0,1] when fingerprint has mismatches; returns None when fingerprint missing or empty"
+      - "_render_active_block emits a coverage line when harness_dir provided and coverage < 1.0"
+      - "_render_coverage_debt section counts features with at least one mismatch and features below threshold"
+      - "alert line rendered when below-threshold count > 5"
+      - "intent_planner suggests 'review carry-forward debt' when active feature coverage < threshold"
+      - "render() backward compat — harness_dir omitted produces identical output to the v0.11.x baseline"
+    acceptance_criteria:
+      - "AC-1: scripts/ui/dashboard.py adds `_load_coverage(harness_dir: Path | None, fid: str) -> float | None`. Reads the F-077 fingerprint at `_workspace/coverage/{fid}.yaml`, computes the mean of `ac_value / description_value` across mismatches. Empty mismatches list → returns 1.0 (no over-promise). Missing file or harness_dir=None → returns None. Unparseable YAML → returns None (no exception)."
+      - "AC-2: `render()` gains `harness_dir: Path | None = None` kwarg. When provided, `_render_active_block` appends a `coverage: NN% (...)` line below the progress line for any feature whose coverage is < 1.0. Format includes per-mismatch detail in parentheses (`5/13 chaintemplate, 14/74 rule`)."
+      - "AC-3: New dashboard section `_render_coverage_debt(harness_dir, threshold, lang)` is appended after the pending-block. It lists `Coverage debt: N features with mismatches (M below threshold X.XX)`. When `M > 5`, an alert line `⚠ Coverage debt high — review carry-forward before next feature` precedes the count."
+      - "AC-4: scripts/ui/intent_planner.py — `_suggestions_for_active(f, spec, *, coverage=None)` accepts a coverage float kwarg. When `coverage is not None and coverage < threshold` (threshold reused from F-078 default 0.80), prepends a Suggestion with action 'review-carry-forward' and rationale 'feature coverage NN% < threshold X.XX — explicit carry-forward to retro recommended'."
+      - "AC-5: scripts/work.py:_dashboard_snapshot threads harness_dir into both `dashboard.render` and `intent_planner.suggest`. Existing JSON output preserved; new `coverage` field added per-feature in JSON snapshots."
+      - "AC-6: tests/unit/test_dashboard.py adds `CoverageGaugeTests` (5 cases): mismatch fingerprint → coverage line rendered · empty mismatches → no coverage line · missing fingerprint → no coverage line · debt count above 5 emits alert · render without harness_dir is identical to baseline (back-compat)."
+      - "AC-7: tests/unit/test_intent_planner.py adds `CoverageRecommendationTests` (3 cases): active feature with coverage < threshold → suggestion prepended · coverage = None → suggestions unchanged · coverage = 1.0 → suggestions unchanged."
+      - "AC-8: F-079 mirrored on both spec.yaml copies. bash scripts/self_check.sh 5/5 PASS · regression 0 across 1141+ unit tests."
+      - "AC-9: F-079 completed via the work.py 4-verb cycle (activate → run-gate gate_0 + gate_5 → declared evidence → complete) — Phase 2 dogfood."
+      - "AC-10: F-077 + F-078 + F-079 bundle together as v0.12.0 minor release (substantive Iron Law hardening across diagnose / block / surface) — first minor bump since v0.11.0 vision consolidation; user confirmation memorialized in CHANGELOG."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

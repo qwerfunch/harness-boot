@@ -1196,13 +1196,24 @@ def dashboard_snapshot(harness_dir: Path) -> dict:
     """
     state = State.load(harness_dir)
     spec = _load_spec(harness_dir)
-    suggestions = _intent_planner.suggest(state.data, spec)
+
+    # F-079 — read active feature's coverage from F-077 fingerprint so the
+    # intent planner can prepend a carry-forward suggestion when coverage
+    # falls below threshold. This pre-empts the F-078 complete() drift
+    # rejection by surfacing the gap one step earlier.
+    coverage: float | None = None
+    active_id = state.data.get("session", {}).get("active_feature_id")
+    if isinstance(active_id, str):
+        coverage, _ = _dashboard._load_coverage(harness_dir, active_id)
+
+    suggestions = _intent_planner.suggest(state.data, spec, coverage=coverage)
     return {
         "state": state.data,
         "spec": spec,
         "suggestions": suggestions,
         "counts": state.feature_counts(),
         "active_feature_id": state.data["session"].get("active_feature_id"),
+        "coverage": coverage,
     }
 
 
@@ -1536,7 +1547,8 @@ def main(argv: list[str] | None = None) -> int:
                 else:
                     sys.stdout.write(
                         _dashboard.render(
-                            snap["state"], snap["spec"], snap["suggestions"]
+                            snap["state"], snap["spec"], snap["suggestions"],
+                            harness_dir=args.harness_dir,
                         )
                     )
                 return 0

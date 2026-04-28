@@ -47,6 +47,7 @@ Action = Literal[
     "resume",
     "start_feature",
     "init_feature",
+    "review_carry_forward",
 ]
 
 
@@ -269,13 +270,31 @@ def _suggestions_for_idle(
     return out
 
 
-def suggest(state_data: dict, spec: dict | None = None) -> list[Suggestion]:
+# F-079 — same default as scripts/check.py:_DEFAULT_COVERAGE_THRESHOLD.
+# Kept duplicated to keep intent_planner free of a check.py import; tests
+# on either side surface drift if the value diverges.
+_DEFAULT_COVERAGE_THRESHOLD = 0.80
+
+
+def suggest(
+    state_data: dict,
+    spec: dict | None = None,
+    *,
+    coverage: float | None = None,
+) -> list[Suggestion]:
     """Return up to 3 suggestions ordered by recommendation strength.
 
     Args:
         state_data: parsed ``state.yaml`` dict (``State.load(...).data``).
         spec: optional parsed ``spec.yaml`` dict — used for title lookup
             so labels can show the user-friendly name instead of ``F-N``.
+        coverage: optional coverage ratio for the active feature, computed
+            by ``ui.dashboard._load_coverage`` (F-079). When provided and
+            below ``_DEFAULT_COVERAGE_THRESHOLD``, a "review carry-forward
+            debt" suggestion is prepended ahead of gate / completion
+            suggestions so the user can pre-empt the F-078 ``complete()``
+            rejection by either raising coverage or documenting explicit
+            carry-forward in the retro.
 
     Returns:
         Ordered list of ``Suggestion`` (0 - 3 items). First item is the
@@ -299,6 +318,18 @@ def suggest(state_data: dict, spec: dict | None = None) -> list[Suggestion]:
         out = _suggestions_for_active(by_id[active_id], spec)
     else:
         out = _suggestions_for_idle(features, spec)
+
+    if coverage is not None and coverage < _DEFAULT_COVERAGE_THRESHOLD:
+        pct = int(round(coverage * 100))
+        threshold_pct = int(round(_DEFAULT_COVERAGE_THRESHOLD * 100))
+        carry_suggestion = Suggestion(
+            label=(
+                f"Review carry-forward debt — coverage {pct}% < "
+                f"threshold {threshold_pct}% (explicit carry to retro before complete)"
+            ),
+            action="review_carry_forward",
+        )
+        out = [carry_suggestion] + list(out)
 
     return out[:3]
 

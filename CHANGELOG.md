@@ -9,6 +9,45 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
+### Queued
+
+- Marketplace submission to anthropic/claude-plugins-official — submission templated text prepared; user submits via https://claude.ai/settings/plugins/submit.
+- F-052/F-053/F-051 docstring sweep follow-ups — see prior queue.
+- F-073 (`read_events(tail=N)`) and F-074 (`canonical_hash` mtime cache) — v0.11.11 cumulative-slowdown audit queue.
+- F-080 (kickoff "Quantitative completeness" section) and F-081 (carry-forward debt escalation) — second sequencing pass after external dogfood validates F-077/F-078/F-079 in production.
+
+## [0.12.0] — 2026-04-29
+
+**Iron Law structural shift — procedural completion → substantive coverage gating (F-077 + F-078 + F-079).**
+
+A three-feature thread that closes a field-discovered failure mode where Iron Law (BR-004) passed despite features covering only ~10–15% of the spec's quantitative targets. BR-004 verified procedural completion (`gate_5 = pass` plus declared evidence count) but did not look inside evidence to confirm the numbers actually matched the spec's promises. A downstream user surfaced the symptom: features whose `description` claimed "13 ChainTemplate" / "74 propagation rule" / "35 Heuristic tools" reached `done` with implementations covering ~38% / ~13% / ~3% of those targets because the AC text happily accepted partial regression PASS and the carry-forward bullets stayed buried in retro Deferred sections.
+
+This release reshapes the response chain end-to-end. F-077 ships the diagnose layer (activate-time stderr lint surfacing description-vs-AC numeric mismatches and persisting fingerprints under `_workspace/coverage/F-N.yaml`). F-078 promotes the lint into a blocking drift kind so `complete()` rejects under-covered transitions; the F-072 fast path absorbs the new detector without paying for the full 13-detector flow. F-079 surfaces the same data in the dashboard and prepends a "review carry-forward debt" suggestion in the intent planner so users see backpressure before they hit the `complete()` rejection.
+
+The Iron Law itself stays procedural by design — substantive coverage gating now sits on the drift surface alongside `Code` / `Stale` / `AnchorIntegration` (F-048's lineage), with `--hotfix-reason` as the unified escape hatch for intentional carry-forward.
+
+This is a minor bump (first since v0.11.0 vision consolidation) because the Iron Law gate semantics widen from "procedural pass" to "procedural pass + substantive coverage drift". Every project that runs `complete()` after upgrade will see the new gate fire whenever F-077 fingerprints accumulate. Patch-shape was considered but rejected: the user-visible behavior of `complete()` changes meaningfully and downstream dogfood projects need to know about the new gate so they can either raise coverage or document explicit carry-forward in retros.
+
+### Added — Dashboard coverage gauge + intent planner carry-forward recommendation (F-079)
+
+Third and final step in the F-077 → F-078 → F-079 thread. The no-args dashboard now reads the F-077 fingerprint files and surfaces:
+
+* A `coverage: NN% (5/13 chaintemplate, …)` line under the active-feature progress line whenever the feature's mean ratio is below 1.0.
+* A `Coverage debt: N features with mismatches (M below threshold X.XX)` aggregate section near the bottom.
+* An `⚠ Coverage debt high — review carry-forward before next feature` alert line when the below-threshold count exceeds 5.
+
+`scripts/ui/dashboard.render()` gains an optional `harness_dir` kwarg; when omitted the output is byte-identical to the v0.11.x baseline (full back-compat). `_load_coverage(harness_dir, fid)` is the shared reader.
+
+`scripts/ui/intent_planner.suggest()` gains an optional `coverage` kwarg. When the active feature's coverage falls below `_DEFAULT_COVERAGE_THRESHOLD` (0.80 by default), a `review_carry_forward` Suggestion is prepended ahead of the usual gate / completion suggestions. This pre-empts the F-078 `complete()` rejection by surfacing the gap one step earlier — the user can either raise coverage or document explicit carry-forward in the retro before hitting the gate.
+
+`scripts/work.py:_dashboard_snapshot` threads `harness_dir` into both `dashboard.render` and `intent_planner.suggest`. JSON snapshots gain a `coverage` field per active feature.
+
+#### Tests for F-079
+
+- `tests/unit/dashboard/test_dashboard.py` — `CoverageGaugeTests` (5 cases: mismatch fingerprint → coverage line · empty mismatches → no line · missing fingerprint → no line · debt count above 5 → alert · render without harness_dir is byte-identical to baseline).
+- `tests/unit/test_intent_planner.py` — `CoverageRecommendationTests` (3 cases: below-threshold prepends carry-forward suggestion · `coverage=None` unchanged · `coverage=1.0` unchanged).
+- 1149 unit tests pass (regression 0; +8 new from F-079). `bash scripts/self_check.sh` 5/5 OK.
+
 ### Added — 13th drift kind `Coverage` — quant lint becomes a `complete()` blocker (F-078)
 
 Second step in the F-077 → F-078 → F-079 thread. F-077 surfaced description-vs-AC quantitative mismatches as informational stderr hints at activate time; users could still ignore the hint and proceed to `complete()`, where the procedural Iron Law (`gate_5 = pass` plus declared evidence count) would happily transition the feature to `done`. F-078 closes the loop: `Coverage` becomes the 13th drift kind, joins `_BLOCKING_DRIFT_KINDS`, and `complete()` rejects transitions whose description over-promises by more than the configured threshold.
