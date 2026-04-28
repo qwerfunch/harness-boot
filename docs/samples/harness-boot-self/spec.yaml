@@ -1880,6 +1880,44 @@ features:
       - "AC-7: bash scripts/self_check.sh 5/5 PASS."
       - "AC-8: 1117 unit + integration tests PASS, regression 0."
 
+  - id: "F-062"
+    name: "cosmic-suika portfolio preview — placeholder → actual PNG image"
+    type: "feature"
+    description: |
+      User added the actual cosmic-suika preview screenshot at
+      `docs/assets/cosmic-suika.png` (494 KB, well under the 1 MB
+      PNG budget from `docs/assets/README.md`). Now the README
+      portfolio table can swap its placeholder cell to a real image.
+
+      Three changes:
+      (1) `README.md` portfolio Preview cell: `_(image landing soon)_`
+          → HTML `<a><img></a>` snippet pointing at the PNG, linked to
+          the live demo, sized at width=240 to fit the 5-column table.
+      (2) `README.ko.md` Preview cell mirrors with `(이미지 곧 추가)`
+          → same HTML.
+      (3) `docs/assets/README.md` guide: drop the "(현재는 placeholder)"
+          wording on the cosmic-suika row, and add PNG to the
+          recommended-format list (was GIF / screenshot; PNG screenshot
+          is now the realized form for this entry).
+
+      No behavior change. No version bump (will land in next release).
+    modules:
+      - "README.md"
+      - "README.ko.md"
+      - "docs/assets/README.md"
+    test_strategy: "contract"
+    tdd_focus:
+      - "README portfolio Preview cell renders an actual <img> with width=240"
+      - "Image links to the live demo URL"
+      - "docs/assets/README.md no longer marks cosmic-suika as placeholder"
+    acceptance_criteria:
+      - "AC-1: README.md Preview cell on the cosmic-suika row contains '<img src=\"docs/assets/cosmic-suika.png\"' with width=240."
+      - "AC-2: README.ko.md Preview cell mirrors AC-1."
+      - "AC-3: README.md Preview cell wraps the <img> in an <a> linking to https://qwerfunch.github.io/cosmic-suika-pages/."
+      - "AC-4: docs/assets/README.md no longer says '(현재는 placeholder)' on the cosmic-suika row."
+      - "AC-5: bash scripts/self_check.sh 5/5 PASS."
+      - "AC-6: 1119 unit + integration tests PASS, regression 0."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

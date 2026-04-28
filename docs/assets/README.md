@@ -6,7 +6,7 @@
 
 | 파일명 | 용도 |
 |---|---|
-| `cosmic-suika.gif` | 첫 외부 dogfood 프로젝트 demo (현재는 placeholder) |
+| `cosmic-suika.png` | 첫 외부 dogfood 프로젝트 preview 스크린샷 |
 | `<your-project>.gif` | 사용자가 harness-boot 로 만든 결과물 — PR 또는 issue 로 추가 가능 |
 
 ## 권장 형식

@@ -1374,8 +1374,34 @@ features:
       pass.'
   started_at: '2026-04-28T05:48:43Z'
   completed_at: '2026-04-28T05:52:19Z'
+- id: F-062
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-28T06:22:44Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-28T06:22:45Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-28T06:22:44Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (10.6s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-28T06:22:45Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.7s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-28T06:22:55Z'
+    kind: generic
+    summary: cosmic-suika.png (494 KB) 추가 + README.md/ko.md 표 placeholder를 HTML <a><img
+      width=240></a> 로 swap + docs/assets/README.md 가이드의 '(현재는 placeholder)' 라벨 제거
+      + .gif → .png 정합. AC-1~4 grep 검증 OK.
+  started_at: '2026-04-28T06:21:47Z'
+  completed_at: '2026-04-28T06:22:56Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-061
+  last_command: /harness:work F-062
   last_gate_passed: gate_5
   active_feature_id: null

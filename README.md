@@ -162,7 +162,7 @@ Next: (1) run the next gate (recommended)
 
 | Project | Preview | Demo | Source | Description |
 |---|---|---|---|---|
-| **cosmic-suika** | _(image landing soon)_ | [Play](https://qwerfunch.github.io/cosmic-suika-pages/) | [GitHub](https://github.com/qwerfunch/cosmic-suika-pages) | Space-themed merge game |
+| **cosmic-suika** | <a href="https://qwerfunch.github.io/cosmic-suika-pages/"><img src="docs/assets/cosmic-suika.png" alt="cosmic-suika preview" width="240"></a> | [Play](https://qwerfunch.github.io/cosmic-suika-pages/) | [GitHub](https://github.com/qwerfunch/cosmic-suika-pages) | Space-themed merge game |
 | *Yours next* | — | — | — | Add your harness-boot project here |
 
 **Built something?** Send a [PR](https://github.com/qwerfunch/harness-boot/pulls) or [issue](https://github.com/qwerfunch/harness-boot/issues) and we'll add it.
