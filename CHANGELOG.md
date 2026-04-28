@@ -15,6 +15,33 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - F-051 follow-up — older active features (F-002/F-004/F-006/F-011~F-040) description / AC body sweep.
 - Pre-marketplace polish follow-ups — `plugin.json.repository` field, `commands/init.md` header version marker (deferred from F-055 to keep that feature focused).
 
+## [0.11.7] — 2026-04-28
+
+**README hero diagram ① sub-text refinement: input → mechanism (F-057).**
+
+A docs-only follow-up to v0.11.6. After ① shifted to *Context* (a noun naming the result), the diagram sub-text on column ① still pointed at the *input* side (`(your words)` / `(자연어)`), while the other four columns each pointed at something tied to their heading. ① alone broke the pattern.
+
+### Changed — diagram sub-text on column ①
+
+- `README.md:21`: `(your words)` → `(conversion)`
+- `README.ko.md:21`: `(자연어)` → `(변환)`
+
+The five sub-texts now each form a closed pair with their heading, on different but deliberate axes:
+
+| Heading | Sub-text | Pair shape |
+|---|---|---|
+| ① Context (the result) | (conversion / 변환) | result ↔ act |
+| ② Evolve (the act) | (the docs / 문서) | act ↔ target |
+| ③ Focus (the act) | (the rules / 제어) | act ↔ how |
+| ④ Collaborate (the act) | (the experts / 전문가) | act ↔ who |
+| ⑤ Unify (the act) | (two commands / 명령 통합) | act ↔ form |
+
+No forced uniformity — the sub-texts intentionally sit on five different axes (act / target / how / who / form), which keeps each cell informative without tipping into tautology like "(collaboration-method)".
+
+### Pillar 6 — F-057 dogfood evidence
+
+`gate_0` PASS · `gate_5` PASS · 3 evidence · status=done. Two README mirrors, line 21 only. `scripts/self_check.sh` 5/5 OK.
+
 ## [0.11.6] — 2026-04-28
 
 **README Five Strengths terminology refinement: ① Translate → Context, with intermediate-language framing (F-056).**

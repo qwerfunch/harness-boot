@@ -1638,6 +1638,46 @@ features:
       - "AC-6: bash scripts/self_check.sh 5/5 PASS."
       - "AC-7: 1117 unit + integration tests PASS, regression 0."
 
+  - id: "F-057"
+    name: "README hero diagram ① sub-text refinement — input → mechanism (conversion / 변환)"
+    type: "feature"
+    description: |
+      Follow-up to F-056. After the ① heading shift to Context (noun /
+      result), the user noticed the diagram sub-text on column ① still
+      named the *input* side (`(your words)` / `(자연어)`) while the
+      other four columns named either an output, mechanism, actor, or
+      result tied to their heading. ① alone broke the pattern.
+
+      This patch swaps ① sub-text to a mechanism-side label that closes
+      the heading↔sub-text pair the way the other four do:
+
+        - ① Context (the result) ← (conversion / 변환)  (the act)
+        - ② Evolve (the act)     ← (the docs / 문서)     (the target)
+        - ③ Focus  (the act)     ← (the rules / 제어)    (the how)
+        - ④ Collaborate (the act) ← (the experts / 전문가) (the who)
+        - ⑤ Unify (the act)      ← (two commands / 명령 통합) (the form)
+
+      Five sub-texts now each form a closed pair with their heading,
+      even though they sit on different axes (no forced uniformity that
+      would tip into tautology like "(collaboration-method)").
+
+      Tiny scope — README.md:21 and README.ko.md:21 only.
+    modules:
+      - "README.md"
+      - "README.ko.md"
+    test_strategy: "contract"
+    tdd_focus:
+      - "① diagram sub-text reads (conversion) in EN and (변환) in KO"
+      - "Other four sub-texts unchanged"
+      - "Heading row unchanged (Context · Evolve · Focus · Collaborate · Unify)"
+    acceptance_criteria:
+      - "AC-1: README.md:21 diagram sub-text line contains '(conversion)' on the ① column; '(your words)' is removed."
+      - "AC-2: README.ko.md:21 diagram sub-text line contains '(변환)' on the ① column; '(자연어)' is removed."
+      - "AC-3: Other four sub-texts unchanged: '(the docs)' · '(the rules)' · '(the experts)' · '(two commands)' on EN; '(문서)' · '(제어)' · '(전문가)' · '(명령 통합)' on KO."
+      - "AC-4: Five Strengths table (rows 1-5) and heading row unchanged; only the diagram sub-text line edits."
+      - "AC-5: bash scripts/self_check.sh 5/5 PASS."
+      - "AC-6: 1117 unit + integration tests PASS, regression 0."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
