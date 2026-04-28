@@ -9,21 +9,49 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
-### Landed (awaiting next release tag)
-
-- **F-066 / F-067 docs/assets/README.md trailing line — fact fix + trim** — The file used to claim "Every asset in this directory is automatically referenced from the main README", which isn't how the wiring works (a row in the *Built with harness-boot* table has to be added explicitly). F-066 corrected the fact; F-067 then dropped the trailing summary line altogether — the *How to add* block above already explains the wiring step, so the closing mantra was redundant. The file now ends at the *How to add* code fence.
-- **F-065 Built-with contribution flow — OSS-standard PR-first guidance** — README "Built something?" line previously treated PR and issue as equal channels. Aligned with OSS norm (awesome-* lists, vercel/showcase, tailwindcss/showcase, homebrew formula PRs): PR is now the primary path with a one-line template hint ("copy an existing row as a template"); issue is the fallback ("if a PR is overkill" / "양식이 번거로우시면"). `docs/assets/README.md` Option A (PR) gains a `(recommended)` label and the same template hint. Email is intentionally not exposed.
-- **F-064 README copy polish — image format softening + assets guide EN + license tagline** — Three small README copy fixes: (1) Built-with image format constraint `(1–3 seconds, ≤800px, ≤5 MB)` softened to "send any image, GIF, or screenshot — we'll optimize on merge" / KO 미러도 "머지 전에 메인테이너가 다듬어 적용". (2) `docs/assets/README.md` rewritten in English (audience is external contributors), with format spec rephrased as "target, not a hard limit". (3) License line `MIT — qwerfunch` → `MIT — Free to use, free to fork.` in both EN and KO mirrors (KO carries the English wording verbatim per user direction).
-- **F-063 README.ko cosmic-suika description — "머지" → "수박"** — KO portfolio row description was "우주 테마 머지 게임"; the genre is more commonly recognized in Korean as "수박 게임" (after the Suika Game reference). Single-word KO copy fix; EN row keeps "Space-themed merge game" as the global term.
-- **F-062 cosmic-suika preview image landed** — User added `docs/assets/cosmic-suika.png` (494 KB, well under the 1 MB PNG budget). README portfolio Preview cells (EN + KO) swapped from `_(image landing soon)_` / `_(이미지 곧 추가)_` to a real `<a><img width="240"></a>` snippet linked to the live demo. `docs/assets/README.md` guide updated — cosmic-suika row no longer marked as placeholder, file extension reflected as `.png` (screenshot, not GIF).
-
-### Queued
-
 - Marketplace PR (anthropic/claude-plugins-official) — pending explicit user go-ahead.
 - F-052 follow-up — broader `scripts/` Python docstring sweep across check.py, work.py, gate/runner.py, sync.py and others (~25 files of KO-bearing docstrings still queued).
 - F-053 follow-up — `tests/` Python docstring sweep (~99 files queued; per-area batch execution recommended).
 - F-051 follow-up — older active features (F-002/F-004/F-006/F-011~F-040) description / AC body sweep.
 - Pre-marketplace polish follow-ups — `plugin.json.repository` field, `commands/init.md` header version marker (deferred from F-055 to keep that feature focused).
+
+## [0.11.9] — 2026-04-28
+
+**Portfolio ergonomics: cosmic-suika preview lands + Built-with contribution flow aligned with OSS norm + license tagline + assets guide trimmed (F-062 → F-067).**
+
+A six-feature bundle on the *Built with harness-boot* portfolio surface and surrounding copy. No behavior change.
+
+### Changed — cosmic-suika preview image landed (F-062)
+
+`docs/assets/cosmic-suika.png` (494 KB, comfortably under the 1 MB PNG budget) is committed. README portfolio Preview cells (EN + KO) now render a real `<a><img width="240"></a>` linked to the live demo at <https://qwerfunch.github.io/cosmic-suika-pages/>. The `_(image landing soon)_` / `_(이미지 곧 추가)_` placeholders are gone. `docs/assets/README.md` inventory row no longer marks cosmic-suika as placeholder; file extension is `.png` (screenshot, not GIF).
+
+### Changed — KO portfolio description: 머지 → 수박 (F-063)
+
+The KO row described cosmic-suika as "우주 테마 머지 게임", but the genre is more widely recognized in Korean as "수박 게임" (after the Suika Game reference). Single-word KO copy fix. EN row keeps "Space-themed merge game" — the term is global there.
+
+### Changed — README copy polish: image format softening + assets guide EN + license tagline (F-064)
+
+Three small README copy fixes:
+
+1. The Built-with image format constraint `(1–3 seconds, ≤ 800px wide, ≤ 5 MB)` softened to *"Send any image, GIF, or screenshot that shows the project — plus a one-liner and a link. We'll optimize and place it on merge."* The strict-looking gate in front of contributors became a *"target, not a hard limit"* invitation. KO mirror tracks: *"이미지·GIF·스크린샷 무엇이든... 머지 전에 메인테이너가 다듬어 적용합니다."*
+2. `docs/assets/README.md` rewritten in English (audience is external contributors), with the format spec rephrased as *"target, not a hard limit"* and an explicit *"send it anyway, we'll optimize on merge"* line.
+3. License line `MIT — qwerfunch` → `MIT — Free to use, free to fork.` in both EN and KO mirrors. KO carries the English wording verbatim per user direction — light/friendly tone over a maintainer ID.
+
+### Changed — Built-with contribution flow: OSS-standard PR-first (F-065)
+
+The *Built something?* line treated PR and issue as equal channels. Aligned with OSS norm (awesome-* lists, vercel/showcase, tailwindcss/showcase, homebrew formula PRs): PR is now the primary path with a one-line template hint *"copy an existing row as a template"*. Issue is the fallback (*"if a PR is overkill"* / *"양식이 번거로우시면"*). `docs/assets/README.md` Option A (PR) gains a `(recommended)` label and the same template hint. Email is intentionally not exposed in the README.
+
+### Changed — docs/assets/README.md trailing line: fact fix then trim (F-066 / F-067)
+
+The trailing line previously claimed *"Every asset in this directory is automatically referenced from the main README"* — not true; the wiring is manual (a row has to be added to the *Built with harness-boot* table by hand). F-066 corrected the fact, but the new wording read as 구구절절. F-067 then dropped the trailing line entirely — the *How to add* block above already explains the wiring step, so the closing mantra was redundant. The file now ends at the *How to add* code fence.
+
+### Changed — Status line bumped to v0.11.9
+
+Both README mirrors' Status line was stale at `v0.11.5`. Now reflects the actual release.
+
+### Pillar 6 — F-062 → F-067 dogfood evidence
+
+Six work.py 4-verb cycles ran on `.harness/`, each landing `gate_0 PASS · gate_5 PASS` plus 3 evidence entries before transitioning to `done`. `scripts/self_check.sh` 5/5 OK including the canonical-vs-`.harness/` lockstep. 1119 unit + integration tests pass.
 
 ## [0.11.8] — 2026-04-28
 
