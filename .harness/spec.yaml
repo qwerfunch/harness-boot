@@ -2239,6 +2239,66 @@ features:
       - "AC-4: README.md is unchanged (English copy stays as F-069 left it)."
       - "AC-5: bash scripts/self_check.sh 5/5 PASS."
 
+  - id: "F-072"
+    name: "complete() drift gating — blocking-only fast path"
+    type: "feature"
+    description: |
+      v0.11.1 / F-048 added a drift × Iron Law gate to complete(): every
+      non-hotfix --complete now calls scripts/check.run_check(), which
+      runs all 11 drift detectors. complete() then keeps only findings
+      whose kind is in _BLOCKING_DRIFT_KINDS = {Code, Stale,
+      AnchorIntegration}. The other 8 detectors (Generated, Derived,
+      Spec, Include, Evidence, Anchor, Adr, Doc, Protocol) are
+      computed and discarded.
+
+      The discarded detectors are the cheap ones — but Stale itself is
+      the most expensive of the entire set (rglob over src/ × N_modules
+      regex match), so dropping the others does not buy much. The real
+      win is structural: complete() is the single hot path users hit
+      most, and v0.11.1 unconditionally added the most expensive
+      sibling-walk detector to it. As features and src/ grow, the
+      complete-path latency follows.
+
+      Add scripts/check.run_blocking_check(harness_dir) that runs only
+      the three blocking detectors (Code + Stale + AnchorIntegration)
+      and returns a CheckReport with the same shape. Replace the
+      run_check call inside scripts/work.py:complete() with
+      run_blocking_check. The user-facing `python3 scripts/check.py`
+      command keeps the full 11-detector flow — diagnostic completeness
+      is preserved; only the auto-invoked complete-path is narrowed.
+
+      Measured baseline (this repo, 71 features): scripts/check.py
+      end-to-end ~289ms. Target: complete-path drift overhead
+      reduction ≥ 30%, meaning the new run_blocking_check should run
+      in ≤ ~200ms on the same baseline. Numbers go in the retro and
+      F-072 evidence.
+
+      Behaviour preservation: F-048's existing test contract
+      (tests/unit/work/test_drift_iron_law_gate.py — 5 cases) passes
+      verbatim because _BLOCKING_DRIFT_KINDS is the only thing
+      complete() ever inspected. The narrowing is invisible to the
+      gate semantics.
+    modules:
+      - "scripts/check.py"
+      - "scripts/work.py"
+      - "tests/unit/test_check.py"
+    test_strategy: "contract"
+    tdd_focus:
+      - "run_blocking_check exists and returns a CheckReport"
+      - "run_blocking_check populates checked with exactly the three blocking kinds (Code, Stale, AnchorIntegration)"
+      - "run_blocking_check does not invoke non-blocking detectors (mock check_evidence/check_doc/check_protocol/check_spec/check_generated/check_derived/check_includes/check_anchor/check_adr_supersedes — call_count == 0)"
+      - "complete() now calls run_blocking_check, not run_check (replacement assertion)"
+      - "F-048 existing contract preserved — drift error in {Code, Stale, AnchorIntegration} still blocks complete(), warn-only or non-blocking-kind error still passes"
+    acceptance_criteria:
+      - "AC-1: scripts/check.py exposes run_blocking_check(harness_dir, project_root=None) → CheckReport. Implementation calls only check_code, check_stale, check_anchor_integration; spec_yaml=None ⇒ empty findings (mirror of run_check's None-safety)."
+      - "AC-2: scripts/work.py:complete() drift block (line ~830-850) replaces `from check import run_check` + `run_check(harness_dir)` with `from check import run_blocking_check` + `run_blocking_check(harness_dir)`. _BLOCKING_DRIFT_KINDS filter remains as defense-in-depth."
+      - "AC-3: tests/unit/test_check.py adds StrictRunBlockingCheckTests — verifies (a) run_blocking_check exists, (b) returned CheckReport.checked == ['Code', 'Stale', 'AnchorIntegration'] in that order, (c) non-blocking detector functions are not invoked (unittest.mock.patch with call_count assertions), (d) blocking detectors are invoked exactly once each."
+      - "AC-4: tests/unit/work/test_drift_iron_law_gate.py (F-048's 7 cases) all pass after retargeting the `unittest.mock.patch` target from `check.run_check` to `check.run_blocking_check` (= the call site complete() now uses). F-048's gate semantics (severity × kinds) are unchanged — only the mock site moved one function over."
+      - "AC-5: bash scripts/self_check.sh 5/5 PASS · regression 0 across the existing 1119+ unit + 26 integration tests."
+      - "AC-6: complete-path drift overhead measured before/after via `time python3 scripts/work.py F-072 --complete --harness-dir .harness` (or equivalent timing harness on a non-mutating proxy). The retro/F-072.md What Shipped section records both numbers; the post number must be ≥ 30% lower than the pre number."
+      - "AC-7: F-072 mirrored on both spec.yaml copies (docs/samples/harness-boot-self + .harness)."
+      - "AC-8: F-072 completed via the work.py 4-verb cycle (activate → run-gate gate_0/1/2/3/5 → declared evidence → complete) — Phase 2 dogfood."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

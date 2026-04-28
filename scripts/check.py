@@ -888,6 +888,36 @@ def run_check(harness_dir: Path, project_root: Path | None = None) -> CheckRepor
     return report
 
 
+def run_blocking_check(
+    harness_dir: Path, project_root: Path | None = None
+) -> CheckReport:
+    """Drift fast path used by work.py:complete() (F-072).
+
+    Runs only the three wire-integrity detectors that complete() ever
+    blocks on (Code, Stale, AnchorIntegration). The full 11-detector
+    surface is reachable through run_check(); the user-facing
+    `python3 scripts/check.py` command keeps that route. This helper
+    exists so the auto-invoked complete-path does not pay for eight
+    cheap-but-discarded detectors on every feature transition (F-048
+    surfaced the regression on a 71-feature self-dogfood baseline).
+
+    Behaviour preservation: the kinds it inspects are exactly
+    work.py:_BLOCKING_DRIFT_KINDS, so F-048's blocking semantics are
+    untouched. Spec missing → empty findings (mirrors run_check's
+    None-safety).
+    """
+    report = CheckReport()
+    spec_yaml = _load_yaml(harness_dir / "spec.yaml")
+    if spec_yaml is not None:
+        report.findings.extend(check_code(harness_dir, spec_yaml, project_root))
+        report.findings.extend(check_stale(harness_dir, spec_yaml, project_root))
+        report.findings.extend(
+            check_anchor_integration(harness_dir, spec_yaml, project_root)
+        )
+    report.checked.extend(["Code", "Stale", "AnchorIntegration"])
+    return report
+
+
 def format_human(report: CheckReport) -> str:
     lines = ["🔍 /harness:check", ""]
     lines.append(f"Checked: {', '.join(report.checked)}")

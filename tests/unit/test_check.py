@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import yaml
 
@@ -741,6 +742,115 @@ class CQSTests(HarnessScratch, unittest.TestCase):
         self.assertEqual((self.harness / "spec.yaml").stat().st_mtime_ns, before_spec)
         self.assertEqual((self.harness / "harness.yaml").stat().st_mtime_ns, before_h)
         self.assertEqual((self.harness / "domain.md").stat().st_mtime_ns, before_d)
+
+
+class StrictRunBlockingCheckTests(HarnessScratch, unittest.TestCase):
+    """F-072 — run_blocking_check fast path for complete() drift gating.
+
+    Narrows the auto-invoked drift scan to the three wire-integrity
+    detectors (Code, Stale, AnchorIntegration) that complete() actually
+    blocks on. The other 8 detectors stay reachable through the
+    user-facing `python3 scripts/check.py` command (= run_check).
+    """
+
+    _BLOCKING_KINDS = ("Code", "Stale", "AnchorIntegration")
+    _NON_BLOCKING_FUNCS = (
+        "check_generated",
+        "check_derived",
+        "check_spec",
+        "check_includes",
+        "check_evidence",
+        "check_anchor",
+        "check_adr_supersedes",
+        "check_doc",
+        "check_protocol",
+    )
+
+    def test_run_blocking_check_exists(self) -> None:
+        self.assertTrue(
+            hasattr(check, "run_blocking_check"),
+            "scripts/check.py must expose run_blocking_check (F-072 AC-1)",
+        )
+        self.assertTrue(callable(check.run_blocking_check))
+
+    def test_returns_check_report_with_only_blocking_kinds(self) -> None:
+        self.write_spec()
+        report = check.run_blocking_check(self.harness, project_root=self.tmp)
+        self.assertIsInstance(report, check.CheckReport)
+        self.assertEqual(
+            tuple(report.checked),
+            self._BLOCKING_KINDS,
+            "checked must list exactly the three blocking kinds, in order",
+        )
+
+    def test_does_not_invoke_non_blocking_detectors(self) -> None:
+        self.write_spec()
+        patches = {
+            name: mock.patch.object(check, name, return_value=[])
+            for name in self._NON_BLOCKING_FUNCS
+        }
+        started = {name: p.start() for name, p in patches.items()}
+        try:
+            check.run_blocking_check(self.harness, project_root=self.tmp)
+        finally:
+            for p in patches.values():
+                p.stop()
+        for name, m in started.items():
+            self.assertEqual(
+                m.call_count,
+                0,
+                f"run_blocking_check must not invoke non-blocking detector {name}",
+            )
+
+    def test_invokes_each_blocking_detector_exactly_once(self) -> None:
+        self.write_spec()
+        with mock.patch.object(check, "check_code", return_value=[]) as m_code, \
+             mock.patch.object(check, "check_stale", return_value=[]) as m_stale, \
+             mock.patch.object(
+                 check, "check_anchor_integration", return_value=[]
+             ) as m_ai:
+            check.run_blocking_check(self.harness, project_root=self.tmp)
+        self.assertEqual(m_code.call_count, 1)
+        self.assertEqual(m_stale.call_count, 1)
+        self.assertEqual(m_ai.call_count, 1)
+
+    def test_missing_spec_yields_empty_report(self) -> None:
+        report = check.run_blocking_check(self.harness, project_root=self.tmp)
+        self.assertEqual(list(report.findings), [])
+        self.assertEqual(tuple(report.checked), self._BLOCKING_KINDS)
+
+
+class CompleteUsesBlockingFastPathTests(unittest.TestCase):
+    """F-072 AC-2 — work.py:complete() drift block must call run_blocking_check.
+
+    Source-level assertion (the call site is the contract). Uses a
+    string scan over scripts/work.py so the test does not depend on
+    the importability of work.py inside the test process.
+    """
+
+    def setUp(self) -> None:
+        self.work_py = (REPO_ROOT / "scripts" / "work.py").read_text(
+            encoding="utf-8"
+        )
+
+    def test_complete_imports_run_blocking_check(self) -> None:
+        self.assertIn(
+            "from check import run_blocking_check",
+            self.work_py,
+            "complete() drift block must import run_blocking_check (F-072)",
+        )
+
+    def test_complete_does_not_call_run_check_directly(self) -> None:
+        self.assertNotIn(
+            "from check import run_check",
+            self.work_py,
+            "complete() must call run_blocking_check, not run_check (F-072)",
+        )
+        self.assertNotIn(
+            "run_check(harness_dir)",
+            self.work_py,
+            "complete() must not invoke run_check(harness_dir) (F-072)",
+        )
 
 
 if __name__ == "__main__":

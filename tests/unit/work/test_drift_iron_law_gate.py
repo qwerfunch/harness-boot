@@ -1,7 +1,11 @@
-"""F-048 — drift × Iron Law gating tests.
+"""F-048 — drift × Iron Law gating tests (mock target updated by F-072).
 
-scripts/work.py:complete() 가 gate_5 pass 검증 직후 run_check(harness_dir) 를
-호출하여 severity='error' drift findings 1+ 시 거부함을 검증.
+scripts/work.py:complete() invokes the drift fast path
+(check.run_blocking_check, F-072) right after the gate_5 pass check,
+and rejects when severity='error' findings appear. F-048's gate
+semantics (kinds × severity) are unchanged; F-072 only narrowed the
+detector surface. Tests patch the call site (run_blocking_check) so
+they exercise the same wiring complete() actually goes through.
 
 mock 으로 drift report 주입 — check.py 의 실제 detector 동작과 분리하여
 결합 로직 자체만 시험. detector 동작은 tests/unit/test_check*.py 에서 별도 검증.
@@ -62,7 +66,7 @@ class DriftFreeCompleteTests(DriftIronLawScratch, unittest.TestCase):
 
     def test_complete_passes_when_no_drift(self):
         empty = CheckReport(findings=[], checked=[])
-        with patch("check.run_check", return_value=empty):
+        with patch("check.run_blocking_check", return_value=empty):
             self._seed_precondition("F-1")
             res = work.complete(self.harness, "F-1")
         self.assertEqual(res.action, "completed")
@@ -76,7 +80,7 @@ class ErrorDriftBlocksTests(DriftIronLawScratch, unittest.TestCase):
             findings=[DriftFinding("Code", "F-1", "module file missing", "error")],
             checked=["Code"],
         )
-        with patch("check.run_check", return_value=report):
+        with patch("check.run_blocking_check", return_value=report):
             self._seed_precondition("F-1")
             res = work.complete(self.harness, "F-1")
         self.assertEqual(res.action, "queried")
@@ -93,7 +97,7 @@ class ErrorDriftBlocksTests(DriftIronLawScratch, unittest.TestCase):
             ],
             checked=["Code", "Stale"],
         )
-        with patch("check.run_check", return_value=report):
+        with patch("check.run_blocking_check", return_value=report):
             self._seed_precondition("F-1")
             res = work.complete(self.harness, "F-1")
         self.assertEqual(res.action, "queried")
@@ -112,7 +116,7 @@ class ErrorDriftBlocksTests(DriftIronLawScratch, unittest.TestCase):
             ],
             checked=["Anchor", "Generated"],
         )
-        with patch("check.run_check", return_value=report):
+        with patch("check.run_blocking_check", return_value=report):
             self._seed_precondition("F-1")
             res = work.complete(self.harness, "F-1")
         self.assertEqual(res.action, "completed")
@@ -129,7 +133,7 @@ class WarnOnlyDoesNotBlockTests(DriftIronLawScratch, unittest.TestCase):
             ],
             checked=["Doc", "Anchor"],
         )
-        with patch("check.run_check", return_value=report):
+        with patch("check.run_blocking_check", return_value=report):
             self._seed_precondition("F-1")
             res = work.complete(self.harness, "F-1")
         self.assertEqual(res.action, "completed")
@@ -145,7 +149,7 @@ class HotfixOverridesDriftTests(DriftIronLawScratch, unittest.TestCase):
         )
         # hotfix_reason 시 drift 분기 자체가 스킵되므로 mock 호출 여부와 무관.
         # 명시적으로 patch 하여 결과 영향 없음을 시각화.
-        with patch("check.run_check", return_value=report):
+        with patch("check.run_blocking_check", return_value=report):
             work.activate(self.harness, "F-1")
             work.record_gate(self.harness, "F-1", "gate_5", "pass")
             res = work.complete(
@@ -159,7 +163,7 @@ class CheckFailureGracefulTests(DriftIronLawScratch, unittest.TestCase):
 
     def test_check_exception_does_not_block(self):
         with patch(
-            "check.run_check",
+            "check.run_blocking_check",
             side_effect=RuntimeError("simulated check failure"),
         ):
             self._seed_precondition("F-1")

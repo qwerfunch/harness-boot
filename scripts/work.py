@@ -829,8 +829,15 @@ def complete(
     # fragile 한 환경에서 complete 흐름을 막지 않는다.
     if not hotfix_reason:
         try:
-            from check import run_check  # local import — work.py / check.py 동거
-            drift_report = run_check(harness_dir)
+            # F-072 — narrowed to the three wire-integrity detectors
+            # (Code · Stale · AnchorIntegration). run_check stays the
+            # surface for `python3 scripts/check.py` (full 11-detector
+            # diagnostic). The complete() hot path runs the blocking
+            # subset only — F-048's gate semantics are unchanged
+            # because _BLOCKING_DRIFT_KINDS already filtered the same
+            # kinds out of run_check's larger result.
+            from check import run_blocking_check  # local — work.py / check.py 동거
+            drift_report = run_blocking_check(harness_dir)
             blocking = [
                 d for d in drift_report.findings
                 if d.severity == "error" and d.kind in _BLOCKING_DRIFT_KINDS
