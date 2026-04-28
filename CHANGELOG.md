@@ -9,6 +9,23 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
+### Queued
+
+- Marketplace submission to anthropic/claude-plugins-official — submission templated text prepared; user submits via https://claude.ai/settings/plugins/submit. README install snippet update queued for after approval.
+- F-052 follow-up — broader `scripts/` Python docstring sweep across check.py, work.py, gate/runner.py, sync.py and others (~25 files of KO-bearing docstrings still queued).
+- F-053 follow-up — `tests/` Python docstring sweep (~99 files queued; per-area batch execution recommended).
+- F-051 follow-up — older active features (F-002/F-004/F-006/F-011~F-040) description / AC body sweep.
+- Pre-marketplace polish follow-ups — `plugin.json.repository` field, `commands/init.md` header version marker (deferred from F-055 to keep that feature focused).
+- F-073 (`read_events(tail=N)` for status/dashboard) and F-074 (`canonical_hash` mtime cache) — both still queued from the v0.11.11 cumulative-slowdown audit; they will be sequenced individually if external usage surfaces the need.
+
+## [0.11.12] — 2026-04-29
+
+**Initial sync auto-wire — close the post-init / post-conversion gap (F-075 + F-076).**
+
+A two-feature bundle that closes a field-discovered gap: previously, `/harness-boot:init` followed by the `spec-conversion` skill could produce a populated `spec.yaml` without ever materializing `domain.md`, `architecture.yaml`, or `harness.yaml.generation.generated_from.spec_hash`. Users could iterate through several `/harness-boot:work` cycles before noticing the derived views were missing and the `CLAUDE.md` `@import` lines pointed at non-existent files. Three entry points (init markdown · `spec-conversion` skill · `work.py` per-feature cycle) each treated `sync` as a separate manual concern; none of them wired `python3 scripts/sync.py` into its finalize path.
+
+This release wires all three. F-075 ships the inner Python guard inside `scripts/work.py:activate()` so the very first feature cycle catches the missing-sync state. F-076 wires the two upstream surfaces (`commands/init.md` §5.5 and `skills/spec-conversion/SKILL.md` Stage 5) so derived views are materialized as soon as a populated `spec.yaml` exists — eliminating the post-install / post-conversion stutter where the first work cycle had to fire sync before kickoff bullets could reference `domain.md`.
+
 ### Added — Upstream sync wiring: `try_initial_sync` helper + `--soft` CLI + init / spec-conversion finalize (F-076)
 
 Follow-up to F-075. F-075 closed the inner Python guard so the very first feature cycle catches the missing-sync state, but the upstream entry points (`commands/init.md`, `skills/spec-conversion/`) still treated `sync` as a separate manual concern. This release wires both upstream surfaces so derived views (`domain.md`, `architecture.yaml`) and `harness.yaml.generation.generated_from.spec_hash` are materialized as soon as a populated `spec.yaml` exists — eliminating the post-install / post-conversion stutter where the first `/harness-boot:work` cycle had to fire sync before kickoff bullets could reference `domain.md`.
