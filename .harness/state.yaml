@@ -1607,8 +1607,48 @@ features:
       reads as native Korean
   started_at: '2026-04-28T14:40:14Z'
   completed_at: '2026-04-28T14:41:24Z'
+- id: F-072
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-28T15:16:19Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_1:
+      last_result: skipped
+      ts: '2026-04-28T15:16:24Z'
+      note: no type checker detected (pyproject.toml · tsconfig.json · Cargo.toml
+        · go.mod 모두 부재 또는 tool 미설치)
+    gate_2:
+      last_result: skipped
+      ts: '2026-04-28T15:16:25Z'
+      note: no linter detected (pyproject/ruff · package.json/eslint · Cargo/clippy
+        · go.mod/golangci-lint 모두 부재)
+    gate_3:
+      last_result: skipped
+      ts: '2026-04-28T15:16:25Z'
+      note: no coverage tool detected (pytest-cov · nyc · scripts.coverage · tarpaulin
+        · go -cover 모두 부재)
+    gate_5:
+      last_result: pass
+      ts: '2026-04-28T15:16:35Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-28T15:16:19Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (10.3s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-28T15:16:35Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.7s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-28T15:17:02Z'
+    kind: manual_check
+    summary: 'complete-path drift overhead reduced 72.4%: run_check 239.9ms → run_blocking_check
+      66.3ms (5-iter mean, .harness baseline 71 features). 1119+ unit tests pass.'
+  started_at: '2026-04-28T15:13:27Z'
+  completed_at: '2026-04-28T15:17:44Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-071
+  last_command: /harness:work F-072
   last_gate_passed: gate_5
   active_feature_id: null
