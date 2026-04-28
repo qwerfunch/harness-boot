@@ -1647,8 +1647,36 @@ features:
       66.3ms (5-iter mean, .harness baseline 71 features). 1119+ unit tests pass.'
   started_at: '2026-04-28T15:13:27Z'
   completed_at: '2026-04-28T15:17:44Z'
+- id: F-075
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-28T16:39:26Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-28T16:39:27Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-28T16:39:26Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (12.2s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-28T16:39:27Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.7s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-28T16:39:36Z'
+    kind: manual_check
+    summary: InitialSyncAutowireTests 5/5 PASS — fresh harness fires sync (domain.md+architecture.yaml
+      rendered, spec_hash populated) · already-synced no-op · missing spec silent
+      skip · sync.run failure fail-open with stderr warning · sync runs before kickoff.
+      1110 unit tests pass post-change (regression 0). bash scripts/self_check.sh
+      5/5 OK.
+  started_at: '2026-04-28T16:39:08Z'
+  completed_at: '2026-04-28T16:40:58Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-072
+  last_command: /harness:work F-075
   last_gate_passed: gate_5
   active_feature_id: null
