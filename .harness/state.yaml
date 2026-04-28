@@ -1704,8 +1704,37 @@ features:
       pass · self_check 5/5 OK.
   started_at: '2026-04-28T16:45:42Z'
   completed_at: '2026-04-28T16:50:05Z'
+- id: F-077
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-28T17:25:11Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-28T17:25:12Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-28T17:25:11Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (13.4s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-28T17:25:12Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.7s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-28T17:25:20Z'
+    kind: manual_check
+    summary: Quant claim extractor + activate-time lint 14/14 PASS — extract_numeric_claims
+      handles 3 pattern families (counter noun · ≥ prefix · fraction) with 6 cases
+      · diff_claims 5 cases (mismatch surfaced · matching silent · AC-only silent
+      · desc-only silent · order stable) · QuantLintAutowireTests 3 cases (hint emitted
+      on mismatch · silent on match · fail-open under monkeypatch). 1134 unit tests
+      pass · self_check 5/5 OK · _workspace/coverage/F-N.yaml fingerprint persisted.
+  started_at: '2026-04-28T17:21:36Z'
+  completed_at: '2026-04-28T17:26:06Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-076
+  last_command: /harness:work F-077
   last_gate_passed: gate_5
   active_feature_id: null
