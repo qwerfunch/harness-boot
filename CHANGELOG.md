@@ -17,6 +17,40 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - F-051 follow-up — older active features (F-002/F-004/F-006/F-011~F-040) description / AC body sweep.
 - Pre-marketplace polish follow-ups — `plugin.json.repository` field, `commands/init.md` header version marker (deferred from F-055 to keep that feature focused).
 
+## [0.11.11] — 2026-04-29
+
+**`complete()` drift gating fast path — `run_blocking_check` (F-072).**
+
+A targeted performance patch for the most-frequented hot path. v0.11.1's F-048 wired `complete()` into `scripts/check.py:run_check`, which always runs all 11 drift detectors and then keeps only findings whose kind is in `_BLOCKING_DRIFT_KINDS = {Code, Stale, AnchorIntegration}`. The other 8 detectors were computed and discarded on every feature transition. As `.harness/` self-dogfood accumulated (71 features at v0.11.10, plus a continuously growing `src/` tree under each `Stale` walk), the latency surfaced.
+
+### Added — `scripts/check.run_blocking_check()` (F-072)
+
+A new entry point that runs only the three wire-integrity detectors `complete()` actually blocks on (`check_code` + `check_stale` + `check_anchor_integration`) and returns the same `CheckReport` shape as `run_check`. `scripts/work.py:complete()` now imports and calls `run_blocking_check` instead of `run_check`. The user-facing `python3 scripts/check.py` route is untouched — full diagnostic output stays available via `run_check`.
+
+### Changed — `complete()` drift call site
+
+`scripts/work.py:complete()` (the `if not hotfix_reason:` block) calls `run_blocking_check(harness_dir)` in place of `run_check(harness_dir)`. F-048's gate semantics (`severity='error'` × `kind ∈ _BLOCKING_DRIFT_KINDS`) are preserved verbatim because `_BLOCKING_DRIFT_KINDS` already filtered the same kinds out of `run_check`'s larger result. The 7 cases in `tests/unit/work/test_drift_iron_law_gate.py` pass after a one-line `unittest.mock.patch` retarget from `check.run_check` to `check.run_blocking_check`; the gate logic itself is unchanged.
+
+### Performance
+
+In-process 5-iteration mean on the v0.11.11 `.harness` baseline (71 features, ~75 modules, full repo `src/` tree):
+
+- `run_check` (full 11-detector flow): **239.9 ms**
+- `run_blocking_check` (3-detector fast path): **66.3 ms**
+- Reduction: **−72.4 %**
+
+End-to-end `time python3 -c '...'` invocations show the same shape (273 ms → 105 ms; Python startup dominates the smaller value). The complete-path drift overhead is now back below the v0.11.0 baseline that did not run drift checks at all in `complete()`.
+
+### Tests
+
+- `tests/unit/test_check.py` — `StrictRunBlockingCheckTests` (5 cases) + `CompleteUsesBlockingFastPathTests` (2 cases). Mocks the 9 non-blocking detectors and asserts they are not invoked from `run_blocking_check`; verifies the 3 blocking detectors are each called exactly once; source-level scan asserts `scripts/work.py` imports `run_blocking_check` and no longer references `run_check(harness_dir)`.
+- `tests/unit/work/test_drift_iron_law_gate.py` — F-048's 7 cases retargeted to the new mock site.
+- Total: **1105 unit tests pass**. `bash scripts/self_check.sh` 5/5 OK.
+
+### Notes
+
+This release closes the most acute item from the cumulative-slowdown audit (`plan/velvet-yawning-ocean.md` Phase A). Two follow-ups remain queued as separate features: F-073 (`read_events(tail=N)` for status/dashboard) and F-074 (`canonical_hash` mtime cache). Neither ships in this release — both will be sequenced individually if external usage surfaces the need.
+
 ## [0.11.10] — 2026-04-28
 
 **Manual install guide for both READMEs + canonical commit sequence enforced + Korean rewrite (F-068 → F-071).**
