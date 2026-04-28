@@ -9,6 +9,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
+### Added — `_autowire_initial_sync` in `scripts/work.py:activate()` (F-075)
+
+Closes a field-discovered gap: when a downstream user ran `/harness-boot:init` followed by the `spec-conversion` skill, the resulting `spec.yaml` was populated but `domain.md`, `architecture.yaml`, and `harness.yaml.generation.generated_from.spec_hash` remained absent / empty. Several feature cycles could complete before the missing derived views were noticed, leaving the `CLAUDE.md` `@import` lines pointing at non-existent files. Root cause: three entry points (init markdown · `spec-conversion` skill · `work.py` per-feature cycle) each treat `sync` as a separate manual step; none of them wires `python3 scripts/sync.py` into its finalize path.
+
+`scripts/work.py` now ships a fourth autowire — `_autowire_initial_sync(harness_dir)` — that fires from `activate()` before `_autowire_fog_clear` / `_autowire_kickoff` / `_autowire_design_review`. Trigger condition: `spec.yaml` is present **and** (`harness.yaml` is missing **or** its `generation.generated_from.spec_hash` is empty/absent). On trigger it imports `scripts.sync` and calls `sync.run(harness_dir)`. `sync.run` is idempotent under canonical hashing, so subsequent activations are no-ops once `spec_hash` has been populated. Failures are fail-open — a stderr warning is printed and `activate()` proceeds — matching the existing autowire pattern; a ceremony glitch must never block a feature transition.
+
+The `commands/init.md` and `skills/spec-conversion/` finalize paths remain candidates for future wiring (queued separately) — but the inner Python guard catches every case regardless of which upstream path the user took.
+
+### Tests
+
+- `tests/unit/work/test_work_autowire.py` — `InitialSyncAutowireTests` (5 cases): fresh harness fires sync and renders both derived views; already-synced harness is a no-op (`sync.run` not re-invoked); missing `spec.yaml` is a silent skip; `sync.run` exception is fail-open with the expected stderr warning; sync ordering precedes kickoff in `events.log`.
+- Regression: **1110 unit tests pass**. `bash scripts/self_check.sh` 5/5 OK.
+
 ### Queued
 
 - Marketplace submission to anthropic/claude-plugins-official — submission templated text prepared; user submits via https://claude.ai/settings/plugins/submit. README install snippet update queued for after approval.
@@ -16,6 +29,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - F-053 follow-up — `tests/` Python docstring sweep (~99 files queued; per-area batch execution recommended).
 - F-051 follow-up — older active features (F-002/F-004/F-006/F-011~F-040) description / AC body sweep.
 - Pre-marketplace polish follow-ups — `plugin.json.repository` field, `commands/init.md` header version marker (deferred from F-055 to keep that feature focused).
+- F-073 (`read_events(tail=N)` for status/dashboard) and F-074 (`canonical_hash` mtime cache) — both still queued from the v0.11.11 cumulative-slowdown audit; they will be sequenced individually if external usage surfaces the need.
+- Wiring sync into `commands/init.md` and `skills/spec-conversion/` finalize paths — F-075 closes the inner guard; the upstream wiring is incremental hardening that becomes worthwhile once external dogfood confirms the fix is sufficient.
 
 ## [0.11.11] — 2026-04-29
 

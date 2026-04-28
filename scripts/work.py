@@ -157,6 +157,52 @@ def _find_feature(spec: dict, fid: str) -> dict | None:
     return None
 
 
+def _autowire_initial_sync(harness_dir: Path) -> None:
+    """F-073 — lazy-fire sync.run() when spec.yaml exists but never synced.
+
+    Closes a field-discovered gap where /harness-boot:init followed by the
+    spec-conversion skill produced a populated spec.yaml without ever
+    materializing domain.md, architecture.yaml, or
+    harness.yaml.generation.generated_from.spec_hash. Users could iterate
+    through several feature cycles before noticing the derived views were
+    missing and the CLAUDE.md @import lines pointed at non-existent files.
+
+    Trigger condition (AND):
+        * spec.yaml is present
+        * harness.yaml is missing OR its spec_hash is empty / absent
+
+    sync.run is idempotent under canonical hashing, so subsequent
+    activations are safely no-ops once spec_hash has been populated.
+
+    Failures are fail-open — emit a stderr warning and return — matching
+    _autowire_kickoff and _autowire_fog_clear. activate() must never raise
+    because of an autowire glitch.
+    """
+    spec_path = harness_dir / "spec.yaml"
+    if not spec_path.is_file():
+        return
+    try:
+        harness_yaml = harness_dir / "harness.yaml"
+        spec_hash = ""
+        if harness_yaml.is_file():
+            cfg = yaml.safe_load(harness_yaml.read_text(encoding="utf-8")) or {}
+            spec_hash = (
+                cfg.get("generation", {})
+                   .get("generated_from", {})
+                   .get("spec_hash", "")
+            )
+        if spec_hash:
+            return
+        import sync as _sync
+        _sync.run(harness_dir)
+    except Exception as exc:
+        print(
+            f"[warn] initial sync auto-wire failed: {exc} — "
+            f"run `python3 scripts/sync.py --harness-dir {harness_dir}` manually",
+            file=sys.stderr,
+        )
+
+
 def _autowire_fog_clear(
     harness_dir: Path,
     fid: str,
@@ -501,6 +547,7 @@ def activate(harness_dir: Path, fid: str, *, disable_fog: bool = False) -> WorkR
             "status": state.get_feature(fid)["status"],
         },
     )
+    _autowire_initial_sync(harness_dir)
     _autowire_fog_clear(harness_dir, fid, disable=disable_fog)
     _autowire_kickoff(harness_dir, fid)
     _autowire_design_review(harness_dir, fid)

@@ -2299,6 +2299,59 @@ features:
       - "AC-7: F-072 mirrored on both spec.yaml copies (docs/samples/harness-boot-self + .harness)."
       - "AC-8: F-072 completed via the work.py 4-verb cycle (activate → run-gate gate_0/1/2/3/5 → declared evidence → complete) — Phase 2 dogfood."
 
+  - id: "F-075"
+    name: "Initial sync auto-wire — work.py activate fires sync.run when never synced"
+    type: "feature"
+    description: |
+      Field-discovered gap: a downstream user reported running
+      `/harness-boot:init` followed by the `spec-conversion` skill, then
+      iterating through several feature cycles without ever seeing
+      `domain.md` or `architecture.yaml` materialize. Inspecting the
+      project showed `harness.yaml.generation.generated_from.spec_hash`
+      remained the empty string and `events.log` carried no `sync_done`
+      entry — the sync step had silently never executed.
+
+      Root cause: three entry points (init markdown · spec-conversion
+      skill · work.py per-feature cycle) all leave sync as a separate
+      manual concern. None of them wires `python3 scripts/sync.py` into
+      their finalize path. The user can run N feature cycles to
+      completion without the derived views ever being generated, which
+      also leaves the CLAUDE.md `@import` lines pointing at non-existent
+      files.
+
+      Decision: rather than touch the markdown-driven init/skill flows
+      (brittle to test, fragile across future plugin updates), add a
+      lazy autowire to `scripts/work.py::activate()` — the innermost
+      Python boundary every cycle must cross. When `spec.yaml` exists
+      but `harness.yaml.generation.generated_from.spec_hash` is empty
+      or missing, `activate()` fires `sync.run(harness_dir)` once. The
+      sync orchestrator is already idempotent under canonical hashing,
+      so subsequent activations are no-ops on the sync side. Failures
+      are fail-open: a stderr warning is emitted and activate proceeds,
+      matching `_autowire_kickoff` and `_autowire_fog_clear`.
+
+      The init markdown and spec-conversion finalize remain candidates
+      for future work (F-074+) — wiring two upstream entry points only
+      makes sense once the inner guard is in place. This feature ships
+      the inner guard.
+    modules:
+      - "scripts/work.py"
+      - "tests/unit/work/test_work_autowire.py"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "_autowire_initial_sync exists and runs before _autowire_fog_clear / _autowire_kickoff inside activate()"
+      - "fresh harness (spec.yaml present, harness.yaml.generated_from.spec_hash empty) triggers a sync that populates spec_hash and renders domain.md + architecture.yaml"
+      - "already-synced harness (spec_hash non-empty) is a no-op — sync.run is not invoked again"
+      - "sync.run failure is fail-open — activate completes, stderr carries the warning, state.yaml still transitions"
+      - "missing spec.yaml or missing harness.yaml is a silent no-op (symmetry with sibling autowires)"
+    acceptance_criteria:
+      - "AC-1: scripts/work.py adds `_autowire_initial_sync(harness_dir: Path) -> None`. Reads `harness_dir / 'harness.yaml'`, returns early when `spec_hash` already populated. Otherwise imports `scripts.sync` and calls `sync.run(harness_dir)`. Wraps the body in try/except so any exception emits a stderr warning and returns silently — activate must never raise here."
+      - "AC-2: `activate()` calls `_autowire_initial_sync(harness_dir)` before `_autowire_fog_clear` and `_autowire_kickoff` so first-time activate generates derived views before kickoff bullets reference them."
+      - "AC-3: tests/unit/work/test_work_autowire.py adds `InitialSyncAutowireTests` covering the four contract cases above (fresh harness fires, already-synced no-ops, fail-open, missing files no-op). Existing tests in this module remain unmodified and continue to pass."
+      - "AC-4: All comments and docstrings added in this cycle are in English (matches the F-049 → F-053 native-English consolidation thread already in flight)."
+      - "AC-5: F-075 mirrored on both spec.yaml copies (docs/samples/harness-boot-self + .harness). bash scripts/self_check.sh 5/5 PASS."
+      - "AC-6: F-075 completed via the work.py 4-verb cycle (activate → run-gate gate_0/1/2/3/5 → declared evidence → complete) — Phase 2 dogfood."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

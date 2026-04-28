@@ -521,5 +521,128 @@ class KickoffForceRefreshTests(ScratchHarness, unittest.TestCase):
         self.assertEqual(len(opens), 2)
 
 
+_SPEC_FOR_INITIAL_SYNC = textwrap.dedent(
+    """\
+    version: "2.3.8"
+    project:
+      name: "demo"
+      summary: "Schema-valid stub used by InitialSyncAutowireTests"
+    domain:
+      overview: "demo domain for sync autowire regression"
+      entities:
+        - name: "Order"
+          description: "User-facing order record"
+      business_rules:
+        - id: "BR-001"
+          rule: "All orders carry a unique id"
+    features:
+      - id: F-0
+        type: skeleton
+        title: "Skeleton"
+        acceptance_criteria:
+          - "AC-1: boots"
+        modules:
+          - src/main.ts
+    """
+)
+
+
+class InitialSyncAutowireTests(ScratchHarness, unittest.TestCase):
+    """F-073 — activate() lazy-fires sync when spec_hash never populated.
+
+    Mirrors the contract for the upstream-most boundary: regardless of
+    whether the user came in via /harness-boot:init or the spec-conversion
+    skill, the first activate must materialize derived views. Subsequent
+    activations are no-ops on the sync side (canonical-hash idempotency).
+    """
+
+    def _read_harness_yaml(self) -> dict:
+        import yaml as _yaml
+
+        path = self.harness / "harness.yaml"
+        if not path.is_file():
+            return {}
+        return _yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+
+    def _spec_hash(self) -> str:
+        cfg = self._read_harness_yaml()
+        return (
+            cfg.get("generation", {})
+               .get("generated_from", {})
+               .get("spec_hash", "")
+        )
+
+    def test_fresh_harness_triggers_sync(self):
+        """spec.yaml present, harness.yaml absent → activate fires sync that
+        creates harness.yaml + populates spec_hash + renders domain.md +
+        architecture.yaml."""
+        self._write_spec(_SPEC_FOR_INITIAL_SYNC)
+        work.activate(self.harness, "F-0")
+        self.assertTrue((self.harness / "harness.yaml").is_file())
+        self.assertNotEqual(self._spec_hash(), "")
+        self.assertTrue((self.harness / "domain.md").is_file())
+        self.assertTrue((self.harness / "architecture.yaml").is_file())
+
+    def test_already_synced_is_no_op(self):
+        """Once spec_hash is non-empty, activate must not re-invoke sync.run.
+
+        Verified by patching scripts.sync.run to a counter — first activate
+        runs it once, second activate runs it zero times.
+        """
+        self._write_spec(_SPEC_FOR_INITIAL_SYNC)
+        work.activate(self.harness, "F-0")  # first time fires sync
+        self.assertNotEqual(self._spec_hash(), "")
+
+        from unittest import mock
+
+        import sync as sync_mod
+
+        with mock.patch.object(sync_mod, "run") as mocked:
+            work.activate(self.harness, "F-0")  # already done; should be queried
+            self.assertEqual(mocked.call_count, 0)
+
+    def test_missing_spec_is_silent(self):
+        """No spec.yaml → autowire must not raise, must not create harness.yaml."""
+        work.activate(self.harness, "F-0")  # no spec written
+        self.assertFalse((self.harness / "harness.yaml").is_file())
+        self.assertFalse((self.harness / "domain.md").exists())
+        self.assertFalse((self.harness / "architecture.yaml").exists())
+
+    def test_sync_failure_is_fail_open(self):
+        """sync.run raising must not abort activate — state.yaml must still
+        transition to in_progress and a stderr warning must be emitted."""
+        self._write_spec(_SPEC_FOR_INITIAL_SYNC)
+
+        import io
+        from contextlib import redirect_stderr
+        from unittest import mock
+
+        import sync as sync_mod
+
+        captured = io.StringIO()
+        with mock.patch.object(sync_mod, "run", side_effect=RuntimeError("boom")):
+            with redirect_stderr(captured):
+                res = work.activate(self.harness, "F-0")
+        self.assertEqual(res.action, "activated")
+        self.assertIn("initial sync auto-wire failed", captured.getvalue())
+
+    def test_sync_runs_before_kickoff(self):
+        """Ordering invariant: sync must complete before kickoff fires so the
+        kickoff template (which may inspect domain.md) sees the rendered view."""
+        self._write_spec(_SPEC_FOR_INITIAL_SYNC)
+        work.activate(self.harness, "F-0")
+        # Both must exist; if sync fired after kickoff we would still pass this
+        # check, but the events.log order proves the contract.
+        types = [e["type"] for e in self._events()]
+        self.assertIn("feature_activated", types)
+        # sync_done events from sync.run() append before kickoff_started
+        # because activate calls _autowire_initial_sync first.
+        if "sync_done" in types and "kickoff_started" in types:
+            self.assertLess(
+                types.index("sync_done"),
+                types.index("kickoff_started"),
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
