@@ -2027,6 +2027,56 @@ features:
       - "AC-4: bash scripts/self_check.sh 5/5 PASS."
       - "AC-5: 1119 unit + integration tests PASS, regression 0."
 
+  - id: "F-066"
+    name: "docs/assets/README.md fact fix — assets are wired by hand, not auto-referenced"
+    type: "feature"
+    description: |
+      The trailing line of `docs/assets/README.md` reads "Every asset in
+      this directory is automatically referenced from the main README."
+      That is not how the wiring actually works — there is no
+      auto-discovery; the maintainer (or PR author) has to add a row
+      to the *Built with harness-boot* table in the main README by
+      hand, embedding the `<img>` tag explicitly.
+
+      The wrong wording originated in the Korean source ("자동으로 노출
+      됩니다") and survived the F-064 English rewrite verbatim. User
+      caught it: "이거 자동으로 되지는 않지 않나?"
+
+      One-line fact correction. No behavior change.
+    modules:
+      - "docs/assets/README.md"
+    test_strategy: "contract"
+    tdd_focus:
+      - "Trailing line of docs/assets/README.md no longer claims automatic referencing"
+    acceptance_criteria:
+      - "AC-1: docs/assets/README.md does not contain the literal phrase 'automatically referenced'."
+      - "AC-2: docs/assets/README.md trailing line names the *Built with harness-boot* table and indicates the wiring is manual ('by hand')."
+      - "AC-3: bash scripts/self_check.sh 5/5 PASS."
+
+  - id: "F-067"
+    name: "docs/assets/README.md trailing line — trim the redundant mantra"
+    type: "feature"
+    description: |
+      Follow-up to F-066. The fact-fix landed correct content but read
+      as "구구절절" (the user's word) — two clauses with a self-negating
+      tail. The *How to add* section above it (Option A=PR, Option B=
+      Issue) already explains exactly how a row gets wired in, so the
+      trailing summary line is redundant.
+
+      Resolution: drop the trailing line entirely. The *How to add*
+      block is the single source of guidance for the wiring step.
+
+      One-line removal. No new wording introduced.
+    modules:
+      - "docs/assets/README.md"
+    test_strategy: "contract"
+    tdd_focus:
+      - "Trailing summary line removed; How to add is the file's last block"
+    acceptance_criteria:
+      - "AC-1: docs/assets/README.md does not contain the phrases 'wired into the main README', 'auto-discovery', or 'automatically referenced'."
+      - "AC-2: The file's last non-empty line is the closing fence of the How to add code block, with no trailing prose paragraph after it."
+      - "AC-3: bash scripts/self_check.sh 5/5 PASS."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

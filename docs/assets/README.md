@@ -30,5 +30,3 @@ cp ~/recording.gif docs/assets/your-project.gif
 # Open an issue with the image attached and a one-liner about the project.
 # The maintainer will optimize and add the row.
 ```
-
-Every asset in this directory is automatically referenced from the main README.
