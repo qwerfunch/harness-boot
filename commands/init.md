@@ -373,6 +373,29 @@ that works** wins:
 Read `plugin_version` dynamically from `.claude-plugin/plugin.json`'s
 `version` field; fall back to the hardcoded `"0.1.0"` on failure.
 
+### 5.5. Initial sync (best-effort, F-076)
+
+Right after the `harness_initialized` event lands in events.log, fire one
+best-effort sync against the freshly written `.harness/` so the derived
+views (`domain.md`, `architecture.yaml`) are materialized when the spec
+is ready, and so `harness.yaml.generation.generated_from.spec_hash` is
+populated. This eliminates the post-install stutter where the very first
+`/harness-boot:work` cycle had to fire sync before kickoff bullets could
+reference `domain.md`.
+
+```bash
+python3 "$PLUGIN_ROOT/scripts/sync.py" --harness-dir "$(pwd)/.harness" --soft
+```
+
+The `--soft` flag delegates to `sync.try_initial_sync(harness_dir)`,
+which is fail-open by design: stub specs from menu options 1 / 2 fail
+schema validation and `--soft` prints `sync (initial): fail — <reason>`
+and **still exits 0**. Option 3 (brownfield) and `spec-conversion`
+output rich specs that succeed and print `sync (initial): ok — synced`.
+Either way, init never aborts because of an unsynced spec — the F-075
+autowire inside `scripts/work.py:activate()` retries on the first work
+cycle as the inner safety net.
+
 ### 6. Final report (user-facing)
 
 Print the summary below **once**:

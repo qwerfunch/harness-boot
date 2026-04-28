@@ -2352,6 +2352,72 @@ features:
       - "AC-5: F-075 mirrored on both spec.yaml copies (docs/samples/harness-boot-self + .harness). bash scripts/self_check.sh 5/5 PASS."
       - "AC-6: F-075 completed via the work.py 4-verb cycle (activate → run-gate gate_0/1/2/3/5 → declared evidence → complete) — Phase 2 dogfood."
 
+  - id: "F-076"
+    name: "Upstream sync wiring — init.md + spec-conversion finalize call try_initial_sync"
+    type: "feature"
+    description: |
+      Follow-up to F-075. F-075 closed the inner Python guard in
+      `scripts/work.py:activate()` so the first feature cycle would always
+      catch the missing-sync state, but the upstream entry points still
+      had no idea about sync. This feature wires the two upstream surfaces
+      (`commands/init.md` and `skills/spec-conversion/SKILL.md`) so the
+      derived views are materialized as soon as a populated `spec.yaml`
+      exists — eliminating the stutter where the very first work cycle
+      had to fire sync before kickoff bullets could reference
+      `domain.md`.
+
+      Mechanism: a new public helper `scripts/sync.try_initial_sync(harness_dir)`
+      wraps `sync.run()` with fail-open semantics — never raises, returns
+      a `{"ok": bool, "reason": str, "skipped": bool}` status dict. The
+      existing `_autowire_initial_sync` in `scripts/work.py` is refactored
+      to delegate to this helper (single source of truth). A new
+      `--soft` CLI flag (`python3 scripts/sync.py --harness-dir DIR --soft`)
+      exits 0 regardless of validation failure and prints the status,
+      so markdown bash blocks can call it without `|| true` workarounds.
+
+      Init.md adds a §5.5 "Initial sync (best-effort)" stage between the
+      `harness_initialized` event write and the final user-facing report.
+      Stub specs from menu options 1 / 2 will fail schema validation
+      and the `--soft` mode will print "skip — schema not ready"; that
+      is fine because F-075's autowire still catches them on first work
+      cycle. Option 3 (brownfield / free-text) and `spec-conversion`
+      output rich specs that succeed, so most users see derived views
+      immediately after install.
+
+      `skills/spec-conversion/SKILL.md` adds Stage 5 "Sync derived views"
+      after Stage 4 (검증). Stage 5 calls `try_initial_sync` and lists
+      `domain.md` + `architecture.yaml` in the §7 산출물 enumeration.
+      The contributor convention from F-049 → F-053 is respected: the
+      Stage 5 prose is in Korean to match the rest of the SKILL while
+      docstrings / comments / commit copy stay English.
+    modules:
+      - "scripts/sync.py"
+      - "scripts/work.py"
+      - "commands/init.md"
+      - "skills/spec-conversion/SKILL.md"
+      - "tests/unit/test_sync.py"
+      - "tests/unit/work/test_work_autowire.py"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "sync.try_initial_sync exists, returns dict {ok,reason,skipped}, never raises"
+      - "try_initial_sync skips when harness.yaml.spec_hash already populated (skipped=True, ok=True)"
+      - "try_initial_sync soft-fails on schema-invalid spec.yaml (ok=False, reason carries class name) without raising"
+      - "sync.py --soft CLI flag prints status line + always exits 0"
+      - "_autowire_initial_sync delegates to try_initial_sync and preserves the stderr `[warn]` contract from F-075"
+      - "commands/init.md contains a `python3 .* sync.py .* --soft` invocation between §5 and §6"
+      - "skills/spec-conversion/SKILL.md contains the same invocation in its post-Stage-4 finalize block"
+    acceptance_criteria:
+      - "AC-1: scripts/sync.py exposes `try_initial_sync(harness_dir: Path) -> dict`. Reads harness.yaml.spec_hash; returns `{ok: True, skipped: True, reason: 'already synced'}` when populated. Otherwise calls `run(harness_dir)`. Catches all exceptions and returns `{ok: False, reason: '<ClassName>: <msg>'}` instead of raising. spec.yaml absent → `{ok: False, reason: 'spec.yaml missing', skipped: True}` (no run attempt)."
+      - "AC-2: scripts/sync.py CLI gains `--soft` flag. Flow: argparse → try_initial_sync → print one human-readable line `sync (initial): <ok|skip|fail> — <reason>` → exit 0 unconditionally. Existing flags (`--dry-run`, `--force`, `--json`) continue to operate against `run()`."
+      - "AC-3: scripts/work.py:_autowire_initial_sync rewritten to delegate to `sync.try_initial_sync`. The `[warn] initial sync auto-wire failed: ...` stderr contract from F-075 is preserved (existing 5 InitialSyncAutowireTests pass without modification)."
+      - "AC-4: commands/init.md adds §5.5 (between §5 Initial event log and §6 Final report) titled 'Initial sync (best-effort)'. Body explains the call invokes `python3 \"$PLUGIN_ROOT/scripts/sync.py\" --harness-dir \"$(pwd)/.harness\" --soft` and that stub specs are expected to skip silently."
+      - "AC-5: skills/spec-conversion/SKILL.md adds Stage 5 'Sync derived views' after Stage 4 (검증) with the same `--soft` invocation. §7 산출물 enumerates `domain.md` + `architecture.yaml` as derived outputs (소산출 — Stage 5 가 만들어내는 결과)."
+      - "AC-6: tests/unit/test_sync.py adds `TryInitialSyncTests` covering: (a) skipped=True when spec_hash present, (b) ok=True after first run when spec is valid, (c) ok=False without raise when spec is schema-invalid, (d) ok=False reason='spec.yaml missing' when spec absent. Plus `SoftCliTests` checking sync.main(['--soft', '--harness-dir', tmp]) returns 0 even on schema failure."
+      - "AC-7: tests/unit/work/test_work_autowire.py contains a contract test `InitMdSyncWiredTest` and `SkillMdSyncWiredTest` that read commands/init.md / skills/spec-conversion/SKILL.md as text and assert the `--soft` invocation appears at least once."
+      - "AC-8: F-076 mirrored on both spec.yaml copies. bash scripts/self_check.sh 5/5 PASS · regression 0 across full unit suite."
+      - "AC-9: F-076 completed via the work.py 4-verb cycle (activate → run-gate gate_0 + gate_5 → declared evidence → complete) — Phase 2 dogfood."
+      - "AC-10: All new docstrings, comments, and CHANGELOG entry text added in this cycle are in English (continues the F-049 → F-053 native-English consolidation thread; SKILL.md Korean prose is the documented exception)."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

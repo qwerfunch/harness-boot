@@ -330,6 +330,56 @@ def run(
     }
 
 
+def try_initial_sync(harness_dir: Path) -> dict:
+    """F-076 — fail-open wrapper around run(harness_dir).
+
+    Shared by:
+        * scripts/work.py::_autowire_initial_sync (per-feature first activate)
+        * commands/init.md §5.5 (post-init bash invocation via --soft)
+        * skills/spec-conversion/SKILL.md Stage 5 (post-conversion finalize)
+
+    Contract:
+        * Never raises. Any sync.run() exception is caught and wrapped.
+        * Returns a status dict with at least ``ok: bool`` and ``reason: str``.
+          When the sync was skipped (already done, or spec.yaml missing), the
+          dict carries ``skipped: True``.
+        * Idempotent under canonical hashing — once spec_hash is populated,
+          subsequent calls short-circuit and return ``skipped: True``.
+
+    Decision tree:
+        1. spec.yaml missing → ``{ok: False, reason: 'spec.yaml missing',
+           skipped: True}``. Caller must not treat this as a failure;
+           init writes spec.yaml as a template that will be filled in
+           later.
+        2. harness.yaml.generation.generated_from.spec_hash already
+           populated → ``{ok: True, reason: 'already synced',
+           skipped: True}``.
+        3. Otherwise → call ``run()``. On success, ``{ok: True,
+           reason: 'synced'}``. On any exception, ``{ok: False,
+           reason: '<ClassName>: <msg>'}`` — typical case is schema
+           validation failure on stub specs from init menu options.
+    """
+    spec_path = harness_dir / "spec.yaml"
+    if not spec_path.is_file():
+        return {"ok": False, "reason": "spec.yaml missing", "skipped": True}
+
+    try:
+        harness_yaml = harness_dir / "harness.yaml"
+        if harness_yaml.is_file():
+            cfg = yaml.safe_load(harness_yaml.read_text(encoding="utf-8")) or {}
+            spec_hash = (
+                cfg.get("generation", {})
+                   .get("generated_from", {})
+                   .get("spec_hash", "")
+            )
+            if spec_hash:
+                return {"ok": True, "reason": "already synced", "skipped": True}
+        run(harness_dir)
+        return {"ok": True, "reason": "synced"}
+    except Exception as exc:
+        return {"ok": False, "reason": f"{type(exc).__name__}: {exc}"}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="harness-boot /sync orchestrator")
     parser.add_argument(
@@ -344,11 +394,37 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--timestamp", default=None, help="override UTC timestamp (tests)")
     parser.add_argument("--skip-validation", action="store_true", help="skip JSONSchema check")
     parser.add_argument("--schema", type=Path, default=None, help="path to spec.schema.json")
+    parser.add_argument(
+        "--soft",
+        action="store_true",
+        help=(
+            "F-076 fail-open mode: call try_initial_sync, print one human-readable "
+            "status line, exit 0 unconditionally. Used by commands/init.md and "
+            "skills/spec-conversion/SKILL.md finalize stages."
+        ),
+    )
     args = parser.parse_args(argv)
 
     if not args.harness_dir.is_dir():
+        if args.soft:
+            print(
+                f"sync (initial): skip — harness dir {args.harness_dir} not found",
+                file=sys.stderr,
+            )
+            return 0
         print(f"error: {args.harness_dir} not found", file=sys.stderr)
         return 2
+
+    if args.soft:
+        result = try_initial_sync(args.harness_dir)
+        if result.get("ok") and not result.get("skipped"):
+            label = "ok"
+        elif result.get("skipped"):
+            label = "skip"
+        else:
+            label = "fail"
+        print(f"sync (initial): {label} — {result.get('reason', '')}")
+        return 0
 
     try:
         summary = run(

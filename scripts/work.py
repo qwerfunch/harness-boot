@@ -158,49 +158,41 @@ def _find_feature(spec: dict, fid: str) -> dict | None:
 
 
 def _autowire_initial_sync(harness_dir: Path) -> None:
-    """F-073 — lazy-fire sync.run() when spec.yaml exists but never synced.
+    """F-075/F-076 — lazy-fire sync when spec.yaml exists but never synced.
 
-    Closes a field-discovered gap where /harness-boot:init followed by the
-    spec-conversion skill produced a populated spec.yaml without ever
-    materializing domain.md, architecture.yaml, or
-    harness.yaml.generation.generated_from.spec_hash. Users could iterate
-    through several feature cycles before noticing the derived views were
-    missing and the CLAUDE.md @import lines pointed at non-existent files.
+    Closes the inner half of the post-init / post-conversion gap: even if
+    upstream entry points (init markdown, spec-conversion skill) forget to
+    invoke sync, the very first feature cycle catches the missing-sync
+    state and materializes domain.md / architecture.yaml on demand.
 
-    Trigger condition (AND):
-        * spec.yaml is present
-        * harness.yaml is missing OR its spec_hash is empty / absent
+    Implementation delegates to ``scripts/sync.try_initial_sync`` (F-076)
+    so the same status-dict contract is shared by every caller. The outer
+    surfaces (init §5.5, spec-conversion Stage 5) call the same helper
+    via the ``sync.py --soft`` CLI; this autowire calls the Python API.
 
-    sync.run is idempotent under canonical hashing, so subsequent
-    activations are safely no-ops once spec_hash has been populated.
-
-    Failures are fail-open — emit a stderr warning and return — matching
-    _autowire_kickoff and _autowire_fog_clear. activate() must never raise
-    because of an autowire glitch.
+    Failure semantics are fail-open: a stderr warning is emitted and
+    activate() proceeds. ``spec.yaml missing`` is intentionally silent
+    because that is the legitimate empty-harness path (no spec to sync).
     """
-    spec_path = harness_dir / "spec.yaml"
-    if not spec_path.is_file():
-        return
     try:
-        harness_yaml = harness_dir / "harness.yaml"
-        spec_hash = ""
-        if harness_yaml.is_file():
-            cfg = yaml.safe_load(harness_yaml.read_text(encoding="utf-8")) or {}
-            spec_hash = (
-                cfg.get("generation", {})
-                   .get("generated_from", {})
-                   .get("spec_hash", "")
-            )
-        if spec_hash:
-            return
         import sync as _sync
-        _sync.run(harness_dir)
+        result = _sync.try_initial_sync(harness_dir)
     except Exception as exc:
         print(
-            f"[warn] initial sync auto-wire failed: {exc} — "
+            f"[warn] initial sync auto-wire failed: {type(exc).__name__}: {exc} — "
             f"run `python3 scripts/sync.py --harness-dir {harness_dir}` manually",
             file=sys.stderr,
         )
+        return
+    if result.get("ok"):
+        return
+    if result.get("reason") == "spec.yaml missing":
+        return
+    print(
+        f"[warn] initial sync auto-wire failed: {result.get('reason', 'unknown')} — "
+        f"run `python3 scripts/sync.py --harness-dir {harness_dir}` manually",
+        file=sys.stderr,
+    )
 
 
 def _autowire_fog_clear(

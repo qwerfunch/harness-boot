@@ -9,6 +9,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
+### Added — Upstream sync wiring: `try_initial_sync` helper + `--soft` CLI + init / spec-conversion finalize (F-076)
+
+Follow-up to F-075. F-075 closed the inner Python guard so the very first feature cycle catches the missing-sync state, but the upstream entry points (`commands/init.md`, `skills/spec-conversion/`) still treated `sync` as a separate manual concern. This release wires both upstream surfaces so derived views (`domain.md`, `architecture.yaml`) and `harness.yaml.generation.generated_from.spec_hash` are materialized as soon as a populated `spec.yaml` exists — eliminating the post-install / post-conversion stutter where the first `/harness-boot:work` cycle had to fire sync before kickoff bullets could reference `domain.md`.
+
+Three coordinated additions:
+
+1. **`scripts/sync.try_initial_sync(harness_dir) -> dict`** — a public fail-open wrapper around `sync.run()`. Never raises; returns a status dict with `ok: bool`, `reason: str`, optional `skipped: bool`. Skips when `harness.yaml.spec_hash` is already populated (idempotent under canonical hashing). Decision tree: `spec.yaml` missing → `skipped: True, ok: False, reason: 'spec.yaml missing'`; already synced → `skipped: True, ok: True`; otherwise call `run()` and wrap any exception as `ok: False, reason: '<ClassName>: <msg>'`.
+
+2. **`scripts/sync.py --soft` CLI flag** — calls `try_initial_sync`, prints one human-readable line `sync (initial): <ok|skip|fail> — <reason>`, and exits 0 unconditionally. Existing flags (`--dry-run`, `--force`, `--json`, `--skip-validation`, `--schema`, `--timestamp`) continue to operate against the strict `run()` path; `--soft` is a separate fail-open mode for upstream finalize bash blocks.
+
+3. **`commands/init.md` §5.5 + `skills/spec-conversion/SKILL.md` Stage 5** — both finalize stages now invoke `python3 "$PLUGIN_ROOT/scripts/sync.py" --harness-dir "$(pwd)/.harness" --soft`. Stub specs from init menu options 1 / 2 fail schema validation and `--soft` prints `sync (initial): fail — <reason>` and still exits 0; option 3 (brownfield) and `spec-conversion` output rich specs that succeed and print `sync (initial): ok — synced`. The F-075 autowire inside `scripts/work.py:activate()` remains the inner safety net.
+
+### Changed — `_autowire_initial_sync` delegates to `try_initial_sync`
+
+`scripts/work.py:_autowire_initial_sync` is now a thin wrapper that calls `sync.try_initial_sync(harness_dir)` and converts the status dict into the existing stderr `[warn] initial sync auto-wire failed: ...` contract. Same external behavior as F-075; the duplication between the two implementations is gone.
+
+### Tests
+
+- `tests/unit/test_sync.py` — `TryInitialSyncTests` (5 cases: fresh-runs · already-synced-skips · missing-spec-no-run · schema-invalid-soft-fails · run-exception-caught) + `SoftCliTests` (3 cases: success · schema-failure · spec-missing all return rc=0) + `MarkdownContractTests` (init.md and SKILL.md both contain the `--soft` invocation).
+- `tests/unit/work/test_work_autowire.py` — F-075's `InitialSyncAutowireTests` (5 cases) pass unchanged after the autowire refactor; the stderr `[warn]` contract is preserved verbatim.
+- Total: **1120 unit tests pass**. `bash scripts/self_check.sh` 5/5 OK.
+
 ### Added — `_autowire_initial_sync` in `scripts/work.py:activate()` (F-075)
 
 Closes a field-discovered gap: when a downstream user ran `/harness-boot:init` followed by the `spec-conversion` skill, the resulting `spec.yaml` was populated but `domain.md`, `architecture.yaml`, and `harness.yaml.generation.generated_from.spec_hash` remained absent / empty. Several feature cycles could complete before the missing derived views were noticed, leaving the `CLAUDE.md` `@import` lines pointing at non-existent files. Root cause: three entry points (init markdown · `spec-conversion` skill · `work.py` per-feature cycle) each treat `sync` as a separate manual step; none of them wires `python3 scripts/sync.py` into its finalize path.
@@ -30,7 +52,6 @@ The `commands/init.md` and `skills/spec-conversion/` finalize paths remain candi
 - F-051 follow-up — older active features (F-002/F-004/F-006/F-011~F-040) description / AC body sweep.
 - Pre-marketplace polish follow-ups — `plugin.json.repository` field, `commands/init.md` header version marker (deferred from F-055 to keep that feature focused).
 - F-073 (`read_events(tail=N)` for status/dashboard) and F-074 (`canonical_hash` mtime cache) — both still queued from the v0.11.11 cumulative-slowdown audit; they will be sequenced individually if external usage surfaces the need.
-- Wiring sync into `commands/init.md` and `skills/spec-conversion/` finalize paths — F-075 closes the inner guard; the upstream wiring is incremental hardening that becomes worthwhile once external dogfood confirms the fix is sufficient.
 
 ## [0.11.11] — 2026-04-29
 

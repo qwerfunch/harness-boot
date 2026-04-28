@@ -113,6 +113,29 @@ v0.3 에서 계승된 자산:
 - 매핑 품질 점수 분포 측정 (★1~5)
 - 신규 갭(NEW-\*)이 발견되면 conversion-notes 에 skill 갱신 후보 기록
 
+### Stage 5 — Sync derived views (NEW in v0.6, F-076)
+
+Stage 4 검증을 통과한 시점에서 `spec.yaml` 은 충분히 성숙하므로,
+파생 뷰(`.harness/domain.md` · `.harness/architecture.yaml`) 를
+즉시 materialize 한다. 이로써 변환 직후 `/harness-boot:work` 첫 사이클
+이 sync 를 별도로 트리거할 필요가 없어지고, kickoff 템플릿이
+`domain.md` 를 참조할 때 파일이 이미 존재한다.
+
+```bash
+python3 "$PLUGIN_ROOT/scripts/sync.py" --harness-dir "$(pwd)/.harness" --soft
+```
+
+- `--soft` 는 fail-open: 변환 결과가 어떤 이유로든 schema 검증을
+  통과하지 못해도 `sync (initial): fail — <reason>` 한 줄 찍고
+  exit 0. 사용자는 conversion-notes 에 원인을 기록하고 다음
+  변환 사이클에서 보강한다.
+- 정상 케이스에서는 `sync (initial): ok — synced` 가 찍히고
+  `domain.md` · `architecture.yaml` · `harness.yaml.generation.generated_from.spec_hash`
+  가 한꺼번에 갱신된다. 이 결과는 §7 산출물 enumeration 의
+  파생 항목에 포함된다.
+- 자기참조 스펙(P-22 적용 대상) 에서는 Stage 5 출력의 spec_hash 를
+  conversion-notes 에 기록해 retro 에서 cross-reference 가능하게 한다.
+
 ---
 
 ## 2. 원칙 목록 (21개, 우선순위 태깅됨)
@@ -262,13 +285,21 @@ MAY = 도메인 특수적
 
 ---
 
-## 7. 산출물 (5개)
+## 7. 산출물 (5개 + Stage 5 파생 2개)
 
 1. `.harness/spec.yaml` — 주 산출물
 2. `docs/spec/unrepresentable.md` — 갭 카탈로그 (갭 0 이라도 파일은 존재)
 3. `docs/spec/conversion-notes.md` — 의사결정 로그
 4. `docs/spec/backlink-matrix.md` — **Stage 4 검증 (v0.3 신규 필수)**
 5. (선택) `docs/spec/<field>.md` — $include 로 분리한 자유텍스트
+
+**Stage 5 파생** (F-076 — `--soft` sync 가 ok 일 때 자동 생성):
+
+6. `.harness/domain.md` — entities + business_rules → prose 뷰
+7. `.harness/architecture.yaml` — adapters + constraints → 머신 친화 뷰
+
+`harness.yaml.generation.generated_from.spec_hash` 도 함께 갱신되어
+이후 `/harness-boot:work` 사이클이 drift 검사를 정상 수행할 수 있다.
 
 ---
 

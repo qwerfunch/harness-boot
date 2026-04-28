@@ -323,5 +323,101 @@ class EditWinsHelperTests(unittest.TestCase):
         self.assertTrue(sync.edit_wins(p, "different" * 8))
 
 
+class TryInitialSyncTests(SyncScratchMixin, unittest.TestCase):
+    """F-076 — sync.try_initial_sync wraps run() with fail-open semantics.
+
+    Shared by work.py autowire (_autowire_initial_sync) and the markdown
+    bash blocks in commands/init.md / skills/spec-conversion/SKILL.md
+    via the `sync.py --soft` CLI flag. Contract: never raises, always
+    returns a status dict with `ok: bool`, `reason: str`, optional
+    `skipped: bool`.
+    """
+
+    def test_fresh_harness_runs_sync(self):
+        result = sync.try_initial_sync(self.harness)
+        self.assertTrue(result["ok"])
+        self.assertFalse(result.get("skipped", False))
+        self.assertTrue((self.harness / "harness.yaml").is_file())
+        self.assertTrue((self.harness / "domain.md").is_file())
+        self.assertTrue((self.harness / "architecture.yaml").is_file())
+
+    def test_already_synced_skips(self):
+        sync.try_initial_sync(self.harness)  # first call populates spec_hash
+        result = sync.try_initial_sync(self.harness)
+        self.assertTrue(result["ok"])
+        self.assertTrue(result.get("skipped"))
+        self.assertIn("already", result["reason"])
+
+    def test_missing_spec_returns_no_run(self):
+        empty = self.tmp / "empty"
+        empty.mkdir()
+        result = sync.try_initial_sync(empty)
+        self.assertFalse(result["ok"])
+        self.assertIn("spec.yaml", result["reason"])
+        self.assertFalse((empty / "harness.yaml").exists())
+
+    def test_schema_invalid_spec_soft_fails(self):
+        broken = self.tmp / "broken-harness"
+        broken.mkdir()
+        # Project missing required `summary` field — sync.run will raise.
+        (broken / "spec.yaml").write_text(
+            "version: \"2.3.8\"\nproject:\n  name: \"x\"\n",
+            encoding="utf-8",
+        )
+        result = sync.try_initial_sync(broken)
+        self.assertFalse(result["ok"])
+        self.assertNotEqual(result["reason"], "")
+        # Did not raise — that is the whole point of try_*
+
+    def test_run_exception_caught(self):
+        from unittest import mock
+
+        with mock.patch.object(sync, "run", side_effect=RuntimeError("boom")):
+            result = sync.try_initial_sync(self.harness)
+        self.assertFalse(result["ok"])
+        self.assertIn("RuntimeError", result["reason"])
+        self.assertIn("boom", result["reason"])
+
+
+class SoftCliTests(SyncScratchMixin, unittest.TestCase):
+    """F-076 — `python3 scripts/sync.py --soft` always exits 0 and prints status."""
+
+    def test_soft_cli_returns_zero_on_success(self):
+        rc = sync.main(["--harness-dir", str(self.harness), "--soft"])
+        self.assertEqual(rc, 0)
+
+    def test_soft_cli_returns_zero_on_schema_failure(self):
+        broken = self.tmp / "broken"
+        broken.mkdir()
+        (broken / "spec.yaml").write_text(
+            "version: \"2.3.8\"\nproject:\n  name: \"x\"\n",
+            encoding="utf-8",
+        )
+        rc = sync.main(["--harness-dir", str(broken), "--soft"])
+        self.assertEqual(rc, 0)
+
+    def test_soft_cli_returns_zero_when_spec_missing(self):
+        empty = self.tmp / "empty"
+        empty.mkdir()
+        rc = sync.main(["--harness-dir", str(empty), "--soft"])
+        self.assertEqual(rc, 0)
+
+
+class MarkdownContractTests(unittest.TestCase):
+    """F-076 — init.md and SKILL.md must invoke `sync.py --soft` at finalize."""
+
+    def test_init_md_invokes_soft_sync(self):
+        path = REPO_ROOT / "commands" / "init.md"
+        body = path.read_text(encoding="utf-8")
+        self.assertIn("sync.py", body)
+        self.assertIn("--soft", body)
+
+    def test_spec_conversion_skill_invokes_soft_sync(self):
+        path = REPO_ROOT / "skills" / "spec-conversion" / "SKILL.md"
+        body = path.read_text(encoding="utf-8")
+        self.assertIn("sync.py", body)
+        self.assertIn("--soft", body)
+
+
 if __name__ == "__main__":
     unittest.main()
