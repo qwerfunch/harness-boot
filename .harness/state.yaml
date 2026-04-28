@@ -1764,8 +1764,37 @@ features:
       untouched and pass.
   started_at: '2026-04-28T17:28:36Z'
   completed_at: '2026-04-28T17:32:41Z'
+- id: F-079
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-28T17:40:20Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-28T17:40:20Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-28T17:40:20Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (12.7s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-28T17:40:20Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.7s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-28T17:40:21Z'
+    kind: manual_check
+    summary: Dashboard coverage gauge + intent_planner carry-forward recommendation
+      8/8 PASS — CoverageGaugeTests 5 cases (mismatch fingerprint → coverage line
+      · empty/missing → no line · debt section with high alert · back-compat without
+      harness_dir) · CoverageRecommendationTests 3 cases (below threshold prepends
+      · None unchanged · 1.0 unchanged). dashboard.render gains harness_dir kwarg
+      threaded from work.py snapshot. 1149 unit tests pass · self_check 5/5 OK.
+  started_at: '2026-04-28T17:34:34Z'
+  completed_at: '2026-04-28T17:43:59Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-078
+  last_command: /harness:work F-079
   last_gate_passed: gate_5
   active_feature_id: null
