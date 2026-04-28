@@ -1984,6 +1984,49 @@ features:
       - "AC-5: bash scripts/self_check.sh 5/5 PASS."
       - "AC-6: 1119 unit + integration tests PASS, regression 0."
 
+  - id: "F-065"
+    name: "Built-with contribution flow — OSS-standard PR-first guidance"
+    type: "feature"
+    description: |
+      The "Built something?" call-to-action in the main README treated
+      PR and issue as equal channels. User asked: "보통 이런식으로
+      추가할때, 오픈소스진영에서 어떻게 많이 추가하나? 그 방식으로
+      가이드해줘." → Follow OSS convention.
+
+      OSS norm (awesome-* lists, vercel/next.js examples, tailwindcss
+      showcase, homebrew formula additions, etc.): contributor opens a
+      PR copying an existing row as a template. Issue is fallback when
+      PR is overkill. Email is not exposed.
+
+      Three small copy edits land here:
+      (1) README.md L168 — Built-with line points at PR first, then
+          mentions issue as a fallback. Adds "copy an existing row as a
+          template" hint.
+      (2) README.ko.md L168 — Korean mirror with the same shape; KO
+          phrase "기존 행을 복사해 양식으로 쓰면 됩니다" explains the
+          template trick in one line.
+      (3) docs/assets/README.md "How to add" — Option A (PR) gets a
+          (recommended) label and the "copying an existing row as a
+          template" hint added; Option B (issue) text unchanged.
+
+      No behavior change. Maintainer ID still not exposed in the README
+      (per F-064 license-line decision).
+    modules:
+      - "README.md"
+      - "README.ko.md"
+      - "docs/assets/README.md"
+    test_strategy: "contract"
+    tdd_focus:
+      - "Built-with line names PR first, issue second"
+      - "Both mirrors mention 'copy an existing row' / '기존 행을 복사' template hint"
+      - "docs/assets/README.md Option A carries a (recommended) label"
+    acceptance_criteria:
+      - "AC-1: README.md L168 starts with 'Open a [PR](...)' and contains 'copy an existing row as a template'; the same line mentions an issue as fallback ('if a PR is overkill')."
+      - "AC-2: README.ko.md L168 starts with '[PR](...) 로 표에 행을 추가해주세요' and contains '기존 행을 복사해 양식으로 쓰면 됩니다'; mentions issue with '양식이 번거로우시면'."
+      - "AC-3: docs/assets/README.md 'How to add' section has '# Option A (recommended) — open a PR yourself' and 'copying an existing row as a template' verbatim; '# Option B — just send it' kept."
+      - "AC-4: bash scripts/self_check.sh 5/5 PASS."
+      - "AC-5: 1119 unit + integration tests PASS, regression 0."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

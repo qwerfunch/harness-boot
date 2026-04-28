@@ -165,7 +165,7 @@ Next: (1) run the next gate (recommended)
 | **cosmic-suika** | <a href="https://qwerfunch.github.io/cosmic-suika-pages/"><img src="docs/assets/cosmic-suika.png" alt="cosmic-suika preview" width="240"></a> | [Play](https://qwerfunch.github.io/cosmic-suika-pages/) | [GitHub](https://github.com/qwerfunch/cosmic-suika-pages) | Space-themed merge game |
 | *Yours next* | — | — | — | Add your harness-boot project here |
 
-**Built something?** Send a [PR](https://github.com/qwerfunch/harness-boot/pulls) or [issue](https://github.com/qwerfunch/harness-boot/issues) and we'll add it.
+**Built something?** Open a [PR](https://github.com/qwerfunch/harness-boot/pulls) adding your project to the table — copy an existing row as a template. Or open an [issue](https://github.com/qwerfunch/harness-boot/issues) with the image and a one-liner if a PR is overkill.
 
 Send any image, GIF, or screenshot that shows the project — plus a one-liner and a link. We'll optimize and place it on merge. Full guide: [`docs/assets/README.md`](docs/assets/README.md).
 

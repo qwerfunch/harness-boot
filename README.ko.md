@@ -165,7 +165,7 @@ harness-boot
 | **cosmic-suika** | <a href="https://qwerfunch.github.io/cosmic-suika-pages/"><img src="docs/assets/cosmic-suika.png" alt="cosmic-suika preview" width="240"></a> | [Play](https://qwerfunch.github.io/cosmic-suika-pages/) | [GitHub](https://github.com/qwerfunch/cosmic-suika-pages) | 우주 테마 수박 게임 |
 | *여러분 차례* | — | — | — | harness-boot 로 만든 결과물 추가 가능 |
 
-**여러분의 결과물도 환영합니다.** [PR](https://github.com/qwerfunch/harness-boot/pulls) 또는 [issue](https://github.com/qwerfunch/harness-boot/issues) 로 보내주시면 이 표에 추가합니다.
+**여러분의 결과물도 환영합니다.** [PR](https://github.com/qwerfunch/harness-boot/pulls) 로 표에 행을 추가해주세요 — 기존 행을 복사해 양식으로 쓰면 됩니다. 양식이 번거로우시면 [issue](https://github.com/qwerfunch/harness-boot/issues) 로 이미지와 한 줄 설명만 보내주셔도 됩니다.
 
 이미지·GIF·스크린샷 무엇이든 — 한 줄 설명과 링크만 함께 보내주세요. 머지 전에 메인테이너가 다듬어 적용합니다.
 자세한 가이드는 [`docs/assets/README.md`](docs/assets/README.md).

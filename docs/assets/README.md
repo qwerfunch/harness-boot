@@ -22,13 +22,13 @@ If your asset is bigger than these targets, send it anyway — we'll resize and 
 ## How to add
 
 ```bash
-# Option A — open a PR yourself
+# Option A (recommended) — open a PR yourself
 cp ~/recording.gif docs/assets/your-project.gif
-# then add a row to README.md §Built with harness-boot
+# then add a row to README.md §Built with harness-boot, copying an existing row as a template.
 
 # Option B — just send it
 # Open an issue with the image attached and a one-liner about the project.
-# Maintainer will optimize and add the row.
+# The maintainer will optimize and add the row.
 ```
 
 Every asset in this directory is automatically referenced from the main README.

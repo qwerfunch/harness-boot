@@ -1451,8 +1451,34 @@ features:
       to use, free to fork.'' (EN/KO 동일). AC-1~4 grep 검증 OK.'
   started_at: '2026-04-28T08:18:34Z'
   completed_at: '2026-04-28T08:19:37Z'
+- id: F-065
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-28T08:28:16Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-28T08:28:16Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-28T08:28:16Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (9.8s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-28T08:28:16Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.6s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-28T08:28:17Z'
+    kind: generic
+    summary: 'Built-with copy 3개 영역 OSS 표준 정합화: README.md/ko.md L168 (PR default +
+      issue fallback + ''copy existing row'' 힌트), docs/assets/README.md How-to-add
+      (Option A recommended 라벨 + template 한 마디). AC-1~4 grep 통과.'
+  started_at: '2026-04-28T08:27:17Z'
+  completed_at: '2026-04-28T08:28:17Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-064
+  last_command: /harness:work F-065
   last_gate_passed: gate_5
   active_feature_id: null
