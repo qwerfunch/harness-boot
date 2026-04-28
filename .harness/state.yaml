@@ -1590,7 +1590,7 @@ features:
   started_at: '2026-04-28T14:32:10Z'
   completed_at: '2026-04-28T14:39:12Z'
 - id: F-071
-  status: in_progress
+  status: done
   gates:
     gate_5:
       last_result: pass
@@ -1606,9 +1606,9 @@ features:
       · AC-4 README.md untouched · self_check 5/5 PASS · README.ko.md 수동 설치 section
       reads as native Korean
   started_at: '2026-04-28T14:40:14Z'
-  completed_at: null
+  completed_at: '2026-04-28T14:41:24Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
   last_command: /harness:work F-071
   last_gate_passed: gate_5
-  active_feature_id: F-071
+  active_feature_id: null
