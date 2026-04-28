@@ -681,6 +681,71 @@ def block(harness_dir: Path, fid: str, reason: str, *, kind: str = "blocker") ->
     return res
 
 
+def _project_is_git_repo(project_root: Path) -> bool:
+    """Return True if project_root contains a .git entry (dir or worktree file).
+
+    F-070: working tree guard precondition. Non-git projects bypass the
+    guard silently because the canonical commit sequence does not apply.
+    """
+    return (project_root / ".git").exists()
+
+
+def _working_tree_dirty(project_root: Path) -> bool:
+    """Return True if `git status --porcelain` reports user-owned changes.
+
+    F-070: includes both unstaged modifications and staged-but-uncommitted
+    changes. Caller must verify project_root is a git repo first via
+    ``_project_is_git_repo``. Best-effort — git failures yield False so
+    the guard never blocks on environment issues.
+
+    Whitelist mirrors the F-034 pre-commit hook so the two stay in sync:
+    ``.harness/state.yaml``, ``.harness/_workspace/...``, and
+    ``CHANGELOG.md``. work.py itself mutates state.yaml during gate
+    recording and evidence accumulation, and ceremony files land under
+    ``_workspace/``; treating those as dirtiness would make the canonical
+    sequence unreachable.
+    """
+    import subprocess
+    try:
+        # ``--untracked-files=all`` expands untracked directories so each
+        # file gets its own porcelain line; without it git collapses an
+        # entire dir (e.g. an unstaged ``.harness/``) into a single
+        # ``?? .harness/`` row that the whitelist could not match path-
+        # by-path.
+        result = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=all"],
+            cwd=str(project_root),
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+        return False
+    for line in result.stdout.splitlines():
+        # Each porcelain line: "XY <path>" where X/Y are status codes and
+        # path follows column 3. Renames use " -> " — count the destination.
+        if len(line) < 4:
+            continue
+        path = line[3:]
+        if " -> " in path:
+            path = path.split(" -> ", 1)[1]
+        path = path.strip().strip('"')
+        if not _is_harness_owned_path(path):
+            return True
+    return False
+
+
+def _is_harness_owned_path(path: str) -> bool:
+    """Return True for paths the F-034 hook whitelists for chore commits."""
+    if path == ".harness/state.yaml":
+        return True
+    if path.startswith(".harness/_workspace/"):
+        return True
+    if path == "CHANGELOG.md":
+        return True
+    return False
+
+
 def complete(
     harness_dir: Path,
     fid: str,
@@ -716,6 +781,32 @@ def complete(
         res = _summarize(state, fid)
         res.action = "queried"
         res.message = f"cannot complete — {_friendly_gate('gate_5')} is not PASS yet"
+        return res
+
+    # F-070 — working tree guard. The canonical commit sequence is
+    #   activate → code → gate_0..3 → gate_5 → evidence
+    #   → git commit (active_feature_id still set, F-034 hook passes)
+    #   → gate_4 (commit-clean PASS automatically)
+    #   → --complete
+    # When the user reaches --complete with uncommitted changes, the post-
+    # complete commit needs the F-034 hook escape hatch (active is null
+    # by then). Refusing here teaches the canonical sequence at the exact
+    # decision point. hotfix_reason does NOT bypass: working-tree-clean
+    # is an audit-trail invariant about *what code is part of this done*,
+    # which is orthogonal to Iron Law's evidence-count concern.
+    project_root = harness_dir.parent
+    if _project_is_git_repo(project_root) and _working_tree_dirty(project_root):
+        res = _summarize(state, fid)
+        res.action = "queried"
+        res.message = (
+            f"cannot complete — working tree has uncommitted user changes. "
+            f"Canonical sequence: --evidence → git commit → --complete. "
+            f"Committing while the feature is still in_progress lets the "
+            f"pre-commit hook (F-034) pass naturally; --gate gate_4 may "
+            f"be recorded post-commit if you want the audit trail. "
+            f"(.harness/state.yaml, .harness/_workspace/*, CHANGELOG.md "
+            f"are whitelisted and do not count as dirty.)"
+        )
         return res
 
     # F-048 — drift × Iron Law gating. severity="error" 이면서 *진짜 wire

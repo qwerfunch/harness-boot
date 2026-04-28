@@ -1571,8 +1571,26 @@ features:
       install commands consistent across en/ko
   started_at: '2026-04-28T14:13:17Z'
   completed_at: '2026-04-28T14:14:13Z'
+- id: F-070
+  status: in_progress
+  gates:
+    gate_5:
+      last_result: pass
+      ts: '2026-04-28T14:38:34Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-28T14:38:34Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.7s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-28T14:38:40Z'
+    kind: manual_check
+    summary: 1098/1098 tests pass; self_check 5/5; F-070 guard verified end-to-end
+      via WorkingTreeGuardTests (6 new tests covering dirty/clean/non-git/hotfix/whitelist
+      paths)
+  started_at: '2026-04-28T14:32:10Z'
+  completed_at: null
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-069
+  last_command: /harness:work F-070
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-070

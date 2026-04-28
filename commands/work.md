@@ -243,7 +243,7 @@ Details: `agents/software-engineer.md § Coding style`.
 
 ## Typical scenario
 
-A full cycle for one feature:
+A full cycle for one feature (canonical commit position made explicit in v0.11.10 — F-070):
 
 ```
 /harness-boot:work F-004                                 → activated
@@ -252,11 +252,19 @@ A full cycle for one feature:
 /harness-boot:work F-004 --gate gate_1 pass --note "type check clean"
 /harness-boot:work F-004 --gate gate_2 pass
 /harness-boot:work F-004 --gate gate_3 pass --note "coverage 85%"
-/harness-boot:work F-004 --gate gate_4 pass --note "merged"
 /harness-boot:work F-004 --gate gate_5 pass --note "smoke session OK"
 /harness-boot:work F-004 --evidence "full suite 237/237" --kind test
+git commit -m "feat(F-004): ..."                         # active=F-004 still set; F-034 hook passes
 /harness-boot:work F-004 --complete                      → done
 ```
+
+**Why `git commit` between `--evidence` and `--complete`**:
+
+- The pre-commit hook (F-034) sees `active_feature_id = F-004` at commit time and lets the staged changes through — no `HARNESS_BYPASS_PRE_COMMIT=1` escape hatch.
+- The `--complete` working-tree guard (F-070) refuses to transition while the tree has uncommitted user changes. A missing commit surfaces immediately as a rejection, never silently as a hook bypass.
+- `--gate gate_4 pass` is optional and can be recorded post-commit if you want the audit trail; the guard makes its core check (clean tree) automatic anyway.
+
+(Putting `git commit` *after* `--complete` leaves `active_feature_id = null`, so the F-034 hook treats the staged changes as a work.py bypass and rejects them. The guard's whitelist mirrors F-034: `.harness/state.yaml`, `.harness/_workspace/...`, and `CHANGELOG.md` are exempt — work.py mutates them as part of the cycle itself.)
 
 ## Failure conditions
 

@@ -2151,6 +2151,58 @@ features:
       - "AC-4: Both READMEs carry one neutral note line stating harness-boot is not listed in the official Claude Code marketplace and that the qwerfunch/harness-boot form resolves to this GitHub repo."
       - "AC-5: bash scripts/self_check.sh 5/5 PASS."
 
+  - id: "F-070"
+    name: "complete-time working tree guard + canonical commit sequence"
+    type: "feature"
+    description: |
+      F-068 and F-069 both committed with active_feature_id=null after
+      --complete cleared the session pointer, requiring the F-034
+      pre-commit hook escape hatch (HARNESS_BYPASS_PRE_COMMIT=1). The
+      work cycle had no documented commit position, so users naturally
+      placed git commit *after* --complete, which the hook then
+      rejected.
+
+      Canonical sequence (made explicit by this feature):
+        activate → code → gate_0..3 → gate_5 → evidence
+        → git commit            ← active_feature_id=F-N still set,
+                                   pre-commit hook passes naturally
+        → gate_4 (auto PASS — working tree now clean)
+        → --complete
+
+      Add a deterministic guard inside scripts/work.py::complete():
+      before Iron Law evaluation, if the project root is a git repo
+      and `git status --porcelain` returns non-empty, refuse the
+      transition with action="queried" and a message naming the
+      canonical sequence. Re-callable, state unchanged. Non-git
+      projects skip the guard silently. hotfix_reason does NOT bypass
+      this guard — working-tree-clean is about audit-trail integrity,
+      orthogonal to Iron Law's evidence-count concern.
+
+      Update commands/work.md "전형 시나리오" to position git commit
+      between --evidence and --gate gate_4. F-034 hook left untouched
+      (simplicity preserved).
+    modules:
+      - "scripts/work.py"
+      - "commands/work.md"
+      - "tests/unit/test_work.py"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "complete() rejects when project working tree is dirty"
+      - "complete() rejects when staging area has uncommitted changes"
+      - "complete() proceeds normally when working tree is clean"
+      - "non-git projects bypass the guard silently"
+      - "rejection message names the canonical sequence"
+      - "hotfix_reason does not bypass the working tree guard"
+    acceptance_criteria:
+      - "AC-1: scripts/work.py::complete() runs `git status --porcelain` after the gate_5 PASS check and before drift × Iron Law gating; non-empty output returns action=queried with a message naming the canonical sequence and does not transition state."
+      - "AC-2: clean working tree path is unchanged from prior behavior — drift gating, Iron Law evaluation, retro generation, and events.log all preserve."
+      - "AC-3: non-git project (no .git in project root) bypasses the guard silently — guard is git-conditional and best-effort."
+      - "AC-4: hotfix_reason does NOT bypass the working tree guard. Working-tree-clean is an audit-trail invariant, not an Iron Law evidence requirement."
+      - "AC-5: The guard's dirtiness whitelist mirrors the F-034 pre-commit hook: .harness/state.yaml, .harness/_workspace/**, and CHANGELOG.md do not count as dirty (work.py itself mutates these during the cycle)."
+      - "AC-6: commands/work.md Typical scenario section shows git commit positioned between --evidence and --complete."
+      - "AC-7: at least 6 new unit tests in tests/unit/test_work.py covering: dirty working tree reject · dirty staging reject · clean pass · non-git skip · hotfix-with-dirty-tree reject · whitelisted-only-changes pass."
+      - "AC-8: bash scripts/self_check.sh 5/5 PASS."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
