@@ -46,6 +46,26 @@ _THIS = Path(__file__).resolve().parent
 if str(_THIS) not in sys.path:
     sys.path.insert(0, str(_THIS))
 
+
+# F-061: User-facing display layer. Internal gate identifiers (gate_0..gate_5,
+# gate_perf) stay as-is in state.yaml / CLI / function code; this map provides
+# friendly labels for messages the user reads. Format is "friendly (gate_X)".
+GATE_FRIENDLY: dict[str, str] = {
+    "gate_0": "tests",
+    "gate_1": "type check",
+    "gate_2": "lint",
+    "gate_3": "coverage",
+    "gate_4": "commit check",
+    "gate_5": "smoke run",
+    "gate_perf": "performance",
+}
+
+
+def _friendly_gate(gate_name: str) -> str:
+    """Render '<friendly> (<gate_id>)' for a known gate, else passthrough."""
+    label = GATE_FRIENDLY.get(gate_name)
+    return f"{label} ({gate_name})" if label else gate_name
+
 from ceremonies import design_review as _design_review  # noqa: E402
 from ceremonies import kickoff as _kickoff  # noqa: E402
 from ceremonies import retro as _retro  # noqa: E402
@@ -695,7 +715,7 @@ def complete(
     if not (isinstance(gate5, dict) and gate5.get("last_result") == "pass"):
         res = _summarize(state, fid)
         res.action = "queried"
-        res.message = "cannot complete — gate_5 (runtime_smoke) not pass"
+        res.message = f"cannot complete — {_friendly_gate('gate_5')} is not PASS yet"
         return res
 
     # F-048 — drift × Iron Law gating. severity="error" 이면서 *진짜 wire
@@ -1030,7 +1050,7 @@ def run_and_record_gate(
     res = _summarize(state, fid)
     res.action = "gate_auto_run"
     res.message = (
-        f"{gate_name} {run_result.result.upper()}"
+        f"{_friendly_gate(gate_name)} {run_result.result.upper()}"
         + (f" — {run_result.reason}" if run_result.reason else "")
     )
     return res

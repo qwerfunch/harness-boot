@@ -281,7 +281,10 @@ class PerfGateBudgetIntegrationTests(ScratchHarness, unittest.TestCase):
             project_root=self.tmp,
             override_command=["true"],
         )
-        self.assertEqual(res.message.split()[1], "PASS")
+        # F-061 message format is "<friendly> (<gate_id>) <STATUS>"; pull the
+        # status keyword regardless of position so the assertion is robust.
+        tokens = res.message.split()
+        self.assertIn("PASS", tokens)
         # Find the gate_run evidence entry
         from core.state import State as _State
         st = _State.load(self.harness)

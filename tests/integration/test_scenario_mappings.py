@@ -217,7 +217,12 @@ class EndToEndSmokeTests(HarnessFixture, unittest.TestCase):
         res = work.run_and_record_gate(
             self.harness, "F-1", "gate_0", project_root=self.harness.parent,
         )
-        self.assertIn(res.message.split(" ")[1].lower(), {"pass", "fail", "skipped"})
+        # Message format is "<friendly> (<gate_id>) <STATUS>[ — reason]" since
+        # F-061. Pull the status keyword out of the tokens regardless of where
+        # it lands so the test is robust to display-layer wording shifts.
+        tokens = res.message.split()
+        status = next((t for t in tokens if t in ("PASS", "FAIL", "SKIPPED")), "")
+        self.assertIn(status.lower(), {"pass", "fail", "skipped"})
 
 
 class ScenarioCoverageTests(unittest.TestCase):

@@ -127,21 +127,21 @@ A typical happy path — start a feature, run the gates, mark it done.
 ```
 You> let's start the login feature
 
-Claude> Starting F-3 (Login).
-        To finish: gate_5 (smoke run) PASS + at least 1 evidence.
+Claude> Starting Login (F-3).
+        To finish: smoke run (gate_5) PASS + at least 1 evidence.
         Next: run the gates.
 
 You> run them
 
-Claude> gate_0  (tests)             PASS — 19 unit tests
-        gate_5  (smoke run)         PASS — evidence auto-saved
-        gate_1/2/3  (type/lint/coverage)   SKIPPED — no tool detected
-        Iron Law satisfied (gate_5 + evidence). Mark F-3 done? [Y/n]
+Claude> tests             (gate_0)       PASS — 19 unit tests
+        smoke run         (gate_5)       PASS — evidence auto-saved
+        type/lint/coverage (gate_1/2/3)  SKIPPED — no tool detected
+        Iron Law satisfied (smoke run + evidence). Mark Login (F-3) done? [Y/n]
 
 You> Y
 
 Claude> Done. Retro saved: .harness/_workspace/retro/F-3.md
-        Up next: F-4 (Signup). Say "switch" or "show what's left".
+        Up next: Signup (F-4). Say "switch" or "show what's left".
 ```
 
 ### Dashboard output

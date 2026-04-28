@@ -1820,6 +1820,66 @@ features:
       - "AC-5: bash scripts/self_check.sh 5/5 PASS."
       - "AC-6: 1117 unit + integration tests PASS, regression 0."
 
+  - id: "F-061"
+    name: "User-facing message swap — friendly main + system identifier in parens (display layer)"
+    type: "feature"
+    description: |
+      User direction: "내부 동작은 그대로 두고 사용자에게 보여지는 텍스트
+      출력에서는 사용자 친화적으로." Specifically: swap the format from
+      `gate_0 (tests) PASS` to `tests (gate_0) PASS`, and `F-3 (Login)`
+      to `Login (F-3)` — friendly term as the main label, system
+      identifier as the parenthetical reference.
+
+      Display layer only. Internal layer untouched:
+        - state.yaml keys (`gate_5:`, etc.) unchanged
+        - CLI args (`--gate gate_0 pass`, `--run-gate gate_0`) unchanged
+        - function names, code constants, gate_X identifiers unchanged
+        - 1117 unit + integration tests unchanged (no message string
+          assertions exist)
+
+      Changed surface:
+        (1) `scripts/work.py` adds a `GATE_FRIENDLY` dict mapping
+            gate_0..gate_5 + gate_perf to friendly names (tests / type
+            check / lint / coverage / commit check / smoke run /
+            performance). The run-gate response message at L1032 and the
+            complete-rejection message at L698 are reformatted as
+            `friendly (gate_X) STATUS — reason`.
+        (2) `scripts/gate/runner.py` reason strings stay as-is — they
+            are already natural language ("no linter detected ..."), and
+            the friendly prefix is added at the work.py composition
+            layer.
+        (3) README.md and README.ko.md conversation example block — the
+            five gate result lines and the F-3/F-4 references swap to
+            the friendly-main format. The diagram sub-text stays as-is
+            (it carries semantic glosses, not identifiers, so the
+            swap pattern doesn't apply).
+        (4) README.ko.md L136 broken line ("ㅎf- ...", left from a
+            mid-edit interrupt) is restored to the proper friendly form
+            as part of the swap.
+
+      Behavior is unchanged. Tests remain 1117 green.
+    modules:
+      - "scripts/work.py"
+      - "scripts/gate/runner.py"
+      - "README.md"
+      - "README.ko.md"
+    test_strategy: "contract"
+    tdd_focus:
+      - "GATE_FRIENDLY dict maps all 7 gate ids (gate_0..gate_5, gate_perf)"
+      - "run_and_record_gate result message uses friendly-main format"
+      - "complete-rejection message uses friendly-main format"
+      - "README conversation examples (EN + KO) use friendly-main format"
+      - "Internal layer untouched (state.yaml keys, CLI args, function names)"
+    acceptance_criteria:
+      - "AC-1: scripts/work.py defines GATE_FRIENDLY with 7 entries (gate_0=tests, gate_1=type check, gate_2=lint, gate_3=coverage, gate_4=commit check, gate_5=smoke run, gate_perf=performance)."
+      - "AC-2: run_and_record_gate result message reads 'friendly (gate_X) STATUS' (e.g. 'tests (gate_0) PASS')."
+      - "AC-3: complete-rejection message at L698 reads similar 'smoke run (gate_5) is not PASS yet' shape."
+      - "AC-4: README.md conversation example uses 'tests (gate_0) PASS', 'smoke run (gate_5) PASS', 'Login (F-3)' style."
+      - "AC-5: README.ko.md conversation example uses '테스트 (gate_0) PASS', '스모크 실행 (gate_5) PASS', '로그인 기능 (F-3)' style; the broken L136 line is restored."
+      - "AC-6: state.yaml gate keys (gate_0/gate_5/...) unchanged, CLI args (--gate gate_0) unchanged."
+      - "AC-7: bash scripts/self_check.sh 5/5 PASS."
+      - "AC-8: 1117 unit + integration tests PASS, regression 0."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
