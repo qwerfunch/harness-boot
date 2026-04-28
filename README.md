@@ -76,7 +76,21 @@ In Claude Code:
 /plugin install harness-boot@harness-boot
 
 cd my-new-project
+```
+
+Pick the entry point that fits — both feed into the same harness:
+
+```bash
+# A. From a one-line idea
 /harness-boot:init "a simple to-do app"
+
+# B. From an existing planning doc (plan.md, design notes, a sketch)
+/harness-boot:init plan.md
+```
+
+Then drive every feature through the lifecycle:
+
+```bash
 /harness-boot:work
 ```
 
@@ -108,25 +122,25 @@ These are just samples — Claude reads context and handles other phrasings too.
 
 ### A short conversation
 
+A typical happy path — start a feature, run the gates, mark it done.
+
 ```
-You> we're basically done with login, let's wrap it
+You> let's start the login feature
 
-Claude> Read intent: complete F-3 (Login feature)
-        Status: 5/6 gates passed · 1 evidence (need 3)
-        Not enough evidence to mark this done. Pick one:
-          1) Add more evidence (manual check, review, test, etc.)
-          2) Switch to prototype mode
-          3) Use --hotfix-reason to bypass
-          4) Cancel
+Claude> Activating F-3 (Login). Iron Law: gate_5 (smoke) PASS + at least 1 evidence.
+        Next: run the gates.
 
-You> 1, a friend just reviewed it and signed off
+You> run them
 
-Claude> reviewer_check evidence added. Try again? [Y/n]
+Claude> gate_0 (tests)  PASS — 19 unit tests
+        gate_5 (smoke)  PASS — evidence auto-added
+        gate_1/2/3      SKIPPED — no toolchain detected
+        Iron Law satisfied. Mark F-3 done? [Y/n]
 
 You> Y
 
-Claude> Done. Retrospective auto-written.
-        Up next: F-4 (Signup).
+Claude> Done. Retro written: .harness/_workspace/retro/F-3.md
+        Up next: F-4 (Signup). Say "switch" or "show what's left".
 ```
 
 ### Dashboard output
@@ -145,10 +159,10 @@ Next: (1) run the next gate (recommended)
 
 ## Built with harness-boot
 
-| Project | Demo | Source | Description |
-|---|---|---|---|
-| **cosmic-suika** | [Play](https://qwerfunch.github.io/cosmic-suika-pages/) | [GitHub](https://github.com/qwerfunch/cosmic-suika-pages) | Space-themed merge game |
-| *Yours next* | — | — | Add your harness-boot project here |
+| Project | Preview | Demo | Source | Description |
+|---|---|---|---|---|
+| **cosmic-suika** | _(image landing soon)_ | [Play](https://qwerfunch.github.io/cosmic-suika-pages/) | [GitHub](https://github.com/qwerfunch/cosmic-suika-pages) | Space-themed merge game |
+| *Yours next* | — | — | — | Add your harness-boot project here |
 
 **Built something?** Send a [PR](https://github.com/qwerfunch/harness-boot/pulls) or [issue](https://github.com/qwerfunch/harness-boot/issues) and we'll add it.
 

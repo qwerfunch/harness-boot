@@ -76,7 +76,21 @@ Claude Code 에서:
 /plugin install harness-boot@harness-boot
 
 cd my-new-project
+```
+
+상황에 맞는 진입점을 고릅니다 — 두 경우 모두 같은 하네스로 들어갑니다:
+
+```bash
+# A. 한 줄 아이디어에서 시작
 /harness-boot:init "간단한 할 일 관리 앱"
+
+# B. 이미 가진 기획 문서에서 시작 (plan.md, 설계 노트, 스케치)
+/harness-boot:init plan.md
+```
+
+이후 모든 피처는 하나의 명령으로 굴립니다:
+
+```bash
 /harness-boot:work
 ```
 
@@ -108,25 +122,25 @@ cd my-new-project
 
 ### 대화 예시
 
+전형적인 한 사이클 — 피처 시작 → 검증 실행 → 완료.
+
 ```
-사용자> 로그인 기능 거의 다 된 것 같은데 마무리하자
+사용자> 로그인 기능 시작할게
 
-Claude> 해석: F-3 (로그인 기능) 완료 시도
-        현재 검증 5/6 통과 · 근거 1 개 (필요 3 개)
-        근거가 부족해 완료할 수 없습니다. 다음 중 선택:
-          1) 근거 더 추가 (수동 확인 · 리뷰 · 테스트 등)
-          2) prototype 모드로 강등
-          3) hotfix 사유로 우회
-          4) 취소
+Claude> F-3 (로그인) 활성화. Iron Law: gate_5 (smoke) 통과 + 근거 ≥ 1.
+        다음: 검증 실행.
 
-사용자> 1, 방금 친구한테 봐달라고 했고 통과했어
+사용자> 돌려봐
 
-Claude> reviewer_check 근거 추가됐습니다. 다시 시도할까요? [Y/n]
+Claude> gate_0 (tests)  PASS — 단위 19 개
+        gate_5 (smoke)  PASS — 근거 자동 추가
+        gate_1/2/3      SKIPPED — 도구 미감지
+        Iron Law 충족. F-3 완료할까요? [Y/n]
 
 사용자> Y
 
-Claude> 완료됐습니다. 회고가 자동 작성됐습니다.
-        다음 추천: F-4 (회원가입) 작업 시작.
+Claude> 완료. 회고 자동 작성: .harness/_workspace/retro/F-3.md
+        다음: F-4 (회원가입). "전환" 또는 "남은 일" 이라고 말하세요.
 ```
 
 ### 대시보드 출력
@@ -145,10 +159,10 @@ harness-boot
 
 ## 만들어진 결과물
 
-| 프로젝트 | 데모 | 소스 | 설명 |
-|---|---|---|---|
-| **cosmic-suika** | [Play](https://qwerfunch.github.io/cosmic-suika-pages/) | [GitHub](https://github.com/qwerfunch/cosmic-suika-pages) | 우주 테마 머지 게임 |
-| *여러분 차례* | — | — | harness-boot 로 만든 결과물 추가 가능 |
+| 프로젝트 | 미리보기 | 데모 | 소스 | 설명 |
+|---|---|---|---|---|
+| **cosmic-suika** | _(이미지 곧 추가)_ | [Play](https://qwerfunch.github.io/cosmic-suika-pages/) | [GitHub](https://github.com/qwerfunch/cosmic-suika-pages) | 우주 테마 머지 게임 |
+| *여러분 차례* | — | — | — | harness-boot 로 만든 결과물 추가 가능 |
 
 **여러분의 결과물도 환영합니다.** [PR](https://github.com/qwerfunch/harness-boot/pulls) 또는 [issue](https://github.com/qwerfunch/harness-boot/issues) 로 보내주시면 이 표에 추가합니다.
 

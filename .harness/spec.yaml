@@ -1678,6 +1678,58 @@ features:
       - "AC-5: bash scripts/self_check.sh 5/5 PASS."
       - "AC-6: 1117 unit + integration tests PASS, regression 0."
 
+  - id: "F-058"
+    name: "README first-impression polish — Quick start plan.md sample, portfolio Preview column, conversation example rewrite"
+    type: "feature"
+    description: |
+      Three first-impression issues surfaced while reviewing the README:
+
+      (1) Quick start showed only the natural-language entry point
+      (`/harness-boot:init "a simple to-do app"`). The plan.md entry
+      (`/harness-boot:init plan.md` — useful when the user already has a
+      planning doc, design notes, or a sketch) was hidden behind the
+      spec-conversion skill description, so first-time readers missed
+      that the harness accepts both shapes. Quick start now lists both
+      explicitly.
+
+      (2) The "Built with harness-boot" portfolio table had no slot for
+      a preview image, even though the row immediately below recommends
+      "image or GIF (1-3 seconds, <=800px, <=5 MB)". When the cosmic-
+      suika preview is ready it has nowhere to land. Added a Preview
+      column to the table, with a placeholder cell on the cosmic-suika
+      row that the maintainer can swap to an `<img>` tag once the asset
+      is committed.
+
+      (3) "A short conversation" demonstrated the Iron-Law guardrail
+      (insufficient evidence -> 4-option escalation) but skipped the
+      happy path that most first readers need to see. Replaced with a
+      compact happy-path walkthrough: activate -> run gates -> Iron Law
+      satisfied -> mark done -> retro auto-written -> next feature.
+      Less jargon (no "prototype mode" / "--hotfix-reason" up-front),
+      same 5-block structure, clearer mental model for newcomers. KO
+      mirror updated in lockstep.
+
+      No release tag attached at this time (per user instruction —
+      further README revisions may follow).
+    modules:
+      - "README.md"
+      - "README.ko.md"
+    test_strategy: "contract"
+    tdd_focus:
+      - "Quick start lists both /harness-boot:init forms (idea + plan.md)"
+      - "Built with harness-boot table carries a Preview column"
+      - "A short conversation reads as a happy path with no <4-option escalation>"
+      - "KO mirror tracks EN structurally"
+    acceptance_criteria:
+      - "AC-1: README.md Quick start section mentions both '/harness-boot:init \"...\"' (one-line idea) and '/harness-boot:init plan.md' (existing planning doc) on separate lines."
+      - "AC-2: README.ko.md '빠른 시작' has the same two-form structure with KO commentary."
+      - "AC-3: README.md 'Built with harness-boot' table header includes a 'Preview' column; cosmic-suika row has a Preview cell (placeholder or <img>); 'Yours next' row has a placeholder dash."
+      - "AC-4: README.ko.md '만들어진 결과물' table mirrors the column shape ('미리보기' or '프리뷰')."
+      - "AC-5: README.md 'A short conversation' contains 'gate_5' PASS narrative and 'Iron Law satisfied' style framing, and no 'prototype mode' / 'hotfix-reason' branching."
+      - "AC-6: README.ko.md '대화 예시' mirrors the happy-path rewrite."
+      - "AC-7: bash scripts/self_check.sh 5/5 PASS."
+      - "AC-8: 1117 unit + integration tests PASS, regression 0."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

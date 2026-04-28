@@ -1267,8 +1267,34 @@ features:
       검증 + self_check 5/5.
   started_at: '2026-04-28T03:13:19Z'
   completed_at: '2026-04-28T03:14:03Z'
+- id: F-058
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-28T04:36:35Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-28T04:36:36Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-28T04:36:35Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (9.6s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-28T04:36:36Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.6s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-28T04:36:43Z'
+    kind: generic
+    summary: 'README first-impression polish: Quick start (a) idea + (b) plan.md 두
+      갈래, Built portfolio Preview 컬럼 (cosmic-suika placeholder), ''A short conversation''
+      happy path 재작성. EN/KO mirror. AC-1~6 grep + self_check 5/5.'
+  started_at: '2026-04-28T04:35:05Z'
+  completed_at: '2026-04-28T04:36:43Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-057
+  last_command: /harness:work F-058
   last_gate_passed: gate_5
   active_feature_id: null

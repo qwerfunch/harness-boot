@@ -9,6 +9,12 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
+### Landed (awaiting next release tag)
+
+- **F-058 README first-impression polish** — Quick start now lists both `/harness-boot:init "..."` (one-line idea) and `/harness-boot:init plan.md` (existing planning doc) on separate lines. The "Built with harness-boot" portfolio table gained a Preview column (with a placeholder cell on the cosmic-suika row that flips to an `<img>` once the asset lands). "A short conversation" was rewritten as a compact happy path (activate → run gates → Iron Law → done → retro), dropping the up-front 4-option escalation that read as jargon to first-time visitors. EN/KO mirrors in lockstep. No tag yet — further README revisions may follow before the next release.
+
+### Queued
+
 - Marketplace PR (anthropic/claude-plugins-official) — pending explicit user go-ahead.
 - F-052 follow-up — broader `scripts/` Python docstring sweep across check.py, work.py, gate/runner.py, sync.py and others (~25 files of KO-bearing docstrings still queued).
 - F-053 follow-up — `tests/` Python docstring sweep (~99 files queued; per-area batch execution recommended).
