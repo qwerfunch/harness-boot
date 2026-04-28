@@ -9,17 +9,62 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
-### Landed (awaiting next release tag)
-
-- **F-068 plugin.json keywords refresh ahead of marketplace submission** — `agent-workflow` / `walking-skeleton` dropped from `.claude-plugin/plugin.json` keywords; `multi-agent` / `ai-coding` / `agent-harness` added. Final set: `claude-code · harness · multi-agent · ai-coding · spec-driven · agent-harness` (6 keywords). Aligned with the directory-listing tags about to be submitted to claude-plugins-official.
-
 ### Queued
 
-- Marketplace submission to anthropic/claude-plugins-official — submission templated text prepared (this thread); user submits via https://claude.ai/settings/plugins/submit. README install snippet update queued for after approval.
+- Marketplace submission to anthropic/claude-plugins-official — submission templated text prepared; user submits via https://claude.ai/settings/plugins/submit. README install snippet update queued for after approval.
 - F-052 follow-up — broader `scripts/` Python docstring sweep across check.py, work.py, gate/runner.py, sync.py and others (~25 files of KO-bearing docstrings still queued).
 - F-053 follow-up — `tests/` Python docstring sweep (~99 files queued; per-area batch execution recommended).
 - F-051 follow-up — older active features (F-002/F-004/F-006/F-011~F-040) description / AC body sweep.
 - Pre-marketplace polish follow-ups — `plugin.json.repository` field, `commands/init.md` header version marker (deferred from F-055 to keep that feature focused).
+
+## [0.11.10] — 2026-04-28
+
+**Manual install guide for both READMEs + canonical commit sequence enforced + Korean rewrite (F-068 → F-071).**
+
+A four-feature bundle. F-068 was queued from v0.11.9; F-069/F-070/F-071 land in this release. The headline change is F-070, which turns the F-068/F-069 commit-ordering quirk (both required `HARNESS_BYPASS_PRE_COMMIT=1` to land) into a deterministic guard inside `complete()`. F-070 itself shipped without any hook bypass — the guard self-validated.
+
+### Changed — plugin.json keywords refresh (F-068, originally queued in v0.11.9)
+
+`.claude-plugin/plugin.json` keywords drop `agent-workflow` and `walking-skeleton`; add `multi-agent`, `ai-coding`, `agent-harness`. Final set: `claude-code · harness · multi-agent · ai-coding · spec-driven · agent-harness` (6 keywords). Aligned with the directory-listing tags about to be submitted to claude-plugins-official.
+
+### Added — Manual install guide in both READMEs (F-069)
+
+A new `## Manual install` / `## 수동 설치` section after Quick start in `README.md` and `README.ko.md`. The section walks the contributor / fork / offline path: `git clone` → `/plugin marketplace add /absolute/path` → `/plugin install harness-boot@harness-boot`, plus `git pull` + `/plugin marketplace update harness-boot` for updates.
+
+A one-line note clarifies that harness-boot is not currently listed in the official Claude Code marketplace, so the existing Quick start `qwerfunch/harness-boot` form resolves to this GitHub repo directly. Unverified install paths (`CLAUDE_PLUGIN_ROOT`, `~/.claude/settings.json plugins[]`) stay confined to `docs/archive/local-install-v0.1.0.md` and do not surface in either README.
+
+Quick start commands are preserved verbatim — Manual install is additive, not a replacement.
+
+### Added — complete-time working tree guard + canonical commit sequence (F-070)
+
+`scripts/work.py::complete()` now runs `git status --porcelain --untracked-files=all` before Iron Law evaluation. If any non-whitelisted path is dirty, the call returns `action=queried` with a message naming the canonical sequence and refuses to transition state. Non-git projects bypass the guard silently. `hotfix_reason` does NOT bypass — working-tree-clean is an audit-trail invariant about *what code is part of a "done" feature*, orthogonal to Iron Law's evidence-count concern.
+
+Whitelist mirrors the F-034 pre-commit hook: `.harness/state.yaml`, `.harness/_workspace/**`, and `CHANGELOG.md`. work.py mutates these as part of the cycle itself; treating them as dirtiness would make the canonical sequence unreachable.
+
+The canonical sequence is now made explicit in `commands/work.md` Typical scenario:
+
+```
+... gate_0..3, gate_5, --evidence ...
+git commit -m "feat(F-N): ..."     # active=F-N still set; F-034 hook passes
+/harness-boot:work F-N --complete  # done
+```
+
+Why this matters: F-068 and F-069 both committed *after* `--complete`, which leaves `active_feature_id = null`, which the F-034 hook treats as a work.py bypass — both relied on `HARNESS_BYPASS_PRE_COMMIT=1`. The guard turns that silent escape hatch into an explicit rejection at the exact decision point. F-070 itself was the first feature shipped via the new sequence (no bypass).
+
+Six new unit tests in `WorkingTreeGuardTests` cover dirty working tree reject · dirty staging reject · clean pass · `hotfix_reason` does not bypass · message contents · whitelisted-only-changes pass; one new test in `CompleteTests` documents the non-git skip path.
+
+### Changed — README.ko.md manual install rewritten in native Korean (F-071)
+
+The 수동 설치 section landed in F-069 as a literal translation of the English copy and read awkwardly to native Korean speakers — calque phrases (`self-hosted 마켓플레이스로 동작합니다`, `덕분에 클론 자체가`, `· fork · 오프라인 환경용`, `위 X 형식은 Y 를 직접 가리킵니다`) leaked through.
+
+Rewritten so it reads as text a Korean speaker would write from scratch: sentence ordering / particles / verb endings chosen for Korean readers, `·` noun lists replaced with `또는` / comma joins, marketplace status note reframed (`등록되어 있지 않습니다` / `곧장 등록하는 형태입니다`). Path placeholder switched from `/절대경로/to/harness-boot` to `/Users/your-name/harness-boot` plus a `pwd` hint, less translation feel. README.md (English) is untouched.
+
+A feedback memory (`feedback_korean_native_writing.md`) was added alongside this feature so future Korean documents are written natively rather than translated.
+
+### Internal — test count + version markers
+
+- 1126 tests passing (was 1117 in v0.11.9; +9: F-070's 7 working-tree-guard tests + 2 incidental).
+- Plugin version: `0.11.9 → 0.11.10` in `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, README badges, and Status section.
 
 ## [0.11.9] — 2026-04-28
 

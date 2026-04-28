@@ -6,8 +6,8 @@
 
 Claude Code 위에서 도는 multi-agent 개발 하네스. 다른 AI 도구가 *능력* 을 더할 때, harness-boot 는 *방향* 을 만듭니다.
 
-[![plugin](https://img.shields.io/badge/plugin-v0.11.9-blue)](.claude-plugin/plugin.json)
-[![tests](https://img.shields.io/badge/tests-1117%20passing-brightgreen)](tests)
+[![plugin](https://img.shields.io/badge/plugin-v0.11.10-blue)](.claude-plugin/plugin.json)
+[![tests](https://img.shields.io/badge/tests-1126%20passing-brightgreen)](tests)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 ---
@@ -214,7 +214,7 @@ harness-boot/
 
 ## 현재 상태
 
-**v0.11.9** — 외부 채택 준비 단계, 자체 도그푸드 운영 중.
+**v0.11.10** — 외부 채택 준비 단계, 자체 도그푸드 운영 중.
 
 - 변경 이력 — [CHANGELOG.md](CHANGELOG.md)
 - 개발자 가이드 — [CLAUDE.md](CLAUDE.md)
