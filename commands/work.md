@@ -6,18 +6,24 @@ argument-hint: "<F-ID> [--gate NAME RESULT] [--evidence SUMMARY] [--complete] [-
 
 # /harness-boot:work — feature lifecycle (F-004)
 
-This command is the **state manager for a feature's TDD cycle**. In v0.3
-scope you (or CI) run the actual gate; this command records the result in
-`state.yaml` + `events.log` and transitions the feature.
+This command is the **state manager for a feature's TDD cycle**. The
+gate runner executes tests, types, lints, coverage, and runtime smoke
+automatically; this command activates a feature, records each gate
+result in `state.yaml` + `events.log`, aggregates evidence, and
+transitions the feature once the Iron Law is satisfied.
 
 For unfamiliar terms (Walking Skeleton, Iron Law, drift, gate_0–5,
 kickoff, retro, autowire, fog-clear, …), see
 [`docs/glossary/BRAND_TERMS.md`](../docs/glossary/BRAND_TERMS.md).
 
-**v0.3 boundary**:
-- Actual test runners · coverage computation · gate_5 runtime smoke automation
-  are **out of scope** (v0.4+).
-- This command focuses on result recording and state transitions.
+**Automation scope**:
+- `scripts/gate/runner.py` auto-detects toolchains for gate_0 (tests) ·
+  gate_1 (type) · gate_2 (lint) · gate_3 (coverage) · gate_5 (runtime
+  smoke) · gate_perf, with the same chain across pyproject, npm,
+  Cargo, and go.mod projects.
+- This command focuses on result recording, evidence aggregation, and
+  Iron Law transitions — the runner does the work, work.py keeps the
+  ledger.
 
 ## Preamble (top 3 lines of every output)
 
@@ -113,7 +119,7 @@ python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --gate gate_0 pass --note "19 unit 
 Result ∈ {pass, fail, skipped}. On `pass`, `session.last_gate_passed`
 updates.
 
-### Auto-run a gate (v0.3.1+, Phase 1)
+### Auto-run a gate
 
 ```bash
 python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --run-gate gate_0 --json
@@ -129,14 +135,14 @@ python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --run-gate gate_0 --project-root ..
 - **gate_2 (lint)**: pyproject+ruff → pyproject+flake8 →
   package.json+eslint → .eslintrc+npx → Cargo+cargo clippy →
   go.mod+golangci-lint
-- **gate_3 (coverage, v0.3.5+)**: pyproject+pytest-cov → coverage+pytest
+- **gate_3 (coverage)**: pyproject+pytest-cov → coverage+pytest
   → package.json scripts.coverage → npx nyc → Cargo+tarpaulin →
   Cargo+llvm-cov → go test -cover. Threshold follows the tool's own
   config (e.g. `[tool.coverage]`).
-- **gate_4 (commit check, v0.3.6+)**: `git diff --quiet && git diff --cached --quiet`
+- **gate_4 (commit check)**: `git diff --quiet && git diff --cached --quiet`
   — both working tree and staging area must be clean to pass. Without a
   git repo or `git` binary, the result is `skipped`.
-- **gate_5 (runtime smoke, v0.3.7+)**: `scripts/smoke.sh` →
+- **gate_5 (runtime smoke)**: `scripts/smoke.sh` →
   `tests/smoke/` + pytest → `tests/smoke/` + unittest → Makefile
   `smoke:` → package.json `scripts.smoke`. Runtime smoke is highly
   project-specific, so we **recommend a `harness.yaml.gate_commands.gate_5`

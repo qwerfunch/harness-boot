@@ -1558,6 +1558,43 @@ features:
       - "AC-4: 1117 unit + integration tests PASS, regression 0."
       - "AC-5: F-054 completed via the work.py 4-verb cycle, closing the F-049~F-054 native-EN thread."
 
+  - id: "F-055"
+    name: "external-impression cleanup — refresh commands/work.md from v0.3 tense to current v0.11.x state"
+    type: "feature"
+    description: |
+      Pre-marketplace polish (registry submission held until v1.0). The
+      slash-command body of commands/work.md still narrates the project
+      from a v0.3 perspective: a "v0.3 boundary" callout claims gate_5
+      runtime smoke automation is "out of scope (v0.4+)", and historical
+      "(v0.3.X+)" markers decorate every gate auto-detect bullet. None
+      of that is true since v0.10.x — gate_0~5 plus gate_perf are
+      automated end-to-end and the current release is v0.11.4.
+
+      An external evaluator (or a new user) reading commands/work.md
+      cold would think the harness is unfinished. This feature replaces
+      the v0.3 tense with present-tense descriptions, removes the
+      historical version markers from gate descriptions (CHANGELOG and
+      git tags remain the source of truth for when each gate auto-runner
+      landed), and keeps everything else in the file untouched.
+
+      Tiny scope — single docs file, no behavior change. Companion
+      patch-level cleanups (plugin.json `repository` field, init.md
+      header version marker) are deliberately deferred to follow-up
+      patches to keep this feature focused.
+    modules:
+      - "commands/work.md"
+    test_strategy: "contract"
+    tdd_focus:
+      - "commands/work.md no longer claims gate_5 automation is out of scope"
+      - "(v0.3.X+) historical markers removed from gate auto-detect bullets"
+      - "Preamble block + Subcommands list semantics unchanged"
+    acceptance_criteria:
+      - "AC-1: commands/work.md contains no occurrence of the literal substring 'v0.3' (verified via grep)."
+      - "AC-2: The opening paragraph and the former 'v0.3 boundary' callout describe the current automated state (gate_0~5 + gate_perf) in present tense."
+      - "AC-3: bash scripts/self_check.sh 5/5 PASS, including the diff -q lockstep between docs/samples/harness-boot-self/spec.yaml and .harness/spec.yaml."
+      - "AC-4: 1117 unit + integration tests PASS, regression 0."
+      - "AC-5: F-055 completed via the work.py 4-verb cycle (activate · run-gate · evidence · complete), Phase 2 dogfood preserved."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

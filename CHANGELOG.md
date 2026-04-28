@@ -13,6 +13,25 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - F-052 follow-up — broader `scripts/` Python docstring sweep across check.py, work.py, gate/runner.py, sync.py and others (~25 files of KO-bearing docstrings still queued).
 - F-053 follow-up — `tests/` Python docstring sweep (~99 files queued; per-area batch execution recommended).
 - F-051 follow-up — older active features (F-002/F-004/F-006/F-011~F-040) description / AC body sweep.
+- Pre-marketplace polish follow-ups — `plugin.json.repository` field, `commands/init.md` header version marker (deferred from F-055 to keep that feature focused).
+
+## [0.11.5] — 2026-04-28
+
+**Pre-marketplace polish: refresh `commands/work.md` from v0.3 tense to current v0.11.x state (F-055).**
+
+A docs-only patch that updates the body of `/harness-boot:work` so an external evaluator (or a new user) reading the slash command cold no longer sees a project frozen at v0.3. Behavior is unchanged.
+
+### Changed — `commands/work.md` body
+
+- The opening paragraph dropped the *"In v0.3 scope you (or CI) run the actual gate"* phrasing. The gate runner has run gate_0–5 + gate_perf automatically since v0.10.x; the new wording reflects that.
+- The former *"v0.3 boundary"* callout (which still claimed gate_5 runtime smoke automation was *"out of scope (v0.4+)"*) is replaced by a present-tense *"Automation scope"* block listing the auto-detected toolchains (pyproject, npm, Cargo, go.mod) and reaffirming that work.py is the ledger, the runner does the work.
+- The `(v0.3.1+, Phase 1)` / `(v0.3.5+)` / `(v0.3.6+)` / `(v0.3.7+)` historical markers attached to gate auto-detect bullets were removed. CHANGELOG and git tags remain the source of truth for when each gate auto-runner landed; the slash-command body should narrate the present.
+
+`grep -n "v0\.3" commands/work.md` now returns zero matches (AC-1).
+
+### Pillar 6 — F-055 dogfood evidence
+
+F-055 ran through the work.py 4-verb cycle (`activate · run-gate · evidence · complete`) on `.harness/`, recording `gate_0 PASS` and `gate_5 PASS` plus three evidence entries before transitioning to `done`. The change touches one file (`commands/work.md`); related cleanups (`plugin.json` `repository` field, `commands/init.md` header version marker) are deliberately deferred to follow-up patches and tracked in `[Unreleased]`.
 
 ## [0.11.4] — 2026-04-28
 

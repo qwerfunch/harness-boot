@@ -1174,8 +1174,49 @@ features:
       notes naturally.'
   started_at: '2026-04-27T15:03:49Z'
   completed_at: '2026-04-27T15:04:05Z'
+- id: F-055
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-28T02:22:58Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_1:
+      last_result: skipped
+      ts: '2026-04-28T02:23:04Z'
+      note: no type checker detected (pyproject.toml · tsconfig.json · Cargo.toml
+        · go.mod 모두 부재 또는 tool 미설치)
+    gate_2:
+      last_result: skipped
+      ts: '2026-04-28T02:23:06Z'
+      note: no linter detected (pyproject/ruff · package.json/eslint · Cargo/clippy
+        · go.mod/golangci-lint 모두 부재)
+    gate_3:
+      last_result: skipped
+      ts: '2026-04-28T02:23:12Z'
+      note: no coverage tool detected (pytest-cov · nyc · scripts.coverage · tarpaulin
+        · go -cover 모두 부재)
+    gate_5:
+      last_result: pass
+      ts: '2026-04-28T02:23:15Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-28T02:22:58Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (9.5s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-28T02:23:15Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.6s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-28T02:23:24Z'
+    kind: generic
+    summary: commands/work.md v0.3 시제 5개 라인 정정 — opening paragraph + Automation scope
+      callout + 'Auto-run a gate' 헤더 + gate_3/4/5 historical markers; grep -n 'v0.3'
+      work.md → 0 매치 (AC-1)
+  started_at: '2026-04-28T02:21:35Z'
+  completed_at: '2026-04-28T02:23:29Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-054
+  last_command: /harness:work F-055
   last_gate_passed: gate_5
   active_feature_id: null
