@@ -11,6 +11,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ### Landed (awaiting next release tag)
 
+- **F-063 README.ko cosmic-suika description — "머지" → "수박"** — KO portfolio row description was "우주 테마 머지 게임"; the genre is more commonly recognized in Korean as "수박 게임" (after the Suika Game reference). Single-word KO copy fix; EN row keeps "Space-themed merge game" as the global term.
 - **F-062 cosmic-suika preview image landed** — User added `docs/assets/cosmic-suika.png` (494 KB, well under the 1 MB PNG budget). README portfolio Preview cells (EN + KO) swapped from `_(image landing soon)_` / `_(이미지 곧 추가)_` to a real `<a><img width="240"></a>` snippet linked to the live demo. `docs/assets/README.md` guide updated — cosmic-suika row no longer marked as placeholder, file extension reflected as `.png` (screenshot, not GIF).
 
 ### Queued

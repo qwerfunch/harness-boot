@@ -1918,6 +1918,29 @@ features:
       - "AC-5: bash scripts/self_check.sh 5/5 PASS."
       - "AC-6: 1119 unit + integration tests PASS, regression 0."
 
+  - id: "F-063"
+    name: "README.ko cosmic-suika description — 머지 → 수박"
+    type: "feature"
+    description: |
+      Tiny KO copy fix. The cosmic-suika row in the KO portfolio table
+      currently reads "우주 테마 머지 게임" but the genre is more
+      commonly known in Korean as "수박 게임" (after the Suika Game
+      reference). User direction: KO → "우주 테마 수박 게임", EN row
+      unchanged ("Space-themed merge game" stays as the global term).
+
+      Single-line edit, one file.
+    modules:
+      - "README.ko.md"
+    test_strategy: "contract"
+    tdd_focus:
+      - "KO row reads '우주 테마 수박 게임'"
+      - "EN row unchanged"
+    acceptance_criteria:
+      - "AC-1: README.ko.md cosmic-suika row contains '우주 테마 수박 게임'."
+      - "AC-2: README.ko.md does not contain '우주 테마 머지 게임' anywhere."
+      - "AC-3: README.md cosmic-suika row still says 'Space-themed merge game'."
+      - "AC-4: bash scripts/self_check.sh 5/5 PASS."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

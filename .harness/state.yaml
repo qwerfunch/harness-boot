@@ -1400,8 +1400,33 @@ features:
       + .gif → .png 정합. AC-1~4 grep 검증 OK.
   started_at: '2026-04-28T06:21:47Z'
   completed_at: '2026-04-28T06:22:56Z'
+- id: F-063
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-28T06:27:25Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-28T06:27:25Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-28T06:27:25Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (9.8s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-28T06:27:25Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.6s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-28T06:27:26Z'
+    kind: generic
+    summary: 'README.ko.md L165 한 단어: ''머지'' → ''수박'' (한국어권 장르 통칭). EN ''merge game''
+      글로벌 표기 그대로. AC-1~4 통과.'
+  started_at: '2026-04-28T06:26:49Z'
+  completed_at: '2026-04-28T06:27:26Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-062
+  last_command: /harness:work F-063
   last_gate_passed: gate_5
   active_feature_id: null
