@@ -1941,6 +1941,49 @@ features:
       - "AC-3: README.md cosmic-suika row still says 'Space-themed merge game'."
       - "AC-4: bash scripts/self_check.sh 5/5 PASS."
 
+  - id: "F-064"
+    name: "README copy polish — image format softening + assets guide EN + license line tagline"
+    type: "feature"
+    description: |
+      Three small README copy fixes the user asked for in one cycle:
+
+      (1) Image format constraint softening. The Built-with section
+      currently says "(1–3 seconds, ≤800px wide, ≤5 MB)" right next
+      to the PR call-to-action, which puts a strict-looking gate in
+      front of contributors. The user maintains the assets so they'll
+      optimize on merge — README copy now invites any image/GIF/
+      screenshot and notes the maintainer will resize before merging.
+
+      (2) docs/assets/README.md is currently in Korean. External
+      contributors are the audience here, so the file is rewritten
+      in English. The strict format list is also rephrased as a
+      "target, not a hard limit" with an explicit "send it anyway,
+      we'll optimize on merge" line.
+
+      (3) License line in both READMEs (`MIT — qwerfunch`) drops the
+      maintainer ID for a light/friendly tagline. User picked
+      "Free to use, free to fork." and asked that EN/KO both carry
+      the English wording verbatim — no Korean translation in the
+      KO mirror's license line.
+
+      Behavior unchanged. Internal layer untouched.
+    modules:
+      - "README.md"
+      - "README.ko.md"
+      - "docs/assets/README.md"
+    test_strategy: "contract"
+    tdd_focus:
+      - "Built-with copy invites any image format with 'optimize on merge'"
+      - "docs/assets/README.md is fully English"
+      - "License line shows 'Free to use, free to fork.' verbatim in both mirrors; no maintainer ID"
+    acceptance_criteria:
+      - "AC-1: README.md no longer contains '1–3 seconds' or '≤ 800px wide' or '≤ 5 MB' in the Built-with paragraph; phrase 'optimize' appears in the new sentence."
+      - "AC-2: README.ko.md no longer contains '1~3 초' or '800px 이하' or '5 MB' constraint phrasing; '다듬어' or '머지 전' appears in the new sentence."
+      - "AC-3: docs/assets/README.md first heading reads 'docs/assets/ — README portfolio assets' in English, and the file contains no '디렉터리' / '권장' / '추가 방법' Korean wording."
+      - "AC-4: README.md and README.ko.md license lines both contain 'Free to use, free to fork.' verbatim, and neither line contains the literal token 'qwerfunch'."
+      - "AC-5: bash scripts/self_check.sh 5/5 PASS."
+      - "AC-6: 1119 unit + integration tests PASS, regression 0."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

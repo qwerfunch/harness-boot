@@ -1,27 +1,34 @@
 # docs/assets/ — README portfolio assets
 
-이 디렉터리는 메인 `README.md` 의 *Built with harness-boot* 섹션이 참조하는 GIF / 스크린샷 자산 보관소입니다.
+This directory holds the GIFs and screenshots referenced from the *Built with harness-boot* section in the main `README.md`.
 
-## 추가 가이드
+## Inventory
 
-| 파일명 | 용도 |
+| File | Purpose |
 |---|---|
-| `cosmic-suika.png` | 첫 외부 dogfood 프로젝트 preview 스크린샷 |
-| `<your-project>.gif` | 사용자가 harness-boot 로 만든 결과물 — PR 또는 issue 로 추가 가능 |
+| `cosmic-suika.png` | First external dogfood project — preview screenshot |
+| `<your-project>.{png,gif}` | A project built with harness-boot — open a PR or issue and we'll add it |
 
-## 권장 형식
+## Format guidance (target, not a hard limit)
 
-- **GIF**: 1~3 초, ≤ 5 MB, 800px 이하 너비
-- **스크린샷**: PNG / WEBP, ≤ 1 MB, retina 권장 시 `@2x` 접미사
+We'll optimize before merging, so don't worry about hitting these exactly:
 
-## 추가 방법
+- **Screenshot**: PNG or WEBP, roughly 1 MB or less
+- **GIF**: 1–3 seconds, roughly 5 MB or less, around 800 px wide
+- **Retina**: append `@2x` to the filename if you want pixel density preserved
+
+If your asset is bigger than these targets, send it anyway — we'll resize and re-encode on merge.
+
+## How to add
 
 ```bash
-# 1. GIF 또는 스크린샷을 이 디렉터리에 복사
+# Option A — open a PR yourself
 cp ~/recording.gif docs/assets/your-project.gif
+# then add a row to README.md §Built with harness-boot
 
-# 2. README.md 의 §Built with harness-boot 섹션에 한 줄 추가
-#    또는 PR / issue 로 보내면 메인테이너가 추가
+# Option B — just send it
+# Open an issue with the image attached and a one-liner about the project.
+# Maintainer will optimize and add the row.
 ```
 
-이 디렉터리에 추가된 모든 자산은 메인 README 에서 자동으로 노출됩니다.
+Every asset in this directory is automatically referenced from the main README.

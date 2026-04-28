@@ -167,7 +167,7 @@ harness-boot
 
 **여러분의 결과물도 환영합니다.** [PR](https://github.com/qwerfunch/harness-boot/pulls) 또는 [issue](https://github.com/qwerfunch/harness-boot/issues) 로 보내주시면 이 표에 추가합니다.
 
-권장 형식: **이미지 또는 GIF** (1~3 초 demo, 800px 이하 너비, ≤ 5 MB) + 한 줄 설명 + 링크.
+이미지·GIF·스크린샷 무엇이든 — 한 줄 설명과 링크만 함께 보내주세요. 머지 전에 메인테이너가 다듬어 적용합니다.
 자세한 가이드는 [`docs/assets/README.md`](docs/assets/README.md).
 
 ---
@@ -206,4 +206,4 @@ bash scripts/self_check.sh
 
 ## 라이선스
 
-[MIT](LICENSE) — qwerfunch
+[MIT](LICENSE) — Free to use, free to fork.

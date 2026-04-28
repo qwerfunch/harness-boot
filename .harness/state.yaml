@@ -1425,8 +1425,34 @@ features:
       글로벌 표기 그대로. AC-1~4 통과.'
   started_at: '2026-04-28T06:26:49Z'
   completed_at: '2026-04-28T06:27:26Z'
+- id: F-064
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-28T08:19:35Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-28T08:19:36Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-28T08:19:35Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (9.7s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-28T08:19:36Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.6s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-28T08:19:36Z'
+    kind: generic
+    summary: 'README copy 정리 3건: (1) Built-with 이미지 제약 → ''we''ll optimize on merge''
+      톤, (2) docs/assets/README.md 한국어 → 영어 전면 재작성, (3) 라이선스 라인 ''qwerfunch'' → ''Free
+      to use, free to fork.'' (EN/KO 동일). AC-1~4 grep 검증 OK.'
+  started_at: '2026-04-28T08:18:34Z'
+  completed_at: '2026-04-28T08:19:37Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-063
+  last_command: /harness:work F-064
   last_gate_passed: gate_5
   active_feature_id: null

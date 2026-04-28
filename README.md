@@ -167,7 +167,7 @@ Next: (1) run the next gate (recommended)
 
 **Built something?** Send a [PR](https://github.com/qwerfunch/harness-boot/pulls) or [issue](https://github.com/qwerfunch/harness-boot/issues) and we'll add it.
 
-Recommended format: **image or GIF** (1–3 seconds, ≤ 800px wide, ≤ 5 MB) plus a one-liner and a link. Full guide: [`docs/assets/README.md`](docs/assets/README.md).
+Send any image, GIF, or screenshot that shows the project — plus a one-liner and a link. We'll optimize and place it on merge. Full guide: [`docs/assets/README.md`](docs/assets/README.md).
 
 ---
 
@@ -205,4 +205,4 @@ bash scripts/self_check.sh
 
 ## License
 
-[MIT](LICENSE) — qwerfunch
+[MIT](LICENSE) — Free to use, free to fork.
