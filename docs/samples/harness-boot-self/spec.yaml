@@ -2203,6 +2203,42 @@ features:
       - "AC-7: at least 6 new unit tests in tests/unit/test_work.py covering: dirty working tree reject · dirty staging reject · clean pass · non-git skip · hotfix-with-dirty-tree reject · whitelisted-only-changes pass."
       - "AC-8: bash scripts/self_check.sh 5/5 PASS."
 
+  - id: "F-071"
+    name: "README.ko.md manual install — native Korean rewrite"
+    type: "feature"
+    description: |
+      F-069 added the manual install section to both README.md and
+      README.ko.md by translating the English copy directly. The user
+      flagged the Korean version as reading like a literal translation
+      ("self-hosted 마켓플레이스로 동작합니다", "X 덕분에 Y", "·"
+      separated noun lists) rather than text a Korean speaker would
+      write from scratch.
+
+      Rewrite the 수동 설치 section in README.ko.md so it reads as
+      native Korean. Information equivalence with README.md is
+      preserved (same install path, same caveat about the official
+      marketplace), but ordering, particles, and sentence endings are
+      chosen for Korean readers, not as an English mirror. English
+      README is left unchanged — F-069's English copy is already
+      idiomatic.
+
+      Captured as a feedback memory (feedback_korean_native_writing.md)
+      so future Korean documents are written natively by default rather
+      than translated from English.
+    modules:
+      - "README.ko.md"
+    test_strategy: "contract"
+    tdd_focus:
+      - "Korean section reads as native Korean prose (no '·' noun lists, no 'X 덕분에 Y' calques)"
+      - "Information content matches README.md (git clone URL, marketplace add absolute path, install command, marketplace status note)"
+      - "English README is untouched"
+    acceptance_criteria:
+      - "AC-1: README.ko.md 수동 설치 section is rewritten so it does not contain the calque phrases 'self-hosted 마켓플레이스로 동작합니다', '덕분에 클론 자체가', or '· fork · 오프라인 환경용'."
+      - "AC-2: The new section retains the same install command sequence as README.md: git clone → /plugin marketplace add /절대경로 → /plugin install harness-boot@harness-boot."
+      - "AC-3: The marketplace-status note still tells the reader the plugin is not on the official Claude Code marketplace and that the qwerfunch/harness-boot form points at this GitHub repo."
+      - "AC-4: README.md is unchanged (English copy stays as F-069 left it)."
+      - "AC-5: bash scripts/self_check.sh 5/5 PASS."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

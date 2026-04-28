@@ -1572,7 +1572,7 @@ features:
   started_at: '2026-04-28T14:13:17Z'
   completed_at: '2026-04-28T14:14:13Z'
 - id: F-070
-  status: in_progress
+  status: done
   gates:
     gate_5:
       last_result: pass
@@ -1588,9 +1588,27 @@ features:
       via WorkingTreeGuardTests (6 new tests covering dirty/clean/non-git/hotfix/whitelist
       paths)
   started_at: '2026-04-28T14:32:10Z'
+  completed_at: '2026-04-28T14:39:12Z'
+- id: F-071
+  status: in_progress
+  gates:
+    gate_5:
+      last_result: pass
+      ts: '2026-04-28T14:40:51Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-28T14:40:51Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.7s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-28T14:40:51Z'
+    kind: manual_check
+    summary: AC-1 grep clean (no calque phrases) · AC-2 5 install-command tokens preserved
+      · AC-4 README.md untouched · self_check 5/5 PASS · README.ko.md 수동 설치 section
+      reads as native Korean
+  started_at: '2026-04-28T14:40:14Z'
   completed_at: null
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-070
+  last_command: /harness:work F-071
   last_gate_passed: gate_5
-  active_feature_id: F-070
+  active_feature_id: F-071

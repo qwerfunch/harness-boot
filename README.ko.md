@@ -102,23 +102,25 @@ cd my-new-project
 
 ## 수동 설치
 
-로컬 클론에서 직접 돌리고 싶을 때 — 컨트리뷰터 · fork · 오프라인 환경용. 이 저장소의 `.claude-plugin/marketplace.json` 덕분에 클론 자체가 self-hosted 마켓플레이스로 동작합니다.
+포크하거나 컨트리뷰션을 보낼 때, 또는 오프라인 환경에서 사용해야 할 때는 저장소를 직접 받아서 설치합니다. 클론한 디렉토리에 `.claude-plugin/marketplace.json` 이 들어 있어서 그 경로를 그대로 마켓플레이스로 지정할 수 있습니다.
 
-> 참고: harness-boot 는 공식 Claude Code 마켓플레이스에 아직 등록 전이며, 위 `qwerfunch/harness-boot` 형식은 이 GitHub repo 를 직접 가리킵니다.
+> 참고: harness-boot 는 Claude Code 공식 마켓플레이스에 아직 등록되어 있지 않습니다. 빠른 시작에 안내된 `qwerfunch/harness-boot` 명령은 이 GitHub 저장소를 마켓플레이스로 곧장 등록하는 형태입니다.
 
 ```bash
 git clone https://github.com/qwerfunch/harness-boot.git
 cd harness-boot
 ```
 
-Claude Code 에서 (클론 디렉토리의 절대경로 사용):
+Claude Code 안에서 클론한 디렉토리의 절대 경로로 마켓플레이스를 등록합니다.
 
 ```bash
-/plugin marketplace add /절대경로/to/harness-boot
+/plugin marketplace add /Users/your-name/harness-boot
 /plugin install harness-boot@harness-boot
 ```
 
-이후 업데이트는 클론에서 `git pull` 후 `/plugin marketplace update harness-boot`.
+`/Users/your-name/harness-boot` 자리에는 실제로 클론한 위치를 넣습니다. `pwd` 명령으로 현재 경로를 그대로 복사해 쓰면 편합니다.
+
+새 버전을 받으려면 클론한 디렉토리에서 `git pull` 을 실행한 뒤 Claude Code 에서 `/plugin marketplace update harness-boot` 으로 갱신합니다.
 
 ---
 
