@@ -1733,8 +1733,39 @@ features:
       pass · self_check 5/5 OK · _workspace/coverage/F-N.yaml fingerprint persisted.
   started_at: '2026-04-28T17:21:36Z'
   completed_at: '2026-04-28T17:26:06Z'
+- id: F-078
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-28T17:31:40Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-28T17:31:41Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-28T17:31:40Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (14.3s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-28T17:31:41Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-28T17:31:50Z'
+    kind: manual_check
+    summary: Coverage drift detector + complete() blocking 12/12 PASS — CheckSpecCoverageTests
+      5 cases (low ratio error · high ratio silent · threshold override · missing
+      dir empty · empty mismatches silent) · StrictRunBlockingCheckTests 5 cases (kinds
+      list now includes Coverage · run_blocking_check invokes check_spec_coverage
+      exactly once · non-blocking detectors stay uncalled) · CoverageBlocksCompleteTests
+      2 cases (Coverage error blocks complete · --hotfix-reason bypasses). 1141 unit
+      tests pass · self_check 5/5 OK. F-048's existing 5 cases (Drift{Free,Error,WarnOnly,Hotfix,CheckFailure})
+      untouched and pass.
+  started_at: '2026-04-28T17:28:36Z'
+  completed_at: '2026-04-28T17:32:41Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-077
+  last_command: /harness:work F-078
   last_gate_passed: gate_5
   active_feature_id: null
