@@ -9,20 +9,62 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
-### Landed (awaiting next release tag)
-
-- **F-061 user-facing message swap — friendly main + system identifier in parens** — The format flipped from `gate_0 (tests) PASS` to `tests (gate_0) PASS`, and from `F-3 (Login)` to `Login (F-3)`. Friendly term reads first, system identifier rides along as the parenthetical reference. Display layer only — `state.yaml` keys, CLI args, function names, and `gate_X` identifiers are unchanged. `scripts/work.py` gained a `GATE_FRIENDLY` dict (gate_0=tests · gate_1=type check · gate_2=lint · gate_3=coverage · gate_4=commit check · gate_5=smoke run · gate_perf=performance) and a `_friendly_gate()` helper; the run-gate response message and the complete-rejection message now use it. README.md / README.ko.md conversation examples updated in lockstep, and the broken `README.ko.md:136` line (left from a mid-edit interrupt) was restored as part of the swap. Two integration tests (`test_scenario_mappings.py`, `test_work_autowire.py`) that parsed `res.message.split()[1]` for the status keyword were rewritten to scan tokens for `PASS`/`FAIL`/`SKIPPED` regardless of position. 1119 unit + integration tests pass.
-- **F-060 KO conversation status values to English (PASS / SKIPPED)** — The KO mirror's conversation example used Korean status verbs (`통과` / `건너뜀`) which read as natural-language prose rather than category values, and they didn't line up with what `work.py` actually prints (`PASS` / `FAIL` / `SKIPPED` in English). Swapped the two bare status tokens — surrounding Korean prose stays Korean (`Iron Law 충족`, `단위 19 개`, `도구 미감지`, `F-3 끝낼까요?`). EN README untouched (already English).
-- **F-059 README ① heading verb consistency + conversation jargon balance** — Diagram column ① main↔sub-text swapped: main is now the verb `Convert / 변환`, sub-text is the noun `(the context) / (컨텍스트)`. All five mains read as verbs again (Convert · Evolve · Focus · Collaborate · Unify). Table row 1 heading and body update in lockstep — body uses verb form (`Plain-language ideas convert into ...` / `... 중간언어(명세)로 변환합니다`). "A short conversation" keeps the system terms (gate_0 · gate_5 · Iron Law · evidence) — they line up with actual work.py output and the glossary — but pairs each one with a parenthetical gloss: `gate_0 (tests) PASS — 19 unit tests`, `Iron Law satisfied (gate_5 + evidence)`. KO mirror tracks. EN/KO in lockstep.
-- **F-058 README first-impression polish** — Quick start now lists both `/harness-boot:init "..."` (one-line idea) and `/harness-boot:init plan.md` (existing planning doc) on separate lines. The "Built with harness-boot" portfolio table gained a Preview column (with a placeholder cell on the cosmic-suika row that flips to an `<img>` once the asset lands). "A short conversation" was rewritten as a compact happy path (activate → run gates → Iron Law → done → retro), dropping the up-front 4-option escalation that read as jargon to first-time visitors. EN/KO mirrors in lockstep. No tag yet — further README revisions may follow before the next release.
-
-### Queued
-
 - Marketplace PR (anthropic/claude-plugins-official) — pending explicit user go-ahead.
 - F-052 follow-up — broader `scripts/` Python docstring sweep across check.py, work.py, gate/runner.py, sync.py and others (~25 files of KO-bearing docstrings still queued).
 - F-053 follow-up — `tests/` Python docstring sweep (~99 files queued; per-area batch execution recommended).
 - F-051 follow-up — older active features (F-002/F-004/F-006/F-011~F-040) description / AC body sweep.
 - Pre-marketplace polish follow-ups — `plugin.json.repository` field, `commands/init.md` header version marker (deferred from F-055 to keep that feature focused).
+
+## [0.11.8] — 2026-04-28
+
+**README first-impression bundle: Quick start two-form, portfolio Preview column, conversation rewrite, ① verb consistency, status-as-English, friendly-main message format (F-058 / F-059 / F-060 / F-061).**
+
+A user-driven readability pass on the README first impression and the live `/harness-boot:work` output, run as four small features. Behavior is unchanged; this is display-layer only.
+
+### Changed — Quick start lists both entry points (F-058)
+
+The Quick start now spells out both `/harness-boot:init "<idea>"` (one-line idea) and `/harness-boot:init plan.md` (existing planning doc) on separate lines. The plan.md form was hidden behind the spec-conversion skill description, so first-time readers missed that the harness accepts both shapes.
+
+### Changed — "Built with harness-boot" portfolio table gains Preview column (F-058)
+
+The portfolio table had no slot for a preview image, even though the row immediately below recommends "image or GIF (1–3 seconds, ≤800px wide, ≤5 MB)". When the cosmic-suika preview lands it now has somewhere to go. Cosmic-suika row carries a placeholder cell that flips to an `<img>` once the asset is committed.
+
+### Changed — "A short conversation" rewritten as a happy path (F-058)
+
+The conversation example demonstrated the Iron-Law guardrail (insufficient evidence → 4-option escalation: prototype mode / `--hotfix-reason` / cancel / add evidence) but skipped the happy path that most first readers need. Replaced with a compact happy-path walkthrough: activate → run gates → Iron Law satisfied → mark done → retro auto-written → next feature. Less jargon up-front, same 5-block shape.
+
+### Changed — ① heading verb consistency + intermediate-language framing (F-059)
+
+Diagram column ① main↔sub-text swapped: main reverts to the verb `Convert / 변환`, sub-text becomes the noun `(the context) / (컨텍스트)`. All five mains read as verbs again (Convert · Evolve · Focus · Collaborate · Unify). Table row 1 heading and body update in lockstep — body uses verb form (`Plain-language ideas convert into ...` / `... 중간언어(명세)로 변환합니다`).
+
+The conversation block paired system terms with friendly glosses for the first time: `gate_0 (tests) PASS — 19 unit tests`, `Iron Law satisfied (gate_5 + evidence)`. The system terms line up with actual `work.py` output and the glossary; the glosses make first-time reading easier.
+
+### Changed — KO conversation status tokens to English (F-060)
+
+The KO mirror's conversation example used Korean status verbs (`통과` / `건너뜀`) which read as natural-language prose rather than category values, and they didn't line up with what `work.py` actually prints (`PASS` / `FAIL` / `SKIPPED` in English). Swapped the two bare status tokens — surrounding Korean prose stays Korean (`Iron Law 충족`, `단위 19 개`, `도구 미감지`, `F-3 끝낼까요?`).
+
+### Changed — friendly main + system identifier in parens (F-061)
+
+The format flipped one more time, this time inverting `gate_X (friendly)` to `friendly (gate_X)`. The friendly term reads first; the system identifier rides along as the parenthetical reference. The same swap applies to feature references: `F-3 (Login)` → `Login (F-3)`.
+
+`scripts/work.py` gained a `GATE_FRIENDLY` dict (`gate_0=tests` · `gate_1=type check` · `gate_2=lint` · `gate_3=coverage` · `gate_4=commit check` · `gate_5=smoke run` · `gate_perf=performance`) and a `_friendly_gate()` helper. The run-gate response message and the complete-rejection message both flow through it. Live output now reads `tests (gate_0) PASS` and `cannot complete — smoke run (gate_5) is not PASS yet`.
+
+README.md / README.ko.md conversation examples updated in lockstep, and the broken `README.ko.md:136` line (left from a mid-edit interrupt during F-060) was restored as part of the swap.
+
+### Fixed — two integration tests that parsed message strings positionally (F-061)
+
+`tests/integration/test_scenario_mappings.py` and `tests/unit/work/test_work_autowire.py` each had one assertion that did `res.message.split()[1]` to grab the status keyword. With the new format that token is `(gate_0)` instead of `PASS`. Both tests were rewritten to scan tokens for `PASS`/`FAIL`/`SKIPPED` regardless of position — robust to display-layer wording shifts.
+
+### Internal layer unchanged
+
+- `state.yaml` keys (`gate_5:`, etc.)
+- CLI arguments (`--gate gate_0 pass`, `--run-gate gate_5`)
+- Function names, code constants, `gate_X` identifiers
+- 1119 unit + integration tests (2 skipped) pass
+
+### Pillar 6 — F-058 / F-059 / F-060 / F-061 dogfood evidence
+
+Four work.py 4-verb cycles ran on `.harness/`, each landing `gate_0 PASS · gate_5 PASS` plus 3 evidence entries before transitioning to `done`. `scripts/self_check.sh` 5/5 OK including the canonical-vs-`.harness/` lockstep. CI 4-leg matrix (py3.10/11/12/13) expected green.
 
 ## [0.11.7] — 2026-04-28
 
