@@ -14,7 +14,32 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - Marketplace submission to anthropic/claude-plugins-official — submission templated text prepared; user submits via https://claude.ai/settings/plugins/submit.
 - F-052/F-053/F-051 docstring sweep follow-ups — see prior queue.
 - F-073 (`read_events(tail=N)`) and F-074 (`canonical_hash` mtime cache) — v0.11.11 cumulative-slowdown audit queue.
-- F-080 (kickoff "Quantitative completeness" section) and F-081 (carry-forward debt escalation) — second sequencing pass after external dogfood validates F-077/F-078/F-079 in production.
+- F-082 (kickoff "Quantitative completeness" section) and F-083 (carry-forward debt escalation) — second sequencing pass; F-081 stays open for the next available slot.
+
+## [0.12.1] — 2026-04-29
+
+**v0.12.0 substantive coverage validation — synthetic replay + integration regression (F-080).**
+
+A patch release that closes the v0.12.0 thread by proving the new gates (F-077 lint · F-078 Coverage drift · F-079 dashboard gauge) actually fire on realistic prose, not just on unit-mocked inputs. The original external project that surfaced the failure mode has been "solved via prompt" already (carry-forward acknowledged in retros through human steering), so it is no longer a clean test bed for the new gates. F-080 builds an isolated synthetic replay that reproduces the exact symptom: a feature whose `description` claims `13 ChainTemplate · 74 propagation rule · 35 Heuristic tools` while the AC accepts only `5 / 10 / 1` respectively.
+
+### Added — `tests/integration/test_iron_law_substantive.py`
+
+End-to-end regression that walks the full `activate → gate → evidence → complete` cycle through `scripts/work.py` via `subprocess` (not the unit-mocked layer), so the wiring users actually hit is the wiring tested. Four cases:
+
+- `test_activate_emits_quant_hint_for_each_mismatch` — F-077 stderr `[hint]` pattern + numeric values for each metric.
+- `test_activate_persists_fingerprint_file` — `_workspace/coverage/F-1.yaml` exists with the three recorded mismatches.
+- `test_complete_rejects_with_coverage_drift` — F-078 returns `action='queried'` with `Coverage` in the message and a `--hotfix-reason` hint.
+- `test_hotfix_reason_bypasses_coverage_drift` — F-048 escape hatch preserved; the feature transitions to `done` with a hotfix evidence trail.
+
+Fixture spec uses `mode='prototype'` so the Iron Law evidence threshold stays at 1 and the test stays compact.
+
+### Added — `docs/dogfood-replay-v0.12.0.md`
+
+Operational evidence report capturing the verbatim stdout / stderr from each step of a manual replay run against `/tmp/dogfood-replay-v0.12.0/.harness`. Future readers can see the gates firing on realistic prose without re-running the test. Cross-references the integration test for permanent regression coverage.
+
+### Tests
+
+- 1179 tests pass (1149 unit + 30 integration; +4 new from F-080). Regression 0 from the v0.12.0 baseline. `bash scripts/self_check.sh` 5/5 OK.
 
 ## [0.12.0] — 2026-04-29
 

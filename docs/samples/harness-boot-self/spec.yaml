@@ -2606,6 +2606,63 @@ features:
       - "AC-9: F-079 completed via the work.py 4-verb cycle (activate → run-gate gate_0 + gate_5 → declared evidence → complete) — Phase 2 dogfood."
       - "AC-10: F-077 + F-078 + F-079 bundle together as v0.12.0 minor release (substantive Iron Law hardening across diagnose / block / surface) — first minor bump since v0.11.0 vision consolidation; user confirmation memorialized in CHANGELOG."
 
+  - id: "F-080"
+    name: "v0.12.0 substantive coverage validation — synthetic replay + integration regression"
+    type: "feature"
+    description: |
+      Closes the v0.12.0 thread by proving the new gates (F-077 lint ·
+      F-078 Coverage drift · F-079 dashboard gauge) actually fire on
+      the field-discovered failure pattern, not just on unit-mocked
+      inputs. The original external project that surfaced the failure
+      mode has already been "solved via prompt" — the carry-forward is
+      now acknowledged in retros — so it is no longer a clean test bed
+      for the new gates. F-080 builds an isolated synthetic replay
+      that reproduces the exact symptom: a feature whose `description`
+      claims more units than its AC accepts.
+
+      Two artifacts ship:
+
+      1. `tests/integration/test_iron_law_substantive.py` — permanent
+         regression that walks the full activate → gate → evidence →
+         complete cycle through `scripts/work.py` (subprocess), not
+         the unit-mocked layer. Asserts the F-077 stderr `[hint]`
+         appears, the `_workspace/coverage/F-N.yaml` fingerprint is
+         persisted, `complete()` rejects with `Coverage` in the
+         message, and `--hotfix-reason` bypasses cleanly.
+
+      2. `docs/dogfood-replay-v0.12.0.md` — short operational evidence
+         report capturing the actual stdout / stderr from each step of
+         the replay, so future readers can see the gates firing on
+         realistic prose without re-running the test.
+
+      Why a separate cycle: keeps validation evidence separable from
+      the F-077/F-078/F-079 implementation commits. If a regression
+      later requires touching the gates, the validation suite is the
+      contract that must keep passing — without conflating it with
+      the original feature commits.
+
+      Patch-shape (v0.12.1) on release: validation + tests are
+      additive and do not change user-visible behavior.
+    modules:
+      - "tests/integration/test_iron_law_substantive.py"
+      - "docs/dogfood-replay-v0.12.0.md"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "subprocess-driven replay through scripts/work.py — exercises the same wiring users hit, not the unit layer"
+      - "activate emits stderr [hint] line for description claims that exceed AC for the same metric"
+      - "_workspace/coverage/F-N.yaml fingerprint persists with non-empty mismatches list"
+      - "complete() returns action='queried' and message contains 'Coverage' when fingerprint shows under-coverage"
+      - "complete --hotfix-reason produces action='completed' and the feature transitions to done"
+      - "docs report captures stdout/stderr verbatim from the replay so the evidence is human-readable"
+    acceptance_criteria:
+      - "AC-1: tests/integration/test_iron_law_substantive.py exists with at least three cases — one for the F-077 hint + fingerprint, one for the F-078 complete() rejection, one for the --hotfix-reason bypass."
+      - "AC-2: The fixture spec has a description that claims `13 ChainTemplate · 74 propagation rule · 35 Heuristic tools` and AC text that accepts smaller values, exactly matching the original field-discovered pattern. mode='prototype' so the Iron Law evidence threshold is 1 (keeps the test compact)."
+      - "AC-3: Tests run via `python3 -m pytest tests/integration/test_iron_law_substantive.py` and pass green on the v0.12.0 codebase."
+      - "AC-4: docs/dogfood-replay-v0.12.0.md captures the stdout/stderr from each replay step (activate / fingerprint inspection / gate_5 / evidence / complete reject / complete --hotfix-reason). Each block is preceded by the exact command used so the report is reproducible."
+      - "AC-5: F-080 mirrored on both spec.yaml copies. bash scripts/self_check.sh 5/5 PASS · regression 0 across the full unit + integration suite."
+      - "AC-6: F-080 completed via the work.py 4-verb cycle (activate → run-gate gate_0 + gate_5 → declared evidence → complete) — Phase 2 dogfood."
+      - "AC-7: Released as v0.12.1 patch (additive — validation + tests only, no user-visible behavior change). Tag pushed and gh release created with notes-file extracted from the v0.12.1 CHANGELOG section."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
