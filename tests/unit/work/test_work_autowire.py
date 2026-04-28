@@ -644,5 +644,96 @@ class InitialSyncAutowireTests(ScratchHarness, unittest.TestCase):
             )
 
 
+_SPEC_QUANT_MISMATCH = textwrap.dedent(
+    """\
+    version: "2.3.8"
+    project:
+      name: "demo"
+      summary: "QuantLint regression fixture"
+    domain:
+      overview: "demo"
+      entities:
+        - name: "Template"
+          description: "tx template"
+    features:
+      - id: F-0
+        type: skeleton
+        title: "Templates"
+        description: |
+          Pull set: 13 ChainTemplate · 74 propagation rule.
+        acceptance_criteria:
+          - "AC-1: 5 ChainTemplate matching regression PASS"
+        modules:
+          - src/main.ts
+    """
+)
+
+
+_SPEC_QUANT_MATCHED = textwrap.dedent(
+    """\
+    version: "2.3.8"
+    project:
+      name: "demo"
+      summary: "QuantLint regression fixture"
+    domain:
+      overview: "demo"
+      entities:
+        - name: "Template"
+          description: "tx template"
+    features:
+      - id: F-0
+        type: skeleton
+        title: "Templates"
+        description: |
+          Pull set: 5 ChainTemplate.
+        acceptance_criteria:
+          - "AC-1: 5 ChainTemplate matching regression PASS"
+        modules:
+          - src/main.ts
+    """
+)
+
+
+class QuantLintAutowireTests(ScratchHarness, unittest.TestCase):
+    """F-077 — _autowire_quant_lint runs at activate, prints stderr hint
+    on description / AC numeric mismatch, fail-open on extractor errors.
+    """
+
+    def _activate_capture_stderr(self) -> str:
+        import io
+        from contextlib import redirect_stderr
+
+        buf = io.StringIO()
+        with redirect_stderr(buf):
+            work.activate(self.harness, "F-0")
+        return buf.getvalue()
+
+    def test_mismatch_emits_hint(self):
+        self._write_spec(_SPEC_QUANT_MISMATCH)
+        err = self._activate_capture_stderr()
+        self.assertIn("[hint]", err)
+        self.assertIn("13", err)
+        self.assertIn("5", err)
+        # Fingerprint persisted
+        fp = self.harness / "_workspace" / "coverage" / "F-0.yaml"
+        self.assertTrue(fp.is_file())
+
+    def test_matching_values_silent(self):
+        self._write_spec(_SPEC_QUANT_MATCHED)
+        err = self._activate_capture_stderr()
+        # No mismatch → no [hint] line
+        self.assertNotIn("[hint] description claims", err)
+
+    def test_extractor_failure_is_fail_open(self):
+        from unittest import mock
+
+        self._write_spec(_SPEC_QUANT_MISMATCH)
+        from spec import quant_claims as qc
+
+        with mock.patch.object(qc, "diff_claims", side_effect=RuntimeError("boom")):
+            res = work.activate(self.harness, "F-0")
+        self.assertEqual(res.action, "activated")
+
+
 if __name__ == "__main__":
     unittest.main()

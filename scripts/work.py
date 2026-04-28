@@ -157,6 +157,90 @@ def _find_feature(spec: dict, fid: str) -> dict | None:
     return None
 
 
+def _autowire_quant_lint(harness_dir: Path, fid: str) -> None:
+    """F-077 — emit a stderr hint when feature.description over-promises
+    relative to AC numbers.
+
+    Iron Law (BR-004) is procedural — it checks that gate_5 passed and
+    that the declared evidence count meets the mode threshold. It does
+    not look inside the evidence to verify that the numbers actually
+    line up with the spec's quantitative targets. A field-discovered
+    failure: features whose description claimed "13 ChainTemplate" or
+    "74 propagation rule" reached ``done`` with ~38% / ~13% coverage
+    because the AC text happily accepted "5 ChainTemplate matching
+    regression PASS" and the carry-forward mention was buried in the
+    retro Deferred section.
+
+    This autowire surfaces the mismatch at the cheapest moment — feature
+    activation. It is informational only:
+
+      * Parses ``description`` and ``acceptance_criteria[]`` for numeric
+        claims via ``scripts/spec/quant_claims``.
+      * Persists the parse result to ``_workspace/coverage/F-N.yaml`` so
+        downstream features (F-078 Coverage drift, F-079 dashboard
+        gauge) read the same data without re-parsing.
+      * Prints one ``[hint]`` line to stderr per metric where the
+        description value exceeds the AC value.
+
+    Fail-open like the other autowires: any exception is swallowed and
+    logged under the ``[warn]`` prefix. ``activate()`` must not raise.
+    """
+    try:
+        spec = _load_spec(harness_dir)
+        if spec is None:
+            return
+        feature = _find_feature(spec, fid)
+        if feature is None:
+            return
+        from spec import quant_claims as qc
+
+        description = feature.get("description") or ""
+        ac_list = feature.get("acceptance_criteria") or []
+        ac_texts = [a if isinstance(a, str) else str(a) for a in ac_list]
+
+        mismatches = qc.diff_claims(description, ac_texts)
+
+        # Persist fingerprint for downstream features.
+        coverage_dir = harness_dir / "_workspace" / "coverage"
+        coverage_dir.mkdir(parents=True, exist_ok=True)
+        fingerprint = {
+            "feature_id": fid,
+            "description_claims": [
+                {"metric": c.metric, "value": c.value}
+                for c in qc.extract_numeric_claims(description)
+            ],
+            "ac_claims": [
+                {"metric": c.metric, "value": c.value}
+                for c in qc.extract_numeric_claims("\n".join(ac_texts))
+            ],
+            "mismatches": [
+                {
+                    "metric": m.metric,
+                    "description_value": m.description_value,
+                    "ac_value": m.ac_value,
+                }
+                for m in mismatches
+            ],
+        }
+        (coverage_dir / f"{fid}.yaml").write_text(
+            yaml.safe_dump(fingerprint, allow_unicode=True, sort_keys=False),
+            encoding="utf-8",
+        )
+
+        for m in mismatches:
+            print(
+                f"[hint] description claims {m.description_value} {m.metric} "
+                f"but AC accepts {m.ac_value} — explicit carry-forward to "
+                f"retro recommended",
+                file=sys.stderr,
+            )
+    except Exception as exc:
+        print(
+            f"[warn] quant lint auto-wire failed: {type(exc).__name__}: {exc}",
+            file=sys.stderr,
+        )
+
+
 def _autowire_initial_sync(harness_dir: Path) -> None:
     """F-075/F-076 — lazy-fire sync when spec.yaml exists but never synced.
 
@@ -540,6 +624,7 @@ def activate(harness_dir: Path, fid: str, *, disable_fog: bool = False) -> WorkR
         },
     )
     _autowire_initial_sync(harness_dir)
+    _autowire_quant_lint(harness_dir, fid)
     _autowire_fog_clear(harness_dir, fid, disable=disable_fog)
     _autowire_kickoff(harness_dir, fid)
     _autowire_design_review(harness_dir, fid)

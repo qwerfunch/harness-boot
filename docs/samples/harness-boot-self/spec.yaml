@@ -2418,6 +2418,63 @@ features:
       - "AC-9: F-076 completed via the work.py 4-verb cycle (activate → run-gate gate_0 + gate_5 → declared evidence → complete) — Phase 2 dogfood."
       - "AC-10: All new docstrings, comments, and CHANGELOG entry text added in this cycle are in English (continues the F-049 → F-053 native-English consolidation thread; SKILL.md Korean prose is the documented exception)."
 
+  - id: "F-077"
+    name: "AC quantitative claim lint — surface description vs AC numeric mismatch at activate"
+    type: "feature"
+    description: |
+      Field-discovered structural gap: Iron Law passes when gate_5 = pass
+      and declared evidence count meets the mode threshold, but the rule
+      is purely procedural — it does not verify that the evidence content
+      actually matches the spec's quantitative targets. A downstream
+      project illustrated the failure mode: features whose description
+      promised "13 ChainTemplate", "74 propagation rule", or "35 Heuristic
+      tools" reached `done` with implementations covering 38%, 13%, and
+      3% of those targets respectively. The carry-forward bullets that
+      noted the gap were buried in retro Deferred sections; nothing
+      surfaced the mismatch at the activation boundary where the developer
+      could course-correct cheaply.
+
+      F-077 ships the smallest leverage point: a static lint that runs
+      at activate time, parses numeric claims from the feature
+      description and from the AC text, and prints a stderr hint when
+      description-side numbers exceed AC-side numbers. No blocking; the
+      hint is informational. Subsequent features (F-078 Coverage drift,
+      F-079 dashboard gauge) build on the same fingerprint.
+
+      Persist the parse result as `_workspace/coverage/F-N.yaml` so
+      downstream features can read the same data without re-parsing
+      prose. The fingerprint is a YAML record with two lists:
+      `description_claims` and `ac_claims`, each `{metric, value, span}`.
+
+      Pattern catalog (regex-based, conservative):
+        * `(\d+)\s*(개|rule|rules|template|templates|tool|tools|item|items|hop|hops|step|steps|category|categories|agent|agents)`
+        * `≥\s*(\d+)` / `>=\s*(\d+)` / `>=\s*(\d+)`
+        * `(\d+)\s*[/／]\s*(\d+)` (numerator vs denominator — both captured)
+
+      The lint never raises and never blocks activate; it is fail-open
+      like the existing autowires. Output goes to stderr only.
+    modules:
+      - "scripts/spec/quant_claims.py"
+      - "scripts/work.py"
+      - "tests/unit/test_quant_claims.py"
+      - "tests/unit/work/test_work_autowire.py"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "extract_numeric_claims(text) returns list[{metric, value, span}] for canonical patterns"
+      - "diff_claims(description, ac) returns list of mismatches where description value > AC value for the same metric"
+      - "scripts/work.py:_autowire_quant_lint() writes _workspace/coverage/F-N.yaml fingerprint at activate and prints stderr hint for each mismatch"
+      - "lint is fail-open — exception inside extractor never raises out of activate"
+      - "no mismatch (description matches or absent numbers) emits no stderr"
+    acceptance_criteria:
+      - "AC-1: scripts/spec/quant_claims.py exposes `extract_numeric_claims(text: str) -> list[Claim]` and `diff_claims(description: str, ac_texts: list[str]) -> list[Mismatch]`. Claim is a NamedTuple of `(metric: str, value: int, span: tuple[int,int])`. Mismatch is `(metric: str, description_value: int, ac_value: int)`."
+      - "AC-2: extract_numeric_claims handles the three canonical pattern families (count + counter noun · ≥/>= prefix · X/Y fraction) and returns claims with normalized lowercased metric tokens."
+      - "AC-3: diff_claims returns one entry per metric where description_value > ac_value. Metrics absent from either side are silently skipped (no false-positive 'AC missing'). Diff is order-stable by metric token."
+      - "AC-4: scripts/work.py adds `_autowire_quant_lint(harness_dir, fid)` that loads spec, finds the feature, calls diff_claims on description vs AC list, writes `_workspace/coverage/F-N.yaml` (fingerprint), and prints `[hint] description claims X <metric> but AC accepts Y — explicit carry-forward to retro recommended` for each mismatch. The function is fail-open (try/except swallows; emits one stderr warning under the `[warn]` prefix on failure)."
+      - "AC-5: activate() calls `_autowire_quant_lint` after `_autowire_initial_sync` and before `_autowire_fog_clear` / `_autowire_kickoff`. Existing autowire ordering is otherwise unchanged."
+      - "AC-6: tests/unit/test_quant_claims.py covers: (a) extract_numeric_claims — 6 cases (counter noun · ≥ prefix · fraction · multiple metrics in one sentence · empty text · garbage text), (b) diff_claims — 4 cases (mismatch surfaced · matching values silent · AC-only metric silent · description-only metric silent). tests/unit/work/test_work_autowire.py adds `QuantLintAutowireTests` (3 cases: hint emitted for mismatch · silent for matching · fail-open under monkeypatch)."
+      - "AC-7: F-077 mirrored on both spec.yaml copies. bash scripts/self_check.sh 5/5 PASS · regression 0 (1120+ unit tests still pass)."
+      - "AC-8: F-077 completed via the work.py 4-verb cycle (activate → run-gate gate_0 + gate_5 → declared evidence → complete) — Phase 2 dogfood."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

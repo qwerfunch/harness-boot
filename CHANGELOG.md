@@ -9,6 +9,26 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
+### Added — `_autowire_quant_lint` in `scripts/work.py:activate()` (F-077)
+
+First step in the three-feature thread (F-077 → F-078 → F-079) that addresses an Iron Law structural gap: BR-004 verifies procedural completion (`gate_5 = pass` plus declared evidence count) but does not look inside evidence to confirm the numbers actually match the spec's quantitative targets. A field-discovered failure mode: features whose `description` promised "13 ChainTemplate" / "74 propagation rule" / "35 Heuristic tools" reached `done` with implementations covering ~38% / ~13% / ~3% of those targets because the AC text happily accepted partial regression PASS and the carry-forward bullets stayed buried in retro Deferred sections.
+
+`scripts/spec/quant_claims.py` (new) parses three pattern families — `<int> <counter-noun>` (incl. multi-token tails like "74 propagation rule"), `≥/>= <int>` thresholds, and `<int>/<int>` fractions. The Korean counter `개` is preserved as a distinct metric. `extract_numeric_claims(text)` returns `Claim(metric, value, span)` tuples; `diff_claims(description, ac_texts)` returns `Mismatch(metric, description_value, ac_value)` for metrics that appear on both sides where `description_value > ac_value`. Metrics absent from either side are silently skipped — no false-positive "AC missing" noise.
+
+`scripts/work.py:_autowire_quant_lint` runs at activate time, between `_autowire_initial_sync` and `_autowire_fog_clear`. It writes the parse result to `_workspace/coverage/F-N.yaml` (fingerprint reused by F-078 / F-079) and prints one stderr `[hint]` line per mismatch:
+
+```
+[hint] description claims 13 chaintemplate but AC accepts 5 — explicit carry-forward to retro recommended
+```
+
+The autowire is informational only — fail-open like its siblings, never blocks `activate()`. F-077 closes the diagnosis half of the response chain; F-078 will turn the same fingerprint into a blocking drift kind on `complete()`.
+
+### Tests
+
+- `tests/unit/test_quant_claims.py` — `ExtractNumericClaimsTests` (6 cases) + `DiffClaimsTests` (5 cases including order-stable output by metric token).
+- `tests/unit/work/test_work_autowire.py` — `QuantLintAutowireTests` (3 cases: hint emitted on mismatch · silent on matching values · fail-open under monkeypatch on extractor failure).
+- 1134 unit tests pass (regression 0 from the v0.11.12 baseline of 1120 + 14 new). `bash scripts/self_check.sh` 5/5 OK.
+
 ### Queued
 
 - Marketplace submission to anthropic/claude-plugins-official — submission templated text prepared; user submits via https://claude.ai/settings/plugins/submit. README install snippet update queued for after approval.
