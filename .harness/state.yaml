@@ -1320,8 +1320,33 @@ features:
       self_check 5/5.
   started_at: '2026-04-28T05:12:29Z'
   completed_at: '2026-04-28T05:13:52Z'
+- id: F-060
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-28T05:32:48Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-28T05:32:49Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-28T05:32:48Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (10.4s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-28T05:32:49Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.7s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-28T05:32:56Z'
+    kind: generic
+    summary: KO 대화 예시의 status 단어 (통과 → PASS, 건너뜀 → SKIPPED) 영어로 swap. 실제 work.py 출력과
+      1:1 매핑. EN README 변경 없음. AC-1~3 grep 검증 OK, self_check 5/5.
+  started_at: '2026-04-28T05:32:10Z'
+  completed_at: '2026-04-28T05:32:57Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-059
+  last_command: /harness:work F-060
   last_gate_passed: gate_5
   active_feature_id: null

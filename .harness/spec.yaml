@@ -1776,6 +1776,50 @@ features:
       - "AC-6: bash scripts/self_check.sh 5/5 PASS."
       - "AC-7: 1117 unit + integration tests PASS, regression 0."
 
+  - id: "F-060"
+    name: "README KO conversation — status values to English (PASS / SKIPPED) for legibility + runtime parity"
+    type: "feature"
+    description: |
+      Follow-up to F-059. The KO conversation example used Korean
+      status verbs (통과 / 건너뜀) which read as natural-language prose
+      rather than category values, and the actual work.py output is
+      English (PASS / FAIL / SKIPPED) — README ↔ runtime mismatch.
+
+      User direction: "PASS FAIL은 영어가 좋을 것 같다 + 사용자가 알아보기
+      어렵지 않을까 (해당 출력 표시 방식이)." → Two readability fixes:
+
+      (1) status values become English literals in the KO mirror:
+            통과   → PASS
+            건너뜀 → SKIPPED
+          (FAIL would also stay as-is — it just doesn't appear in the
+          happy-path example.)
+
+      (2) layout / column alignment stays the same — monospace code
+          fence already aligns columns. Adding English status keywords
+          alone is enough to surface them as category values at a
+          glance.
+
+      Other prose stays Korean (Iron Law 충족 / F-3 끝낼까요? / 단위 19 개
+      / 근거 자동 기록 / 도구 미감지). Only the bare status tokens
+      become English — matching what work.py actually prints.
+
+      EN README has no changes (already uses PASS / SKIPPED).
+      Tiny scope — README.ko.md only.
+    modules:
+      - "README.ko.md"
+    test_strategy: "contract"
+    tdd_focus:
+      - "KO conversation example uses PASS / SKIPPED instead of 통과 / 건너뜀"
+      - "Surrounding prose remains Korean (Iron Law 충족 etc.)"
+      - "EN README untouched"
+    acceptance_criteria:
+      - "AC-1: README.ko.md contains 'PASS' and 'SKIPPED' inside the conversation example block."
+      - "AC-2: README.ko.md '통과' and '건너뜀' do NOT appear inside the conversation example block (other sections may still use them)."
+      - "AC-3: README.ko.md surrounding prose still uses Korean for non-status tokens (e.g. 'Iron Law 충족', '단위 19 개', '도구 미감지')."
+      - "AC-4: README.md is unchanged in this feature (already uses PASS / SKIPPED)."
+      - "AC-5: bash scripts/self_check.sh 5/5 PASS."
+      - "AC-6: 1117 unit + integration tests PASS, regression 0."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
