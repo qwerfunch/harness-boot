@@ -17,8 +17,8 @@ harness-boot is a multi-agent development harness for Claude Code. Where most AI
 A loose horse runs fast in every direction. A harnessed horse runs fast toward something.
 
 ```
-You  ──▶  ① Context  ──▶  ② Evolve  ──▶  ③ Focus  ──▶  ④ Collaborate  ──▶  ⑤ Unify  ──▶  Result
-          (conversion)    (the docs)      (the rules)    (the experts)        (two commands)
+You  ──▶  ① Convert  ──▶  ② Evolve  ──▶  ③ Focus  ──▶  ④ Collaborate  ──▶  ⑤ Unify  ──▶  Result
+          (the context)   (the docs)      (the rules)    (the experts)        (two commands)
 ```
 
 ---
@@ -27,7 +27,7 @@ You  ──▶  ① Context  ──▶  ② Evolve  ──▶  ③ Focus  ──
 
 | # | Strength | How it works | What you get |
 |---|---|---|---|
-| 1 | **Context** | Your plain-language ideas become an intermediate language — structured specs that every AI agent can act on directly | Same context for every agent — less guessing, sharper output |
+| 1 | **Convert** | Plain-language ideas convert into an intermediate language — structured specs that every AI agent can act on directly | Same context for every agent — less guessing, sharper output |
 | 2 | **Evolve** | Edit one place, the rest stays in sync; mismatches surface automatically; your manual tweaks survive | Design docs are always current — no manual upkeep |
 | 3 | **Focus** | Each agent works inside its lane; completion criteria are enforced by the system, not by trust | AIs stay on the work that's theirs |
 | 4 | **Collaborate** | Role-specialized agents follow set procedures; every decision and disagreement is recorded | Blind spots get covered, every step is traceable |
@@ -127,19 +127,20 @@ A typical happy path — start a feature, run the gates, mark it done.
 ```
 You> let's start the login feature
 
-Claude> Activating F-3 (Login). Iron Law: gate_5 (smoke) PASS + at least 1 evidence.
+Claude> Starting F-3 (Login).
+        To finish: gate_5 (smoke run) PASS + at least 1 evidence.
         Next: run the gates.
 
 You> run them
 
-Claude> gate_0 (tests)  PASS — 19 unit tests
-        gate_5 (smoke)  PASS — evidence auto-added
-        gate_1/2/3      SKIPPED — no toolchain detected
-        Iron Law satisfied. Mark F-3 done? [Y/n]
+Claude> gate_0  (tests)             PASS — 19 unit tests
+        gate_5  (smoke run)         PASS — evidence auto-saved
+        gate_1/2/3  (type/lint/coverage)   SKIPPED — no tool detected
+        Iron Law satisfied (gate_5 + evidence). Mark F-3 done? [Y/n]
 
 You> Y
 
-Claude> Done. Retro written: .harness/_workspace/retro/F-3.md
+Claude> Done. Retro saved: .harness/_workspace/retro/F-3.md
         Up next: F-4 (Signup). Say "switch" or "show what's left".
 ```
 

@@ -1293,8 +1293,35 @@ features:
       happy path 재작성. EN/KO mirror. AC-1~6 grep + self_check 5/5.'
   started_at: '2026-04-28T04:35:05Z'
   completed_at: '2026-04-28T04:36:43Z'
+- id: F-059
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-28T05:13:40Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-28T05:13:41Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-28T05:13:40Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (10.3s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-28T05:13:41Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.7s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-28T05:13:51Z'
+    kind: generic
+    summary: README diagram ① 메인↔괄호 swap (Convert/변환 + (the context)/(컨텍스트)) + 표 1행
+      헤딩·verb 본문 정렬 (convert into/변환합니다) + 대화 예시 시스템 용어 + 괄호 친화 풀이 (gate_0 (tests/테스트)
+      등 + Iron Law satisfied (gate_5 + evidence/근거)). EN/KO mirror. AC-1~5 grep +
+      self_check 5/5.
+  started_at: '2026-04-28T05:12:29Z'
+  completed_at: '2026-04-28T05:13:52Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-058
+  last_command: /harness:work F-059
   last_gate_passed: gate_5
   active_feature_id: null

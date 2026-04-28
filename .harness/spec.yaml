@@ -1730,6 +1730,52 @@ features:
       - "AC-7: bash scripts/self_check.sh 5/5 PASS."
       - "AC-8: 1117 unit + integration tests PASS, regression 0."
 
+  - id: "F-059"
+    name: "README ① heading verb consistency + conversation example jargon balance"
+    type: "feature"
+    description: |
+      Two follow-ups after F-056/F-057/F-058:
+
+      (1) Diagram main↔sub-text swap on column ①. After F-056 lifted ①
+      to a noun (Context) and F-057 moved the sub-text to a mechanism
+      noun (conversion / 변환), columns ②~⑤ remain verbs (Evolve · Focus
+      · Collaborate · Unify) — leaving ① alone as a noun. The user asked
+      to swap: main becomes the verb (Convert / 변환), sub-text becomes
+      the noun (the context / 컨텍스트). All five mains are verbs again,
+      five sub-texts each form a closed pair with their heading on a
+      different axis (result / target / how / who / form). The table row
+      1 heading and body update in lockstep — body verb form 'convert
+      into' (EN) / '변환합니다' (KO).
+
+      (2) "A short conversation" balances system terms with friendly
+      glosses. The user accepted system jargon (gate_0 · gate_5 · Iron
+      Law · evidence) — they line up with actual work.py output and the
+      glossary — but asked for a friendlier surface. Each gate line now
+      reads `gate_X (gloss) STATUS — detail`, e.g.
+      `gate_0 (tests) PASS — 19 unit tests`. The Iron Law line spells
+      out the satisfying conditions inline:
+      `Iron Law satisfied (gate_5 + evidence)`. Behavior described in
+      the example matches the live runtime (no fictional outputs).
+
+      Tiny scope — README.md / README.ko.md only.
+    modules:
+      - "README.md"
+      - "README.ko.md"
+    test_strategy: "contract"
+    tdd_focus:
+      - "All five diagram main labels read as verbs"
+      - "① diagram main = Convert / 변환; sub-text = (the context) / (컨텍스트)"
+      - "Table row 1 heading = Convert / 변환; body uses verb form (convert into / 변환합니다)"
+      - "Conversation example pairs each system term with a parenthetical gloss"
+    acceptance_criteria:
+      - "AC-1: README.md diagram main line reads '① Convert'; sub-text line reads '(the context)'."
+      - "AC-2: README.ko.md diagram main reads '① 변환'; sub-text reads '(컨텍스트)'."
+      - "AC-3: README.md table row 1 heading reads '**Convert**'; README.ko.md reads '**변환**'."
+      - "AC-4: 'convert into' appears in README.md table row 1 body; '변환합니다' appears in README.ko.md table row 1 body."
+      - "AC-5: 'A short conversation' carries system terms (gate_0 / gate_5 / Iron Law) and parenthetical glosses ((tests) / (smoke run) / (type/lint/coverage)) in EN, with KO equivalents (테스트 / 스모크 실행 / 타입·스타일·커버리지) in the mirror."
+      - "AC-6: bash scripts/self_check.sh 5/5 PASS."
+      - "AC-7: 1117 unit + integration tests PASS, regression 0."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
