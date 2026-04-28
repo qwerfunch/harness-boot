@@ -15,6 +15,40 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - F-051 follow-up — older active features (F-002/F-004/F-006/F-011~F-040) description / AC body sweep.
 - Pre-marketplace polish follow-ups — `plugin.json.repository` field, `commands/init.md` header version marker (deferred from F-055 to keep that feature focused).
 
+## [0.11.6] — 2026-04-28
+
+**README Five Strengths terminology refinement: ① Translate → Context, with intermediate-language framing (F-056).**
+
+A docs-only patch tightening row 1 of the Five Strengths table after a user-driven validation pass. The four other labels (Evolve · Focus · Collaborate · Unify) are preserved verbatim — Evolve maps to the harness's living-spec metaphor, Focus and Collaborate stay strong, and Unify is the 5-stage culmination point (not just a 2-command consolidation). Behavior is unchanged.
+
+### Changed — ① heading: Translate → Context
+
+The label shifts from a verb (act of translation) to a noun (the context AIs rely on). "Context" is a stronger framing for the AI-tool space, and it lines up with how the harness actually works: spec.yaml + domain.md + architecture.yaml form the living context every agent reads from.
+
+- `README.md`: ① diagram column and table row 1 → `Context`
+- `README.ko.md`: ① 다이어그램 / 표 1행 → `컨텍스트`
+
+### Changed — ① body: intermediate-language framing
+
+The row 1 body now names the mechanism explicitly. Natural words become an *intermediate language* — a structured spec that every AI agent can act on directly.
+
+- EN: *"Your plain-language ideas become an intermediate language — structured specs that every AI agent can act on directly"*
+- KO: *"사람의 자연어를 AI 가 이해할 중간언어(명세)로 정리합니다 — 모든 에이전트가 같은 컨텍스트에서 출발합니다"*
+
+The "What you get" cell follows suit: *"Same context for every agent — less guessing, sharper output"* / *"모든 에이전트가 같은 맥락에서 출발 — AI 가 헷갈리지 않습니다"*.
+
+### Fixed — ③ EN sub-text drift
+
+The diagram's ③ Focus sub-text on the EN side read `(the agents)`, which conflicted with the KO mirror's `(제어)` and with the section semantics (③ is about Iron-Law-enforced rules and agent lanes; the agent itself is the subject of ④ Collaborate's `(the experts)`). Corrected to `(the rules)`. KO unchanged.
+
+### Fixed — Status line stale
+
+`README.md:177` and `README.ko.md:178` both still showed `v0.11.3`. Bumped to `v0.11.5` (the previous release) on each side, then this patch lands as `v0.11.6` — version badges and `Status` line now agree.
+
+### Pillar 6 — F-056 dogfood evidence
+
+F-056 ran through the work.py 4-verb cycle on `.harness/` — `gate_0` PASS, `gate_5` PASS, three evidence entries before transitioning to `done`. Two README mirrors only; no behavior change. `scripts/self_check.sh` 5/5 OK including the canonical-vs-`.harness/` lockstep.
+
 ## [0.11.5] — 2026-04-28
 
 **Pre-marketplace polish: refresh `commands/work.md` from v0.3 tense to current v0.11.x state (F-055).**

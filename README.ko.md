@@ -6,7 +6,7 @@
 
 Claude Code 위에서 도는 multi-agent 개발 하네스. 다른 AI 도구가 *능력* 을 더할 때, harness-boot 는 *방향* 을 만듭니다.
 
-[![plugin](https://img.shields.io/badge/plugin-v0.11.5-blue)](.claude-plugin/plugin.json)
+[![plugin](https://img.shields.io/badge/plugin-v0.11.6-blue)](.claude-plugin/plugin.json)
 [![tests](https://img.shields.io/badge/tests-1117%20passing-brightgreen)](tests)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
@@ -17,8 +17,8 @@ Claude Code 위에서 도는 multi-agent 개발 하네스. 다른 AI 도구가 *
 야생마는 빠르지만 산만합니다. 마구 채운 말은 빠르고 *방향* 이 있습니다.
 
 ```
-사용자  ──▶  ① 변환  ──▶  ② 진화  ──▶  ③ 집중  ──▶  ④ 협업  ──▶  ⑤ 통합  ──▶  결과
-            (자연어)     (문서)      (제어)        (전문가)      (명령 통합)
+사용자  ──▶  ① 컨텍스트  ──▶  ② 진화  ──▶  ③ 집중  ──▶  ④ 협업  ──▶  ⑤ 통합  ──▶  결과
+            (자연어)        (문서)      (제어)        (전문가)      (명령 통합)
 ```
 
 ---
@@ -27,7 +27,7 @@ Claude Code 위에서 도는 multi-agent 개발 하네스. 다른 AI 도구가 *
 
 | # | 강점 | 어떻게 작동하나 | 사용자가 얻는 것 |
 |---|---|---|---|
-| 1 | **변환** | 사람의 자연어를 AI 가 이해할 명세로 자동 정리합니다 | AI 가 헷갈리지 않습니다 |
+| 1 | **컨텍스트** | 사람의 자연어를 AI 가 이해할 중간언어(명세)로 정리합니다 — 모든 에이전트가 같은 컨텍스트에서 출발합니다 | 모든 에이전트가 같은 맥락에서 출발 — AI 가 헷갈리지 않습니다 |
 | 2 | **진화** | 한 곳을 수정하면 관련 문서가 자동 갱신, 불일치는 자동 감지, 사용자가 직접 수정한 부분은 보존됩니다 | 설계 문서가 항상 최신, 관리 부담이 사라집니다 |
 | 3 | **집중** | 각 AI 가 자기 작업 범위 안에서만 동작하고, 완료 조건은 시스템이 보장합니다 | AI 가 본래 일에만 집중합니다 |
 | 4 | **협업** | 역할별 전문 AI 들이 정해진 절차로 협력하고, 모든 의사결정과 이견 처리 과정이 자동 기록됩니다 | 사각지대를 메우고, 모든 결정 과정이 추적 가능합니다 |
@@ -175,7 +175,7 @@ harness-boot/
 
 ## 현재 상태
 
-**v0.11.3** — 외부 채택 준비 단계, 자체 도그푸드 운영 중.
+**v0.11.5** — 외부 채택 준비 단계, 자체 도그푸드 운영 중.
 
 - 변경 이력 — [CHANGELOG.md](CHANGELOG.md)
 - 개발자 가이드 — [CLAUDE.md](CLAUDE.md)

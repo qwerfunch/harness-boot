@@ -6,7 +6,7 @@
 
 harness-boot is a multi-agent development harness for Claude Code. Where most AI tools add *capability*, we add *focus*.
 
-[![plugin](https://img.shields.io/badge/plugin-v0.11.5-blue)](.claude-plugin/plugin.json)
+[![plugin](https://img.shields.io/badge/plugin-v0.11.6-blue)](.claude-plugin/plugin.json)
 [![tests](https://img.shields.io/badge/tests-1117%20passing-brightgreen)](tests)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
@@ -17,8 +17,8 @@ harness-boot is a multi-agent development harness for Claude Code. Where most AI
 A loose horse runs fast in every direction. A harnessed horse runs fast toward something.
 
 ```
-You  ──▶  ① Translate  ──▶  ② Evolve  ──▶  ③ Focus  ──▶  ④ Collaborate  ──▶  ⑤ Unify  ──▶  Result
-          (your words)     (the docs)      (the agents)   (the experts)        (two commands)
+You  ──▶  ① Context  ──▶  ② Evolve  ──▶  ③ Focus  ──▶  ④ Collaborate  ──▶  ⑤ Unify  ──▶  Result
+          (your words)    (the docs)      (the rules)    (the experts)        (two commands)
 ```
 
 ---
@@ -27,7 +27,7 @@ You  ──▶  ① Translate  ──▶  ② Evolve  ──▶  ③ Focus  ─�
 
 | # | Strength | How it works | What you get |
 |---|---|---|---|
-| 1 | **Translate** | Your plain-language ideas become structured specs that AIs can actually act on | Less guessing, more on-target output |
+| 1 | **Context** | Your plain-language ideas become an intermediate language — structured specs that every AI agent can act on directly | Same context for every agent — less guessing, sharper output |
 | 2 | **Evolve** | Edit one place, the rest stays in sync; mismatches surface automatically; your manual tweaks survive | Design docs are always current — no manual upkeep |
 | 3 | **Focus** | Each agent works inside its lane; completion criteria are enforced by the system, not by trust | AIs stay on the work that's theirs |
 | 4 | **Collaborate** | Role-specialized agents follow set procedures; every decision and disagreement is recorded | Blind spots get covered, every step is traceable |
@@ -174,7 +174,7 @@ harness-boot/
 
 ## Status
 
-**v0.11.3** — preparing for external adoption, running our own dogfood.
+**v0.11.5** — preparing for external adoption, running our own dogfood.
 
 - Changelog — [CHANGELOG.md](CHANGELOG.md)
 - Developer guide — [CLAUDE.md](CLAUDE.md)

@@ -1595,6 +1595,49 @@ features:
       - "AC-4: 1117 unit + integration tests PASS, regression 0."
       - "AC-5: F-055 completed via the work.py 4-verb cycle (activate · run-gate · evidence · complete), Phase 2 dogfood preserved."
 
+  - id: "F-056"
+    name: "README Five Strengths terminology refinement — Context heading + intermediate-language framing"
+    type: "feature"
+    description: |
+      Following user validation of the five-strengths labels (Translate ·
+      Evolve · Focus · Collaborate · Unify), three corrections land:
+
+      (1) ① Translate → Context. The label shifts from a verb (act of
+      translation) to a noun (the context AIs rely on). The body adds an
+      "intermediate language" framing — natural words become a structured
+      spec that every agent can act on. KO mirror: 변환 → 컨텍스트, 본문에
+      "중간언어(명세)로 정리" 어휘.
+
+      (2) ③ EN sub-text (the agents) → (the rules). The agent itself is
+      the subject of ④ Collaborate's (the experts); ③ Focus is about
+      Iron-Law-enforced rules and agent lanes, which "the rules" captures
+      directly. KO mirror (제어) unchanged.
+
+      (3) Status line stale: v0.11.3 → v0.11.5 in both README mirrors.
+
+      ② Evolve · ④ Collaborate · ⑤ Unify are kept verbatim — Evolve maps
+      to the harness's living-spec metaphor, and Unify is the 5-stage
+      culmination point (not just a 2-command consolidation).
+
+      Tiny scope — README.md / README.ko.md only. No behavior change.
+    modules:
+      - "README.md"
+      - "README.ko.md"
+    test_strategy: "contract"
+    tdd_focus:
+      - "① heading reads Context / 컨텍스트 in both mirrors"
+      - "Body wording carries 'intermediate language' / '중간언어(명세)'"
+      - "③ EN sub-text reads (the rules)"
+      - "Status line reads v0.11.5 in both mirrors"
+    acceptance_criteria:
+      - "AC-1: README.md contains zero 'Translate' occurrences in the Five Strengths region; >=1 'Context' occurrence."
+      - "AC-2: README.ko.md contains zero '변환' in the Five Strengths region (L20-31); >=1 '컨텍스트'."
+      - "AC-3: 'intermediate language' appears in README.md and '중간언어' in README.ko.md within row 1 of the strengths table."
+      - "AC-4: README.md diagram sub-text reads '(the rules)' on the ③ Focus column; no '(the agents)' remains."
+      - "AC-5: Both README mirrors show 'v0.11.5' in their Status line; no 'v0.11.3' remains in that line."
+      - "AC-6: bash scripts/self_check.sh 5/5 PASS."
+      - "AC-7: 1117 unit + integration tests PASS, regression 0."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
