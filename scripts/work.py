@@ -105,7 +105,7 @@ _IRON_LAW_REQUIRED: dict[str, int] = {"prototype": 1, "product": 3}
 # 골라서 false-positive 환경 의존성을 피한다 (Generated/Anchor 같은 schema-
 # validation 류 error 는 build state 에 따라 발생할 수 있어 차단 대상 아님).
 _BLOCKING_DRIFT_KINDS: frozenset[str] = frozenset(
-    {"Code", "Stale", "AnchorIntegration"}
+    {"Code", "Stale", "AnchorIntegration", "Coverage"}
 )
 
 

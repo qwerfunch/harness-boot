@@ -173,5 +173,55 @@ class CheckFailureGracefulTests(DriftIronLawScratch, unittest.TestCase):
         self.assertEqual(res.action, "completed")
 
 
+class CoverageBlocksCompleteTests(DriftIronLawScratch, unittest.TestCase):
+    """F-078 — Coverage drift kind blocks complete() like its siblings.
+
+    Promotes the F-077 quant lint (informational stderr hint) into a
+    blocking gate. The Iron Law itself stays procedural; the substantive
+    check sits in the drift surface alongside Code / Stale /
+    AnchorIntegration.
+    """
+
+    def test_coverage_error_blocks_complete(self):
+        report = CheckReport(
+            findings=[
+                DriftFinding(
+                    "Coverage",
+                    "F-1::quant.chaintemplate",
+                    "description claims 13 chaintemplate but AC accepts 5 (ratio=0.38)",
+                    "error",
+                )
+            ],
+            checked=["Code", "Stale", "AnchorIntegration", "Coverage"],
+        )
+        with patch("check.run_blocking_check", return_value=report):
+            self._seed_precondition("F-1")
+            res = work.complete(self.harness, "F-1")
+        self.assertEqual(res.action, "queried")
+        self.assertIn("Coverage", res.message)
+        self.assertIn("--hotfix-reason", res.message)
+
+    def test_hotfix_reason_bypasses_coverage(self):
+        report = CheckReport(
+            findings=[
+                DriftFinding(
+                    "Coverage",
+                    "F-1::quant.chaintemplate",
+                    "description claims 13 chaintemplate but AC accepts 5",
+                    "error",
+                )
+            ],
+            checked=["Coverage"],
+        )
+        with patch("check.run_blocking_check", return_value=report):
+            self._seed_precondition("F-1")
+            res = work.complete(
+                self.harness,
+                "F-1",
+                hotfix_reason="intentional carry-forward — 8 templates queued for next cycle",
+            )
+        self.assertEqual(res.action, "completed")
+
+
 if __name__ == "__main__":
     unittest.main()

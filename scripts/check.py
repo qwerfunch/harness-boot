@@ -55,7 +55,7 @@ from core.state import State  # noqa: E402
 from spec import include_expander as ie  # noqa: E402
 
 
-DriftKind = str  # "Generated" | "Derived" | "Spec" | "Include" | "Evidence" | "Code" | "Doc" | "Anchor" | "Protocol" | "Adr" | "Stale" | "AnchorIntegration"
+DriftKind = str  # "Generated" | "Derived" | "Spec" | "Include" | "Evidence" | "Code" | "Doc" | "Anchor" | "Protocol" | "Adr" | "Stale" | "AnchorIntegration" | "Coverage"
 
 _FEATURE_ID_PATTERN = re.compile(r"^F-\d+$")
 _CLAUDE_IMPORT_PATTERN = re.compile(r"^@([^\s]+)", re.MULTILINE)
@@ -849,6 +849,86 @@ def check_protocol(harness_dir: Path) -> list[DriftFinding]:
     return findings
 
 
+_DEFAULT_COVERAGE_THRESHOLD = 0.80
+
+
+def check_spec_coverage(
+    harness_dir: Path, spec_yaml: dict | None
+) -> list[DriftFinding]:
+    """F-078 — 13th drift kind: spec quantitative coverage.
+
+    Promotes the F-077 activate-time quant lint into a complete()
+    blocking check. Reads each ``_workspace/coverage/F-*.yaml``
+    fingerprint that ``_autowire_quant_lint`` writes and emits one
+    ``severity='error'`` finding per recorded mismatch whose
+    ``ac_value / description_value`` ratio falls below the configured
+    threshold.
+
+    The threshold defaults to 0.80; override via
+    ``harness.yaml.coverage.threshold`` for project-specific tuning.
+    Missing fingerprint dir, unparseable file, or empty mismatches list
+    → empty findings (no exception). The ``spec_yaml`` parameter is
+    accepted for signature symmetry with sibling detectors but is not
+    consulted — the fingerprint already encodes the per-feature data.
+
+    Iron Law (BR-004) stays procedural; substantive coverage gating
+    sits on the drift surface alongside Code / Stale /
+    AnchorIntegration. The ``--hotfix-reason`` escape hatch (F-048)
+    still bypasses Coverage like every other blocking drift kind.
+    """
+    findings: list[DriftFinding] = []
+    cov_dir = harness_dir / "_workspace" / "coverage"
+    if not cov_dir.is_dir():
+        return findings
+
+    threshold = _DEFAULT_COVERAGE_THRESHOLD
+    harness_yaml_path = harness_dir / "harness.yaml"
+    if harness_yaml_path.is_file():
+        try:
+            with harness_yaml_path.open("r", encoding="utf-8") as f:
+                cfg = yaml.safe_load(f) or {}
+            override = (cfg.get("coverage") or {}).get("threshold")
+            if override is not None:
+                threshold = float(override)
+        except Exception:
+            # Fall back to default; never raise out of a drift detector.
+            threshold = _DEFAULT_COVERAGE_THRESHOLD
+
+    for fp_path in sorted(cov_dir.glob("F-*.yaml")):
+        try:
+            with fp_path.open("r", encoding="utf-8") as f:
+                fp = yaml.safe_load(f) or {}
+        except Exception:
+            continue
+        fid = fp.get("feature_id") or fp_path.stem
+        for mismatch in fp.get("mismatches") or []:
+            metric = mismatch.get("metric", "")
+            try:
+                desc_val = int(mismatch.get("description_value", 0))
+                ac_val = int(mismatch.get("ac_value", 0))
+            except (TypeError, ValueError):
+                continue
+            if desc_val <= 0:
+                continue
+            ratio = ac_val / desc_val
+            if ratio < threshold:
+                findings.append(
+                    DriftFinding(
+                        kind="Coverage",
+                        path=f"{fid}::quant.{metric}",
+                        message=(
+                            f"description claims {desc_val} {metric} but AC "
+                            f"accepts {ac_val} (ratio={ratio:.2f}, "
+                            f"threshold={threshold:.2f}) — explicit "
+                            f"carry-forward required (retro entry or "
+                            f"--hotfix-reason)"
+                        ),
+                        severity="error",
+                    )
+                )
+    return findings
+
+
 def run_check(harness_dir: Path, project_root: Path | None = None) -> CheckReport:
     report = CheckReport()
     harness_yaml = _load_yaml(harness_dir / "harness.yaml")
@@ -885,6 +965,9 @@ def run_check(harness_dir: Path, project_root: Path | None = None) -> CheckRepor
 
     report.findings.extend(check_protocol(harness_dir))
     report.checked.append("Protocol")
+
+    report.findings.extend(check_spec_coverage(harness_dir, spec_yaml))
+    report.checked.append("Coverage")
     return report
 
 
@@ -914,7 +997,11 @@ def run_blocking_check(
         report.findings.extend(
             check_anchor_integration(harness_dir, spec_yaml, project_root)
         )
-    report.checked.extend(["Code", "Stale", "AnchorIntegration"])
+    # F-078 — Coverage runs regardless of spec presence; fingerprints
+    # under _workspace/coverage/ are the data source. Empty when the
+    # F-077 lint has not yet populated the dir.
+    report.findings.extend(check_spec_coverage(harness_dir, spec_yaml))
+    report.checked.extend(["Code", "Stale", "AnchorIntegration", "Coverage"])
     return report
 
 

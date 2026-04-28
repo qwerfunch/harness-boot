@@ -753,7 +753,7 @@ class StrictRunBlockingCheckTests(HarnessScratch, unittest.TestCase):
     user-facing `python3 scripts/check.py` command (= run_check).
     """
 
-    _BLOCKING_KINDS = ("Code", "Stale", "AnchorIntegration")
+    _BLOCKING_KINDS = ("Code", "Stale", "AnchorIntegration", "Coverage")
     _NON_BLOCKING_FUNCS = (
         "check_generated",
         "check_derived",
@@ -808,16 +808,88 @@ class StrictRunBlockingCheckTests(HarnessScratch, unittest.TestCase):
              mock.patch.object(check, "check_stale", return_value=[]) as m_stale, \
              mock.patch.object(
                  check, "check_anchor_integration", return_value=[]
-             ) as m_ai:
+             ) as m_ai, \
+             mock.patch.object(
+                 check, "check_spec_coverage", return_value=[]
+             ) as m_cov:
             check.run_blocking_check(self.harness, project_root=self.tmp)
         self.assertEqual(m_code.call_count, 1)
         self.assertEqual(m_stale.call_count, 1)
         self.assertEqual(m_ai.call_count, 1)
+        self.assertEqual(m_cov.call_count, 1)
 
     def test_missing_spec_yields_empty_report(self) -> None:
         report = check.run_blocking_check(self.harness, project_root=self.tmp)
         self.assertEqual(list(report.findings), [])
         self.assertEqual(tuple(report.checked), self._BLOCKING_KINDS)
+
+
+class CheckSpecCoverageTests(HarnessScratch, unittest.TestCase):
+    """F-078 — 13th drift kind: Coverage promotes the F-077 lint into a
+    complete()-blocking check.
+    """
+
+    def _write_fingerprint(self, fid: str, mismatches: list[dict]) -> None:
+        cov_dir = self.harness / "_workspace" / "coverage"
+        cov_dir.mkdir(parents=True, exist_ok=True)
+        (cov_dir / f"{fid}.yaml").write_text(
+            yaml.safe_dump(
+                {
+                    "feature_id": fid,
+                    "description_claims": [],
+                    "ac_claims": [],
+                    "mismatches": mismatches,
+                },
+                allow_unicode=True,
+                sort_keys=False,
+            ),
+            encoding="utf-8",
+        )
+
+    def test_low_ratio_emits_error_finding(self):
+        # 5 / 13 = 0.385 < 0.80 default threshold → error
+        self._write_fingerprint(
+            "F-1",
+            [{"metric": "chaintemplate", "description_value": 13, "ac_value": 5}],
+        )
+        findings = check.check_spec_coverage(self.harness, None)
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].kind, "Coverage")
+        self.assertEqual(findings[0].severity, "error")
+        self.assertIn("chaintemplate", findings[0].message)
+        self.assertIn("13", findings[0].message)
+        self.assertIn("5", findings[0].message)
+
+    def test_high_ratio_silent(self):
+        # 12 / 13 = 0.92 ≥ 0.80 → no finding
+        self._write_fingerprint(
+            "F-1",
+            [{"metric": "rule", "description_value": 13, "ac_value": 12}],
+        )
+        findings = check.check_spec_coverage(self.harness, None)
+        self.assertEqual(findings, [])
+
+    def test_threshold_override_in_harness_yaml(self):
+        # Same 5/13 = 0.385 ratio but project lowers threshold to 0.30 → silent
+        self.write_harness_yaml(
+            {"version": "2.3", "coverage": {"threshold": 0.30}}
+        )
+        self._write_fingerprint(
+            "F-1",
+            [{"metric": "chaintemplate", "description_value": 13, "ac_value": 5}],
+        )
+        findings = check.check_spec_coverage(self.harness, None)
+        self.assertEqual(findings, [])
+
+    def test_missing_coverage_dir_returns_empty(self):
+        # No fingerprint dir → no findings, no exception
+        findings = check.check_spec_coverage(self.harness, None)
+        self.assertEqual(findings, [])
+
+    def test_empty_mismatches_silent(self):
+        self._write_fingerprint("F-1", [])
+        findings = check.check_spec_coverage(self.harness, None)
+        self.assertEqual(findings, [])
 
 
 class CompleteUsesBlockingFastPathTests(unittest.TestCase):

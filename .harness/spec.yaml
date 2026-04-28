@@ -2475,6 +2475,68 @@ features:
       - "AC-7: F-077 mirrored on both spec.yaml copies. bash scripts/self_check.sh 5/5 PASS · regression 0 (1120+ unit tests still pass)."
       - "AC-8: F-077 completed via the work.py 4-verb cycle (activate → run-gate gate_0 + gate_5 → declared evidence → complete) — Phase 2 dogfood."
 
+  - id: "F-078"
+    name: "13th drift kind — Coverage detector turns quant lint into a complete() blocker"
+    type: "feature"
+    description: |
+      Second step in the F-077 → F-078 → F-079 thread. F-077 surfaced
+      the description-vs-AC quantitative mismatch as an informational
+      stderr hint at activate time, but the user could still ignore it
+      and proceed to complete() — the Iron Law would happily transition
+      the feature to done. F-078 closes that loop: Coverage becomes the
+      13th drift kind, joins `_BLOCKING_DRIFT_KINDS`, and complete()
+      rejects transitions where the description over-promises by more
+      than the configurable threshold.
+
+      `scripts/check.py:check_spec_coverage(harness_dir, spec_yaml)`
+      reads the F-077 fingerprints under
+      `_workspace/coverage/F-N.yaml` and, for each recorded mismatch,
+      computes `ratio = ac_value / description_value`. When `ratio <
+      threshold` (default 0.80, override via
+      `harness.yaml.coverage.threshold`), emits a `severity=error`
+      finding under `kind=Coverage`. When the fingerprint or the
+      coverage directory is absent the detector is silently empty —
+      F-077 must run first to populate the data.
+
+      `_BLOCKING_DRIFT_KINDS` in `scripts/work.py` adds `Coverage`. The
+      F-072 fast path (`run_blocking_check`) extends to call
+      `check_spec_coverage` so `complete()` does not pay for the eight
+      cheap-but-discarded detectors. F-048's existing escape hatch
+      (`--hotfix-reason`) bypasses Coverage as well — intentional
+      carry-forward stays expressible without disabling the detector
+      globally.
+
+      Why a separate detector instead of folding into Iron Law: keeping
+      the gate procedural (gate_5 + N evidence) and pushing substantive
+      checks into drift mirrors the rest of the architecture (F-048
+      already gates wire-integrity drift on `complete()`). The drift
+      surface is the right place for "does the implementation match
+      the spec" questions.
+    modules:
+      - "scripts/check.py"
+      - "scripts/work.py"
+      - "tests/unit/test_check.py"
+      - "tests/unit/work/test_drift_iron_law_gate.py"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "check_spec_coverage emits Coverage findings with severity='error' for mismatches whose ratio < threshold (default 0.80)"
+      - "threshold honored from harness.yaml.coverage.threshold override (test with 0.50 → previous error becomes clean)"
+      - "missing _workspace/coverage directory → empty findings (no exception)"
+      - "fingerprint with empty mismatches list → no findings"
+      - "run_check appends 'Coverage' to checked list and includes detector findings"
+      - "run_blocking_check (F-072 fast path) also appends 'Coverage' to checked + invokes check_spec_coverage"
+      - "_BLOCKING_DRIFT_KINDS in scripts/work.py contains 'Coverage' (preserves F-048's gate semantics)"
+      - "complete() rejects when Coverage finding present (severity error) and accepts when --hotfix-reason supplied"
+    acceptance_criteria:
+      - "AC-1: scripts/check.py adds `check_spec_coverage(harness_dir: Path, spec_yaml: dict | None) -> list[DriftFinding]`. Reads each `_workspace/coverage/F-*.yaml` fingerprint, iterates `mismatches[]`, emits one finding per mismatch where `ac_value / description_value < threshold`. Threshold defaults to 0.80; reads `harness.yaml.coverage.threshold` for project override. Missing fingerprint dir or unparseable file → empty list, no exception."
+      - "AC-2: run_check appends `check_spec_coverage` after `check_protocol` and adds `'Coverage'` to `report.checked`. Behaviour preserved when fingerprints absent."
+      - "AC-3: run_blocking_check (F-072) extends to call `check_spec_coverage` and adds `'Coverage'` to `checked`. Mocked detector functions in `tests/unit/test_check.py::StrictRunBlockingCheckTests` are updated to include the new entry."
+      - "AC-4: scripts/work.py:_BLOCKING_DRIFT_KINDS gains `'Coverage'`. F-048's gate semantics are unchanged — only the kind set widens."
+      - "AC-5: tests/unit/test_check.py adds `CheckSpecCoverageTests` (4 cases): mismatch + low ratio → error finding · matching values → silent · threshold override 0.50 → finding suppressed · missing fingerprint dir → empty findings."
+      - "AC-6: tests/unit/work/test_drift_iron_law_gate.py adds `CoverageBlocksCompleteTest` and `HotfixReasonBypassesCoverageTest` (2 cases). F-048's existing 7 cases retargeted to the new mock site if needed and continue to pass."
+      - "AC-7: F-078 mirrored on both spec.yaml copies. bash scripts/self_check.sh 5/5 PASS · regression 0 across the existing 1134 unit tests."
+      - "AC-8: F-078 completed via the work.py 4-verb cycle (activate → run-gate gate_0 + gate_5 → declared evidence → complete) — Phase 2 dogfood."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

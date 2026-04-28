@@ -9,6 +9,24 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
+### Added — 13th drift kind `Coverage` — quant lint becomes a `complete()` blocker (F-078)
+
+Second step in the F-077 → F-078 → F-079 thread. F-077 surfaced description-vs-AC quantitative mismatches as informational stderr hints at activate time; users could still ignore the hint and proceed to `complete()`, where the procedural Iron Law (`gate_5 = pass` plus declared evidence count) would happily transition the feature to `done`. F-078 closes the loop: `Coverage` becomes the 13th drift kind, joins `_BLOCKING_DRIFT_KINDS`, and `complete()` rejects transitions whose description over-promises by more than the configured threshold.
+
+`scripts/check.py:check_spec_coverage(harness_dir, spec_yaml)` reads the F-077 fingerprints under `_workspace/coverage/F-*.yaml` and, for each recorded mismatch, computes `ratio = ac_value / description_value`. When `ratio < threshold` (default `0.80`, override via `harness.yaml.coverage.threshold`), it emits a `severity='error'` finding under `kind='Coverage'`. Missing fingerprint dir, unparseable file, or empty mismatches list → empty findings (no exception).
+
+`scripts/work.py:_BLOCKING_DRIFT_KINDS` adds `'Coverage'`. F-072's `run_blocking_check` fast path extends to call `check_spec_coverage` so `complete()` does not pay for the eight cheap-but-discarded detectors. F-048's `--hotfix-reason` escape hatch bypasses Coverage like every other blocking kind — intentional carry-forward stays expressible without disabling the detector globally.
+
+### Tests
+
+- `tests/unit/test_check.py` — `CheckSpecCoverageTests` (5 cases: low ratio → error · high ratio silent · threshold override `0.30` suppresses · missing coverage dir empty · empty mismatches silent). `StrictRunBlockingCheckTests` updated: `_BLOCKING_KINDS` now `("Code", "Stale", "AnchorIntegration", "Coverage")` and the "invokes each blocking detector exactly once" case now also mocks `check_spec_coverage`.
+- `tests/unit/work/test_drift_iron_law_gate.py` — `CoverageBlocksCompleteTests` (2 cases: Coverage error blocks `complete()` and `--hotfix-reason` bypasses). F-048's existing 5 cases (`DriftFreeCompleteTests`, `ErrorDriftBlocksTests`, `WarnOnlyDoesNotBlockTests`, `HotfixOverridesDriftTests`, `CheckFailureGracefulTests`) untouched and pass.
+- 1141 unit tests pass (regression 0; +7 new from F-078). `bash scripts/self_check.sh` 5/5 OK.
+
+### Notes
+
+The Iron Law itself stays procedural by design — substantive coverage gating sits on the drift surface alongside `Code` / `Stale` / `AnchorIntegration` (F-048's lineage). F-079 will surface coverage % directly in the dashboard so the gauge is visible without invoking `check.py`.
+
 ### Added — `_autowire_quant_lint` in `scripts/work.py:activate()` (F-077)
 
 First step in the three-feature thread (F-077 → F-078 → F-079) that addresses an Iron Law structural gap: BR-004 verifies procedural completion (`gate_5 = pass` plus declared evidence count) but does not look inside evidence to confirm the numbers actually match the spec's quantitative targets. A field-discovered failure mode: features whose `description` promised "13 ChainTemplate" / "74 propagation rule" / "35 Heuristic tools" reached `done` with implementations covering ~38% / ~13% / ~3% of those targets because the AC text happily accepted partial regression PASS and the carry-forward bullets stayed buried in retro Deferred sections.
