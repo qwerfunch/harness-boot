@@ -1793,8 +1793,36 @@ features:
       threaded from work.py snapshot. 1149 unit tests pass · self_check 5/5 OK.
   started_at: '2026-04-28T17:34:34Z'
   completed_at: '2026-04-28T17:43:59Z'
+- id: F-080
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-28T18:00:13Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-28T18:00:14Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-28T18:00:13Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (12.5s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-28T18:00:14Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.7s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-28T18:00:14Z'
+    kind: manual_check
+    summary: Synthetic replay 6 steps captured (F-077 hint × 3 · fingerprint persisted
+      · gate_5+evidence procedural OK · F-078 Coverage rejects complete · hotfix bypass
+      · F-079 dashboard Coverage debt section). tests/integration/test_iron_law_substantive.py
+      4/4 PASS. docs/dogfood-replay-v0.12.0.md authored. 1179 unit+integration pass
+      · self_check 5/5 OK.
+  started_at: '2026-04-28T17:56:41Z'
+  completed_at: '2026-04-28T18:01:37Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-079
+  last_command: /harness:work F-080
   last_gate_passed: gate_5
   active_feature_id: null
