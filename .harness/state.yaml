@@ -1553,8 +1553,26 @@ features:
       추가, agent-workflow/walking-skeleton 제거. 사용자 명시 새 set 6개. AC-1~4 통과.'
   started_at: '2026-04-28T09:51:20Z'
   completed_at: '2026-04-28T09:51:56Z'
+- id: F-069
+  status: done
+  gates:
+    gate_5:
+      last_result: pass
+      ts: '2026-04-28T14:14:00Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-28T14:14:00Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.7s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-28T14:14:07Z'
+    kind: manual_check
+    summary: self_check 5/5 PASS; both READMEs have Manual install section after Quick
+      start; AC-3 grep confirms no CLAUDE_PLUGIN_ROOT or settings.json references;
+      install commands consistent across en/ko
+  started_at: '2026-04-28T14:13:17Z'
+  completed_at: '2026-04-28T14:14:13Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-068
+  last_command: /harness:work F-069
   last_gate_passed: gate_5
   active_feature_id: null

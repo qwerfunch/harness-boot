@@ -100,6 +100,28 @@ If it takes more than 5 minutes, [open an issue](https://github.com/qwerfunch/ha
 
 ---
 
+## Manual install
+
+Use this when you want to run from a local clone — for contributors, forks, or offline setups. The repo's `.claude-plugin/marketplace.json` makes any clone act as a self-hosted marketplace.
+
+> Note: harness-boot is not listed in the official Claude Code marketplace yet — the `qwerfunch/harness-boot` form above resolves to this GitHub repo directly.
+
+```bash
+git clone https://github.com/qwerfunch/harness-boot.git
+cd harness-boot
+```
+
+Then in Claude Code (use the absolute path of the clone):
+
+```bash
+/plugin marketplace add /absolute/path/to/harness-boot
+/plugin install harness-boot@harness-boot
+```
+
+To update later, `git pull` in the clone and run `/plugin marketplace update harness-boot`.
+
+---
+
 ## How to use it
 
 ### Talk to it in plain English

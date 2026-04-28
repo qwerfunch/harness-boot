@@ -2107,6 +2107,50 @@ features:
       - "AC-3: keywords array length is 6 (no duplicates)."
       - "AC-4: bash scripts/self_check.sh 5/5 PASS."
 
+  - id: "F-069"
+    name: "README manual install guide + marketplace status note"
+    type: "feature"
+    description: |
+      `/plugin marketplace add qwerfunch/harness-boot` is a GitHub-direct
+      registration, not a lookup against the official Claude Code
+      marketplace (`anthropic/claude-plugins-official`), where harness-boot
+      is not listed. First-time readers can mistake the existing Quick
+      start command for an official-registry install — and contributors
+      / fork users have no documented path for running the plugin from a
+      local clone.
+
+      Add a Manual install section immediately after Quick start in both
+      README.md and README.ko.md. The section walks the
+      `git clone` → `/plugin marketplace add /absolute/path` →
+      `/plugin install harness-boot@harness-boot` flow, with one
+      neutral-tone note clarifying that the `qwerfunch/harness-boot`
+      form points at this GitHub repo because the plugin is not yet on
+      the official marketplace.
+
+      Unverified paths from docs/archive/local-install-v0.1.0.md
+      (CLAUDE_PLUGIN_ROOT env, settings.json plugins[]) stay confined
+      to the archive — only the verified marketplace-add flow surfaces
+      in the user-facing README.
+
+      Quick start commands are preserved verbatim. The Korean and
+      English versions match in the bash sequences (text-diff zero on
+      the install commands).
+    modules:
+      - "README.md"
+      - "README.ko.md"
+    test_strategy: "contract"
+    tdd_focus:
+      - "Manual install section appears after Quick start in both READMEs"
+      - "Section uses only the verified absolute-path marketplace-add flow"
+      - "One-line note clarifies the plugin is not on the official marketplace"
+      - "Bash command sequences match between English and Korean versions"
+    acceptance_criteria:
+      - "AC-1: README.md and README.ko.md include a Manual install / 수동 설치 H2 section after Quick start / 빠른 시작."
+      - "AC-2: The section instructs git clone + /plugin marketplace add /absolute/path/to/harness-boot + /plugin install harness-boot@harness-boot — and nothing else."
+      - "AC-3: Neither README mentions CLAUDE_PLUGIN_ROOT or settings.json plugins[] (unverified paths stay in archive)."
+      - "AC-4: Both READMEs carry one neutral note line stating harness-boot is not listed in the official Claude Code marketplace and that the qwerfunch/harness-boot form resolves to this GitHub repo."
+      - "AC-5: bash scripts/self_check.sh 5/5 PASS."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
