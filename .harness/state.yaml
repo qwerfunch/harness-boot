@@ -1528,8 +1528,33 @@ features:
       mantra 제거). 사용자 의도 '담백하게' 정합. AC-1 grep 0, AC-2 마지막 라인 ``` 코드 펜스 닫기.
   started_at: '2026-04-28T09:35:02Z'
   completed_at: '2026-04-28T09:35:47Z'
+- id: F-068
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-28T09:51:54Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-28T09:51:55Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-28T09:51:54Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (9.7s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-28T09:51:55Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.6s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-28T09:51:55Z'
+    kind: generic
+    summary: 'plugin.json keywords: claude-code/harness/spec-driven 유지 + multi-agent/ai-coding/agent-harness
+      추가, agent-workflow/walking-skeleton 제거. 사용자 명시 새 set 6개. AC-1~4 통과.'
+  started_at: '2026-04-28T09:51:20Z'
+  completed_at: '2026-04-28T09:51:56Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-067
+  last_command: /harness:work F-068
   last_gate_passed: gate_5
   active_feature_id: null

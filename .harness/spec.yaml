@@ -2077,6 +2077,36 @@ features:
       - "AC-2: The file's last non-empty line is the closing fence of the How to add code block, with no trailing prose paragraph after it."
       - "AC-3: bash scripts/self_check.sh 5/5 PASS."
 
+  - id: "F-068"
+    name: "plugin.json keywords refresh ahead of marketplace submission"
+    type: "feature"
+    description: |
+      Tags requested for the directory listing (and aligned with
+      plugin.json keywords): harness · multi-agent · ai-coding ·
+      spec-driven · agent-harness. The previous walking-skeleton /
+      agent-workflow keywords are dropped — the new set covers
+      the same conceptual ground in language closer to how external
+      contributors actually search.
+
+      claude-code is kept as the platform identifier. Total keywords
+      stays at six; well within the manifest convention.
+
+      Single-file edit: `.claude-plugin/plugin.json` keywords array.
+      No version bump (this lands as Unreleased; next release picks it
+      up).
+    modules:
+      - ".claude-plugin/plugin.json"
+    test_strategy: "contract"
+    tdd_focus:
+      - "keywords array contains all five user-requested tags"
+      - "claude-code preserved as platform tag"
+      - "no removed-tag remnants (agent-workflow / walking-skeleton)"
+    acceptance_criteria:
+      - "AC-1: .claude-plugin/plugin.json keywords contains all of: claude-code, harness, multi-agent, ai-coding, spec-driven, agent-harness."
+      - "AC-2: keywords array does NOT contain agent-workflow or walking-skeleton."
+      - "AC-3: keywords array length is 6 (no duplicates)."
+      - "AC-4: bash scripts/self_check.sh 5/5 PASS."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

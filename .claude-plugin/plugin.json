@@ -10,8 +10,9 @@
   "keywords": [
     "claude-code",
     "harness",
+    "multi-agent",
+    "ai-coding",
     "spec-driven",
-    "agent-workflow",
-    "walking-skeleton"
+    "agent-harness"
   ]
 }

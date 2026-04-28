@@ -9,7 +9,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
-- Marketplace PR (anthropic/claude-plugins-official) — pending explicit user go-ahead.
+### Landed (awaiting next release tag)
+
+- **F-068 plugin.json keywords refresh ahead of marketplace submission** — `agent-workflow` / `walking-skeleton` dropped from `.claude-plugin/plugin.json` keywords; `multi-agent` / `ai-coding` / `agent-harness` added. Final set: `claude-code · harness · multi-agent · ai-coding · spec-driven · agent-harness` (6 keywords). Aligned with the directory-listing tags about to be submitted to claude-plugins-official.
+
+### Queued
+
+- Marketplace submission to anthropic/claude-plugins-official — submission templated text prepared (this thread); user submits via https://claude.ai/settings/plugins/submit. README install snippet update queued for after approval.
 - F-052 follow-up — broader `scripts/` Python docstring sweep across check.py, work.py, gate/runner.py, sync.py and others (~25 files of KO-bearing docstrings still queued).
 - F-053 follow-up — `tests/` Python docstring sweep (~99 files queued; per-area batch execution recommended).
 - F-051 follow-up — older active features (F-002/F-004/F-006/F-011~F-040) description / AC body sweep.
