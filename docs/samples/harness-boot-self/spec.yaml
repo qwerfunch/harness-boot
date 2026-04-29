@@ -3401,6 +3401,53 @@ features:
       - "AC-4: F-094 mirrored on both spec.yaml copies. self_check 5/5 PASS."
       - "AC-5: F-094 completed via the work.py cycle on the umbrella branch."
 
+  - id: "F-095"
+    name: "TS migration — port gate/runner.ts (gate 0-5 + perf auto-detection)"
+    type: "feature"
+    description: |
+      Twelfth cycle of the v1.0 migration thread. Ports
+      `scripts/gate/runner.py` (830 LOC) — the polyglot gate
+      auto-detector and subprocess executor. work.py depends on this
+      for `--run-gate <name>` invocations.
+
+      Public API ported (camelCase TS, semantic 1:1 with Python):
+
+        - `runGate(name, projectRoot, options)` — dispatcher.
+        - `runGate0` … `runGate5`, `runGatePerf` — per-gate runners.
+        - `detectGate0Command` … `detectGate5Command` — detection
+          functions (pure-ish, only filesystem I/O).
+        - `GateRunResult` interface with `gate / result / reason /
+          command / exitCode / stdoutTail / stderrTail / durationSec`.
+
+      Detection priority (must match Python byte-for-byte):
+
+        - gate_0: pyproject pytest → npm test → tests/ pytest →
+          unittest discover (preferred sub) → Makefile test.
+        - gate_1: mypy → pyright → npm typecheck → tsc → npx tsc →
+          cargo check → go vet.
+        - gate_2: ruff → flake8 → npm lint → eslint → npx eslint →
+          cargo clippy → golangci-lint.
+        - gate_3: pytest --cov → npm test:coverage → npx nyc →
+          tarpaulin → llvm-cov → go test -cover.
+        - gate_4: git diff --quiet (working tree clean).
+        - gate_5: scripts/smoke.sh → playwright config → cypress
+          config → npm smoke / test:e2e → tests/smoke pytest →
+          Makefile smoke.
+        - gate_perf: no auto-detect; override only.
+
+      Override resolution priority: --override-command >
+      harness.yaml.gate_commands.<gate> > auto-detect.
+
+    acceptance_criteria:
+      - "AC-1: src/gate/runner.ts exports `runGate`, six per-gate runners, six detect_*Command helpers, plus `GateRunResult` interface."
+      - "AC-2: Each detect function returns the expected command for canonical fixture trees (pyproject + pytest, package.json scripts, tsconfig, Cargo, go.mod, etc.)."
+      - "AC-3: harness.yaml.gate_commands.<gate> override (string OR array) parses identically to Python."
+      - "AC-4: Override priority — --override-command > harness.yaml > auto-detect."
+      - "AC-5: Subprocess timeout produces `result: 'fail'` with `reason: 'timeout after Ns'` (Python-shaped)."
+      - "AC-6: Command-not-found produces `result: 'skipped'` with `reason: 'command not found: ...'`."
+      - "AC-7: F-095 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-8: F-095 completed via the work.py cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
