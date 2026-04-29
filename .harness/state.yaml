@@ -1906,8 +1906,38 @@ features:
       reflecting hybrid repo state.'
   started_at: '2026-04-29T07:56:13Z'
   completed_at: '2026-04-29T08:03:24Z'
+- id: F-085
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T08:13:37Z'
+      note: 'cmd: npm test'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T08:13:38Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-29T08:13:37Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (0.5s) · cmd: npm test'
+  - ts: '2026-04-29T08:13:38Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-29T08:13:38Z'
+    kind: manual_check
+    summary: 'src/core/eventLog.ts ported byte-for-byte from scripts/core/event_log.py
+      with full JSDoc. pythonStyleJsonStringify helper matches Python json.dumps default
+      ('', '' / '': '' separators, ensure_ascii=False). Public API: readEvents · rotate
+      · parseYyyymmFromTs · currentYyyymm. tests/parity/eventLog.test.ts: 8 fixtures
+      × {rotate match · readEvents order · idempotency} + 5 edge cases (missing dir
+      · dryRun · parseYyyymmFromTs null/extract · pre-existing bucket append) = 30/30
+      PASS. Combined parity 61/61. Python 1192 still pass · self_check 5/5 · TS typecheck
+      + ESLint clean.'
+  started_at: '2026-04-29T08:08:54Z'
+  completed_at: '2026-04-29T08:14:14Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-084
+  last_command: /harness:work F-085
   last_gate_passed: gate_5
   active_feature_id: null
