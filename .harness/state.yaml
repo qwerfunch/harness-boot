@@ -2156,8 +2156,31 @@ features:
     summary: "CI workflow rewrite (Python matrix → Node 20/22 + npm install + npm run typecheck/lint/test:parity + bash self_check.sh). Fresh-clone simulation passed: dist/ tracked, npm install once + node bin/harness.js works end-to-end. Plugin manifest cross-check OK (name/version/source aligned across plugin.json + marketplace.json + package.json). Bug fix: package.json prepare hook had inverted logic (dist missing → no build); replaced with test -f dist/cli/harness.js || npm run build."
   started_at: 2026-04-29T14:10:58Z
   completed_at: 2026-04-29T14:14:33Z
+- id: F-110
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-04-29T14:25:48Z
+      note: "cmd: npm test"
+    gate_5:
+      last_result: pass
+      ts: 2026-04-29T14:25:51Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-04-29T14:25:48Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.1s) · cmd: npm test"
+  - ts: 2026-04-29T14:25:51Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.4s) · cmd: bash self_check.sh"
+  - ts: 2026-04-29T14:25:56Z
+    kind: manual_check
+    summary: esbuild bundle 850.4kb verified — fresh-clone simulation in /tmp/hb-fresh-test (no node_modules) ran --version, status, validate, work all green
+  started_at: 2026-04-29T14:25:32Z
+  completed_at: 2026-04-29T14:26:52Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-109
+  last_command: /harness:work F-110
   last_gate_passed: gate_5
   active_feature_id: null
