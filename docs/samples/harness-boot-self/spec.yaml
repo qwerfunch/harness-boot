@@ -3163,6 +3163,61 @@ features:
       - "AC-6: F-088 mirrored on both spec.yaml copies. bash scripts/self_check.sh 5/5 PASS · 1192+ Python tests still pass · npm run test:parity green."
       - "AC-7: F-088 completed via the work.py 4-verb cycle on the existing `feat/F-084-ts-migration-foundation` branch."
 
+  - id: "F-089"
+    name: "TS migration — port spec/validate.ts (JSONSchema validation via ajv)"
+    type: "feature"
+    description: |
+      Sixth cycle of the v1.0 migration thread. Ports
+      `scripts/spec/validate.py` to TypeScript and adds `ajv` +
+      `ajv-formats` as runtime dependencies. The Python source uses
+      the optional `jsonschema` library; the TS port standardises on
+      ajv (industry default for Node) which provides identical
+      validation outcomes against the existing
+      `docs/schemas/spec.schema.json`.
+
+      Public API ported:
+
+        - `loadSpec(path)` — read a YAML file, return the parsed
+          object, throw `SpecValidationError` on malformed YAML or
+          non-mapping top level.
+        - `validate(spec, schemaPath?)` — run ajv against the
+          shared schema, throw `SpecValidationError` with the same
+          path + reason fields the Python version raises.
+        - `SpecValidationError` — class extending Error, carries
+          `message`, `path`, `reason`.
+
+      Behaviour preservation focus:
+
+        - Same error path format — list-of-keys, dotted on `.message`.
+        - Same exit codes when used as a CLI (the Node CLI shim is
+          out of scope for this cycle; it lands with the bin/harness
+          wrapper later).
+        - Schema resolution: same fallback to `docs/schemas/spec.schema.json`
+          relative to the package root. The TS port uses
+          `node:url.fileURLToPath` to anchor the lookup off the
+          source file, mirroring Python's `Path(__file__).parents[2]`.
+        - Empty-spec / non-mapping top-level guards reject the same
+          inputs.
+
+      Parity test scope:
+
+        - Round-trip: load the canonical sample
+          (`docs/samples/harness-boot-self/spec.yaml`) → validate →
+          succeed.
+        - Negative fixtures: minimal invalid specs trigger
+          SpecValidationError with the expected `path` and `reason`.
+        - Top-level type guards on null / scalar / array.
+
+    acceptance_criteria:
+      - "AC-1: src/spec/validate.ts exports `loadSpec`, `validate`, `SpecValidationError`."
+      - "AC-2: ajv + ajv-formats added to runtime dependencies."
+      - "AC-3: Validating the canonical sample spec via TS succeeds (same outcome as Python)."
+      - "AC-4: Top-level non-mapping inputs (null, list, scalar) raise SpecValidationError with `reason: 'top_level'`."
+      - "AC-5: Schema-violation errors carry an `absolutePath` array identical in shape to Python's `e.absolute_path` list."
+      - "AC-6: Schema lookup falls back to `docs/schemas/spec.schema.json` when the caller passes no path."
+      - "AC-7: F-089 mirrored on both spec.yaml copies. self_check 5/5 PASS · npm run test:parity green."
+      - "AC-8: F-089 completed via the work.py 4-verb cycle on the existing `feat/F-084-ts-migration-foundation` branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
