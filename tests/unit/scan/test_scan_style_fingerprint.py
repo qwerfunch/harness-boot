@@ -79,5 +79,43 @@ class TestFingerprintEmpty(unittest.TestCase):
         self.assertNotIn("formatter", fp)
 
 
+class TestTomllibMissingDegradation(unittest.TestCase):
+    """F-081 — when tomllib + tomli are both unavailable, `_pyproject_has`
+    must return False instead of raising AttributeError on `tomllib.loads`.
+    """
+
+    def test_pyproject_signal_silent_when_tomllib_missing(self) -> None:
+        from unittest import mock
+        from scripts.scan import style_fingerprint as sf
+
+        with mock.patch.object(sf, "tomllib", None):
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                # Real pyproject.toml — the gate is the missing parser,
+                # not a missing file.
+                (root / "pyproject.toml").write_text(
+                    "[tool.ruff]\nline-length = 100\n", encoding="utf-8"
+                )
+                result = sf._pyproject_has(root, "tool.ruff")
+        self.assertFalse(result)
+
+    def test_fingerprint_does_not_raise_when_tomllib_missing(self) -> None:
+        """fingerprint() entry point must not raise even when the repo
+        carries a pyproject.toml the parser cannot read.
+        """
+        from unittest import mock
+        from scripts.scan import style_fingerprint as sf
+
+        with mock.patch.object(sf, "tomllib", None):
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                (root / "pyproject.toml").write_text(
+                    "[tool.ruff]\nline-length = 100\n", encoding="utf-8"
+                )
+                sf._fingerprint_cached.cache_clear()
+                fp = sf.fingerprint(root)
+        self.assertIsInstance(fp, dict)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -33,11 +33,22 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+# F-081 — module load must survive a missing pyyaml so that
+# `python3 scripts/sync.py --soft` honors the F-076 contract
+# ("--soft always exits 0") even on a fresh Python where pyyaml has not
+# been installed yet. The actual exit decision moves to main() once it
+# can inspect argv.
 try:
     import yaml
+    _YAML_AVAILABLE = True
 except ImportError:
-    print("pyyaml is required", file=sys.stderr)
-    sys.exit(1)
+    yaml = None  # type: ignore[assignment]
+    _YAML_AVAILABLE = False
+
+_PYYAML_HINT = (
+    "pyyaml not available "
+    "(install via `python3 -m pip install --user pyyaml`)"
+)
 
 # 같은 scripts/ 디렉터리의 형제 모듈들 — 직접 import.
 _THIS = Path(__file__).resolve().parent
@@ -381,6 +392,18 @@ def try_initial_sync(harness_dir: Path) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # F-081 — pyyaml gate. We inspect raw argv before argparse so the
+    # F-076 `--soft = exit 0` contract holds even when the module-level
+    # `import yaml` failed. argparse cannot run normally without yaml-driven
+    # downstream calls, but the early return is enough for both branches.
+    raw_argv = list(argv) if argv is not None else sys.argv[1:]
+    if not _YAML_AVAILABLE:
+        if "--soft" in raw_argv:
+            print(f"sync (initial): fail — {_PYYAML_HINT}")
+            return 0
+        print(_PYYAML_HINT, file=sys.stderr)
+        return 1
+
     parser = argparse.ArgumentParser(description="harness-boot /sync orchestrator")
     parser.add_argument(
         "--harness-dir",

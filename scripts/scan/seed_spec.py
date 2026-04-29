@@ -19,10 +19,15 @@ import shutil
 import sys
 from pathlib import Path
 
+# F-081 — graceful degradation when neither tomllib nor tomli is present.
+# Cargo.toml branch in `_infer_deliverable` skips silently when None.
 try:
     import tomllib  # Python 3.11+
 except ImportError:
-    import tomli as tomllib  # Python 3.10 backport
+    try:
+        import tomli as tomllib  # Python 3.10 backport
+    except ImportError:
+        tomllib = None  # type: ignore[assignment]
 from typing import Optional
 
 import yaml
@@ -156,7 +161,7 @@ def _infer_deliverable(stack: dict, root: Path) -> dict:
     runtime = stack.get("runtime", "")
     if runtime == "rust":
         cargo = root / "Cargo.toml"
-        if cargo.is_file():
+        if cargo.is_file() and tomllib is not None:
             try:
                 data = tomllib.loads(cargo.read_text(encoding="utf-8"))
             except tomllib.TOMLDecodeError:

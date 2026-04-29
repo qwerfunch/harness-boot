@@ -11,10 +11,17 @@ import json
 import re
 from collections import Counter
 
+# F-081 — Python <3.11 systems without the `tomli` backport must still be
+# able to import this module. _pyproject_has guards against `tomllib is
+# None` so the dashboard / kickoff path keeps working in degraded mode
+# (no pyproject signals, but no crash).
 try:
     import tomllib  # Python 3.11+
 except ImportError:
-    import tomli as tomllib  # Python 3.10 backport
+    try:
+        import tomli as tomllib  # Python 3.10 backport
+    except ImportError:
+        tomllib = None  # type: ignore[assignment]
 from functools import lru_cache
 from pathlib import Path
 
@@ -300,6 +307,9 @@ def _list_config_files(root: Path) -> list[str]:
 def _pyproject_has(root: Path, dotted_path: str) -> bool:
     pyproject = root / "pyproject.toml"
     if not pyproject.is_file():
+        return False
+    if tomllib is None:
+        # F-081 — neither tomllib nor tomli installed; degrade gracefully.
         return False
     try:
         data = tomllib.loads(pyproject.read_text(encoding="utf-8"))

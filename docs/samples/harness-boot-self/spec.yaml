@@ -2663,6 +2663,127 @@ features:
       - "AC-6: F-080 completed via the work.py 4-verb cycle (activate → run-gate gate_0 + gate_5 → declared evidence → complete) — Phase 2 dogfood."
       - "AC-7: Released as v0.12.1 patch (additive — validation + tests only, no user-visible behavior change). Tag pushed and gh release created with notes-file extracted from the v0.12.1 CHANGELOG section."
 
+  - id: "F-081"
+    name: "Graceful import degradation — dashboard works without tomli, sync --soft exits 0 without pyyaml"
+    type: "feature"
+    description: |
+      External-dogfood feedback batch (2026-04-29). A new user reported
+      two install-time bugs on macOS system Python 3.9 that block the
+      first-run experience:
+
+      1. `/harness-boot:work` (dashboard mode) crashes with
+         `ModuleNotFoundError` when neither `tomllib` (Python 3.11+)
+         nor `tomli` (backport) is installed. The two-step try/except
+         in `scripts/scan/style_fingerprint.py:14-17` only catches the
+         first ImportError; the second one (tomli also missing)
+         propagates and aborts module load. work.py imports the scan
+         package, so even the read-only dashboard becomes unreachable.
+         Same crash shape exists in `scripts/scan/manifest.py:18-20`
+         and `scripts/scan/seed_spec.py:23-25`.
+
+      2. `scripts/sync.py --soft` exits 1 instead of 0 when pyyaml is
+         missing. The module-level `import yaml` runs before argparse
+         sees `--soft`, breaking F-076's "soft mode always exits 0"
+         contract. `/harness-boot:init §5.5` invokes `sync.py --soft`,
+         so a fresh init treats the missing optional dep as a hard
+         failure.
+
+      Both bugs share a common root: the plugin assumes pyyaml/tomli
+      are installed (they are listed in requirements-dev.txt) but does
+      not bundle or runtime-verify them. F-081 ships the inner
+      defensive layer — graceful degradation so the plugin never
+      crashes on a missing optional dep. F-082 ships the outer layer
+      (init preflight + offer-to-install).
+
+      Together they make the first-run experience smooth regardless of
+      the user's Python environment.
+    modules:
+      - "scripts/sync.py"
+      - "scripts/scan/style_fingerprint.py"
+      - "scripts/scan/manifest.py"
+      - "scripts/scan/seed_spec.py"
+      - "tests/unit/test_sync.py"
+      - "tests/unit/scan/test_style_fingerprint.py"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "scripts/sync.py wraps `import yaml` so module load survives a missing pyyaml"
+      - "scripts/sync.py:main() returns 0 when --soft + yaml missing (F-076 contract preserved)"
+      - "scripts/sync.py:main() returns 1 when strict + yaml missing (existing behavior)"
+      - "scripts/scan/{style_fingerprint,manifest,seed_spec}.py wrap tomllib/tomli in nested try/except — sets `tomllib = None` when neither is present"
+      - "_pyproject_has and other tomllib.loads sites guard with `if tomllib is None: return False` (or equivalent skip)"
+      - "Existing dashboard / sync flows are unchanged when deps are present (regression 0)"
+    acceptance_criteria:
+      - "AC-1: scripts/sync.py top-of-module replaces the bare ImportError exit with a try/except that sets `_YAML_AVAILABLE = False` and `yaml = None`. main() checks `_YAML_AVAILABLE` first; when False and `--soft` is in argv, prints `sync (initial): fail — pyyaml not available (install via …)` and returns 0; otherwise prints to stderr and returns 1."
+      - "AC-2: scripts/scan/style_fingerprint.py rewrites the import block to a nested try/except — outer catches `tomllib` ImportError, inner catches `tomli` ImportError, both branches set `tomllib = None`. `_pyproject_has` returns False when `tomllib is None` without raising."
+      - "AC-3: scripts/scan/manifest.py applies the same nested try/except + guards each `tomllib.loads` site (pyproject.toml + Cargo.toml branches)."
+      - "AC-4: scripts/scan/seed_spec.py applies the same nested try/except + guards the `tomllib.loads` site (Cargo.toml branch)."
+      - "AC-5: tests/unit/test_sync.py adds `test_soft_cli_returns_zero_when_pyyaml_missing` and `test_strict_cli_returns_one_when_pyyaml_missing` (monkeypatch `_YAML_AVAILABLE = False`)."
+      - "AC-6: tests/unit/scan/test_style_fingerprint.py (new file or extension) adds at least one case asserting `_pyproject_has` returns False when `tomllib is None` and does not raise."
+      - "AC-7: F-081 mirrored on both spec.yaml copies. bash scripts/self_check.sh 5/5 PASS · regression 0 across 1179+ unit + integration tests."
+      - "AC-8: F-081 completed via the work.py 4-verb cycle (activate → run-gate gate_0 + gate_5 → declared evidence → complete) — Phase 2 dogfood."
+
+  - id: "F-082"
+    name: "Init dep preflight — ask user before pip install (F-082 paired with F-081)"
+    type: "feature"
+    description: |
+      Outer companion to F-081. While F-081 ensures the plugin never
+      crashes on a missing optional dep, the user still wants to know
+      "your environment is missing X — install now? (yes/no/venv)"
+      so the deps actually get installed and full functionality is
+      restored. F-082 wires that prompt into `/harness-boot:init`.
+
+      Decision tree (markdown contract — no auto-execution):
+
+        1. §0.5 preflight runs `python3 -c "import yaml" && (import
+           tomllib || import tomli)`.
+        2. If all OK → continue normal init flow. Zero overhead.
+        3. If missing → tell the user (single message in their
+           language): which packages are missing, then ask
+           `yes / no / venv`.
+        4. Wait for user response. Never auto-install.
+        5. Branch on answer:
+           - `yes` → `python3 -m pip install --user pyyaml "tomli; python_version<'3.11'"`.
+             If pip exits non-zero with PEP 668 / "externally-managed-environment",
+             ask once more whether to use `--break-system-packages`.
+           - `no` → print the install command for later use, continue
+             init in degraded mode (F-081 backstop).
+           - `venv` → print the `python3 -m venv .venv && …` command,
+             continue init (user re-runs after activating venv).
+        6. Always continue — never abort init on dep failure.
+        7. Append a `deps_preflight` event to events.log so retro /
+           metrics can observe first-visit user flow.
+
+      Why ask permission instead of auto-install: the user's Python
+      environment is their asset. PEP 668 markers are typically there
+      because the user (or their distro) intentionally set them.
+      Modifying that without consent is worse UX than asking once.
+
+      F-082 is markdown-contract change — no Python helper unless we
+      need a shared `events.log` writer (already exists via
+      `scripts/core/event_log.py`).
+    modules:
+      - "commands/init.md"
+      - "tests/unit/test_init_md_preflight_contract.py"
+    test_strategy: "contract"
+    tdd_focus:
+      - "commands/init.md gains a §0.5 'Optional dependency preflight' section between §0 and §1"
+      - "the section's bash block runs `python3 -c \"import yaml\"` and the `import tomllib || import tomli` chain"
+      - "the section instructs Claude to ask the user (yes/no/venv) before any pip invocation"
+      - "the `yes` branch references `python3 -m pip install --user`; the `no` branch references degraded mode + later-install command; the `venv` branch references `python3 -m venv .venv`"
+      - "the PEP 668 fallback is documented (one extra round-trip ask before --break-system-packages)"
+      - "init.md never aborts init on dep failure — F-081 backstop handles whatever the user chose"
+    acceptance_criteria:
+      - "AC-1: commands/init.md adds a new §0.5 'Optional dependency preflight' section between the existing §0 (Pre-flight — detect existing install) and §1 (Create directories)."
+      - "AC-2: §0.5 includes a bash block that runs `python3 -c \"import yaml\"` and `python3 -c \"import tomllib\"` || `python3 -c \"import tomli\"` and prints `deps: ok` or `deps: missing`."
+      - "AC-3: §0.5 instructs Claude to send a single message asking the user `yes / no / venv` when deps are missing, and to wait for the response before any pip invocation."
+      - "AC-4: §0.5 documents the three response branches (yes / no / venv) including the PEP 668 fallback under `yes` (one additional ask before `--break-system-packages`)."
+      - "AC-5: §0.5 explicitly states init must always continue — F-081 graceful degradation handles whatever the user chose."
+      - "AC-6: §0.5 specifies a `deps_preflight` event must be appended to events.log with `status ∈ {ok, installed, skipped, failed}` and the missing list."
+      - "AC-7: tests/unit/test_init_md_preflight_contract.py asserts the §0.5 anchor exists, the three branches are present, the PEP 668 fallback is mentioned, and the section ordering between §0 and §1 is correct."
+      - "AC-8: F-082 mirrored on both spec.yaml copies. bash scripts/self_check.sh 5/5 PASS."
+      - "AC-9: F-082 completed via the work.py 4-verb cycle — Phase 2 dogfood."
+      - "AC-10: F-081 + F-082 ship together as v0.12.2 patch release. Originally-queued F-082 (kickoff Quantitative completeness section) and F-083 (carry-forward debt) renumber to F-084 and F-085 respectively; CHANGELOG queue line updated to reflect the shift."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

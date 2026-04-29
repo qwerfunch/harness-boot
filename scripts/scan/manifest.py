@@ -14,10 +14,16 @@ import re
 from pathlib import Path
 from typing import Optional
 
+# F-081 — graceful degradation when neither tomllib nor tomli is
+# installed (e.g. macOS system Python 3.9). pyproject.toml + Cargo.toml
+# manifests fall back to silent empty dicts.
 try:
     import tomllib  # Python 3.11+
 except ImportError:
-    import tomli as tomllib  # Python 3.10 backport
+    try:
+        import tomli as tomllib  # Python 3.10 backport
+    except ImportError:
+        tomllib = None  # type: ignore[assignment]
 
 
 _NODE_TEST_PRIORITY = ("vitest", "jest", "mocha", "ava", "node:test")
@@ -62,7 +68,7 @@ def extract_project_name(root: Path) -> Optional[str]:
             return data["name"]
 
     pyproj = root / "pyproject.toml"
-    if pyproj.is_file():
+    if pyproj.is_file() and tomllib is not None:
         try:
             data = tomllib.loads(pyproj.read_text(encoding="utf-8"))
         except tomllib.TOMLDecodeError:
@@ -72,7 +78,7 @@ def extract_project_name(root: Path) -> Optional[str]:
             return name
 
     cargo = root / "Cargo.toml"
-    if cargo.is_file():
+    if cargo.is_file() and tomllib is not None:
         try:
             data = tomllib.loads(cargo.read_text(encoding="utf-8"))
         except tomllib.TOMLDecodeError:
@@ -128,6 +134,8 @@ def _detect_node(root: Path) -> dict:
 
 
 def _detect_python(root: Path) -> dict:
+    if tomllib is None:
+        return {}  # F-081 — degrade gracefully when no TOML parser is available.
     try:
         data = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
     except tomllib.TOMLDecodeError:
@@ -177,6 +185,8 @@ def _detect_python(root: Path) -> dict:
 
 
 def _detect_rust(root: Path) -> dict:
+    if tomllib is None:
+        return {}  # F-081 — degrade gracefully when no TOML parser is available.
     try:
         data = tomllib.loads((root / "Cargo.toml").read_text(encoding="utf-8"))
     except tomllib.TOMLDecodeError:

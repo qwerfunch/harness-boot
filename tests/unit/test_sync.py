@@ -402,6 +402,27 @@ class SoftCliTests(SyncScratchMixin, unittest.TestCase):
         rc = sync.main(["--harness-dir", str(empty), "--soft"])
         self.assertEqual(rc, 0)
 
+    def test_soft_cli_returns_zero_when_pyyaml_missing(self):
+        """F-081 — module-level pyyaml ImportError must not break `--soft`.
+
+        Reproduces the field-discovered failure where fresh macOS system
+        Python 3.9 has no pyyaml. F-076 contract says `--soft` always exits
+        0; F-081 makes that hold even when the import never succeeded.
+        """
+        from unittest import mock
+
+        with mock.patch.object(sync, "_YAML_AVAILABLE", False):
+            rc = sync.main(["--harness-dir", str(self.harness), "--soft"])
+        self.assertEqual(rc, 0)
+
+    def test_strict_cli_returns_one_when_pyyaml_missing(self):
+        """F-081 — non-soft path keeps the strict failure contract."""
+        from unittest import mock
+
+        with mock.patch.object(sync, "_YAML_AVAILABLE", False):
+            rc = sync.main(["--harness-dir", str(self.harness)])
+        self.assertEqual(rc, 1)
+
 
 class MarkdownContractTests(unittest.TestCase):
     """F-076 — init.md and SKILL.md must invoke `sync.py --soft` at finalize."""
