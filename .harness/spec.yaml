@@ -3296,6 +3296,48 @@ features:
       - "AC-6: F-091 mirrored on both spec.yaml copies. self_check 5/5 PASS."
       - "AC-7: F-091 completed via the work.py cycle on the umbrella branch."
 
+  - id: "F-092"
+    name: "TS migration — port ui/{lang,messages,dashboardConfig,render,featureResolver}.ts (UI helper cluster)"
+    type: "feature"
+    description: |
+      Ninth cycle of the v1.0 migration thread. Bundles five small,
+      pure UI helper modules into one cycle.
+
+      Modules ported:
+
+        - **ui/lang** (`scripts/ui/lang.py`) — F-040 locale resolver.
+          Returns `'en'` or `'ko'` from HARNESS_LANG env, then
+          `spec.project.language`, then LC_ALL/LANG, then `'en'` default.
+        - **ui/messages** (`scripts/ui/messages.py`) — F-040 i18n
+          catalog with EN/KO strings. `t(key, lang, ...fmt)` resolves
+          a template + does positional formatting.
+        - **ui/dashboardConfig** (`scripts/ui/dashboard_config.py`) —
+          F-043 truncation limits with HARNESS_DASHBOARD_MAX_* env
+          overrides.
+        - **ui/render** (`scripts/ui/render.py`) — F-043 agent chain
+          renderer (sequence + parallel groups).
+        - **ui/featureResolver** (`scripts/ui/feature_resolver.py`) —
+          v0.9.1 user input → feature dict resolver. Three priority
+          tiers: @F-N → plain F-N → title fuzzy.
+
+      Behaviour preservation:
+
+        - Lang resolver — same priority order, same KR/ko hints.
+        - Catalog — every REQUIRED_KEY present in both locales,
+          identical placeholders.
+        - Renderer — identical token characters (∥, →) and grouping
+          rules.
+        - Resolver — identical regex patterns, identical priority order.
+
+    acceptance_criteria:
+      - "AC-1: Five TS modules ported under src/ui/."
+      - "AC-2: REQUIRED_KEYS array exported and exhaustive."
+      - "AC-3: t() falls back to EN on unknown lang, throws on unknown key."
+      - "AC-4: Agent chain renderer emits identical strings to Python for canonical inputs."
+      - "AC-5: Feature resolver — @F-N + plain F-N + title fuzzy each tested."
+      - "AC-6: F-092 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-7: F-092 completed via the work.py cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
