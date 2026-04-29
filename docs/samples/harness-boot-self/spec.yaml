@@ -3650,6 +3650,44 @@ features:
       - "AC-7: F-100 mirrored on both spec.yaml copies. self_check 5/5 PASS."
       - "AC-8: F-100 completed via the work.py cycle on the umbrella branch."
 
+  - id: "F-101"
+    name: "TS migration — port scan/{structure,manifest,areaResolver}.ts"
+    type: "feature"
+    description: |
+      Eighteenth cycle of the v1.0 migration thread. Ports three of
+      the five scan modules (work.py auto-wire deps).
+
+      Modules ported:
+
+        - **scan/structure** (`scripts/scan/structure.py`, 130 LOC) —
+          F-036 directory shape + entity-candidate file detection.
+        - **scan/manifest** (`scripts/scan/manifest.py`, 222 LOC) —
+          F-036 tech_stack + project name extraction across
+          package.json / pyproject.toml / Cargo.toml / go.mod.
+        - **scan/areaResolver** (`scripts/scan/area_resolver.py`,
+          150 LOC) — F-037 feature.modules → AreaRecord cluster
+          resolver.
+
+      Behaviour preservation:
+
+        - Ignored dirs list identical to Python (.git, node_modules,
+          dist, etc.).
+        - Detection priority: package.json > pyproject.toml >
+          Cargo.toml > go.mod.
+        - TOML parsing via @iarna/toml (graceful no-op when the dep
+          is missing — mirrors Python's tomli optional-import
+          pattern).
+        - AreaRecord cluster key uses first 2 path segments.
+        - Slug regex matches Python: `[^a-zA-Z0-9]+` → `-`.
+
+    acceptance_criteria:
+      - "AC-1: src/scan/{structure,manifest,areaResolver}.ts ported with full public API."
+      - "AC-2: scanStructure returns identical shape to Python for canonical fixtures (top_dirs, adr_dir, entity_candidate_files, readme_path)."
+      - "AC-3: extractTechStack picks the right runtime from each manifest."
+      - "AC-4: resolveAreas clusters modules with the same first-two path segments."
+      - "AC-5: F-101 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-6: F-101 completed via the work.py cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
