@@ -2111,7 +2111,7 @@ features:
   started_at: 2026-04-29T11:33:56Z
   completed_at: 2026-04-29T11:44:31Z
 - id: F-108
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -2132,9 +2132,9 @@ features:
     kind: manual_check
     summary: Code/doc/manifest audit complete; src 10960 LOC + 34 modules clean; canonicalHash byte-equal parity confirmed; check + work parity confirmed; 3 fixes applied (CLI header, CLAUDE stale refs, prompt-log Python→Node). 3 e2e toy projects (idea/plan/brownfield) all completed lifecycle via TS-only path; gate runner auto-detected npm test on brownfield. Audit report at .harness/_workspace/audit/F-108.md. PASS with 2 cosmetic warns documented.
   started_at: 2026-04-29T11:48:28Z
-  completed_at: null
+  completed_at: 2026-04-29T11:57:16Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-108
   last_gate_passed: gate_5
-  active_feature_id: F-108
+  active_feature_id: null
