@@ -3488,6 +3488,51 @@ features:
       - "AC-6: F-096 mirrored on both spec.yaml copies. self_check 5/5 PASS."
       - "AC-7: F-096 completed via the work.py cycle on the umbrella branch."
 
+  - id: "F-097"
+    name: "TS migration — port ceremonies/{kickoff,retro,designReview,inbox}.ts"
+    type: "feature"
+    description: |
+      Fourteenth cycle of the v1.0 migration thread. Ports the four
+      ceremony template generators that work.py auto-fires on
+      lifecycle events.
+
+      Modules ported:
+
+        - **kickoff** (`scripts/ceremonies/kickoff.py`, 385 LOC) —
+          shape detection, agent resolution, parallel-group
+          collection, kickoff.md template generation, idempotency
+          guard.
+        - **retro** (`scripts/ceremonies/retro.py`, 335 LOC) —
+          events.log analysis + retro.md template (machine sections
+          for prototype mode, full LLM sections for product).
+        - **designReview** (`scripts/ceremonies/design_review.py`,
+          132 LOC) — reviewer list + template + event.
+        - **inbox** (`scripts/ceremonies/inbox.py`, 115 LOC) —
+          Q&A file-drop scanner.
+
+      Behaviour preservation:
+
+        - Shape detection identical (baseline-empty-vague →
+          ui_surface.present → performance_budget → sensitive_or_auth
+          → pure_domain_logic → feature_completion).
+        - agent ordering preserved (audio-designer inserted before
+          a11y-auditor when has_audio=true).
+        - Idempotency: existing template files are not overwritten
+          unless `force=true`.
+        - events.log JSON line format matches Python (single-line,
+          ensure_ascii=False, Python-style separators).
+        - Retro analyze() event-key contract: `feature` (not
+          `feature_id`), `feature_done` (not `feature_completed`).
+
+    acceptance_criteria:
+      - "AC-1: src/ceremonies/{kickoff,retro,designReview,inbox}.ts ported with full public API."
+      - "AC-2: detectShapes returns the same shape list as Python for a matrix of feature inputs."
+      - "AC-3: agentsForShapes injects audio-designer before a11y-auditor when has_audio=true."
+      - "AC-4: Generated kickoff.md / retro.md / design-review/F-N.md byte-equal Python for canonical fixtures."
+      - "AC-5: Idempotency — running generateKickoff twice on the same feature does not re-write the file or emit a duplicate event."
+      - "AC-6: F-097 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-7: F-097 completed via the work.py cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
