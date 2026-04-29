@@ -1962,8 +1962,35 @@ features:
       --noEmit clean; eslint clean. Iron Law math byte-equal across runtimes.
   started_at: '2026-04-29T08:26:40Z'
   completed_at: '2026-04-29T08:36:29Z'
+- id: F-087
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T09:44:41Z'
+      note: 'cmd: npm test'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T09:44:42Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-29T09:44:41Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (0.6s) · cmd: npm test'
+  - ts: '2026-04-29T09:44:42Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-29T09:44:48Z'
+    kind: test
+    summary: core/pluginRoot.ts ported with byte-equal strategy ordering and identical
+      PluginRootError message format (Korean preserved); 15 new pluginRoot parity
+      tests (3 per-strategy describes + chain ordering); cumulative parity 119/119
+      PASS; Python regression 1192 PASS; self_check 5/5; tsc clean; eslint clean.
+      PATH-bin/registry/marketplace fallback semantics 1:1 with Python.
+  started_at: '2026-04-29T09:41:48Z'
+  completed_at: '2026-04-29T09:45:11Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-086
+  last_command: /harness:work F-087
   last_gate_passed: gate_5
   active_feature_id: null
