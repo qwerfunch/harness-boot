@@ -3254,6 +3254,48 @@ features:
       - "AC-7: Parity tests — at least 12 tests for includeExpander + 10 for modeClassifier."
       - "AC-8: F-090 completed via the work.py cycle on the umbrella branch."
 
+  - id: "F-091"
+    name: "TS migration — port render/{architecture,domain}.ts (sync derived outputs)"
+    type: "feature"
+    description: |
+      Eighth cycle of the v1.0 migration thread. Ports the two
+      render modules sync.py invokes when materialising
+      `.harness/domain.md` and `.harness/architecture.yaml`.
+
+      Modules ported:
+
+        - **render/domain** (`scripts/render/domain.py`) — produces
+          `domain.md`. Pure-string assembly; byte-equal parity across
+          runtimes is achievable.
+        - **render/architecture** (`scripts/render/architecture.py`) —
+          produces `architecture.yaml`. Semantic-equivalence parity
+          (PyYAML and eemeli/yaml differ on quoting); the TS port
+          becomes canonical post-migration so cohabitation is
+          short-lived.
+
+      Behaviour preservation:
+
+        - domain.md section ordering identical (Header → Project →
+          Platform → Stakeholders → Entities → Business Rules →
+          Decisions → Risks).
+        - Korean copy preserved verbatim — section descriptions,
+          empty-state placeholders.
+        - Trailing newline behaviour matches Python (single `\n` at
+          end of file).
+        - architecture.yaml top-level key ordering preserved
+          (version, generated_at, from_spec, tech_stack, deliverable,
+          modules, ..., feature_graph).
+        - Module owners list sorted ascending by module name.
+
+    acceptance_criteria:
+      - "AC-1: src/render/domain.ts exports `render(spec, options?)` and `loadSpec(path)`."
+      - "AC-2: src/render/architecture.ts exports the same surface for architecture.yaml."
+      - "AC-3: domain.md output is byte-equal with Python for the canonical sample spec."
+      - "AC-4: architecture.yaml output is semantic-equivalence equal — round-trip parse yields identical data shape."
+      - "AC-5: Empty-state placeholders (no stakeholders / no entities / no BR) emit Korean copy verbatim."
+      - "AC-6: F-091 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-7: F-091 completed via the work.py cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
