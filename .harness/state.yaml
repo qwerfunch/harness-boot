@@ -2088,7 +2088,7 @@ features:
   started_at: 2026-04-29T11:18:31Z
   completed_at: 2026-04-29T11:30:35Z
 - id: F-107
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -2109,9 +2109,9 @@ features:
     kind: manual_check
     summary: "TS-only cutover complete: dist/ committed, slash commands + hooks + self_check all flipped to harness CLI, README/CLAUDE.md python references removed, package.json bumped to 0.13.0, plugin.json + marketplace.json updated. Self_check 5/5 + TS parity 467/467 + typecheck + eslint all PASS via TS-only path."
   started_at: 2026-04-29T11:33:56Z
-  completed_at: null
+  completed_at: 2026-04-29T11:44:31Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-107
   last_gate_passed: gate_5
-  active_feature_id: F-107
+  active_feature_id: null
