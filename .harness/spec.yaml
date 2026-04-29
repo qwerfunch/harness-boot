@@ -3122,6 +3122,47 @@ features:
       - "AC-7: F-087 mirrored on both spec.yaml copies. bash scripts/self_check.sh 5/5 PASS · 1192+ Python tests still pass · npm run test:parity green for canonicalHash + eventLog + state + pluginRoot."
       - "AC-8: F-087 completed via the work.py 4-verb cycle on the existing `feat/F-084-ts-migration-foundation` branch (umbrella PR #46 strategy)."
 
+  - id: "F-088"
+    name: "TS migration — port core/{projectMode,gates,routing}.ts (small core constants)"
+    type: "feature"
+    description: |
+      Fifth cycle of the v1.0 migration thread. Bundles three small,
+      pure constant-and-helper modules into one cycle because each is
+      under 65 lines and they all live in `scripts/core/`. Bundling
+      reduces per-cycle ceremony overhead while preserving full
+      parity-test coverage per module.
+
+      Modules ported:
+
+        - **projectMode** (`scripts/core/project_mode.py`) — resolves
+          the prototype-vs-product axis. Pure function: spec dict in,
+          mode string out. Strict default `"product"` so
+          misconfiguration never silently relaxes the quality bar.
+        - **gates** (`scripts/core/gates.py`) — single source of truth
+          for the BR-004 standard gate names (gate_0 through gate_5)
+          plus the optional gate_perf identifier.
+        - **routing** (`scripts/core/routing.py`) — `ROUTING_SHAPES`
+          map (feature shape → agent list) and `PARALLEL_GROUPS` map
+          (feature shape → tuples of agents the orchestrator may
+          dispatch concurrently).
+
+      Behaviour preservation:
+
+        - resolveMode: identical truth table — every non-`"prototype"`
+          input collapses to `"product"`.
+        - STANDARD_GATES: identical 6-tuple ordering.
+        - ROUTING_SHAPES + PARALLEL_GROUPS: identical maps, identical
+          agent ordering inside each list/tuple.
+
+    acceptance_criteria:
+      - "AC-1: src/core/projectMode.ts exports `Mode` type, `DEFAULT_MODE`, `VALID_MODES`, `resolveMode(spec)`."
+      - "AC-2: src/core/gates.ts exports `STANDARD_GATES` 6-tuple and `GATE_PERF` constant."
+      - "AC-3: src/core/routing.ts exports `ROUTING_SHAPES` and `PARALLEL_GROUPS` matching Python dict key + value ordering."
+      - "AC-4: tests/parity/coreConstants.test.ts cross-validates all three modules against fixture data shaped after Python imports."
+      - "AC-5: resolveMode parity — identical fall-back to `product` on null, missing project, unknown mode."
+      - "AC-6: F-088 mirrored on both spec.yaml copies. bash scripts/self_check.sh 5/5 PASS · 1192+ Python tests still pass · npm run test:parity green."
+      - "AC-7: F-088 completed via the work.py 4-verb cycle on the existing `feat/F-084-ts-migration-foundation` branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
