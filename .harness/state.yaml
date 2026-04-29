@@ -1877,8 +1877,36 @@ features:
       · self_check 5/5 OK.
   started_at: '2026-04-29T07:25:24Z'
   completed_at: '2026-04-29T07:29:28Z'
+- id: F-083
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T07:43:32Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T07:43:33Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-29T07:43:32Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (12.9s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-29T07:43:33Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-29T07:43:33Z'
+    kind: manual_check
+    summary: InitMdPrereqContractTests 12/12 PASS — §0.4 anchor between §0/§0.5 ·
+      python3/version/pip 3-stage probe · 4 분기 (ok/missing/too_old/pip_missing) ·
+      per-OS install commands (Homebrew/apt/dnf/pacman/python.org) · pyenv upgrade
+      path · ensurepip degraded mode · clean-machine abort 명시 · prereq_check event.
+      1204 unit+integration pass · self_check 5/5 OK.
+  started_at: '2026-04-29T07:41:33Z'
+  completed_at: '2026-04-29T07:44:14Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-082
+  last_command: /harness:work F-083
   last_gate_passed: gate_5
   active_feature_id: null
