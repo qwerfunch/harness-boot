@@ -15,7 +15,7 @@ SCHEMA_PATH = REPO_ROOT / "docs" / "schemas" / "spec.schema.json"
 TSCONFIG_TEMPLATE = REPO_ROOT / "docs" / "templates" / "starter" / "tsconfig.json.template"
 INIT_MD = REPO_ROOT / "commands" / "init.md"
 WORK_MD = REPO_ROOT / "commands" / "work.md"
-WORK_PY = REPO_ROOT / "scripts" / "work.py"
+WORK_PY = REPO_ROOT / "legacy" / "scripts" / "work.py"
 
 
 def _load_schema() -> dict:

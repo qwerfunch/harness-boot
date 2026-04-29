@@ -8,7 +8,7 @@ from pathlib import Path
 
 import yaml
 
-from scripts.ceremonies.kickoff import (
+from legacy.scripts.ceremonies.kickoff import (
     _render_style_block,
     detect_shapes,
     generate_kickoff,

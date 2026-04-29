@@ -2421,8 +2421,35 @@ features:
       self_check 5/5 all PASS.'
   started_at: '2026-04-29T11:12:45Z'
   completed_at: '2026-04-29T11:13:36Z'
+- id: F-106
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T11:29:58Z'
+      note: 'cmd: npm test'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T11:30:13Z'
+      note: 'cmd: bash self_check.sh'
+  evidence:
+  - ts: '2026-04-29T11:29:58Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (1.1s) · cmd: npm test'
+  - ts: '2026-04-29T11:29:59Z'
+    kind: manual_check
+    summary: scripts/ → legacy/scripts/ git mv complete; all sys.path imports updated;
+      self_check.sh moved to repo root with paths bumped; commands/init.md+work.md+hooks/pre-commit-phase2.sh
+      slash command paths updated; README.md+README.ko.md document TS layer + Node
+      20+ requirement; CLAUDE.md repo layout updated; full Python regression + TS
+      parity + self_check 5/5 all PASS.
+  - ts: '2026-04-29T11:30:13Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: bash self_check.sh'
+  started_at: '2026-04-29T11:18:31Z'
+  completed_at: null
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-105
+  last_command: /harness:work F-106
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-106

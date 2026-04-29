@@ -14,7 +14,7 @@ from __future__ import annotations
 # Re-export the public dataclass + lifecycle functions.
 # Importing from work.py reuses its sys.path bootstrap, so callers of
 # this module don't need to add 'scripts/' to sys.path themselves.
-from scripts.work import (  # noqa: F401
+from legacy.scripts.work import (  # noqa: F401
     WorkResult,
     activate,
     add_evidence,

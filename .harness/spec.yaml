@@ -3886,6 +3886,60 @@ features:
       - "AC-7: F-105 mirrored on both spec.yaml copies."
       - "AC-8: F-105 completed via the work.py cycle on the umbrella branch."
 
+  - id: "F-106"
+    name: "Repository cleanup — scripts/ → legacy/scripts/ + README sync"
+    type: "feature"
+    description: |
+      Twenty-third cycle of the v1.0 migration thread. Reorganises
+      the repo so the TypeScript layer (src/ + dist/ + bin/) is the
+      visible primary surface while the Python implementation is
+      preserved verbatim under legacy/scripts/ as backup.
+
+      What ships:
+
+        - `git mv scripts/ → legacy/scripts/` — every Python module
+          relocated as one move (preserves git history per file).
+        - sed across the repo to update every reference: tests'
+          `sys.path.insert(0, REPO_ROOT / "scripts")`, slash command
+          markdowns, hooks, docs, and CLAUDE.md.
+        - README.md + README.ko.md — adds Node.js 20+ requirement,
+          documents the TS layer, points new users at `harness-boot`
+          (TS) while still mentioning `legacy/scripts/` for those
+          tracking the Python pedigree.
+        - `scripts/self_check.sh` → repo-root `self_check.sh` so the
+          path is stable regardless of where the implementation
+          lives.
+        - CLAUDE.md §3 + §6 + §7 updated with the new layout +
+          `npm run` commands.
+
+      Behaviour preservation:
+
+        - Full Python regression suite still passes (every test now
+          imports from `legacy/scripts/...`).
+        - All TS parity tests still pass.
+        - `self_check.sh` 5/5 still passes (calls Python via the
+          relocated path).
+        - Slash commands still work — they call `python3
+          "$PLUGIN_ROOT/legacy/scripts/work.py"` instead of the old
+          path.
+
+      Out of scope:
+
+        - Slash command migration to `npx harness` (deferred; needs
+          dist/ commit strategy + plugin install hook).
+        - Python module deletion (these are kept as the operational
+          fallback until the TS layer has external-dogfood signal).
+
+    acceptance_criteria:
+      - "AC-1: scripts/ moved to legacy/scripts/ via git mv (history preserved per file)."
+      - "AC-2: All tests/**/*.py sys.path imports updated to legacy/scripts."
+      - "AC-3: commands/{init,work}.md + hooks/*.sh reference legacy/scripts/work.py."
+      - "AC-4: README.md + README.ko.md document the TS layer + Node.js 20+ requirement."
+      - "AC-5: Full Python regression suite + TS parity suite + 5/5 self_check all PASS after the move."
+      - "AC-6: CLAUDE.md §3 + §6 reflect the new repo layout."
+      - "AC-7: F-106 mirrored on both spec.yaml copies."
+      - "AC-8: F-106 completed via the work.py cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

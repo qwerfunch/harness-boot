@@ -18,7 +18,7 @@
 set -eu
 set -o pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$REPO_ROOT"
 
 fail() {
@@ -38,9 +38,9 @@ fi
 
 # --- Step 2: JSONSchema 검증 ---
 step 2 "validate .harness/spec.yaml"
-if ! python3 scripts/spec/validate.py .harness/spec.yaml >/dev/null 2>&1; then
+if ! python3 legacy/scripts/spec/validate.py .harness/spec.yaml >/dev/null 2>&1; then
     # 에러 재실행하여 사용자에게 stderr 보이기
-    python3 scripts/spec/validate.py .harness/spec.yaml >&2 || true
+    python3 legacy/scripts/spec/validate.py .harness/spec.yaml >&2 || true
     fail "validate_spec 실패"
 fi
 
@@ -48,15 +48,15 @@ fi
 # harness.yaml · domain.md · architecture.yaml 은 gitignored (로컬 생성).
 # 재실행 시 edit-wins 로 보호 · 해시 변화 시만 재생성.
 step 3 "sync (.harness/ · derived 생성)"
-if ! python3 scripts/sync.py --harness-dir .harness >/dev/null 2>&1; then
-    python3 scripts/sync.py --harness-dir .harness >&2 || true
+if ! python3 legacy/scripts/sync.py --harness-dir .harness >/dev/null 2>&1; then
+    python3 legacy/scripts/sync.py --harness-dir .harness >&2 || true
     fail "sync 실패"
 fi
 
 # --- Step 4: check 8/8 drift ---
 step 4 "check --harness-dir .harness --project-root ."
 # check 는 drift 있으면 exit 6. error severity 만 fail 로 취급 (warn 허용)
-CHECK_OUT=$(python3 scripts/check.py --harness-dir .harness --project-root . --json 2>/dev/null || true)
+CHECK_OUT=$(python3 legacy/scripts/check.py --harness-dir .harness --project-root . --json 2>/dev/null || true)
 if [ -z "$CHECK_OUT" ]; then
     fail "check.py 출력 없음"
 fi
@@ -92,11 +92,11 @@ for f in commands/*.md; do
         echo "  [$f] Anti-rationalization 'NO shortcut:' 라인 누락" >&2
         MISSING=$((MISSING + 1))
     fi
-    if ! grep -q 'scripts/' "$f"; then
-        # 모든 command 는 한 개 이상 scripts/ 참조를 가져야 함
-        # (bash 블록 또는 인라인 `scripts/foo.py` 어느 쪽이든 허용).
-        # LLM 드리븐 명령도 최소 하나의 스크립트 위임 경로를 명시해야.
-        echo "  [$f] 'scripts/' 참조 누락 — 스크립트 위임 경로 명시 필요" >&2
+    if ! grep -qE 'scripts/|harness ' "$f"; then
+        # 모든 command 는 한 개 이상 위임 경로를 가져야 함.
+        # legacy/scripts/* 또는 npx harness 어느 쪽이든 허용 (TS 마이그레이션
+        # 진행 중이라 두 surface 모두 정합성 있음).
+        echo "  [$f] 위임 경로 누락 (scripts/ 또는 harness CLI)" >&2
         MISSING=$((MISSING + 1))
     fi
 done

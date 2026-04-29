@@ -19,15 +19,15 @@ The source of the Claude Code plugin `harness-boot`. Users install the `.harness
 Cumulative state:
 
 - **Two slash commands** (`/harness-boot:init` · `/harness-boot:work`) — collapsed in v0.9.0. `init` accepts a free-form natural-language prompt or a 3-option menu; `work` handles no-args (dashboard, v0.9.2), natural-language intents, and direct F-ID invocation alike.
-- **Gate automation 0/1/2/3/5** — `scripts/gate/runner.py` walks pyproject pytest → npm scripts (typecheck/lint/test:coverage/smoke/test:e2e, v0.10.2) → direct tool invocation → polyglot fallback in that order. **BR-004 Iron Law (gate_5 = pass + declared evidence ≥ N) is automated end-to-end.**
+- **Gate automation 0/1/2/3/5** — `legacy/scripts/gate/runner.py` walks pyproject pytest → npm scripts (typecheck/lint/test:coverage/smoke/test:e2e, v0.10.2) → direct tool invocation → polyglot fallback in that order. **BR-004 Iron Law (gate_5 = pass + declared evidence ≥ N) is automated end-to-end.**
 - **Iron Law — cumulative declared evidence** (v0.9.3) + **product mode strict** (v0.10.3) — when `project.mode == product`, every recorded gate's `last_result` must be non-fail before complete is allowed. Prototype mode keeps the lighter contract. The "D" suffix from v0.9.3 history was dropped in v0.11.1 — internal evolution marker that confused users.
 - **Drift × Iron Law gating** (v0.11.1, F-048) — `complete()` now calls `check.py` first. `severity="error"` findings on wire-integrity drift kinds (`Code` · `Stale` · `AnchorIntegration`) reject the transition; `--hotfix-reason` still bypasses. Closes GAP 1 from the 4-mechanism cohesion analysis.
 - **Project mode axis** (v0.9.6) — `spec.project.mode ∈ {prototype, product}` is the single switch that determines the Iron Law floor, kickoff/retro template depth, and design-review autowire behavior. Unset → product (strict default).
 - **Drift detection 12 kinds** — Generated · Derived · Spec · Include · Evidence · Code · Anchor · Adr · Stale · AnchorIntegration · Doc · Protocol. Two-layer supersession metadata (`features[].supersedes` / `superseded_by`) and the archive flow (v0.10.0).
 - **Ceremony automation 4/4** — kickoff · retro · design-review · inbox.
-- **Phase 2 self-dogfood active** (since 2026-04-27) — `.harness/` is the live workspace. Every new feature in this repo runs through `python3 scripts/work.py F-N --harness-dir .harness`. See §7 for the contract.
+- **Phase 2 self-dogfood active** (since 2026-04-27) — `.harness/` is the live workspace. Every new feature in this repo runs through `python3 legacy/scripts/work.py F-N --harness-dir .harness`. See §7 for the contract.
 - **Init/work observability** (v0.10.5) — the `## Issue logging` section in `commands/{init,work}.md` plus `hooks/prompt-log.sh` (UserPromptSubmit). Users accumulate `.harness/_workspace/{issues-log.md, prompts/YYYY-MM.jsonl}` → maintainer return cycle + prompt-shape corpus.
-- **Scaling preparedness** (v0.10.6) — five additive fields on `features[]` (area · archived_at · archive_reason · digest · include_path) plus `scripts/spec/{shard,unshard,summary}.py` and `tests/scale/test_scale.py` measuring 100 / 1000 / 3000 / 10000 features. Users won't need to invoke any of this until ~300 features.
+- **Scaling preparedness** (v0.10.6) — five additive fields on `features[]` (area · archived_at · archive_reason · digest · include_path) plus `legacy/scripts/spec/{shard,unshard,summary}.py` and `tests/scale/test_scale.py` measuring 100 / 1000 / 3000 / 10000 features. Users won't need to invoke any of this until ~300 features.
 - **cosmic-suika ISSUES-LOG batch return** (v0.10.7) — I-003 (recommended tsconfig) · I-004 (relaxed `risks[].id` pattern) · I-006 (clarified `--kind trivial`) · I-007 (changelog version optional). The first return cycle for the F-027 convention.
 - **Cumulative tests**: 1119 (1110 unit + 26 integration + F-048's 7 new). 41+ test files.
 
@@ -52,8 +52,15 @@ commands/                           # two slash commands (collapsed in v0.9.0)
 agents/                             # 16 fixtures (closed in v0.8.1)
 hooks/                              # hooks.json + scripts/ (shipped in v0.4)
 skills/spec-conversion/             # plan.md → spec.yaml conversion skill
-scripts/                            # Python implementation (subpackage cleanup in v0.7.6)
-├── work.py · sync.py · status.py · check.py · events.py · metrics.py · self_check.sh
+src/                                # TypeScript implementation (in-progress migration)
+├── core/ · spec/ · render/ · ui/   # mirrors legacy/scripts/ subpackage layout
+├── ceremonies/ · gate/ · scan/     # ported subsystems
+├── cli/harness.ts                  # commander-based CLI (7 subcommands)
+└── work.ts · sync.ts · check.ts · status.ts · events.ts · metrics.ts
+bin/harness.js                      # Node shebang shim (require dist/)
+self_check.sh                       # repo-root 5-step self-dogfood verification
+legacy/scripts/                     # Python implementation (relocated F-106 from scripts/)
+├── work.py · sync.py · status.py · check.py · events.py · metrics.py
 ├── core/                           # canonical_hash · event_log · plugin_root · project_mode · state
 ├── ceremonies/                     # design_review · inbox · kickoff · retro
 ├── gate/                           # runner (gate 0/1/2/3/5 auto)
@@ -61,7 +68,8 @@ scripts/                            # Python implementation (subpackage cleanup 
 ├── spec/                           # validate · mode_classifier · explain · diff · conversion_diff
 │                                   # · include_expander · mode_b_extract · upgrade_to_2_3_8
 └── ui/                             # dashboard · feature_resolver · intent_planner · scenarios
-tests/unit/                         # ~70 test files
+tests/unit/                         # ~70 test files (now import from legacy.scripts.*)
+tests/parity/                       # TS ↔ Python parity suite (467 tests)
 tests/regression/conversion-goldens/   # golden samples + MANIFEST
 docs/
 ├── schemas/spec.schema.json        # spec v2.3.8 JSONSchema (Walking Skeleton enforced + project.mode)
@@ -135,7 +143,7 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (this file) · requirements-de
 | **Self-referential canonical spec** | `docs/samples/harness-boot-self/spec.yaml` — the SSoT for `.harness/spec.yaml` |
 | Skill v0.5 implementation guide | `skills/spec-conversion/SKILL.md` |
 | Script-layer tests | `tests/unit/test_*.py` (1119 tests) |
-| Project mode semantics | `scripts/core/project_mode.py` (prototype-vs-product docstring) |
+| Project mode semantics | `legacy/scripts/core/project_mode.py` (prototype-vs-product docstring) |
 | Self-hosting appendix | `docs/archive/local-install-v0.1.0.md` Appendix A (F-042 archive) |
 | Local memory (user style, progress notes) | `~/.claude/projects/.../memory/MEMORY.md` (gitignored) |
 
@@ -149,12 +157,12 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (this file) · requirements-de
   - **Every new feature goes through the work.py cycle.** Same contract as cosmic-suika and other external dogfood projects. "Refactor" / "doc-only" / "small fix" are not exceptions.
   - The four-verb flow:
     ```
-    python3 scripts/work.py F-N --harness-dir .harness                        # activate
-    python3 scripts/work.py F-N --harness-dir .harness --run-gate gate_0      # ... 1, 2, 3, 5
-    python3 scripts/work.py F-N --harness-dir .harness --evidence "..."       # declared evidence
-    python3 scripts/work.py F-N --harness-dir .harness --complete             # transition
+    python3 legacy/scripts/work.py F-N --harness-dir .harness                        # activate
+    python3 legacy/scripts/work.py F-N --harness-dir .harness --run-gate gate_0      # ... 1, 2, 3, 5
+    python3 legacy/scripts/work.py F-N --harness-dir .harness --evidence "..."       # declared evidence
+    python3 legacy/scripts/work.py F-N --harness-dir .harness --complete             # transition
     ```
-  - Slash commands **cannot live-edit from this repo** — the installed copy always wins. So the dev entry point is always `python3 scripts/work.py` directly. (In a user project, `/harness-boot:work` is the wrapper.)
+  - Slash commands **cannot live-edit from this repo** — the installed copy always wins. So the dev entry point is always `python3 legacy/scripts/work.py` directly. (In a user project, `/harness-boot:work` is the wrapper.)
   - `.harness/state.yaml` is committed alongside the feature PR (the previous Phase 1 "only at release tag" restriction is lifted).
   - `events.log` accumulates lifecycle events (`feature_activated`, `gate_run`, `evidence_declared`, `feature_completed`). The `/harness-boot:work` dashboard and `scripts/metrics.py` use them to compute real lead time and gate pass rate.
   - `project.mode` is `prototype` (current default) — the Iron Law floor is `evidence ≥ 1` plus `gate_5 = pass`. Promotion to product is a user decision.

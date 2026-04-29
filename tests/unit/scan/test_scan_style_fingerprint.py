@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.scan.style_fingerprint import fingerprint
+from legacy.scripts.scan.style_fingerprint import fingerprint
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -99,7 +99,7 @@ class TestTomllibMissingDegradation(unittest.TestCase):
 
     def test_pyproject_signal_silent_when_tomllib_missing(self) -> None:
         from unittest import mock
-        from scripts.scan import style_fingerprint as sf
+        from legacy.scripts.scan import style_fingerprint as sf
 
         with mock.patch.object(sf, "tomllib", None):
             with tempfile.TemporaryDirectory() as tmp:
@@ -117,7 +117,7 @@ class TestTomllibMissingDegradation(unittest.TestCase):
         carries a pyproject.toml the parser cannot read.
         """
         from unittest import mock
-        from scripts.scan import style_fingerprint as sf
+        from legacy.scripts.scan import style_fingerprint as sf
 
         with mock.patch.object(sf, "tomllib", None):
             with tempfile.TemporaryDirectory() as tmp:

@@ -38,7 +38,7 @@ except ImportError:
 # F-043 — single source of truth lives in scripts/core/routing.py.
 # Re-export so existing imports (kickoff.ROUTING_SHAPES, etc.) keep working.
 try:
-    from scripts.core.routing import ROUTING_SHAPES  # noqa: F401
+    from legacy.scripts.core.routing import ROUTING_SHAPES  # noqa: F401
 except ImportError:
     from core.routing import ROUTING_SHAPES  # type: ignore[no-redef]  # noqa: F401
 
@@ -110,7 +110,7 @@ def detect_shapes(feature: dict, *, spec: dict | None = None) -> list[str]:
 
 # F-043 — single source of truth lives in scripts/core/routing.py.
 try:
-    from scripts.core.routing import PARALLEL_GROUPS  # noqa: F401
+    from legacy.scripts.core.routing import PARALLEL_GROUPS  # noqa: F401
 except ImportError:
     from core.routing import PARALLEL_GROUPS  # type: ignore[no-redef]  # noqa: F401
 

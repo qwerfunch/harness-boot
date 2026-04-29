@@ -46,12 +46,13 @@ class SpecValidationError(Exception):
 def _default_schema_path() -> Path:
     """repo 루트의 docs/schemas/spec.schema.json 탐색.
 
-    File location is ``scripts/spec/validate.py`` — ``parents[2]`` climbs
-    scripts/spec → scripts → repo root. (v0.7.6 relocation fixed here in
-    v0.8.4; before that the path resolved to ``scripts/docs/...`` which only
-    looked healthy locally when ``jsonschema`` was absent and tests skipped.)
+    File location is ``legacy/scripts/spec/validate.py`` — ``parents[3]``
+    climbs legacy/scripts/spec → legacy/scripts → legacy → repo root. The
+    earlier ``parents[2]`` was correct when the module lived at
+    ``scripts/spec/validate.py`` (v0.7.6 → v0.12.x); F-106 relocated the
+    Python tree under ``legacy/`` so the climb now needs one more level.
     """
-    repo = Path(__file__).resolve().parents[2]
+    repo = Path(__file__).resolve().parents[3]
     return repo / "docs" / "schemas" / "spec.schema.json"
 
 

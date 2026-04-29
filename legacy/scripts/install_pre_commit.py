@@ -30,7 +30,7 @@ _PHASE2_MARKER = "F-034"  # appears in the shipped hook header
 
 def _plugin_root() -> Path:
     # This script lives at <root>/scripts/install_pre_commit.py.
-    return Path(__file__).resolve().parents[1]
+    return Path(__file__).resolve().parents[2]
 
 
 def _hook_source(plugin_root: Path) -> Path:

@@ -73,7 +73,7 @@ def _seed_project(tmp: Path) -> Path:
 
 def _run_work(project: Path, *args: str) -> subprocess.CompletedProcess:
     return subprocess.run(
-        [sys.executable, "scripts/work.py", *args, "--harness-dir", str(project / ".harness")],
+        [sys.executable, "legacy/scripts/work.py", *args, "--harness-dir", str(project / ".harness")],
         capture_output=True,
         text=True,
         cwd=REPO_ROOT,

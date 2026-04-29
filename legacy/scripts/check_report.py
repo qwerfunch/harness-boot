@@ -8,7 +8,7 @@ programmatic consumers (tests, integrations) a stable import path.
 
 from __future__ import annotations
 
-from scripts.check import DriftFinding  # noqa: F401
+from legacy.scripts.check import DriftFinding  # noqa: F401
 
 
 __all__ = ["DriftFinding"]

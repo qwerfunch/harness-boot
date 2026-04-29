@@ -9,9 +9,9 @@ from pathlib import Path
 
 import yaml
 
-from scripts.spec.shard import shard, shard_to_disk
-from scripts.spec.summary import build_summary
-from scripts.spec.unshard import unshard, unshard_to_disk
+from legacy.scripts.spec.shard import shard, shard_to_disk
+from legacy.scripts.spec.summary import build_summary
+from legacy.scripts.spec.unshard import unshard, unshard_to_disk
 
 
 def _sample_spec() -> dict:

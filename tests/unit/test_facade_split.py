@@ -14,8 +14,8 @@ import unittest
 
 class TestWorkInternalsFacade(unittest.TestCase):
     def test_public_lifecycle_functions_re_exported(self) -> None:
-        from scripts import work_internals
-        from scripts import work as work_root
+        from legacy.scripts import work_internals
+        from legacy.scripts import work as work_root
 
         for name in (
             "WorkResult",
@@ -40,8 +40,8 @@ class TestWorkInternalsFacade(unittest.TestCase):
 
 class TestWorkAutowireFacade(unittest.TestCase):
     def test_autowire_quartet_re_exported(self) -> None:
-        from scripts import work_autowire
-        from scripts import work as work_root
+        from legacy.scripts import work_autowire
+        from legacy.scripts import work as work_root
 
         for name in (
             "_autowire_design_review",
@@ -58,15 +58,15 @@ class TestWorkAutowireFacade(unittest.TestCase):
 
 class TestWorkCliFacade(unittest.TestCase):
     def test_main_re_exported(self) -> None:
-        from scripts import work_cli
-        from scripts import work as work_root
+        from legacy.scripts import work_cli
+        from legacy.scripts import work as work_root
 
         self.assertIs(work_cli.main, work_root.main)
 
 
 class TestCheckDetectorsRegistry(unittest.TestCase):
     def test_registry_has_at_least_eight_kinds(self) -> None:
-        from scripts.check_detectors import DRIFT_CHECKS
+        from legacy.scripts.check_detectors import DRIFT_CHECKS
 
         self.assertGreaterEqual(
             len(DRIFT_CHECKS),
@@ -75,7 +75,7 @@ class TestCheckDetectorsRegistry(unittest.TestCase):
         )
 
     def test_registry_values_are_check_callables(self) -> None:
-        from scripts.check_detectors import DRIFT_CHECKS
+        from legacy.scripts.check_detectors import DRIFT_CHECKS
 
         for kind, fn in DRIFT_CHECKS.items():
             self.assertTrue(callable(fn), msg=f"{kind} → {fn} not callable")
@@ -85,8 +85,8 @@ class TestCheckDetectorsRegistry(unittest.TestCase):
             )
 
     def test_registry_aliases_work(self) -> None:
-        from scripts import check_detectors
-        from scripts import check as check_root
+        from legacy.scripts import check_detectors
+        from legacy.scripts import check as check_root
 
         for name in ("check_generated", "check_derived", "check_spec", "check_stale"):
             self.assertIs(
@@ -98,8 +98,8 @@ class TestCheckDetectorsRegistry(unittest.TestCase):
 
 class TestCheckReportFacade(unittest.TestCase):
     def test_drift_finding_re_exported(self) -> None:
-        from scripts import check_report
-        from scripts import check as check_root
+        from legacy.scripts import check_report
+        from legacy.scripts import check as check_root
 
         self.assertIs(check_report.DriftFinding, check_root.DriftFinding)
 

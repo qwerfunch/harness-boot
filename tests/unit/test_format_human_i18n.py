@@ -6,7 +6,7 @@ import os
 import unittest
 from unittest import mock
 
-from scripts.work import WorkResult, format_human
+from legacy.scripts.work import WorkResult, format_human
 
 
 def _result(action: str = "activated") -> WorkResult:

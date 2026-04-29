@@ -13,7 +13,7 @@ names directly) keeps working.
 
 from __future__ import annotations
 
-from scripts.work import (  # noqa: F401
+from legacy.scripts.work import (  # noqa: F401
     _autowire_design_review,
     _autowire_fog_clear,
     _autowire_kickoff,

@@ -503,7 +503,7 @@ populated. This eliminates the post-install stutter where the very first
 reference `domain.md`.
 
 ```bash
-python3 "$PLUGIN_ROOT/scripts/sync.py" --harness-dir "$(pwd)/.harness" --soft
+python3 "$PLUGIN_ROOT/legacy/scripts/sync.py" --harness-dir "$(pwd)/.harness" --soft
 ```
 
 The `--soft` flag delegates to `sync.try_initial_sync(harness_dir)`,

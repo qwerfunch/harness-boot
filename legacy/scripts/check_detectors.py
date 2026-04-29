@@ -10,7 +10,7 @@ through ``main()``.
 
 from __future__ import annotations
 
-from scripts.check import (  # noqa: F401
+from legacy.scripts.check import (  # noqa: F401
     check_adr_supersedes,
     check_anchor,
     check_anchor_integration,

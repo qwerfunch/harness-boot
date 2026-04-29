@@ -32,12 +32,12 @@ from typing import Optional
 
 import yaml
 
-from scripts.scan.manifest import extract_project_name, extract_tech_stack
-from scripts.scan.structure import scan_structure
-from scripts.spec.validate import SpecValidationError, validate
+from legacy.scripts.scan.manifest import extract_project_name, extract_tech_stack
+from legacy.scripts.scan.structure import scan_structure
+from legacy.scripts.spec.validate import SpecValidationError, validate
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 STARTER_TEMPLATE_PATH = REPO_ROOT / "docs" / "templates" / "starter" / "spec.yaml.template"
 
 DRAFT_MARKER_KEY = "_seed_status"

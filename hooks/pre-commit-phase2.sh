@@ -17,7 +17,7 @@
 #      options on stderr.
 #   5. Non-whitelisted staged + active feature present → exit 0.
 #
-# Install: python3 .../scripts/install_pre_commit.py --install
+# Install: python3 .../legacy/scripts/install_pre_commit.py --install
 
 set -u
 

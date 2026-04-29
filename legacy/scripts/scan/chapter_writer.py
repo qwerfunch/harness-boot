@@ -14,7 +14,7 @@ from typing import Iterable
 try:
     from .area_resolver import AreaRecord
 except ImportError:
-    from scripts.scan.area_resolver import AreaRecord  # fallback for top-level imports
+    from legacy.scripts.scan.area_resolver import AreaRecord  # fallback for top-level imports
 
 
 USER_EDIT_BEGIN = "<!-- harness:user-edit-begin -->"

@@ -9,7 +9,7 @@ future internal split.
 
 from __future__ import annotations
 
-from scripts.work import main  # noqa: F401
+from legacy.scripts.work import main  # noqa: F401
 
 
 __all__ = ["main"]

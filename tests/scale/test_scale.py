@@ -26,8 +26,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from scripts.core.canonical_hash import compute_all as _spec_hash_all  # noqa: E402
-from scripts.spec.summary import build_summary  # noqa: E402
+from legacy.scripts.core.canonical_hash import compute_all as _spec_hash_all  # noqa: E402
+from legacy.scripts.spec.summary import build_summary  # noqa: E402
 import jsonschema  # noqa: E402
 
 

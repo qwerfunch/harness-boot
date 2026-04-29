@@ -35,7 +35,7 @@ except ImportError:
     sys.exit(3)
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]  # v0.8.4: scripts/spec/ → repo root needs [2]
+REPO_ROOT = Path(__file__).resolve().parents[3]  # v0.8.4: scripts/spec/ → repo root needs [2]
 GOLDENS = REPO_ROOT / "tests" / "regression" / "conversion-goldens"
 SAMPLES = REPO_ROOT / "design" / "samples"
 

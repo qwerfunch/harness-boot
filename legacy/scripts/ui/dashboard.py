@@ -56,7 +56,7 @@ _DEBT_ALERT_THRESHOLD = 5
 #   gates → scripts/core/gates.py
 #   limits → scripts/ui/dashboard_config.py (env-overridable)
 try:
-    from scripts.core.gates import STANDARD_GATES as _STANDARD_GATES  # noqa: E402
+    from legacy.scripts.core.gates import STANDARD_GATES as _STANDARD_GATES  # noqa: E402
 except ImportError:
     from core.gates import STANDARD_GATES as _STANDARD_GATES  # type: ignore[no-redef]  # noqa: E402
 from .dashboard_config import (  # noqa: E402
@@ -242,7 +242,7 @@ def _resolve_agent_chain(
     if feature is None:
         return [], []
     try:
-        from scripts.ceremonies import kickoff as _kickoff
+        from legacy.scripts.ceremonies import kickoff as _kickoff
     except ImportError:
         try:
             from ceremonies import kickoff as _kickoff  # type: ignore[no-redef]

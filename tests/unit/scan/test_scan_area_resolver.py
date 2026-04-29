@@ -5,8 +5,8 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from scripts.scan.area_resolver import AreaRecord, resolve_areas
-from scripts.scan.structure import scan_structure
+from legacy.scripts.scan.area_resolver import AreaRecord, resolve_areas
+from legacy.scripts.scan.structure import scan_structure
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -18,7 +18,7 @@ class TestResolveAreas(unittest.TestCase):
         return scan_structure(root)
 
     def test_dotted_path_file_maps_when_py_exists(self) -> None:
-        feature = {"id": "F-100", "modules": ["scripts/scan/manifest"]}
+        feature = {"id": "F-100", "modules": ["legacy/scripts/scan/manifest"]}
         areas = resolve_areas(
             feature,
             project_root=REPO_ROOT,
@@ -26,27 +26,27 @@ class TestResolveAreas(unittest.TestCase):
         )
         self.assertEqual(len(areas), 1)
         area = areas[0]
-        self.assertIn("scripts/scan/manifest.py", area.paths)
+        self.assertIn("legacy/scripts/scan/manifest.py", area.paths)
         self.assertEqual(area.feature_id, "F-100")
-        self.assertEqual(area.modules, ("scripts/scan/manifest",))
+        self.assertEqual(area.modules, ("legacy/scripts/scan/manifest",))
 
     def test_dotted_path_dir_maps_when_directory_exists(self) -> None:
-        feature = {"id": "F-101", "modules": ["scripts/scan"]}
+        feature = {"id": "F-101", "modules": ["legacy/scripts/scan"]}
         areas = resolve_areas(
             feature,
             project_root=REPO_ROOT,
             structure=self._structure(REPO_ROOT),
         )
         self.assertEqual(len(areas), 1)
-        self.assertIn("scripts/scan", areas[0].paths)
+        self.assertIn("legacy/scripts/scan", areas[0].paths)
 
     def test_sibling_cluster_collapses(self) -> None:
         feature = {
             "id": "F-102",
             "modules": [
-                "scripts/scan/area_resolver",
-                "scripts/scan/style_fingerprint",
-                "scripts/scan/chapter_writer",
+                "legacy/scripts/scan/area_resolver",
+                "legacy/scripts/scan/style_fingerprint",
+                "legacy/scripts/scan/chapter_writer",
             ],
         }
         areas = resolve_areas(
@@ -56,13 +56,19 @@ class TestResolveAreas(unittest.TestCase):
         )
         self.assertEqual(len(areas), 1)
         area = areas[0]
-        self.assertEqual(area.slug, "scripts-scan")
+        # F-106 — slug now reflects the legacy/scripts depth-2 prefix.
+        self.assertEqual(area.slug, "legacy-scripts")
         self.assertEqual(len(area.modules), 3)
 
     def test_disjoint_modules_yield_distinct_areas(self) -> None:
+        # F-106 — after the scripts/ → legacy/scripts/ move, two paths
+        # under legacy/scripts/ share the same depth-2 prefix and now
+        # cluster into ONE area. We swap to genuinely disjoint depth-2
+        # roots (src/ vs legacy/) to keep the disjoint-clustering
+        # contract intact.
         feature = {
             "id": "F-103",
-            "modules": ["scripts/scan/manifest", "scripts/ceremonies/kickoff.py"],
+            "modules": ["src/core/state.ts", "legacy/scripts/ceremonies/kickoff.py"],
         }
         areas = resolve_areas(
             feature,
@@ -71,7 +77,7 @@ class TestResolveAreas(unittest.TestCase):
         )
         self.assertEqual(len(areas), 2)
         slugs = {a.slug for a in areas}
-        self.assertEqual(slugs, {"scripts-scan", "scripts-ceremonies"})
+        self.assertEqual(slugs, {"src-core", "legacy-scripts"})
 
     def test_unmappable_module_emits_dim_area(self) -> None:
         feature = {"id": "F-104", "modules": ["does/not/exist"]}
@@ -97,17 +103,17 @@ class TestResolveAreas(unittest.TestCase):
         ordered = {
             "id": "F-106",
             "modules": [
-                "scripts/scan/manifest",
-                "scripts/scan/structure",
-                "scripts/scan/seed_spec",
+                "legacy/scripts/scan/manifest",
+                "legacy/scripts/scan/structure",
+                "legacy/scripts/scan/seed_spec",
             ],
         }
         reordered = {
             "id": "F-106",
             "modules": [
-                "scripts/scan/seed_spec",
-                "scripts/scan/manifest",
-                "scripts/scan/structure",
+                "legacy/scripts/scan/seed_spec",
+                "legacy/scripts/scan/manifest",
+                "legacy/scripts/scan/structure",
             ],
         }
         a1 = resolve_areas(

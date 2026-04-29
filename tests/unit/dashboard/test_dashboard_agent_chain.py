@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from scripts.ui.dashboard import render
+from legacy.scripts.ui.dashboard import render
 
 
 def _spec(*, ui_present: bool = False) -> dict:

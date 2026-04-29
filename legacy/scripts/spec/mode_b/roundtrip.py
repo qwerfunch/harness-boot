@@ -31,7 +31,7 @@ import yaml
 # mode_b_extract now lives in the parent package (scripts/spec/). Insert
 # scripts/ into sys.path so `spec.mode_b_extract` resolves when run as a
 # direct script.
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from spec.mode_b_extract import extract, tokenize  # noqa: E402
 
 

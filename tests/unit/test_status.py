@@ -12,7 +12,7 @@ from pathlib import Path
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "scripts"))
+sys.path.insert(0, str(REPO_ROOT / "legacy" / "scripts"))
 
 import status  # noqa: E402
 from core.state import State  # noqa: E402

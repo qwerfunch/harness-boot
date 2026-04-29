@@ -29,8 +29,8 @@ try:
     from .manifest import extract_tech_stack
     from .structure import scan_structure
 except ImportError:
-    from scripts.scan.manifest import extract_tech_stack
-    from scripts.scan.structure import scan_structure
+    from legacy.scripts.scan.manifest import extract_tech_stack
+    from legacy.scripts.scan.structure import scan_structure
 
 
 _PY_FUNC_RE = re.compile(r"^\s*def\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(", re.MULTILINE)
