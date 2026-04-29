@@ -1,0 +1,10 @@
+[
+  {
+    "ts": "2026-02-01T00:00:00Z",
+    "type": "old_feb"
+  },
+  {
+    "ts": "not-an-iso",
+    "type": "broken"
+  }
+]
