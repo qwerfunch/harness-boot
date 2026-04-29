@@ -2228,8 +2228,32 @@ features:
       24 parity tests; 311/311 cumulative.
   started_at: '2026-04-29T10:15:48Z'
   completed_at: '2026-04-29T10:19:50Z'
+- id: F-098
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T10:22:24Z'
+      note: 'cmd: npm test'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T10:22:25Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-29T10:22:24Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (0.9s) · cmd: npm test'
+  - ts: '2026-04-29T10:22:25Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-29T10:22:25Z'
+    kind: test
+    summary: metrics.ts ported (~340 LOC TS, full event aggregator); 12 parity tests;
+      323/323 cumulative.
+  started_at: '2026-04-29T10:20:50Z'
+  completed_at: '2026-04-29T10:22:26Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-097
+  last_command: /harness:work F-098
   last_gate_passed: gate_5
   active_feature_id: null
