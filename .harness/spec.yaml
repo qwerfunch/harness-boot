@@ -4209,6 +4209,144 @@ features:
       - "AC-7: F-113 mirrored on both spec.yaml copies."
       - "AC-8: F-113 completed via the harness CLI cycle on the umbrella branch."
 
+  - id: "F-114"
+    name: "feature-author skill v0.1 — auto-trigger F-N entry authoring"
+    type: "feature"
+    description: |
+      Thirty-first cycle. First Skill expansion since
+      spec-conversion (v0.5). harness-boot used 17 agents and 2
+      slash commands as primary surface, with skills participating
+      only in the plan.md → spec.yaml conversion path. F-114 puts
+      a Skill on the friction point self-dogfood surfaced 121
+      times: writing the F-N entry itself.
+
+      User trigger phrases like "새 피처 추가", "feature 추가",
+      "draft a feature", "spec out X" auto-load the skill.
+      The skill teaches the LLM:
+
+      1. Detect the feature shape from user intent (UI surface,
+         sensitive entity, performance budget, or pure-domain
+         logic) and pick the matching adapter.
+      2. Read `project.mode` from spec.yaml — prototype yields
+         3-4 ACs, product yields 6-8.
+      3. Produce a complete F-N entry (`id` · `name` · `type` ·
+         `description` · `acceptance_criteria`) ready to paste
+         into BOTH spec.yaml copies (docs/samples/... and
+         .harness/) — lockstep is enforced by self_check.sh.
+      4. Surface the routing the orchestrator will use so the
+         user sees up-front which agents the activate cycle
+         will summon.
+
+      Scope (v0.1):
+      - Markdown-only skill (no executable code). Skills
+        teach the LLM what to do; the LLM does it.
+      - Four shape adapters: ui-surface · sensitive ·
+        performance-budget · pure-domain.
+      - One feature-entry YAML template with placeholder
+        markers.
+      - One backlink-matrix-style note for AC↔modules pairing.
+      - parity test: golden input → expected F-N entry across
+        4 shapes × 2 modes = 8 cases.
+
+    acceptance_criteria:
+      - "AC-1: skills/feature-author/SKILL.md frontmatter has name=feature-author, description containing trigger phrases (Korean + English), version=0.1."
+      - "AC-2: skills/feature-author/adapters/ contains exactly four shape adapters (ui-surface.md · sensitive.md · performance-budget.md · pure-domain.md), each with a one-paragraph When + AC-template + modules-template structure."
+      - "AC-3: skills/feature-author/templates/feature-entry.yaml is a paste-ready F-N skeleton with explicit placeholder markers (e.g., <FEATURE_ID>, <SHAPE_NAME>)."
+      - "AC-4: SKILL.md instructs the LLM to (a) detect shape, (b) read project.mode, (c) emit a complete F-N entry, (d) print lockstep paste instructions, (e) print the orchestrator routing chain."
+      - "AC-5: tests/parity/skill-feature-author.test.ts covers 8 golden cases (4 shapes × prototype/product) and asserts exact AC count + adapter selection from the user prompt."
+      - "AC-6: F-114 mirrored on both spec.yaml copies."
+      - "AC-7: F-114 completed via the harness CLI cycle on a feature branch (memory `feedback_git_workflow`)."
+
+  - id: "F-115"
+    name: "feature-author skill — Anthropic guide alignment + Korean natural-phrasing triggers"
+    type: "chore"
+    description: |
+      Thirty-second cycle. Pre-merge audit on F-114 surfaced two
+      gaps in the feature-author skill before PR #47 lands:
+
+      1. Anthropic skill guide compliance (per claude-code docs at
+         code.claude.com/docs/en/skills.md):
+         - `version` is NOT part of the official frontmatter
+           contract. Removed from frontmatter; tracked at the body
+           tail as an internal "Skill version" note.
+         - `when_to_use` is the canonical place for trigger
+           phrases. Split out from `description` (which now carries
+           a single-sentence summary, well under the 1536-char
+           description+when_to_use budget).
+         - Bundled sub-files (adapters/, templates/) need explicit
+           markdown links in a Resources section so Claude knows
+           when to load them on demand. Added.
+
+      2. Korean natural-phrasing trigger gap. Original trigger list
+         covered only "새 피처 추가" / "F-N 정의" type phrases —
+         missed the most common Korean dev phrasing:
+         - "X 기능 구현해줘" / "X 기능 만들어줘"
+         - "X 추가해줘" / "X 개발해줘"
+         - "로그인 기능 만들자" / "결제 붙이자"
+         These are now in the `when_to_use` block; without them,
+         description-matching auto-load would miss real users.
+
+      No new behavior — same skill, fixed surface metadata.
+
+    acceptance_criteria:
+      - "AC-1: skills/feature-author/SKILL.md frontmatter has no `version` field; `name` and `description` (single-line summary) only, plus `when_to_use` block with trigger phrases."
+      - "AC-2: SKILL.md `when_to_use` includes Korean natural phrases: '기능 구현해줘', '만들어줘', '추가해줘'."
+      - "AC-3: SKILL.md ends with a 'Bundled resources' section that markdown-links every adapter ([adapters/ui-surface.md], etc.) and the template file."
+      - "AC-4: SKILL.md body retains a brief 'Skill version' note at the tail (internal versioning preserved without violating Anthropic frontmatter contract)."
+      - "AC-5: tests/parity/skill-feature-author.test.ts updated to assert (a) absence of frontmatter `version`, (b) presence of `when_to_use`, (c) Korean natural-phrasing triggers, (d) bundled-resources markdown links. parity 497/497 PASS."
+      - "AC-6: F-115 mirrored on both spec.yaml copies."
+      - "AC-7: F-115 completed via the harness CLI cycle on the same feature branch as F-114 (PR #47)."
+
+  - id: "F-116"
+    name: "feature-author skill — live smoke template + walkthrough"
+    type: "chore"
+    description: |
+      Thirty-third cycle. F-114 shipped the feature-author skill
+      and F-115 aligned its frontmatter with Anthropic's official
+      skill guide. Both passed structural parity tests, but those
+      tests cannot exercise the LLM actually reading SKILL.md and
+      producing output — that needs a live Claude Code session.
+
+      F-116 closes the loop with a permanent smoke template at
+      `tests/smoke/feature-author/` and a one-shot live walkthrough
+      that demonstrates the skill correctly following its own
+      Steps 1-5 for a real Korean trigger phrase.
+
+      Template contents (checked in for any future contributor):
+        - README.md — how to run the smoke (open a fresh project,
+          install the plugin, type one of the prompts).
+        - seed-spec.yaml — minimal .harness/spec.yaml for the
+          temp project (project.mode + one placeholder feature so
+          the schema validates).
+        - prompts.md — 8 trigger prompts (4 shapes × Korean/English)
+          covering both natural-phrasing patterns and explicit
+          F-N-style asks.
+        - walkthroughs/<shape>.md (×4) — expected output per shape.
+
+      Live walkthrough (the actual skill verification, captured
+      verbatim in evidence): Claude reads
+      `skills/feature-author/SKILL.md`, follows Steps 1-5 against
+      the prompt "로그인 기능 구현해줘", produces a complete F-N
+      entry that includes the `entities` block, the right AC count
+      for prototype mode, lockstep paste instructions, and the
+      sensitive_or_auth routing chain.
+
+      Out of scope for this cycle:
+        - End-to-end Claude Code skill auto-load test (cannot be
+          automated in CI without a live model).
+        - Other shape walkthroughs beyond the one captured —
+          template covers all four, but only one is executed live.
+          Remaining three are documented expected outputs that a
+          contributor can compare against.
+
+    acceptance_criteria:
+      - "AC-1: tests/smoke/feature-author/README.md documents the manual smoke procedure (install plugin → cd to scratch dir → type one of the prompts → confirm skill auto-loads → verify output matches walkthrough)."
+      - "AC-2: tests/smoke/feature-author/prompts.md lists 8 trigger prompts (4 shapes × ko/en) with expected adapter selection."
+      - "AC-3: tests/smoke/feature-author/walkthroughs/{ui-surface,sensitive,performance,pure-domain}.md each contain a paste-ready expected F-N entry for that shape."
+      - "AC-4: Live walkthrough for 'sensitive' shape (prompt: '로그인 기능 구현해줘') produces a valid F-N entry that node bin/harness validate accepts when appended to spec.yaml."
+      - "AC-5: F-116 mirrored on both spec.yaml copies."
+      - "AC-6: F-116 completed via the harness CLI cycle on the same feature branch as F-114/F-115 (PR #47)."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

@@ -1,0 +1,48 @@
+# feature-author skill — F-N entry template (v0.1)
+#
+# Paste this block (filled in) into the `features:` list of:
+#   - docs/samples/harness-boot-self/spec.yaml
+#   - .harness/spec.yaml
+# self_check.sh enforces lockstep — both copies must match.
+#
+# Placeholders to replace:
+#   <F_ID>          — next free F-NNN number (highest existing + 1)
+#   <NAME>          — ≤ 60 char human title, no trailing period
+#   <TYPE>          — usually "feature"; alt: "chore" · "docs" · "refactor"
+#   <DESCRIPTION>   — 4-12 line markdown block (cycle context + body)
+#   <AC-N>          — 3-8 lines depending on project.mode
+#
+# Shape-specific blocks (uncomment + fill the ONE that applies):
+#   ui_surface       — for ui-surface shape
+#   entities         — for sensitive shape (when an entity is involved)
+#   performance_budget — for performance-budget shape
+#   (pure-domain shape adds NO extra block)
+
+  - id: "<F_ID>"
+    name: "<NAME>"
+    type: "<TYPE>"
+    description: |
+      <DESCRIPTION>
+    acceptance_criteria:
+      - "AC-1: <AC_1>"
+      - "AC-2: <AC_2>"
+      - "AC-3: <AC_3>"
+      # Add AC-4..AC-8 as project.mode requires (prototype: 3-4, product: 6-8)
+
+    # ----- ui-surface shape only -----
+    # ui_surface:
+    #   present: true
+    #   platforms: ["web"]      # or ["web", "ios", "android"]
+    #   has_audio: false        # true to include audio-designer in routing
+
+    # ----- sensitive shape only (entity-bound) -----
+    # entities:
+    #   - name: "<entity-name>"
+    #     sensitive: true
+
+    # ----- performance-budget shape only -----
+    # performance_budget:
+    #   lcp_ms: 2500            # Largest Contentful Paint p75 ceiling
+    #   inp_ms: 200             # Interaction to Next Paint p75 ceiling
+    #   bundle_kb: 200          # main JS bundle gzipped ceiling
+    #   custom: []              # additional named budgets
