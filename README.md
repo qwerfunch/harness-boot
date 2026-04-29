@@ -94,8 +94,6 @@ Then drive every feature through the lifecycle:
 /harness-boot:work
 ```
 
-**Requirement**: **Node.js 20+** — that's it. The plugin ships a single-file CLI bundle under `dist/cli/` with every runtime dependency inlined, so installing via `/plugin install harness-boot@harness-boot` is enough — no `npm install`, no `node_modules` at the install site.
-
 If it takes more than 5 minutes, [open an issue](https://github.com/qwerfunch/harness-boot/issues). We'll fix it.
 
 ---

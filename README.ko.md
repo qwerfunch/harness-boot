@@ -94,8 +94,6 @@ cd my-new-project
 /harness-boot:work
 ```
 
-**필요한 것**: **Node.js 20+** 하나만 있으면 됩니다. 플러그인은 모든 런타임 의존성을 미리 인라인한 단일 파일 번들 (`dist/cli/`) 로 배포되므로, `/plugin install harness-boot@harness-boot` 만 하면 바로 동작합니다 — 설치 측에 `npm install` 도, `node_modules` 도 필요 없습니다.
-
 5 분 이상 걸리면 [issue 알려주세요](https://github.com/qwerfunch/harness-boot/issues).
 
 ---

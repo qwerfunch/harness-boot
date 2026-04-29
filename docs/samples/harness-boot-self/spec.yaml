@@ -4145,6 +4145,34 @@ features:
       - "AC-5: F-111 mirrored on both spec.yaml copies."
       - "AC-6: F-111 completed via the harness CLI cycle on the umbrella branch."
 
+  - id: "F-112"
+    name: "Drop the user-facing Node.js requirement line"
+    type: "feature"
+    description: |
+      Twenty-ninth cycle. Follow-up to F-111. The "Requirement:
+      Node.js 20+" line was the last user-facing prerequisite
+      mention left after the bundle cutover, and even that is
+      noise: harness-boot is a Claude Code plugin, and anyone who
+      already runs Claude Code has Node available — Claude Code's
+      own plugin runtime depends on it. Telling them to install
+      Node is like telling a Chrome user to install JavaScript.
+
+      Per user direction (2026-04-29): drop the line outright
+      from both README.md and README.ko.md rather than keep it
+      as defensive copy.
+
+      The contributor block lower in each README still mentions
+      Node implicitly via `npm install` — that's the right place
+      for it (devDependency context for source builds).
+
+    acceptance_criteria:
+      - "AC-1: README.md line 97 'Requirement: Node.js 20+ ...' removed entirely (not reworded — gone)."
+      - "AC-2: README.ko.md line 97 '필요한 것: Node.js 20+ ...' removed entirely."
+      - "AC-3: The 'If it takes more than 5 minutes' reassurance line follows directly from the work command snippet, no orphan Requirement gap."
+      - "AC-4: The contributor block lower in both files is untouched."
+      - "AC-5: F-112 mirrored on both spec.yaml copies."
+      - "AC-6: F-112 completed via the harness CLI cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
