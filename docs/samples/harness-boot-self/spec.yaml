@@ -3753,6 +3753,40 @@ features:
       - "AC-7: F-102 mirrored on both spec.yaml copies. self_check 5/5 PASS."
       - "AC-8: F-102 completed via the work.py cycle on the umbrella branch."
 
+  - id: "F-103"
+    name: "TS migration — port ui/dashboard.ts (no-args dashboard renderer)"
+    type: "feature"
+    description: |
+      Twentieth cycle of the v1.0 migration thread. Ports
+      `scripts/ui/dashboard.py` (492 LOC) — the pure renderer used
+      by `/harness-boot:work` no-args dashboard.
+
+      Public API ported:
+
+        - `render(stateData, spec, suggestions, options?)` — returns
+          a single multi-line string.
+        - `loadCoverage(harnessDir, fid)` — F-079 fingerprint reader.
+
+      Behaviour preservation:
+
+        - i18n labels honor resolved lang (en / ko).
+        - Sections in fixed order: header → active feature →
+          others-in-progress → on-hold → pending → next candidates
+          (spec-only) → coverage debt → suggestions.
+        - Coverage line ratio formatting identical: "coverage: NN%
+          (a/d metric, ...)".
+        - Truncation limits read from dashboardConfig env overrides.
+        - Empty-state hint when no features tracked.
+        - Trailing newline behaviour matches Python.
+
+    acceptance_criteria:
+      - "AC-1: src/ui/dashboard.ts exports `render`, `loadCoverage`."
+      - "AC-2: Renders sections in canonical order with Korean labels by default."
+      - "AC-3: Coverage debt section emits alert when below-threshold > 5."
+      - "AC-4: Truncation honors HARNESS_DASHBOARD_MAX_* env overrides."
+      - "AC-5: F-103 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-6: F-103 completed via the work.py cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
