@@ -3448,6 +3448,46 @@ features:
       - "AC-7: F-095 mirrored on both spec.yaml copies. self_check 5/5 PASS."
       - "AC-8: F-095 completed via the work.py cycle on the umbrella branch."
 
+  - id: "F-096"
+    name: "TS migration — port sync.ts (orchestrator wiring already-ported deps)"
+    type: "feature"
+    description: |
+      Thirteenth cycle of the v1.0 migration thread. Ports
+      `scripts/sync.py` (492 LOC) — the /harness:sync orchestrator
+      that wires together canonicalHash, includeExpander, validate,
+      render/{domain,architecture}, harness.yaml mutation, and
+      events.log append. Every dependency is already TS-ported, so
+      this cycle is mostly composition.
+
+      Public API ported:
+
+        - `run(harnessDir, options)` — full sync phase 0.
+        - `tryInitialSync(harnessDir)` — F-076 fail-open wrapper.
+        - `editWins(outputPath, previousOutputHash)` — pure helper.
+        - `pluginVersion(harnessDir)` — multi-strategy resolver
+          (script-repo → parent search → plugin_root fallback).
+
+      Behaviour preservation:
+
+        - Same file layout (spec.yaml + harness.yaml + domain.md +
+          architecture.yaml + events.log + chapters/).
+        - Same step order (load → validate → expand → hash → render →
+          harness.yaml mutate → events append).
+        - edit-wins identical — file SHA-256 mismatch with prior
+          output_hash.
+        - drift_status: clean | derived_edited.
+        - tryInitialSync: spec.yaml missing skip, already-synced
+          short-circuit, exception → fail-open.
+
+    acceptance_criteria:
+      - "AC-1: src/sync.ts exports `run`, `tryInitialSync`, `editWins`, `pluginVersion`, `SyncResult` interface."
+      - "AC-2: run() produces identical SyncResult to Python for canonical fixtures."
+      - "AC-3: edit-wins detects user-edited domain.md / architecture.yaml byte-for-byte."
+      - "AC-4: tryInitialSync returns skipped=true on missing spec or already-synced state."
+      - "AC-5: events.log gains exactly one sync_completed event per non-dry-run call."
+      - "AC-6: F-096 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-7: F-096 completed via the work.py cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
