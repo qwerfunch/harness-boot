@@ -3533,6 +3533,42 @@ features:
       - "AC-6: F-097 mirrored on both spec.yaml copies. self_check 5/5 PASS."
       - "AC-7: F-097 completed via the work.py cycle on the umbrella branch."
 
+  - id: "F-098"
+    name: "TS migration — port metrics.ts (events.log aggregation, read-only)"
+    type: "feature"
+    description: |
+      Fifteenth cycle of the v1.0 migration thread. Ports
+      `scripts/metrics.py` (402 LOC) — read-only event log
+      aggregation. CQS: events.log not modified; mtime invariant.
+
+      Public API ported:
+
+        - `parsePeriod(text)` — `'7d'` / `'24h'` / `'30m'` →
+          milliseconds.
+        - `aggregate(events, options)` — counts, lead time, gate
+          stats, drift incidents.
+        - `compute(harnessDir, options)` — period/since filtering +
+          aggregation.
+        - `MetricsReport` interface matching the Python dict shape.
+
+      Behaviour preservation:
+
+        - Same period unit map (s/m/h/d/w).
+        - Same lead-time pairing rule: most recent feature_activated
+          → first feature_done per feature.
+        - Same gate stats keys (pass/fail/skipped/other/pass_rate).
+        - Same JSON dict shape from `aggregate()` (window, total_events,
+          event_types, features, lead_time_sec, gate_stats,
+          drift_incidents).
+
+    acceptance_criteria:
+      - "AC-1: src/metrics.ts exports `parsePeriod`, `aggregate`, `compute`, `formatHuman`, `MetricsReport`."
+      - "AC-2: parsePeriod accepts s/m/h/d/w units (case-insensitive)."
+      - "AC-3: aggregate produces identical lead time stats for canonical fixtures."
+      - "AC-4: gate stats pass_rate excludes skipped from the denominator."
+      - "AC-5: F-098 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-6: F-098 completed via the work.py cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
