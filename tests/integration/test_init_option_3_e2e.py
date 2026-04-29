@@ -42,7 +42,7 @@ class TestOptionThreeNodeRepo(unittest.TestCase):
         proc = _run([
             sys.executable,
             "-m",
-            "scripts.scan.seed_spec",
+            "legacy.scripts.scan.seed_spec",
             "--root",
             str(self.target_root),
             "--preview",
@@ -56,7 +56,7 @@ class TestOptionThreeNodeRepo(unittest.TestCase):
         apply_proc = _run([
             sys.executable,
             "-m",
-            "scripts.scan.seed_spec",
+            "legacy.scripts.scan.seed_spec",
             "--root",
             str(self.target_root),
             "--apply",
@@ -67,7 +67,7 @@ class TestOptionThreeNodeRepo(unittest.TestCase):
 
         validate_proc = _run([
             sys.executable,
-            "scripts/spec/validate.py",
+            "legacy/scripts/spec/validate.py",
             str(spec_path),
         ])
         self.assertEqual(
@@ -80,7 +80,7 @@ class TestOptionThreeNodeRepo(unittest.TestCase):
         skip_proc = _run([
             sys.executable,
             "-m",
-            "scripts.scan.seed_spec",
+            "legacy.scripts.scan.seed_spec",
             "--root",
             str(self.target_root),
             "--skip",
@@ -99,7 +99,7 @@ class TestOptionThreeFallbackEmptyRepo(unittest.TestCase):
             apply_proc = _run([
                 sys.executable,
                 "-m",
-                "scripts.scan.seed_spec",
+                "legacy.scripts.scan.seed_spec",
                 "--root",
                 str(empty),
                 "--apply",
@@ -109,7 +109,7 @@ class TestOptionThreeFallbackEmptyRepo(unittest.TestCase):
             self.assertTrue(spec_path.is_file())
             validate_proc = _run([
                 sys.executable,
-                "scripts/spec/validate.py",
+                "legacy/scripts/spec/validate.py",
                 str(spec_path),
             ])
             self.assertEqual(

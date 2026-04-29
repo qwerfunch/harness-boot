@@ -21,7 +21,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 HOOK = REPO_ROOT / "hooks" / "pre-commit-phase2.sh"
-INSTALLER = REPO_ROOT / "scripts" / "install_pre_commit.py"
+INSTALLER = REPO_ROOT / "legacy" / "scripts" / "install_pre_commit.py"
 
 
 def _git(args: list[str], cwd: Path) -> subprocess.CompletedProcess:

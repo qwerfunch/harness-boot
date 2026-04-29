@@ -6,8 +6,8 @@
 
 harness-boot is a multi-agent development harness for Claude Code. Where most AI tools add *capability*, we add *focus*.
 
-[![plugin](https://img.shields.io/badge/plugin-v0.11.11-blue)](.claude-plugin/plugin.json)
-[![tests](https://img.shields.io/badge/tests-1131%20passing-brightgreen)](tests)
+[![plugin](https://img.shields.io/badge/plugin-v0.13.0-blue)](.claude-plugin/plugin.json)
+[![tests](https://img.shields.io/badge/tests-467%20passing-brightgreen)](tests/parity)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 ---
@@ -93,8 +93,6 @@ Then drive every feature through the lifecycle:
 ```bash
 /harness-boot:work
 ```
-
-**Requirements**: Python 3.10+, `pyyaml` (required), `jsonschema` (recommended).
 
 If it takes more than 5 minutes, [open an issue](https://github.com/qwerfunch/harness-boot/issues). We'll fix it.
 
@@ -201,26 +199,31 @@ harness-boot/
 ├── agents/                specialist agent definitions
 ├── commands/              slash commands (init · work)
 ├── hooks/                 session-bootstrap · prompt-log
-├── scripts/               Python implementation (core · ceremonies · gate · render · spec · ui)
+├── src/                   TypeScript implementation
+├── dist/cli/              esbuild single-file bundle (committed; no node_modules at install site)
+├── bin/harness            Node shim that loads the bundle — `harness <subcommand>`
+├── self_check.sh          5-step self-dogfood verification
 ├── skills/spec-conversion/  plan.md → spec.yaml conversion
 ├── docs/                  schema · templates · samples · portfolio assets
-└── tests/                 unit · integration · regression · scale
+└── tests/parity/          TS parity test suite
 ```
 
 ---
 
 ## Status
 
-**v0.11.11** — preparing for external adoption, running our own dogfood.
+**v0.13.0** — TS-only operation, running our own dogfood.
 
 - Changelog — [CHANGELOG.md](CHANGELOG.md)
 - Developer guide — [CLAUDE.md](CLAUDE.md)
 - Issues — [GitHub Issues](https://github.com/qwerfunch/harness-boot/issues)
 
 ```bash
-python3 -m pip install --user -r requirements-dev.txt
-python3 -m pytest tests/ -q
-bash scripts/self_check.sh
+# For contributors building from source (devDependencies only —
+# end users install via /plugin install and need no npm step):
+npm install
+npm test            # vitest suite (parity tests)
+bash self_check.sh  # 5-step structural verification
 ```
 
 ---

@@ -1,0 +1,48 @@
+{
+  "version": "2.3",
+  "schema_version": "2.3",
+  "features": [
+    {
+      "id": "F-010",
+      "status": "done",
+      "gates": {},
+      "evidence": [
+        {
+          "ts": "2026-04-29T00:00:00Z",
+          "kind": "test",
+          "summary": "integ green"
+        }
+      ],
+      "started_at": "2026-04-25T00:00:00Z",
+      "completed_at": "2026-04-29T00:00:00Z"
+    },
+    {
+      "id": "F-011",
+      "status": "blocked",
+      "gates": {},
+      "evidence": [
+        {
+          "ts": "2026-04-30T00:00:00Z",
+          "kind": "blocker",
+          "summary": "API missing"
+        }
+      ],
+      "started_at": "2026-04-28T00:00:00Z",
+      "completed_at": null
+    },
+    {
+      "id": "F-012",
+      "status": "planned",
+      "gates": {},
+      "evidence": [],
+      "started_at": null,
+      "completed_at": null
+    }
+  ],
+  "session": {
+    "started_at": "2026-04-25T00:00:00Z",
+    "last_command": "/harness:work F-011",
+    "last_gate_passed": null,
+    "active_feature_id": "F-011"
+  }
+}

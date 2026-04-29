@@ -36,7 +36,7 @@ import yaml
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-WORK_PY = REPO_ROOT / "scripts" / "work.py"
+WORK_PY = REPO_ROOT / "legacy" / "scripts" / "work.py"
 
 
 _FIXTURE_SPEC = textwrap.dedent(

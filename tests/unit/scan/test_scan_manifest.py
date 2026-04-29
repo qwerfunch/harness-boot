@@ -9,7 +9,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from scripts.scan.manifest import extract_project_name, extract_tech_stack
+from legacy.scripts.scan.manifest import extract_project_name, extract_tech_stack
 
 
 FIXTURES = Path(__file__).parent.parent.parent / "fixtures" / "brownfield-repos"

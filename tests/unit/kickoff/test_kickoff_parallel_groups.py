@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from scripts.ceremonies.kickoff import (
+from legacy.scripts.ceremonies.kickoff import (
     PARALLEL_GROUPS,
     parallel_groups_for_shapes,
 )

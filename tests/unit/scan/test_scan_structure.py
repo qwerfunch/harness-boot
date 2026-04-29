@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.scan.structure import scan_structure
+from legacy.scripts.scan.structure import scan_structure
 
 
 FIXTURES = Path(__file__).parent.parent.parent / "fixtures" / "brownfield-repos"

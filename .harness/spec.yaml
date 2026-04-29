@@ -2784,6 +2784,1431 @@ features:
       - "AC-9: F-082 completed via the work.py 4-verb cycle — Phase 2 dogfood."
       - "AC-10: F-081 + F-082 ship together as v0.12.2 patch release. Originally-queued F-082 (kickoff Quantitative completeness section) and F-083 (carry-forward debt) renumber to F-084 and F-085 respectively; CHANGELOG queue line updated to reflect the shift."
 
+  - id: "F-084"
+    name: "v1.0 TypeScript migration — foundation (project setup + canonical_hash port)"
+    type: "feature"
+    description: |
+      Strategic pivot kickoff. The Python dependency is a long-term
+      burden: fresh-install users on macOS / Windows / stripped Docker
+      hit `command not found` before any helpful message reaches them
+      (F-081 / F-082 mitigated but did not eliminate this); other AI
+      CLIs (Cursor, Cline, Aider, Copilot CLI) are all Node-based;
+      Claude Code itself runs on Node. v1.0 collapses the runtime to
+      TypeScript / Node.
+
+      Rewriting ~50 Python modules into TS is a multi-cycle thread
+      (F-084 → F-110+). F-084 is the foundation cycle:
+
+      1. Project bootstrap — package.json, tsconfig.json, vitest
+         config, eslint + prettier, src/ + tests/ skeleton.
+      2. Library choices locked: `yaml` (eemeli/yaml), `smol-toml`,
+         `zod`, `commander`, `node:crypto`, `vitest`.
+      3. Port the most critical module first —
+         `scripts/core/canonical_hash.py` →
+         `src/core/canonicalHash.ts`. Every drift detector and every
+         spec_hash record depends on this byte-for-byte. If the TS
+         port deviates by even one byte, the entire drift system
+         breaks.
+      4. Parity test framework — `tests/parity/` directory with
+         Python-generated fixtures + TS reads same fixtures + asserts
+         byte-equal SHA-256 output.
+
+      Behaviour preservation is the prime directive (memory
+      `feedback_typescript_migration`). Every subsequent module port
+      (F-085+) follows the same pattern: parity test first, port
+      second, byte-equal verification third. Python sources stay live
+      during migration so the plugin keeps working — TS modules
+      graduate to production use only after their parity tests are
+      green and the Python equivalents are demoted to legacy/.
+
+      Subsequent migration cycles (rough plan, 30+ features):
+      F-085~F-087 core/state, eventLog, pluginRoot, projectMode,
+      gates · F-088~F-090 spec/* · F-091 render/* · F-092~F-094
+      scan/* · F-095~F-097 check/* (13 drift detectors) · F-098~F-100
+      work/* + autowires · F-101~F-104 ceremonies/* · F-105~F-107
+      ui/* · F-108 gate/runner · F-109 bin/harness + commands/*.md
+      update · F-110+ slash command rewrite + Python deprecation +
+      v1.0 release.
+    modules:
+      - "package.json"
+      - "tsconfig.json"
+      - "vitest.config.ts"
+      - ".eslintrc.json"
+      - ".prettierrc.json"
+      - "src/core/canonicalHash.ts"
+      - "tests/parity/canonicalHash.test.ts"
+      - "tests/parity/fixtures/canonical_hash/"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "package.json declares yaml + smol-toml + zod + commander + vitest + typescript + eslint + prettier; scripts: build, test, lint, format, typecheck"
+      - "tsconfig.json uses Google TS settings — strict mode, ES2022 target, NodeNext module, no implicit any"
+      - "src/core/canonicalHash.ts exports `canonicalHash(data: unknown): string` matching scripts/core/canonical_hash.py:canonical_hash signature"
+      - "JSDoc class/function-level comments mandatory and in English (memory `feedback_typescript_migration`)"
+      - "tests/parity/canonicalHash.test.ts loads Python-generated fixtures and asserts byte-equal hash output"
+      - "vitest runs cleanly (`npm test` exits 0); ESLint + Prettier pass on src/ and tests/"
+      - "Existing Python tests (1204) still pass — TS port is additive, not replacing yet"
+    acceptance_criteria:
+      - "AC-1: package.json declares yaml, smol-toml, zod, commander as runtime deps; vitest, typescript, @types/node, eslint, @typescript-eslint/eslint-plugin, @typescript-eslint/parser, prettier as dev deps. Scripts: build (tsc), test (vitest), test:parity (vitest run tests/parity), lint, format, typecheck."
+      - "AC-2: tsconfig.json — strict true, target ES2022, module NodeNext, moduleResolution NodeNext, esModuleInterop true, noImplicitAny true, declaration true, outDir dist, rootDir src, include [src/**/*, tests/**/*]."
+      - "AC-3: vitest.config.ts wired so `npm test` runs unit tests under tests/, parity tests opt-in via test:parity script."
+      - "AC-4: .eslintrc.json + .prettierrc.json reflect Google TS style — single quotes, 100-char lines, semicolons explicit, no any."
+      - "AC-5: src/core/canonicalHash.ts ports scripts/core/canonical_hash.py byte-for-byte. Public API: `canonicalHash(data: unknown): string`. JSDoc references the Python source explicitly. Comments in English."
+      - "AC-6: tests/parity/fixtures/canonical_hash/ contains at least 5 Python-generated fixture pairs (empty dict, simple feature, full subtree, null/nested arrays edge case, unicode strings). Each fixture is {input.json, expected.txt} with the Python-computed hash."
+      - "AC-7: tests/parity/canonicalHash.test.ts loads each fixture pair, runs canonicalHash(input), asserts equality with expected.txt. All fixtures pass."
+      - "AC-8: .gitignore adds node_modules/ and dist/. Existing Python scripts/ and tests/ are unchanged in this cycle."
+      - "AC-9: bash scripts/self_check.sh 5/5 PASS (Python-side regression) · 1204+ Python tests still pass · `npm test` exits 0 (TS-side foundation)."
+      - "AC-10: F-084 mirrored on both spec.yaml copies. Self-dogfood cycle (activate → gates → evidence → complete) on `feat/F-084-ts-migration-foundation` branch; PR opened to develop, awaiting user approval before any merge."
+
+  - id: "F-085"
+    name: "TS migration — port core/eventLog.ts (events.log rotation + unified read)"
+    type: "feature"
+    description: |
+      Second cycle of the v1.0 migration thread (F-084 → F-110+, memory
+      `feedback_migration_pr_strategy`). Ports
+      `scripts/core/event_log.py` (events.log rotation + unified read
+      across rotated buckets) to TypeScript with byte-equal output.
+
+      Why this module first: events.log is the audit trail the entire
+      harness lifecycle leans on (feature_activated, gate_run,
+      evidence_added, feature_done, kickoff_started, retro_written,
+      ...). Every emitter writes to it and every read consumer
+      (status, metrics, dashboard) merges it across rotated siblings.
+      A drift here corrupts retros + metrics + drift detection silently.
+
+      Public API ported (1:1 names, camelCase per memory
+      `feedback_typescript_migration`):
+
+        - `readEvents(harnessDir)` — async iterator yielding events in
+          timestamp-ascending order, merging events.log + every
+          events.log.YYYYMM rotated bucket
+        - `rotate(harnessDir, options)` — splits events older than the
+          current UTC month into events.log.YYYYMM buckets; returns a
+          `{yyyymm: count}` move map; `dryRun` and `nowYyyymm`
+          (test-injection) options preserved
+        - `parseYyyymmFromTs(ts)` exposed as helper for the parity test
+          and downstream callers
+
+      Behaviour preservation focus areas:
+
+        - Sort order: ISO 8601 lexicographic; unparseable-ts events
+          sort last but never drop
+        - JSON line output: `JSON.stringify(ev) + '\n'` (Python uses
+          `json.dumps(ev, ensure_ascii=False) + '\n'` — ensure_ascii
+          False is the default in JS, but unicode escaping mode must
+          match exactly)
+        - Idempotency: rotate twice produces identical disk state
+        - Bucket append: events.log.YYYYMM files are appended-to, not
+          overwritten — preserves pre-existing history when re-rotating
+
+      Parity test (`tests/parity/eventLog.test.ts`):
+
+        - Python fixture generator writes 8 sample events.log inputs
+          (single event, multi-month split, unparseable ts, empty
+          file, rotated bucket already present, idempotent rotation,
+          unicode summary text, large bucket)
+        - For each input, Python computes the expected
+          {events.log post-rotate, bucket file contents, move map}
+        - TS reads the same inputs, runs `rotate()`, asserts byte-equal
+          file contents + move map equality
+
+      readEvents parity test:
+
+        - For each fixture state, run Python `read_events` to get the
+          ordered event list
+        - TS `readEvents` yields the same sequence (deep-equal)
+
+      Implementation notes:
+
+        - File I/O: `node:fs/promises` for async reads, `node:fs` sync
+          for write paths that match Python's blocking semantics
+        - Path: `node:path` joins for cross-platform safety
+        - JSON: native `JSON.stringify` / `JSON.parse`; canonical form
+          not needed here since events.log is per-line JSON, not a
+          single canonicalized blob
+        - No external deps beyond what F-084 introduced
+    modules:
+      - "src/core/eventLog.ts"
+      - "tests/parity/eventLog.test.ts"
+      - "tests/parity/fixtures/event_log/"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "readEvents merges events.log + every events.log.YYYYMM, sorts ISO ts ascending, never drops unparseable-ts events"
+      - "rotate splits older-than-current-month events into events.log.YYYYMM buckets, preserves current month + unparseable in events.log"
+      - "rotate is idempotent — running twice produces identical disk state"
+      - "rotate appends to existing rotated files, never overwrites pre-existing history"
+      - "parseYyyymmFromTs returns null on unparseable input, never throws"
+      - "JSDoc class/function-level English comments throughout"
+    acceptance_criteria:
+      - "AC-1: src/core/eventLog.ts exports readEvents, rotate, parseYyyymmFromTs with the same semantics as scripts/core/event_log.py. Public API uses camelCase TS conventions; behaviour matches byte-equal."
+      - "AC-2: tests/parity/fixtures/event_log/ contains at least 8 fixture pairs (input events.log + expected post-state) generated by a Python helper script."
+      - "AC-3: tests/parity/eventLog.test.ts loads each fixture, runs rotate / readEvents, asserts byte-equal output + identical move map."
+      - "AC-4: Idempotency test — running rotate twice in a row on the same input produces identical files (Python + TS both verified)."
+      - "AC-5: Unicode preservation — events with Korean / emoji summary text round-trip without escaping changes."
+      - "AC-6: Empty file + missing file edge cases — both Python and TS return empty results without raising."
+      - "AC-7: F-085 mirrored on both spec.yaml copies. bash scripts/self_check.sh 5/5 PASS · 1192+ Python tests still pass · npm run test:parity green for both canonicalHash and eventLog."
+      - "AC-8: F-085 completed via the work.py 4-verb cycle on the existing `feat/F-084-ts-migration-foundation` branch (memory `feedback_migration_pr_strategy` — single umbrella PR for the whole thread)."
+
+  - id: "F-086"
+    name: "TS migration — port core/state.ts (state.yaml read/write + Iron Law math)"
+    type: "feature"
+    description: |
+      Third cycle of the v1.0 migration thread. Ports
+      `scripts/core/state.py` (the State class plus Iron Law math
+      helpers) to TypeScript with semantic-equivalence parity.
+
+      Why this module: state.yaml is the canonical mutable state of a
+      harness install. Every work.py verb (activate, recordGate,
+      addEvidence, complete) reads and writes it. Iron Law's "declared
+      evidence count" check is implemented here and is the gate
+      complete() relies on. A drift in state mutations or in the Iron
+      Law math silently corrupts feature progress tracking.
+
+      Public API ported (camelCase TS, semantic 1:1 with Python):
+
+        - `State` class with `load(harnessDir)` / `save()` /
+          `featureIds()` / `getFeature(fid)` / `ensureFeature(fid)` /
+          `setStatus(fid, status)` / `recordGateResult(fid, gate, result, opts)` /
+          `addEvidence(fid, kind, summary, opts)` /
+          `addSkippedAgent(fid, agent, reason, opts)` /
+          `getSkippedAgents(fid)` / `setActive(fid)` /
+          `removeFeature(fid)` / `featuresInProgress()` /
+          `setLastCommand(command)` / `featureCounts()` / `snapshot()`
+        - `isDeclaredEvidence(ev)` — kind-based discriminator for Iron
+          Law (automatic kinds vs declared kinds)
+        - `countDeclaredEvidence(feature, options)` — trailing-window
+          count for Iron Law gate
+        - Constants: `FEATURE_STATUSES`, `GATE_RESULTS`,
+          `AUTOMATIC_EVIDENCE_KINDS`, `IRON_LAW_WINDOW_DAYS`
+        - Types: `GateResult`, `FeatureStatus`, `Feature`, `Session`,
+          `StateData`
+
+      Behaviour preservation focus:
+
+        - YAML output: Python PyYAML uses block style with
+          `sort_keys=False` + `allow_unicode=True` +
+          `default_flow_style=False`. The TS port targets
+          **semantic-equivalence parity** rather than byte-equal
+          output: round-trip (parse → mutate → dump → parse) yields
+          the same logical data, and both runtimes parse each other's
+          output without surprise.
+        - Timestamps: ISO 8601 `YYYY-MM-DDTHH:MM:SSZ`, identical
+          format to Python's `_now()`.
+        - Iron Law math: trailing-window inclusion rule — entries with
+          unparseable or missing `ts` are treated as recent
+          (conservative; matches Python).
+        - Validation enums: same FEATURE_STATUSES + GATE_RESULTS sets
+          throw on invalid values.
+
+      Why semantic-equivalence (not byte-equal) for YAML output:
+
+        - PyYAML and `yaml` (eemeli/yaml) have different quoting rules
+          for ambiguous strings, slightly different scalar styling,
+          different empty-string representations.
+        - state.yaml is a data file, not a wire-format contract.
+          What matters is that the data round-trips; byte equality
+          would force us to reimplement PyYAML in TS, which is
+          out of scope.
+        - Cross-runtime read/write compatibility is the production
+          requirement: Python writes → TS reads → TS writes → Python
+          reads must all preserve data.
+
+      Parity test scope:
+
+        - Round-trip: load Python-generated state.yaml in TS, verify
+          data shape matches Python's `yaml.safe_load`. Mutate in TS,
+          save, reload — verify new shape matches Python's mutation
+          output.
+        - Iron Law math: identical inputs produce identical counts
+          across runtimes (this is byte-equal — pure logic).
+        - Mutation API: every Python method has a TS twin with the
+          same observable effect on data shape.
+        - Validation: invalid statuses / gate results throw in both
+          runtimes.
+    modules:
+      - "src/core/state.ts"
+      - "tests/parity/state.test.ts"
+      - "tests/parity/fixtures/state/"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "State.load reads existing state.yaml or returns default schema; round-trips Python-written file"
+      - "ensureFeature / setStatus / recordGateResult / addEvidence / addSkippedAgent mutate identically to Python"
+      - "setActive auto-creates feature entry; removeFeature returns boolean"
+      - "isDeclaredEvidence treats automatic kinds as non-counted, declared kinds as counted"
+      - "countDeclaredEvidence honors trailing window, treats unparseable ts as recent"
+      - "save produces YAML that Python's yaml.safe_load reads back identically"
+      - "JSDoc class/function-level English comments throughout"
+    acceptance_criteria:
+      - "AC-1: src/core/state.ts exports the State class with all 17 methods from Python state.py, plus FEATURE_STATUSES / GATE_RESULTS / AUTOMATIC_EVIDENCE_KINDS / IRON_LAW_WINDOW_DAYS / isDeclaredEvidence / countDeclaredEvidence."
+      - "AC-2: tests/parity/fixtures/state/ contains at least 6 fixture pairs covering empty state, active feature only, multi-feature with gates and evidence, Iron Law evidence counting (declared vs automatic mix), unicode summary, and skipped_agents trail."
+      - "AC-3: tests/parity/state.test.ts verifies State.load → identical data shape (Python yaml.safe_load vs TS load.data)."
+      - "AC-4: countDeclaredEvidence parity — identical counts across runtimes for the same fixture."
+      - "AC-5: Mutation parity — for each public method, applying it on a fixture produces a state shape that Python recognizes as equivalent (parse + assertion)."
+      - "AC-6: Save round-trip — TS writes state.yaml, Python yaml.safe_load reads it without error and produces the same logical data."
+      - "AC-7: F-086 mirrored on both spec.yaml copies. bash scripts/self_check.sh 5/5 PASS · 1192+ Python tests still pass · npm run test:parity green for canonicalHash + eventLog + state."
+      - "AC-8: F-086 completed via the work.py 4-verb cycle on the existing `feat/F-084-ts-migration-foundation` branch."
+
+  - id: "F-087"
+    name: "TS migration — port core/pluginRoot.ts (4-strategy chain plugin root resolver)"
+    type: "feature"
+    description: |
+      Fourth cycle of the v1.0 migration thread. Ports
+      `scripts/core/plugin_root.py` (the 4-strategy plugin root chain
+      from `commands/init.md §2`) to TypeScript with byte-equal
+      strategy ordering and identical fallback semantics.
+
+      Why this module: every TS-side script that has to find plugin
+      assets (templates, agents, ceremonies, schemas) calls this
+      resolver. A drift in strategy ordering or fallback decisions
+      silently changes which plugin source the runtime picks, breaking
+      live `/harness-boot:*` invocations across users.
+
+      Public API ported (camelCase TS, semantic 1:1 with Python):
+
+        - `resolve(pluginName?)` — runs the 4-strategy chain, returns a
+          `Resolution` (root path · winning strategy · attempt log) or
+          throws `PluginRootError`.
+        - `PluginRootError` — class extending `Error`.
+        - `Resolution` — `{ root, strategy, attempts[] }` interface.
+        - Internal helpers exposed for parity tests:
+          `_strategyPathBin`, `_strategyRegistry`, `_strategyMarketplaceSource`.
+
+      Strategy chain (first hit wins):
+
+        A. `$PATH` scan for `/plugins/<dir>/bin` segment + plugin.json
+           name match.
+        B. `~/.claude/plugins/installed_plugins.json` `installPath` (must
+           exist on disk).
+        C. `~/.claude/settings.json` `extraKnownMarketplaces.<mp>.source.path`
+           combined with marketplace.json plugin source.
+        D. (Failure) — throw `PluginRootError` with the attempt trace.
+
+      Behaviour preservation focus:
+
+        - Strategy ordering identical — A wins over B wins over C.
+        - PATH parsing uses `path.delimiter` (matches Python's
+          `os.pathsep`). Trailing slashes on PATH entries are
+          tolerated; only entries that contain `/plugins/` and end in
+          `/bin` count.
+        - `~` expansion — `os.homedir()` is the TS equivalent of
+          `os.path.expanduser`. Both expand only at the leading
+          position; later-segment `~` is a literal directory name.
+        - Failure mode — same error message format ("플러그인
+          '<name>' 루트 해석 실패 — attempts: A path-bin: miss, B
+          registry: miss, C mp-source: miss"). Korean preserved
+          verbatim from the Python source so cross-runtime log
+          tooling matches strings exactly.
+        - Attempts trace — `attempts: ["A path-bin: hit|miss", ...]`
+          identical wording.
+
+      Parity test scope:
+
+        - Per-strategy hit / miss / name-mismatch coverage with
+          temporary HOME directories.
+        - Chain ordering — A wins when both A and B are populated.
+        - Attempt trace — when A and B miss but C hits, attempts has
+          three entries with the right strings.
+        - PluginRootError fires the exact message format on full miss.
+        - PATH separator handling on POSIX (the only target platform
+          for now; Windows path-delimiter semantics are deferred to a
+          later cycle when slash-command Windows support is in scope).
+
+    acceptance_criteria:
+      - "AC-1: src/core/pluginRoot.ts exports `resolve`, `PluginRootError`, `Resolution`, plus `_strategyPathBin` / `_strategyRegistry` / `_strategyMarketplaceSource` for tests."
+      - "AC-2: Strategy chain order matches Python: A:path-bin → B:registry → C:marketplace-source."
+      - "AC-3: Each strategy's hit / miss / name-mismatch behaviour matches the Python helper byte-for-byte."
+      - "AC-4: Resolution.attempts trace uses identical wording (`A path-bin: hit|miss`, `B registry: hit|miss`, `C mp-source: hit|miss`)."
+      - "AC-5: PluginRootError message matches Python verbatim — `플러그인 '<name>' 루트 해석 실패 — attempts: ...` (Korean preserved as-is)."
+      - "AC-6: tests/parity/pluginRoot.test.ts covers all three strategies + chain ordering + error message; uses fresh tmp HOME dirs to avoid host pollution."
+      - "AC-7: F-087 mirrored on both spec.yaml copies. bash scripts/self_check.sh 5/5 PASS · 1192+ Python tests still pass · npm run test:parity green for canonicalHash + eventLog + state + pluginRoot."
+      - "AC-8: F-087 completed via the work.py 4-verb cycle on the existing `feat/F-084-ts-migration-foundation` branch (umbrella PR #46 strategy)."
+
+  - id: "F-088"
+    name: "TS migration — port core/{projectMode,gates,routing}.ts (small core constants)"
+    type: "feature"
+    description: |
+      Fifth cycle of the v1.0 migration thread. Bundles three small,
+      pure constant-and-helper modules into one cycle because each is
+      under 65 lines and they all live in `scripts/core/`. Bundling
+      reduces per-cycle ceremony overhead while preserving full
+      parity-test coverage per module.
+
+      Modules ported:
+
+        - **projectMode** (`scripts/core/project_mode.py`) — resolves
+          the prototype-vs-product axis. Pure function: spec dict in,
+          mode string out. Strict default `"product"` so
+          misconfiguration never silently relaxes the quality bar.
+        - **gates** (`scripts/core/gates.py`) — single source of truth
+          for the BR-004 standard gate names (gate_0 through gate_5)
+          plus the optional gate_perf identifier.
+        - **routing** (`scripts/core/routing.py`) — `ROUTING_SHAPES`
+          map (feature shape → agent list) and `PARALLEL_GROUPS` map
+          (feature shape → tuples of agents the orchestrator may
+          dispatch concurrently).
+
+      Behaviour preservation:
+
+        - resolveMode: identical truth table — every non-`"prototype"`
+          input collapses to `"product"`.
+        - STANDARD_GATES: identical 6-tuple ordering.
+        - ROUTING_SHAPES + PARALLEL_GROUPS: identical maps, identical
+          agent ordering inside each list/tuple.
+
+    acceptance_criteria:
+      - "AC-1: src/core/projectMode.ts exports `Mode` type, `DEFAULT_MODE`, `VALID_MODES`, `resolveMode(spec)`."
+      - "AC-2: src/core/gates.ts exports `STANDARD_GATES` 6-tuple and `GATE_PERF` constant."
+      - "AC-3: src/core/routing.ts exports `ROUTING_SHAPES` and `PARALLEL_GROUPS` matching Python dict key + value ordering."
+      - "AC-4: tests/parity/coreConstants.test.ts cross-validates all three modules against fixture data shaped after Python imports."
+      - "AC-5: resolveMode parity — identical fall-back to `product` on null, missing project, unknown mode."
+      - "AC-6: F-088 mirrored on both spec.yaml copies. bash scripts/self_check.sh 5/5 PASS · 1192+ Python tests still pass · npm run test:parity green."
+      - "AC-7: F-088 completed via the work.py 4-verb cycle on the existing `feat/F-084-ts-migration-foundation` branch."
+
+  - id: "F-089"
+    name: "TS migration — port spec/validate.ts (JSONSchema validation via ajv)"
+    type: "feature"
+    description: |
+      Sixth cycle of the v1.0 migration thread. Ports
+      `scripts/spec/validate.py` to TypeScript and adds `ajv` +
+      `ajv-formats` as runtime dependencies. The Python source uses
+      the optional `jsonschema` library; the TS port standardises on
+      ajv (industry default for Node) which provides identical
+      validation outcomes against the existing
+      `docs/schemas/spec.schema.json`.
+
+      Public API ported:
+
+        - `loadSpec(path)` — read a YAML file, return the parsed
+          object, throw `SpecValidationError` on malformed YAML or
+          non-mapping top level.
+        - `validate(spec, schemaPath?)` — run ajv against the
+          shared schema, throw `SpecValidationError` with the same
+          path + reason fields the Python version raises.
+        - `SpecValidationError` — class extending Error, carries
+          `message`, `path`, `reason`.
+
+      Behaviour preservation focus:
+
+        - Same error path format — list-of-keys, dotted on `.message`.
+        - Same exit codes when used as a CLI (the Node CLI shim is
+          out of scope for this cycle; it lands with the bin/harness
+          wrapper later).
+        - Schema resolution: same fallback to `docs/schemas/spec.schema.json`
+          relative to the package root. The TS port uses
+          `node:url.fileURLToPath` to anchor the lookup off the
+          source file, mirroring Python's `Path(__file__).parents[2]`.
+        - Empty-spec / non-mapping top-level guards reject the same
+          inputs.
+
+      Parity test scope:
+
+        - Round-trip: load the canonical sample
+          (`docs/samples/harness-boot-self/spec.yaml`) → validate →
+          succeed.
+        - Negative fixtures: minimal invalid specs trigger
+          SpecValidationError with the expected `path` and `reason`.
+        - Top-level type guards on null / scalar / array.
+
+    acceptance_criteria:
+      - "AC-1: src/spec/validate.ts exports `loadSpec`, `validate`, `SpecValidationError`."
+      - "AC-2: ajv + ajv-formats added to runtime dependencies."
+      - "AC-3: Validating the canonical sample spec via TS succeeds (same outcome as Python)."
+      - "AC-4: Top-level non-mapping inputs (null, list, scalar) raise SpecValidationError with `reason: 'top_level'`."
+      - "AC-5: Schema-violation errors carry an `absolutePath` array identical in shape to Python's `e.absolute_path` list."
+      - "AC-6: Schema lookup falls back to `docs/schemas/spec.schema.json` when the caller passes no path."
+      - "AC-7: F-089 mirrored on both spec.yaml copies. self_check 5/5 PASS · npm run test:parity green."
+      - "AC-8: F-089 completed via the work.py 4-verb cycle on the existing `feat/F-084-ts-migration-foundation` branch."
+
+  - id: "F-090"
+    name: "TS migration — port spec/{includeExpander,modeClassifier}.ts (sync runtime path)"
+    type: "feature"
+    description: |
+      Seventh cycle of the v1.0 migration thread. Ports two spec
+      utilities that sit on the sync.py runtime path:
+
+        - **includeExpander** (`scripts/spec/include_expander.py`) —
+          $include depth-1 expansion engine (F-009). Sync invokes
+          this before validation.
+        - **modeClassifier** (`scripts/spec/mode_classifier.py`) —
+          /harness:spec Mode A/B/R/E auto-routing (F-002). Pure
+          decision tree, no I/O.
+
+      Behaviour preservation:
+
+        - $include depth-1 enforced — content from a chapter file is
+          inlined as a string and never re-walked.
+        - Locked field guard rejects `$include` under id/version/
+          name/type/status/priority/schema_version (LOCKED_FIELD_NAMES).
+        - Path traversal escape guard — chapter target must resolve
+          inside the chapters directory.
+        - Mode classifier priority: explicit --mode > --explain >
+          spec-missing+plan.md > spec-missing+empty > spec-existing
+          +addition-hints > refine.
+
+    acceptance_criteria:
+      - "AC-1: src/spec/includeExpander.ts exports `expand`, `findIncludes`, `IncludeError`, `LOCKED_FIELD_NAMES`."
+      - "AC-2: src/spec/modeClassifier.ts exports `classify`, `Mode` enum, `ClassifyResult` interface."
+      - "AC-3: Depth-1 enforcement — nested $include in expanded content stays as literal string."
+      - "AC-4: Locked field guard rejects `$include` under id/version/name/type/status/priority."
+      - "AC-5: Path traversal escape (e.g. `../../etc/passwd`) is rejected with IncludeError."
+      - "AC-6: Mode classifier produces same Mode + subtype + rationale as Python for canonical inputs."
+      - "AC-7: Parity tests — at least 12 tests for includeExpander + 10 for modeClassifier."
+      - "AC-8: F-090 completed via the work.py cycle on the umbrella branch."
+
+  - id: "F-091"
+    name: "TS migration — port render/{architecture,domain}.ts (sync derived outputs)"
+    type: "feature"
+    description: |
+      Eighth cycle of the v1.0 migration thread. Ports the two
+      render modules sync.py invokes when materialising
+      `.harness/domain.md` and `.harness/architecture.yaml`.
+
+      Modules ported:
+
+        - **render/domain** (`scripts/render/domain.py`) — produces
+          `domain.md`. Pure-string assembly; byte-equal parity across
+          runtimes is achievable.
+        - **render/architecture** (`scripts/render/architecture.py`) —
+          produces `architecture.yaml`. Semantic-equivalence parity
+          (PyYAML and eemeli/yaml differ on quoting); the TS port
+          becomes canonical post-migration so cohabitation is
+          short-lived.
+
+      Behaviour preservation:
+
+        - domain.md section ordering identical (Header → Project →
+          Platform → Stakeholders → Entities → Business Rules →
+          Decisions → Risks).
+        - Korean copy preserved verbatim — section descriptions,
+          empty-state placeholders.
+        - Trailing newline behaviour matches Python (single `\n` at
+          end of file).
+        - architecture.yaml top-level key ordering preserved
+          (version, generated_at, from_spec, tech_stack, deliverable,
+          modules, ..., feature_graph).
+        - Module owners list sorted ascending by module name.
+
+    acceptance_criteria:
+      - "AC-1: src/render/domain.ts exports `render(spec, options?)` and `loadSpec(path)`."
+      - "AC-2: src/render/architecture.ts exports the same surface for architecture.yaml."
+      - "AC-3: domain.md output is byte-equal with Python for the canonical sample spec."
+      - "AC-4: architecture.yaml output is semantic-equivalence equal — round-trip parse yields identical data shape."
+      - "AC-5: Empty-state placeholders (no stakeholders / no entities / no BR) emit Korean copy verbatim."
+      - "AC-6: F-091 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-7: F-091 completed via the work.py cycle on the umbrella branch."
+
+  - id: "F-092"
+    name: "TS migration — port ui/{lang,messages,dashboardConfig,render,featureResolver}.ts (UI helper cluster)"
+    type: "feature"
+    description: |
+      Ninth cycle of the v1.0 migration thread. Bundles five small,
+      pure UI helper modules into one cycle.
+
+      Modules ported:
+
+        - **ui/lang** (`scripts/ui/lang.py`) — F-040 locale resolver.
+          Returns `'en'` or `'ko'` from HARNESS_LANG env, then
+          `spec.project.language`, then LC_ALL/LANG, then `'en'` default.
+        - **ui/messages** (`scripts/ui/messages.py`) — F-040 i18n
+          catalog with EN/KO strings. `t(key, lang, ...fmt)` resolves
+          a template + does positional formatting.
+        - **ui/dashboardConfig** (`scripts/ui/dashboard_config.py`) —
+          F-043 truncation limits with HARNESS_DASHBOARD_MAX_* env
+          overrides.
+        - **ui/render** (`scripts/ui/render.py`) — F-043 agent chain
+          renderer (sequence + parallel groups).
+        - **ui/featureResolver** (`scripts/ui/feature_resolver.py`) —
+          v0.9.1 user input → feature dict resolver. Three priority
+          tiers: @F-N → plain F-N → title fuzzy.
+
+      Behaviour preservation:
+
+        - Lang resolver — same priority order, same KR/ko hints.
+        - Catalog — every REQUIRED_KEY present in both locales,
+          identical placeholders.
+        - Renderer — identical token characters (∥, →) and grouping
+          rules.
+        - Resolver — identical regex patterns, identical priority order.
+
+    acceptance_criteria:
+      - "AC-1: Five TS modules ported under src/ui/."
+      - "AC-2: REQUIRED_KEYS array exported and exhaustive."
+      - "AC-3: t() falls back to EN on unknown lang, throws on unknown key."
+      - "AC-4: Agent chain renderer emits identical strings to Python for canonical inputs."
+      - "AC-5: Feature resolver — @F-N + plain F-N + title fuzzy each tested."
+      - "AC-6: F-092 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-7: F-092 completed via the work.py cycle on the umbrella branch."
+
+  - id: "F-093"
+    name: "TS migration — port events.ts (events.log filter helpers)"
+    type: "feature"
+    description: |
+      Tenth cycle of the v1.0 migration thread. Ports the
+      `/harness:events` filter library to TypeScript. CQS: read-only,
+      no mtime mutation.
+
+      Public API ported:
+
+        - `filterEvents(events, options)` — filter by kind, feature
+          id (matches `feature` / `feature_id` / `payload.feature`),
+          and `since` ISO 8601 cutoff.
+        - `formatHuman(events)` — human-readable summary lines.
+
+      Behaviour preservation:
+
+        - Same filter precedence (kind > feature > since).
+        - Same human format ("ts type (extras...)").
+        - Same `since` parsing — accepts both `Z` and microsecond
+          forms.
+        - spec_hash truncated to 12 chars in extras (matches Python).
+
+    acceptance_criteria:
+      - "AC-1: src/events.ts exports `filterEvents`, `formatHuman`, `parseTs`."
+      - "AC-2: filterEvents matches Python output for kind / feature / since combinations."
+      - "AC-3: formatHuman produces strings byte-equal to Python for canonical fixtures."
+      - "AC-4: F-093 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-5: F-093 completed via the work.py cycle on the umbrella branch."
+
+  - id: "F-094"
+    name: "TS migration — port status.ts (/harness:status read-only summary)"
+    type: "feature"
+    description: |
+      Eleventh cycle of the v1.0 migration thread. Ports
+      `scripts/status.py` to TypeScript. CQS — read-only, no mtime
+      mutation. Composes State (F-086), eventLog (F-085), and
+      harness.yaml metadata into a StatusReport.
+
+      Public API ported:
+
+        - `buildReport(harnessDir, options?)` — returns a typed
+          report covering session, feature counts, drift status,
+          last_sync, and per-feature summary.
+        - `formatHuman(report)` — human-readable text matching
+          Python verbatim (header lines, indentation, separators).
+
+      Behaviour preservation:
+
+        - Same harness.yaml lookup path
+          (`generation.drift_status`).
+        - Same recent-events tail length (5) for sync_completed
+          probe.
+        - spec_hash truncated to 12 chars in last_sync summary.
+        - Same human-format header order and trailing newline.
+
+    acceptance_criteria:
+      - "AC-1: src/status.ts exports `buildReport`, `formatHuman`, plus the StatusReport / FeatureSummary interfaces."
+      - "AC-2: Output matches Python for canonical state + harness fixtures."
+      - "AC-3: CQS — calling buildReport does not modify state.yaml mtime."
+      - "AC-4: F-094 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-5: F-094 completed via the work.py cycle on the umbrella branch."
+
+  - id: "F-095"
+    name: "TS migration — port gate/runner.ts (gate 0-5 + perf auto-detection)"
+    type: "feature"
+    description: |
+      Twelfth cycle of the v1.0 migration thread. Ports
+      `scripts/gate/runner.py` (830 LOC) — the polyglot gate
+      auto-detector and subprocess executor. work.py depends on this
+      for `--run-gate <name>` invocations.
+
+      Public API ported (camelCase TS, semantic 1:1 with Python):
+
+        - `runGate(name, projectRoot, options)` — dispatcher.
+        - `runGate0` … `runGate5`, `runGatePerf` — per-gate runners.
+        - `detectGate0Command` … `detectGate5Command` — detection
+          functions (pure-ish, only filesystem I/O).
+        - `GateRunResult` interface with `gate / result / reason /
+          command / exitCode / stdoutTail / stderrTail / durationSec`.
+
+      Detection priority (must match Python byte-for-byte):
+
+        - gate_0: pyproject pytest → npm test → tests/ pytest →
+          unittest discover (preferred sub) → Makefile test.
+        - gate_1: mypy → pyright → npm typecheck → tsc → npx tsc →
+          cargo check → go vet.
+        - gate_2: ruff → flake8 → npm lint → eslint → npx eslint →
+          cargo clippy → golangci-lint.
+        - gate_3: pytest --cov → npm test:coverage → npx nyc →
+          tarpaulin → llvm-cov → go test -cover.
+        - gate_4: git diff --quiet (working tree clean).
+        - gate_5: scripts/smoke.sh → playwright config → cypress
+          config → npm smoke / test:e2e → tests/smoke pytest →
+          Makefile smoke.
+        - gate_perf: no auto-detect; override only.
+
+      Override resolution priority: --override-command >
+      harness.yaml.gate_commands.<gate> > auto-detect.
+
+    acceptance_criteria:
+      - "AC-1: src/gate/runner.ts exports `runGate`, six per-gate runners, six detect_*Command helpers, plus `GateRunResult` interface."
+      - "AC-2: Each detect function returns the expected command for canonical fixture trees (pyproject + pytest, package.json scripts, tsconfig, Cargo, go.mod, etc.)."
+      - "AC-3: harness.yaml.gate_commands.<gate> override (string OR array) parses identically to Python."
+      - "AC-4: Override priority — --override-command > harness.yaml > auto-detect."
+      - "AC-5: Subprocess timeout produces `result: 'fail'` with `reason: 'timeout after Ns'` (Python-shaped)."
+      - "AC-6: Command-not-found produces `result: 'skipped'` with `reason: 'command not found: ...'`."
+      - "AC-7: F-095 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-8: F-095 completed via the work.py cycle on the umbrella branch."
+
+  - id: "F-096"
+    name: "TS migration — port sync.ts (orchestrator wiring already-ported deps)"
+    type: "feature"
+    description: |
+      Thirteenth cycle of the v1.0 migration thread. Ports
+      `scripts/sync.py` (492 LOC) — the /harness:sync orchestrator
+      that wires together canonicalHash, includeExpander, validate,
+      render/{domain,architecture}, harness.yaml mutation, and
+      events.log append. Every dependency is already TS-ported, so
+      this cycle is mostly composition.
+
+      Public API ported:
+
+        - `run(harnessDir, options)` — full sync phase 0.
+        - `tryInitialSync(harnessDir)` — F-076 fail-open wrapper.
+        - `editWins(outputPath, previousOutputHash)` — pure helper.
+        - `pluginVersion(harnessDir)` — multi-strategy resolver
+          (script-repo → parent search → plugin_root fallback).
+
+      Behaviour preservation:
+
+        - Same file layout (spec.yaml + harness.yaml + domain.md +
+          architecture.yaml + events.log + chapters/).
+        - Same step order (load → validate → expand → hash → render →
+          harness.yaml mutate → events append).
+        - edit-wins identical — file SHA-256 mismatch with prior
+          output_hash.
+        - drift_status: clean | derived_edited.
+        - tryInitialSync: spec.yaml missing skip, already-synced
+          short-circuit, exception → fail-open.
+
+    acceptance_criteria:
+      - "AC-1: src/sync.ts exports `run`, `tryInitialSync`, `editWins`, `pluginVersion`, `SyncResult` interface."
+      - "AC-2: run() produces identical SyncResult to Python for canonical fixtures."
+      - "AC-3: edit-wins detects user-edited domain.md / architecture.yaml byte-for-byte."
+      - "AC-4: tryInitialSync returns skipped=true on missing spec or already-synced state."
+      - "AC-5: events.log gains exactly one sync_completed event per non-dry-run call."
+      - "AC-6: F-096 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-7: F-096 completed via the work.py cycle on the umbrella branch."
+
+  - id: "F-097"
+    name: "TS migration — port ceremonies/{kickoff,retro,designReview,inbox}.ts"
+    type: "feature"
+    description: |
+      Fourteenth cycle of the v1.0 migration thread. Ports the four
+      ceremony template generators that work.py auto-fires on
+      lifecycle events.
+
+      Modules ported:
+
+        - **kickoff** (`scripts/ceremonies/kickoff.py`, 385 LOC) —
+          shape detection, agent resolution, parallel-group
+          collection, kickoff.md template generation, idempotency
+          guard.
+        - **retro** (`scripts/ceremonies/retro.py`, 335 LOC) —
+          events.log analysis + retro.md template (machine sections
+          for prototype mode, full LLM sections for product).
+        - **designReview** (`scripts/ceremonies/design_review.py`,
+          132 LOC) — reviewer list + template + event.
+        - **inbox** (`scripts/ceremonies/inbox.py`, 115 LOC) —
+          Q&A file-drop scanner.
+
+      Behaviour preservation:
+
+        - Shape detection identical (baseline-empty-vague →
+          ui_surface.present → performance_budget → sensitive_or_auth
+          → pure_domain_logic → feature_completion).
+        - agent ordering preserved (audio-designer inserted before
+          a11y-auditor when has_audio=true).
+        - Idempotency: existing template files are not overwritten
+          unless `force=true`.
+        - events.log JSON line format matches Python (single-line,
+          ensure_ascii=False, Python-style separators).
+        - Retro analyze() event-key contract: `feature` (not
+          `feature_id`), `feature_done` (not `feature_completed`).
+
+    acceptance_criteria:
+      - "AC-1: src/ceremonies/{kickoff,retro,designReview,inbox}.ts ported with full public API."
+      - "AC-2: detectShapes returns the same shape list as Python for a matrix of feature inputs."
+      - "AC-3: agentsForShapes injects audio-designer before a11y-auditor when has_audio=true."
+      - "AC-4: Generated kickoff.md / retro.md / design-review/F-N.md byte-equal Python for canonical fixtures."
+      - "AC-5: Idempotency — running generateKickoff twice on the same feature does not re-write the file or emit a duplicate event."
+      - "AC-6: F-097 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-7: F-097 completed via the work.py cycle on the umbrella branch."
+
+  - id: "F-098"
+    name: "TS migration — port metrics.ts (events.log aggregation, read-only)"
+    type: "feature"
+    description: |
+      Fifteenth cycle of the v1.0 migration thread. Ports
+      `scripts/metrics.py` (402 LOC) — read-only event log
+      aggregation. CQS: events.log not modified; mtime invariant.
+
+      Public API ported:
+
+        - `parsePeriod(text)` — `'7d'` / `'24h'` / `'30m'` →
+          milliseconds.
+        - `aggregate(events, options)` — counts, lead time, gate
+          stats, drift incidents.
+        - `compute(harnessDir, options)` — period/since filtering +
+          aggregation.
+        - `MetricsReport` interface matching the Python dict shape.
+
+      Behaviour preservation:
+
+        - Same period unit map (s/m/h/d/w).
+        - Same lead-time pairing rule: most recent feature_activated
+          → first feature_done per feature.
+        - Same gate stats keys (pass/fail/skipped/other/pass_rate).
+        - Same JSON dict shape from `aggregate()` (window, total_events,
+          event_types, features, lead_time_sec, gate_stats,
+          drift_incidents).
+
+    acceptance_criteria:
+      - "AC-1: src/metrics.ts exports `parsePeriod`, `aggregate`, `compute`, `formatHuman`, `MetricsReport`."
+      - "AC-2: parsePeriod accepts s/m/h/d/w units (case-insensitive)."
+      - "AC-3: aggregate produces identical lead time stats for canonical fixtures."
+      - "AC-4: gate stats pass_rate excludes skipped from the denominator."
+      - "AC-5: F-098 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-6: F-098 completed via the work.py cycle on the umbrella branch."
+
+  - id: "F-099"
+    name: "TS migration — port ui/intentPlanner.ts (next-action suggestions)"
+    type: "feature"
+    description: |
+      Sixteenth cycle of the v1.0 migration thread. Ports
+      `scripts/ui/intent_planner.py` (337 LOC) — the deterministic
+      "next actions" recommender used by the dashboard. Pure logic
+      (no I/O), no LLM call.
+
+      Public API ported:
+
+        - `suggest(stateData, spec?, options?)` — returns up to 3
+          ordered Suggestions.
+        - `Suggestion` interface with `label / action / featureId? / gate?`.
+        - `Action` literal type — exhaustive union of routing
+          identifiers.
+
+      Behaviour preservation:
+
+        - Same priority order (blocked → fail → next gate → evidence →
+          complete).
+        - Same Korean labels — preserved verbatim for dashboard parity.
+        - Same idle path (resume → start → init).
+        - F-079 coverage carry-forward suggestion prepended when
+          coverage < default threshold (0.80).
+
+    acceptance_criteria:
+      - "AC-1: src/ui/intentPlanner.ts exports `suggest`, `Suggestion`, `Action` types."
+      - "AC-2: Active-feature priority order matches Python (blocked → fail → next-gate → evidence → complete)."
+      - "AC-3: Idle path returns resume/start/init based on state."
+      - "AC-4: Coverage < 0.80 prepends review_carry_forward suggestion."
+      - "AC-5: F-099 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-6: F-099 completed via the work.py cycle on the umbrella branch."
+
+  - id: "F-100"
+    name: "TS migration — port check.ts (drift detection, 13 detectors)"
+    type: "feature"
+    description: |
+      Seventeenth cycle of the v1.0 migration thread. Most complex
+      single port. Mirrors `scripts/check.py` (1054 LOC) — drift
+      detection across 13 kinds, with a fast-path `runBlockingCheck`
+      used by complete()'s F-048 wire-integrity gate.
+
+      Public API ported:
+
+        - `DriftFinding` interface (`kind / path / message / severity`).
+        - `CheckReport` interface (`findings / checked / clean`).
+        - 13 `check*` detector functions (one per drift kind).
+        - `runCheck(harnessDir, projectRoot?)` — full 13-detector
+          report.
+        - `runBlockingCheck(harnessDir, projectRoot?)` — fast path
+          (Code · Stale · AnchorIntegration · Coverage only).
+        - `formatHuman(report)` — text report.
+
+      Drift kinds covered:
+
+        Generated, Derived, Spec, Include, Evidence, Code, Doc,
+        Anchor (+ Adr supersedes consistency), Protocol, Stale,
+        AnchorIntegration, Coverage.
+
+      Behaviour preservation:
+
+        - Detector ordering identical to Python in runCheck.
+        - Severity assignment identical (error vs warn).
+        - F-078 Coverage threshold reads from
+          `harness.yaml.coverage.threshold`, default 0.80.
+        - Anchor cycle detection (DFS WHITE/GRAY/BLACK) preserved.
+        - Bidirectional supersedes consistency check.
+        - Stale + AnchorIntegration heuristics: basename match or
+          `/<stem>` / `'<stem>` / `"<stem>` path-token match.
+
+    acceptance_criteria:
+      - "AC-1: src/check.ts exports `runCheck`, `runBlockingCheck`, `formatHuman`, plus the 13 detector functions."
+      - "AC-2: DriftFinding + CheckReport interfaces match Python shape (kind/path/message/severity)."
+      - "AC-3: runCheck on a clean harness dir returns clean=true with all 13 categories in `checked[]`."
+      - "AC-4: Drift detection on canonical fixtures (missing Derived hash, broken depends_on, etc.) emits findings with the right kind + severity."
+      - "AC-5: runBlockingCheck only emits Code · Stale · AnchorIntegration · Coverage findings."
+      - "AC-6: Coverage threshold reads from harness.yaml override; defaults to 0.80."
+      - "AC-7: F-100 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-8: F-100 completed via the work.py cycle on the umbrella branch."
+
+  - id: "F-101"
+    name: "TS migration — port scan/{structure,manifest,areaResolver}.ts"
+    type: "feature"
+    description: |
+      Eighteenth cycle of the v1.0 migration thread. Ports three of
+      the five scan modules (work.py auto-wire deps).
+
+      Modules ported:
+
+        - **scan/structure** (`scripts/scan/structure.py`, 130 LOC) —
+          F-036 directory shape + entity-candidate file detection.
+        - **scan/manifest** (`scripts/scan/manifest.py`, 222 LOC) —
+          F-036 tech_stack + project name extraction across
+          package.json / pyproject.toml / Cargo.toml / go.mod.
+        - **scan/areaResolver** (`scripts/scan/area_resolver.py`,
+          150 LOC) — F-037 feature.modules → AreaRecord cluster
+          resolver.
+
+      Behaviour preservation:
+
+        - Ignored dirs list identical to Python (.git, node_modules,
+          dist, etc.).
+        - Detection priority: package.json > pyproject.toml >
+          Cargo.toml > go.mod.
+        - TOML parsing via @iarna/toml (graceful no-op when the dep
+          is missing — mirrors Python's tomli optional-import
+          pattern).
+        - AreaRecord cluster key uses first 2 path segments.
+        - Slug regex matches Python: `[^a-zA-Z0-9]+` → `-`.
+
+    acceptance_criteria:
+      - "AC-1: src/scan/{structure,manifest,areaResolver}.ts ported with full public API."
+      - "AC-2: scanStructure returns identical shape to Python for canonical fixtures (top_dirs, adr_dir, entity_candidate_files, readme_path)."
+      - "AC-3: extractTechStack picks the right runtime from each manifest."
+      - "AC-4: resolveAreas clusters modules with the same first-two path segments."
+      - "AC-5: F-101 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-6: F-101 completed via the work.py cycle on the umbrella branch."
+
+  - id: "F-102"
+    name: "TS migration — port work.ts (lifecycle orchestrator, biggest single file)"
+    type: "feature"
+    description: |
+      Nineteenth cycle of the v1.0 migration thread. Largest single
+      port — 1570 LOC Python scripts/work.py to TypeScript.
+
+      Public API ported (camelCase TS, semantic 1:1 with Python):
+
+        - `WorkResult` interface with all fields.
+        - `activate(harnessDir, fid, options?)` — planned →
+          in_progress with kickoff/design-review auto-wire.
+        - `recordGate(harnessDir, fid, gateName, result, options?)` —
+          state mutation + events.log + design-review re-evaluation.
+        - `addEvidence(harnessDir, fid, kind, summary)` — state +
+          events.log.
+        - `block(harnessDir, fid, reason, options?)` — status →
+          blocked.
+        - `complete(harnessDir, fid, options?)` — Iron Law (gate_5
+          pass + declared evidence ≥ N) + working-tree-clean guard
+          + F-048 drift × Iron Law gating + retro auto-wire.
+        - `archive(harnessDir, fid, options?)` — done → archived
+          with superseded_by validation.
+        - `current(harnessDir)` — read-only active feature query.
+        - `runAndRecordGate(harnessDir, fid, gateName, options?)` —
+          gate runner integration with auto-evidence on pass.
+        - `deactivate(harnessDir)`, `removeFeature(harnessDir, fid)`.
+
+      Auto-wire helpers ported:
+
+        - `_autowireKickoff` — fires generateKickoff with shape
+          detection.
+        - `_autowireRetro` — fires generateRetro after complete.
+        - `_autowireDesignReview` — 4-condition AND check.
+
+      Auto-wire helpers stubbed (deps not yet ported):
+
+        - `_autowireQuantLint` — needs spec/quant_claims (deferred).
+        - `_autowireFogClear` — needs scan/chapter_writer +
+          scan/style_fingerprint (deferred).
+        - `_autowireInitialSync` — wires sync.tryInitialSync (already
+          ported in F-096).
+
+      Behaviour preservation:
+
+        - Iron Law thresholds: prototype=1, product=3, hotfix=1.
+        - Working-tree-clean guard with whitelist
+          (.harness/state.yaml, .harness/_workspace/*, CHANGELOG.md).
+        - F-048 blocking drift kinds: Code · Stale ·
+          AnchorIntegration · Coverage. hotfix override.
+        - Product mode strict: any failed gate blocks complete()
+          unless --hotfix-reason.
+        - Idempotency: already-done complete() returns queried;
+          already-archived archive() returns queried.
+
+    acceptance_criteria:
+      - "AC-1: src/work.ts exports `activate`, `recordGate`, `addEvidence`, `block`, `complete`, `archive`, `current`, `runAndRecordGate`, `deactivate`, `removeFeature`, `WorkResult` interface."
+      - "AC-2: activate transitions planned → in_progress, fires kickoff + design-review auto-wires."
+      - "AC-3: complete enforces Iron Law (gate_5 + declared evidence) + working-tree-clean + F-048 drift gating."
+      - "AC-4: hotfix override collapses required to 1 and records hotfix evidence."
+      - "AC-5: runAndRecordGate calls gate runner + records result + adds evidence on pass."
+      - "AC-6: events.log lines byte-equal Python (Python-style separators)."
+      - "AC-7: F-102 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-8: F-102 completed via the work.py cycle on the umbrella branch."
+
+  - id: "F-103"
+    name: "TS migration — port ui/dashboard.ts (no-args dashboard renderer)"
+    type: "feature"
+    description: |
+      Twentieth cycle of the v1.0 migration thread. Ports
+      `scripts/ui/dashboard.py` (492 LOC) — the pure renderer used
+      by `/harness-boot:work` no-args dashboard.
+
+      Public API ported:
+
+        - `render(stateData, spec, suggestions, options?)` — returns
+          a single multi-line string.
+        - `loadCoverage(harnessDir, fid)` — F-079 fingerprint reader.
+
+      Behaviour preservation:
+
+        - i18n labels honor resolved lang (en / ko).
+        - Sections in fixed order: header → active feature →
+          others-in-progress → on-hold → pending → next candidates
+          (spec-only) → coverage debt → suggestions.
+        - Coverage line ratio formatting identical: "coverage: NN%
+          (a/d metric, ...)".
+        - Truncation limits read from dashboardConfig env overrides.
+        - Empty-state hint when no features tracked.
+        - Trailing newline behaviour matches Python.
+
+    acceptance_criteria:
+      - "AC-1: src/ui/dashboard.ts exports `render`, `loadCoverage`."
+      - "AC-2: Renders sections in canonical order with Korean labels by default."
+      - "AC-3: Coverage debt section emits alert when below-threshold > 5."
+      - "AC-4: Truncation honors HARNESS_DASHBOARD_MAX_* env overrides."
+      - "AC-5: F-103 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-6: F-103 completed via the work.py cycle on the umbrella branch."
+
+  - id: "F-104"
+    name: "TS migration — bin/harness CLI shim (commander-based entry point)"
+    type: "feature"
+    description: |
+      Twenty-first cycle of the v1.0 migration thread. Adds the
+      single-binary CLI entry point that wraps every ported module
+      into one `harness <subcommand>` interface. This is the v1.0
+      release path entry point — slash commands will eventually
+      shell out to `npx harness <verb>` instead of
+      `python3 scripts/<file>.py`.
+
+      Subcommands ported:
+
+        - `harness work [F-N] [...flags]` — dashboard / activate /
+          gate / evidence / block / complete / archive / current /
+          deactivate / remove (full work.py CLI surface).
+        - `harness sync [...flags]` — sync orchestrator with
+          `--soft` fail-open mode.
+        - `harness check [...flags]` — drift detection report.
+        - `harness status [...flags]` — read-only state summary.
+        - `harness events [...flags]` — events.log filter.
+        - `harness metrics [...flags]` — events.log aggregator.
+        - `harness validate <spec.yaml>` — spec validator.
+
+      Behaviour preservation:
+
+        - `--harness-dir` default `./.harness` matches Python CLIs.
+        - Exit codes mirror Python: 0 success · 2 IO error ·
+          3 invalid input · 5 schema error · 6 drift detected.
+        - JSON / human output shape identical for every subcommand.
+        - Auto-evidence on gate_run pass preserved.
+
+    acceptance_criteria:
+      - "AC-1: bin/harness shebang + commander wiring exports every subcommand."
+      - "AC-2: package.json `bin` field maps `harness` → `bin/harness.js`."
+      - "AC-3: `npx harness work F-001` activates a feature, `--complete` enforces Iron Law, `--run-gate gate_0` invokes gate runner."
+      - "AC-4: `npx harness sync` produces same SyncResult JSON as Python sync.py --json."
+      - "AC-5: `npx harness check --json` produces drift findings with same structure as Python."
+      - "AC-6: F-104 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-7: F-104 completed via the work.py cycle on the umbrella branch."
+
+  - id: "F-105"
+    name: "TS migration audit — build + bin + parity verification (pre-v1.0 gate)"
+    type: "feature"
+    description: |
+      Twenty-second cycle of the v1.0 migration thread. Pre-v1.0
+      verification cycle — not a new port but an audit of everything
+      shipped in F-084 → F-104.
+
+      Audit findings + fixes:
+
+        1. **Build emission** — `tsc -p tsconfig.json` choked on
+           `cli.test.ts` because Node 22's `process.exit` types
+           accept `string | number | null` while my mock declared
+           only `number | null`. Widened the mock signature.
+        2. **Dist layout** — single `tsconfig.json` set `rootDir: '.'`
+           which made `dist/` mirror the full repo (`dist/src/...`,
+           `dist/tests/...`). Split into `tsconfig.build.json` with
+           `rootDir: 'src'` so `dist/cli/harness.js` resolves
+           directly off the bin shim. `npm run build` now wipes
+           `dist/` first for clean output.
+        3. **CLI self-invocation** — src/cli/harness.ts had a
+           `process.argv[1].endsWith('harness.js')` branch that
+           triggered alongside bin/harness.js's `main(...)` call,
+           producing duplicate output. Removed.
+        4. **Parity verification** — TS vs Python output checked
+           on the live `.harness/`:
+           - `status --json` — substantive parity (cosmetic key-
+             order difference because Python's `frozenset`
+             iteration is non-deterministic; TS array ordering is
+             actually stricter).
+           - `events --json` — byte-equal.
+           - `check --json` — clean=true on both, identical 13
+             checked categories.
+           - `metrics --json` — total_events, features.done, and
+             gate_stats keys all match.
+           - `sync --soft` — idempotent skip on second call.
+           - `validate` — canonical sample spec accepts on both.
+        5. **Regression** — Python 1192 + TS 467 + self_check 5/5
+           all green after build fixes.
+
+      Out of scope for this cycle (deferred):
+
+        - Auto-wire restoration (quant_lint, fog_clear) — needs
+          spec/quantClaims + scan/{chapterWriter, seedSpec,
+          styleFingerprint} ports.
+        - Slash command wrapper migration to `npx harness`.
+        - Python entry-point deprecation.
+
+    acceptance_criteria:
+      - "AC-1: `npm run build` produces `dist/` with `cli/harness.js` resolvable from `bin/harness.js`."
+      - "AC-2: `node bin/harness.js status --harness-dir .harness` prints status without duplicating output."
+      - "AC-3: `harness check --json` and `python3 scripts/check.py --json` agree on `clean` and `checked[]`."
+      - "AC-4: `harness sync --soft` exits 0 and reports `already synced` on a populated harness."
+      - "AC-5: `harness validate docs/samples/harness-boot-self/spec.yaml` succeeds."
+      - "AC-6: Python 1192 + TS 467 parity + self_check 5/5 all PASS."
+      - "AC-7: F-105 mirrored on both spec.yaml copies."
+      - "AC-8: F-105 completed via the work.py cycle on the umbrella branch."
+
+  - id: "F-106"
+    name: "Repository cleanup — scripts/ → legacy/scripts/ + README sync"
+    type: "feature"
+    description: |
+      Twenty-third cycle of the v1.0 migration thread. Reorganises
+      the repo so the TypeScript layer (src/ + dist/ + bin/) is the
+      visible primary surface while the Python implementation is
+      preserved verbatim under legacy/scripts/ as backup.
+
+      What ships:
+
+        - `git mv scripts/ → legacy/scripts/` — every Python module
+          relocated as one move (preserves git history per file).
+        - sed across the repo to update every reference: tests'
+          `sys.path.insert(0, REPO_ROOT / "scripts")`, slash command
+          markdowns, hooks, docs, and CLAUDE.md.
+        - README.md + README.ko.md — adds Node.js 20+ requirement,
+          documents the TS layer, points new users at `harness-boot`
+          (TS) while still mentioning `legacy/scripts/` for those
+          tracking the Python pedigree.
+        - `scripts/self_check.sh` → repo-root `self_check.sh` so the
+          path is stable regardless of where the implementation
+          lives.
+        - CLAUDE.md §3 + §6 + §7 updated with the new layout +
+          `npm run` commands.
+
+      Behaviour preservation:
+
+        - Full Python regression suite still passes (every test now
+          imports from `legacy/scripts/...`).
+        - All TS parity tests still pass.
+        - `self_check.sh` 5/5 still passes (calls Python via the
+          relocated path).
+        - Slash commands still work — they call `python3
+          "$PLUGIN_ROOT/legacy/scripts/work.py"` instead of the old
+          path.
+
+      Out of scope:
+
+        - Slash command migration to `npx harness` (deferred; needs
+          dist/ commit strategy + plugin install hook).
+        - Python module deletion (these are kept as the operational
+          fallback until the TS layer has external-dogfood signal).
+
+    acceptance_criteria:
+      - "AC-1: scripts/ moved to legacy/scripts/ via git mv (history preserved per file)."
+      - "AC-2: All tests/**/*.py sys.path imports updated to legacy/scripts."
+      - "AC-3: commands/{init,work}.md + hooks/*.sh reference legacy/scripts/work.py."
+      - "AC-4: README.md + README.ko.md document the TS layer + Node.js 20+ requirement."
+      - "AC-5: Full Python regression suite + TS parity suite + 5/5 self_check all PASS after the move."
+      - "AC-6: CLAUDE.md §3 + §6 reflect the new repo layout."
+      - "AC-7: F-106 mirrored on both spec.yaml copies."
+      - "AC-8: F-106 completed via the work.py cycle on the umbrella branch."
+
+  - id: "F-107"
+    name: "TS-only cutover — Python operational surface removed"
+    type: "feature"
+    description: |
+      Twenty-fourth cycle of the v1.0 migration thread. Closes the
+      Python ↔ TS cohabitation phase: TypeScript becomes the only
+      surface users, slash commands, and self-check exercise. The
+      Python implementation stays under `legacy/scripts/` as a code
+      archive but is no longer wired into anything visible.
+
+      What changes:
+
+        - `dist/` is committed (no longer gitignored) so plugin
+          install works without `npm run build`.
+        - `commands/init.md` + `commands/work.md`: every Python
+          bash block flips to `node "$PLUGIN_ROOT/bin/harness.js"
+          <subcommand>`.
+        - `hooks/pre-commit-phase2.sh`: install path + heredoc
+          guidance now points at the `harness` CLI.
+        - `self_check.sh`: 5 steps now run through
+          `node bin/harness.js {validate,sync,check}` instead of
+          `python3 legacy/scripts/...`.
+        - `README.md` + `README.ko.md`: Python requirement removed,
+          Node.js 20+ becomes the only listed runtime.
+        - `CLAUDE.md`: §3 / §6 / §7 reflect TS-only operation.
+        - `tests/` Python suites stay as a quarantine surface; the
+          operational verification is `npm run test:parity` which
+          is what CI keys off going forward.
+        - `package.json` scripts: `prepare` script triggers a build
+          when `dist/` is missing so a fresh clone has a usable CLI
+          before any explicit build step.
+
+      Out of scope:
+
+        - Deletion of `legacy/scripts/` (kept until external
+          dogfood signals zero regressions on TS-only).
+        - Deletion of `tests/{unit,integration}` (kept as parallel
+          parity safety net during the quarantine phase).
+        - v1.0 release tag (user decision, not part of this cycle).
+
+    acceptance_criteria:
+      - "AC-1: dist/ removed from .gitignore and committed; bin/harness.js resolves out of the box."
+      - "AC-2: commands/{init,work}.md no longer reference python3 in any bash block."
+      - "AC-3: hooks/pre-commit-phase2.sh refers to the harness CLI in heredoc + install message."
+      - "AC-4: self_check.sh 5/5 PASS using node bin/harness.js for validate, sync, check."
+      - "AC-5: README.md + README.ko.md — Python requirement and pytest invocation removed."
+      - "AC-6: CLAUDE.md repo layout + reference table reflect TS-only surfaces."
+      - "AC-7: TS parity + npm run build + node bin/harness.js status all PASS."
+      - "AC-8: F-107 completed via the harness CLI cycle on the umbrella branch."
+
+  - id: "F-108"
+    name: "Migration + functionality audit (post-cutover end-to-end review)"
+    type: "feature"
+    description: |
+      Twenty-fifth cycle of the v1.0 migration thread. Comprehensive
+      audit after the F-107 TS-only cutover. Goal: confirm the
+      migration is correct end-to-end and that the three canonical
+      entry points (idea-only init, plan.md init, brownfield init)
+      all drive a feature lifecycle to completion through the TS
+      CLI alone.
+
+      Audit dimensions:
+
+        - Code: walk every src/*.ts file, flag stale Python refs in
+          comments, dead imports, half-ported helpers, missing
+          exports.
+        - Parity: pick three tricky modules (canonicalHash, check,
+          work) and diff TS output vs the legacy Python on the same
+          fixture. Flag any non-cosmetic divergence.
+        - Docs: line-by-line walk README.md, README.ko.md,
+          CLAUDE.md, commands/{init,work}.md, hooks/*.sh,
+          self_check.sh, plugin manifests. Verify zero python3
+          references and consistent v0.13.0 versioning.
+        - E2E case 1 (idea-only): simulate `/harness-boot:init
+          "<idea>"` → stub spec.yaml → drive a feature through
+          lifecycle. Confirm state.yaml + events.log + ceremony
+          files materialize correctly.
+        - E2E case 2 (plan.md): simulate `/harness-boot:init
+          plan.md` → richer-context spec → drive 1-2 features
+          through lifecycle. Confirm same.
+        - E2E case 3 (brownfield): simulate a project with
+          package.json + source files → currently falls back to
+          Option 1 → drive F-0 walking skeleton on top. Confirm
+          fallback path is clean.
+
+      Out of scope:
+
+        - Any new feature work (this is a verification cycle).
+        - LLM-driven init steps (we stub the LLM output and verify
+          the deterministic harness behaviour).
+
+    acceptance_criteria:
+      - "AC-1: src/ tree audit complete — every module exports what cli/work consumes; no orphan helpers."
+      - "AC-2: TS-vs-Python parity sample passes for canonicalHash + check + work; only cosmetic differences (key order, whitespace) tolerated."
+      - "AC-3: README.md + README.ko.md + CLAUDE.md zero python3 references; v0.13.0 consistent across badges, status block, plugin manifest."
+      - "AC-4: commands/{init,work}.md zero python3 references; every bash block calls node bin/harness.js or shell builtins."
+      - "AC-5: E2E case 1 (idea-only) — harness work F-N activate → gate_0/5 PASS → evidence → complete done; retro file generated."
+      - "AC-6: E2E case 2 (plan.md) — same lifecycle on a richer spec; second feature also completes."
+      - "AC-7: E2E case 3 (brownfield) — fallback to Option 1 produces a clean .harness/ layout; F-0 walking skeleton can run on top."
+      - "AC-8: Audit report written to .harness/_workspace/audit/F-108.md with PASS/WARN/BLOCK per finding."
+
+  - id: "F-109"
+    name: "Install + CI verification (post-cutover supply chain)"
+    type: "feature"
+    description: |
+      Twenty-sixth cycle. Two leverage points the F-108 audit
+      flagged as remaining unknowns:
+
+        1. Fresh-clone install path — does the committed `dist/`
+           plus `bin/harness.js` actually run on a brand-new
+           machine without `npm install`? `bin/harness.js` does
+           `import('../dist/cli/harness.js')` which in turn imports
+           `commander`, `yaml`, `ajv`, `smol-toml` — those need to
+           be in `node_modules` for the CLI to start. So the answer
+           is "you do need npm install for runtime deps, but you do
+           NOT need npm run build because dist/ is committed".
+        2. CI workflow — `.github/workflows/self-check.yml` was
+           authored when the operational layer was Python. After
+           F-107 it must (a) install Node, (b) skip the pytest
+           setup, (c) run `npm install && bash self_check.sh`.
+
+      Audit fixes (if any) applied inline.
+
+    acceptance_criteria:
+      - "AC-1: .github/workflows/self-check.yml runs `npm install` + `bash self_check.sh` on a Node 20 runner; no pytest / Python step left."
+      - "AC-2: Fresh-clone simulation — `git clone` + `npm install` + `node bin/harness.js status --harness-dir <fresh>/.harness` produces a status report without build step."
+      - "AC-3: Without `npm install`, `node bin/harness.js --version` either succeeds (no runtime deps loaded) OR fails with a clear `Cannot find module 'commander'` so the user knows the next step."
+      - "AC-4: .claude-plugin/{plugin,marketplace}.json — name + version + source align; bin field present and points at bin/harness.js."
+      - "AC-5: F-109 mirrored on both spec.yaml copies."
+      - "AC-6: F-109 completed via the harness CLI cycle on the umbrella branch."
+
+  - id: "F-110"
+    name: "Single-file bundle for plugin install (esbuild)"
+    type: "feature"
+    description: |
+      Twenty-seventh cycle. F-109 verified that the plugin install
+      path needs `npm install` at the install site to pull runtime
+      deps (commander · yaml · ajv · ajv-formats · smol-toml). But
+      Claude Code's plugin install mechanism does NOT auto-run
+      `npm install` — it just copies repo files into
+      `~/.claude/plugins/cache/<owner>/<plugin>/<version>/`. So the
+      installed plugin has no `node_modules` and the CLI fails to
+      start.
+
+      Fix: ship a single-file esbuild bundle at
+      `dist/cli/harness.bundle.mjs` that inlines every runtime dep
+      via static imports. `bin/harness` becomes a 14-line shim that
+      `import()`s the bundle. The `bin/` directory is auto-added to
+      PATH by Claude Code (per plugin-spec docs), so user-facing
+      calls look like plain `harness work F-N` — no absolute path,
+      no node prefix, no `$PLUGIN_ROOT/bin/harness.js` boilerplate.
+
+      Side-quests:
+        - `src/spec/validate.ts` was using `createRequire` to load
+          `ajv/dist/2020.js` and `ajv-formats`. esbuild can't trace
+          dynamic require, so refactor to static imports with a
+          default-export unwrap fallback (handles both ESM and CJS
+          interop modes of the dep).
+        - `package.json prepare` hook was buggy:
+          `node -e "...|| process.exit(0)" || npm run build` always
+          exits 0, so the build never fired. Replace with
+          `test -f dist/cli/harness.bundle.mjs || npm run build`.
+        - All bash blocks in commands/{init,work}.md plus
+          hooks/pre-commit-phase2.sh + self_check.sh switch from
+          `node "$PLUGIN_ROOT/bin/harness.js" <subcmd>` to plain
+          `harness <subcmd>`.
+
+    acceptance_criteria:
+      - "AC-1: package.json `bundle` script invokes esbuild with `--bundle --platform=node --format=esm --target=node20` plus a `createRequire` banner for ESM/CJS interop."
+      - "AC-2: `dist/cli/harness.bundle.mjs` is a single file < 1MB that contains commander, yaml, ajv, ajv-formats, smol-toml inlined."
+      - "AC-3: Fresh-clone simulation — copy bin/+dist/+docs/+.claude-plugin/ to a temp dir with NO node_modules, then `node bin/harness {--version, status, validate, work}` all succeed."
+      - "AC-4: `bin/harness` (no .js suffix) — Claude Code auto-PATH means users just call `harness <subcmd>` after install."
+      - "AC-5: All slash-command bash blocks reference plain `harness` (no `$PLUGIN_ROOT/bin/harness.js` indirection)."
+      - "AC-6: `src/spec/validate.ts` uses static imports for ajv subpath (esbuild-traceable), with default-export unwrap for both interop modes."
+      - "AC-7: F-110 mirrored on both spec.yaml copies."
+      - "AC-8: F-110 completed via the harness CLI cycle on the umbrella branch."
+
+  - id: "F-111"
+    name: "README dependency-section purge after bundle cutover"
+    type: "feature"
+    description: |
+      Twenty-eighth cycle. Follow-up to F-110: now that the
+      esbuild bundle inlines every runtime dep, the user-facing
+      "Requirement" line in README.md / README.ko.md is wrong.
+      Both files used to enumerate `commander`, `yaml`, `ajv`,
+      `smol-toml` as runtime deps and instruct `npm install` —
+      neither is true for plugin users anymore. The plugin
+      installs via `/plugin marketplace add` + `/plugin install`,
+      and `bin/harness` runs the inlined bundle. No node_modules,
+      no enumerated deps.
+
+      The "fresh clone" block lower in the README is a different
+      audience — contributors who want to build from source still
+      need `npm install` for devDependencies (eslint, vitest,
+      esbuild, typescript). Reword that block to make the
+      contributor-only scope explicit instead of removing it.
+
+    acceptance_criteria:
+      - "AC-1: README.md user-facing 'Requirement' line — no enumeration of runtime npm packages, no `npm install` instruction in the install/use path."
+      - "AC-2: README.ko.md '의존성' line mirrors AC-1 (no runtime npm package enumeration, no `npm install` in user install path)."
+      - "AC-3: README.md fresh-clone block reframed as 'For contributors' — `npm install` retained because devDeps still apply."
+      - "AC-4: README.ko.md mirrors AC-3 ('기여자용' or equivalent labeling)."
+      - "AC-5: F-111 mirrored on both spec.yaml copies."
+      - "AC-6: F-111 completed via the harness CLI cycle on the umbrella branch."
+
+  - id: "F-112"
+    name: "Drop the user-facing Node.js requirement line"
+    type: "feature"
+    description: |
+      Twenty-ninth cycle. Follow-up to F-111. The "Requirement:
+      Node.js 20+" line was the last user-facing prerequisite
+      mention left after the bundle cutover, and even that is
+      noise: harness-boot is a Claude Code plugin, and anyone who
+      already runs Claude Code has Node available — Claude Code's
+      own plugin runtime depends on it. Telling them to install
+      Node is like telling a Chrome user to install JavaScript.
+
+      Per user direction (2026-04-29): drop the line outright
+      from both README.md and README.ko.md rather than keep it
+      as defensive copy.
+
+      The contributor block lower in each README still mentions
+      Node implicitly via `npm install` — that's the right place
+      for it (devDependency context for source builds).
+
+    acceptance_criteria:
+      - "AC-1: README.md line 97 'Requirement: Node.js 20+ ...' removed entirely (not reworded — gone)."
+      - "AC-2: README.ko.md line 97 '필요한 것: Node.js 20+ ...' removed entirely."
+      - "AC-3: The 'If it takes more than 5 minutes' reassurance line follows directly from the work command snippet, no orphan Requirement gap."
+      - "AC-4: The contributor block lower in both files is untouched."
+      - "AC-5: F-112 mirrored on both spec.yaml copies."
+      - "AC-6: F-112 completed via the harness CLI cycle on the umbrella branch."
+
+  - id: "F-113"
+    name: "Python ↔ TS coverage audit + 0.13.0 version lock"
+    type: "feature"
+    description: |
+      Thirtieth cycle. Two parts:
+
+      1. **Module-by-module coverage audit.** Walk every file
+         under `legacy/scripts/` against `src/`, classify each
+         Python module as PORTED · MERGED-INTO · INTENTIONALLY-
+         DROPPED · MISSING. Produce
+         `.harness/_workspace/audit/F-113.md` with the matrix.
+         "Missing" findings either get a follow-up F-cycle or a
+         documented justification (per-user direction:
+         optimization-driven drops are acceptable).
+
+      2. **Version walk-back to 0.13.0.** F-110 bumped to 0.13.1
+         per habit, but the user wants to lock 0.13.0 as the
+         single TS-migration release. The supply-chain follow-ups
+         (F-110/F-111/F-112) are part of the same unreleased
+         working set, not separate releases. Walk back:
+         - `package.json.version` 0.13.1 → 0.13.0
+         - `src/cli/harness.ts` `.version('0.13.1')` → `('0.13.0')`
+         - PR #46 title + body — drop "v1.0" framing per memory
+           `feedback_no_v1_framing`. The migration delivers
+           **0.13.0**, not v1.0; v1.0 sits on a far horizon.
+
+    acceptance_criteria:
+      - "AC-1: `.harness/_workspace/audit/F-113.md` exists with a per-module matrix covering every file in legacy/scripts/."
+      - "AC-2: Each Python module is labeled PORTED · MERGED · DROPPED · MISSING with a concrete TS twin path or reason."
+      - "AC-3: Any MISSING entry either spawns a follow-up F-cycle entry in spec.yaml or has a written justification (e.g., 'optimization: feature X never reached external dogfood, dropped intentionally')."
+      - "AC-4: package.json version field reads exactly `0.13.0` (not 0.13.1)."
+      - "AC-5: src/cli/harness.ts `.version('...')` literal reads exactly `0.13.0`."
+      - "AC-6: PR #46 title contains no `v1.0` token; body release-plan section reflects 0.13.0 as the migration release."
+      - "AC-7: F-113 mirrored on both spec.yaml copies."
+      - "AC-8: F-113 completed via the harness CLI cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

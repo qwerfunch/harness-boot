@@ -6,7 +6,7 @@ import os
 import unittest
 from unittest import mock
 
-from scripts.ui.dashboard import render
+from legacy.scripts.ui.dashboard import render
 
 
 def _state(active: str = "F-100") -> dict:

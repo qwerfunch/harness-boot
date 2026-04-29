@@ -6,8 +6,8 @@
 
 Claude Code 위에서 도는 multi-agent 개발 하네스. 다른 AI 도구가 *능력* 을 더할 때, harness-boot 는 *방향* 을 만듭니다.
 
-[![plugin](https://img.shields.io/badge/plugin-v0.11.11-blue)](.claude-plugin/plugin.json)
-[![tests](https://img.shields.io/badge/tests-1131%20passing-brightgreen)](tests)
+[![plugin](https://img.shields.io/badge/plugin-v0.13.0-blue)](.claude-plugin/plugin.json)
+[![tests](https://img.shields.io/badge/tests-467%20passing-brightgreen)](tests/parity)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 ---
@@ -93,8 +93,6 @@ cd my-new-project
 ```bash
 /harness-boot:work
 ```
-
-**의존성**: Python 3.10+, `pyyaml` (필수), `jsonschema` (권장).
 
 5 분 이상 걸리면 [issue 알려주세요](https://github.com/qwerfunch/harness-boot/issues).
 
@@ -204,26 +202,31 @@ harness-boot/
 ├── agents/                전문가 에이전트 정의
 ├── commands/              슬래시 명령 (init · work)
 ├── hooks/                 session-bootstrap · prompt-log
-├── scripts/               Python 구현 (core · ceremonies · gate · render · spec · ui)
+├── src/                   TypeScript 구현
+├── dist/cli/              esbuild 단일 파일 번들 (commit 됨, 설치 측 node_modules 불필요)
+├── bin/harness            번들을 로드하는 Node 셈 — `harness <subcommand>`
+├── self_check.sh          5단계 자체 도그푸드 검증
 ├── skills/spec-conversion/  plan.md → spec.yaml 변환
 ├── docs/                  스키마 · 템플릿 · 샘플 · 결과물 데모
-└── tests/                 단위 · 통합 · 회귀 · 스케일
+└── tests/parity/          TS parity 테스트 스위트
 ```
 
 ---
 
 ## 현재 상태
 
-**v0.11.11** — 외부 채택 준비 단계, 자체 도그푸드 운영 중.
+**v0.13.0** — TS 단일 운영, 자체 도그푸드 운영 중.
 
 - 변경 이력 — [CHANGELOG.md](CHANGELOG.md)
 - 개발자 가이드 — [CLAUDE.md](CLAUDE.md)
 - 문제 보고 — [GitHub Issues](https://github.com/qwerfunch/harness-boot/issues)
 
 ```bash
-python3 -m pip install --user -r requirements-dev.txt
-python3 -m pytest tests/ -q
-bash scripts/self_check.sh
+# 소스에서 빌드/테스트하려는 기여자용 (devDependencies 만 필요 —
+# 사용자는 /plugin install 만으로 충분, npm 단계 불필요):
+npm install
+npm test            # vitest (parity 스위트)
+bash self_check.sh  # 5단계 구조 검증
 ```
 
 ---

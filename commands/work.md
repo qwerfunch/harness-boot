@@ -51,8 +51,8 @@ via the 4-strategy chain in `commands/init.md §2` (or `scripts/core/plugin_root
 ### Dashboard (v0.9.2 — empty call)
 
 ```bash
-python3 "$PLUGIN_ROOT/scripts/work.py" --harness-dir "$(pwd)/.harness"
-python3 "$PLUGIN_ROOT/scripts/work.py" --harness-dir "$(pwd)/.harness" --json
+harness work --harness-dir "$(pwd)/.harness"
+harness work --harness-dir "$(pwd)/.harness" --json
 ```
 
 With no arguments, you get a **read-only dashboard**.
@@ -88,7 +88,7 @@ issue an explicit subcommand, control routes to that branch.
 ### Activate
 
 ```bash
-python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --harness-dir "$(pwd)/.harness" --json
+harness work F-NNN --harness-dir "$(pwd)/.harness" --json
 ```
 
 - Transitions `planned` → `in_progress` and sets `session.active_feature_id`.
@@ -106,14 +106,14 @@ and no duplicate event. User edits inside
 `<!-- harness:user-edit-begin --> ... <!-- harness:user-edit-end -->`
 survive regeneration.
 
-**Opt out**: `python3 work.py F-NNN --no-fog` (this run only) or
+**Opt out**: `harness work F-NNN --no-fog` (this run only) or
 `spec.metadata.fog.disabled: true` (permanent). On greenfield
 (`origin: idea`) where fog adds noise, set `metadata.fog.disabled: true`.
 
 ### Record gate result (manual)
 
 ```bash
-python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --gate gate_0 pass --note "19 unit tests" --json
+harness work F-NNN --gate gate_0 pass --note "19 unit tests" --json
 ```
 
 Result ∈ {pass, fail, skipped}. On `pass`, `session.last_gate_passed`
@@ -122,9 +122,9 @@ updates.
 ### Auto-run a gate
 
 ```bash
-python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --run-gate gate_0 --json
-python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --run-gate gate_0 --override-command "pytest tests/unit" --json
-python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --run-gate gate_0 --project-root ../other --timeout 60
+harness work F-NNN --run-gate gate_0 --json
+harness work F-NNN --run-gate gate_0 --override-command "pytest tests/unit" --json
+harness work F-NNN --run-gate gate_0 --project-root ../other --timeout 60
 ```
 
 `scripts/gate/runner.py` auto-detects the runner:
@@ -166,13 +166,13 @@ declares a `performance_budget`.
 ### Add evidence
 
 ```bash
-python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --evidence "domain smoke passes" --kind test --json
+harness work F-NNN --evidence "domain smoke passes" --kind test --json
 ```
 
 ### Block
 
 ```bash
-python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --block "external API not deployed yet" --kind blocker --json
+harness work F-NNN --block "external API not deployed yet" --kind blocker --json
 ```
 
 → status `blocked` + reason recorded as evidence + `feature_blocked`
@@ -181,8 +181,8 @@ event appended to events.log.
 ### Complete (transition to done)
 
 ```bash
-python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --complete --json
-python3 "$PLUGIN_ROOT/scripts/work.py" F-NNN --complete --hotfix-reason "prod down — redis race"
+harness work F-NNN --complete --json
+harness work F-NNN --complete --hotfix-reason "prod down — redis race"
 ```
 
 **Iron Law** (v0.9.3 — BR-004 reinforcement):
@@ -220,7 +220,7 @@ real emergency bypass, use `--hotfix-reason`.
 ### Query the active feature (CQS — read-only)
 
 ```bash
-python3 "$PLUGIN_ROOT/scripts/work.py" --current --json
+harness work --current --json
 ```
 
 ## Coding style (read before implementing)
@@ -367,7 +367,7 @@ classifier; the routing falls out naturally:
 | "build it / write the code / add a test" | the engineer matched to the shape + `qa-engineer` |
 | "review / sign-off / wrap up" | `feature_completion` → `qa-engineer` → engineers → `integrator` → `tech-writer` → `reviewer` |
 
-**Routing transparency (F-038)**: right after `python3 work.py F-N`
+**Routing transparency (F-038)**: right after `harness work F-N`
 activate, the output adds a `routed agents: <chain>` line, and the
 no-args dashboard surfaces an `agent chain:` section for the active
 feature. **You don't have to open kickoff.md to know which agents
@@ -414,7 +414,7 @@ orchestrator) has filled in the headings, re-activating preserves the
 content. To force regeneration use the `--kickoff` flag:
 
 ```bash
-python3 "$PLUGIN_ROOT/scripts/work.py" F-N --kickoff --harness-dir .harness
+harness work F-N --kickoff --harness-dir .harness
 ```
 
 Use this when the agent lineup needs to refresh — typically because
@@ -427,12 +427,7 @@ the feature's shape changed. (Same pattern as `--design-review`.)
 `kickoff.generate_kickoff()` fires. Manual reproduction via the CLI:
 
 ```bash
-python3 "$PLUGIN_ROOT/scripts/ceremonies/kickoff.py" \
-    --harness-dir .harness \
-    --feature F-N \
-    --shape ui_surface.present \
-    --shape feature_completion \
-    [--has-audio]
+harness work F-N --kickoff --harness-dir .harness
 ```
 
 Shape detection rules (`kickoff.detect_shapes`):
@@ -495,7 +490,7 @@ tokens/motion/session-start says 200ms but the AC doesn't pin it.
 **Polling**:
 
 ```bash
-python3 "$PLUGIN_ROOT/scripts/ceremonies/inbox.py" --harness-dir .harness --feature F-N
+harness inbox --harness-dir .harness --feature F-N
 # → 🔒/⬜️ · 🔒 blocking · F-N · from → to · path
 ```
 
@@ -533,7 +528,7 @@ fails, silent skip.
 needs a refresh):
 
 ```bash
-python3 "$PLUGIN_ROOT/scripts/work.py" F-N --design-review --harness-dir .harness
+harness work F-N --design-review --harness-dir .harness
 ```
 
 The `--design-review` flag bypasses condition (3) and rewrites.
@@ -543,8 +538,7 @@ non-UI feature still does nothing.
 **Direct CLI** (raw template only):
 
 ```bash
-python3 "$PLUGIN_ROOT/scripts/ceremonies/design_review.py" \
-    --harness-dir .harness --feature F-N [--has-audio]
+harness work F-N --design-review --harness-dir .harness
 ```
 
 **Participants**: `visual-designer` + `frontend-engineer` +
@@ -575,14 +569,14 @@ it silent-skips (symmetric with kickoff).
 - Force regeneration with `--retro`:
 
 ```bash
-python3 "$PLUGIN_ROOT/scripts/work.py" F-N --retro --harness-dir .harness
+harness work F-N --retro --harness-dir .harness
 ```
 
 (Same pattern as `--kickoff` and `--design-review`. All three
 ceremonies behave identically.)
 
 ```bash
-python3 "$PLUGIN_ROOT/scripts/ceremonies/retro.py" --harness-dir .harness --feature F-N
+harness work F-N --retro --harness-dir .harness
 ```
 
 **Output**: `.harness/_workspace/retro/F-N.md`

@@ -1,0 +1,45 @@
+{
+  "version": "2.3",
+  "schema_version": "2.3",
+  "features": [
+    {
+      "id": "F-002",
+      "status": "in_progress",
+      "gates": {},
+      "evidence": [
+        {
+          "ts": "2026-04-30T08:00:00Z",
+          "kind": "manual_check",
+          "summary": "recent declared"
+        },
+        {
+          "ts": "2026-04-01T08:00:00Z",
+          "kind": "reviewer_check",
+          "summary": "old declared (outside window)"
+        },
+        {
+          "kind": "test",
+          "summary": "missing ts"
+        },
+        {
+          "ts": "not-an-iso-string",
+          "kind": "user_feedback",
+          "summary": "unparseable ts"
+        },
+        {
+          "ts": "2026-04-30T09:00:00Z",
+          "kind": "gate_run",
+          "summary": "automatic gate_run"
+        }
+      ],
+      "started_at": "2026-03-25T00:00:00Z",
+      "completed_at": null
+    }
+  ],
+  "session": {
+    "started_at": "2026-03-25T00:00:00Z",
+    "last_command": "/harness:work F-002",
+    "last_gate_passed": null,
+    "active_feature_id": "F-002"
+  }
+}

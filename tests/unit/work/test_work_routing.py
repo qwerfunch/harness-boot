@@ -97,7 +97,7 @@ class KickoffRoutingShapesParityTests(unittest.TestCase):
 
     def setUp(self):
         import sys
-        scripts_path = str(REPO_ROOT / "scripts")
+        scripts_path = str(REPO_ROOT / "legacy" / "scripts")
         if scripts_path not in sys.path:
             sys.path.insert(0, scripts_path)
         from ceremonies import kickoff as kk  # noqa: E402

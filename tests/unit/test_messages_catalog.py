@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unittest
 
-from scripts.ui.messages import REQUIRED_KEYS, t
+from legacy.scripts.ui.messages import REQUIRED_KEYS, t
 
 
 class TestCatalogContract(unittest.TestCase):

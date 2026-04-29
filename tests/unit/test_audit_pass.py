@@ -60,10 +60,11 @@ class ReadmeRefreshTests(unittest.TestCase):
 
     def test_test_count_pattern(self):
         body = README.read_text(encoding="utf-8")
-        # Track the badge pattern; the exact number floats with each release.
+        # F-107 cutover folded the badges back to a single tests count
+        # (the parity suite is the only operational surface now).
         self.assertRegex(body, r"tests-\d{3,5}%20passing-brightgreen", "README tests badge missing")
         # Stale counts from earlier releases must not remain on the badge.
-        for stale in ("tests-764%20passing", "tests-742%20passing", "tests-883%20passing"):
+        for stale in ("tests-764%20passing", "tests-742%20passing", "tests-883%20passing", "tests-1131%20passing"):
             self.assertNotIn(stale, body, f"README still shows stale tests badge '{stale}'")
 
 

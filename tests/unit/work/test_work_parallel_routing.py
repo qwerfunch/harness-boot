@@ -8,7 +8,7 @@ from pathlib import Path
 
 import yaml
 
-from scripts.work import (
+from legacy.scripts.work import (
     WorkResult,
     _result_to_dict,
     activate,

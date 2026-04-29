@@ -6,8 +6,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.scan.area_resolver import AreaRecord
-from scripts.scan.chapter_writer import (
+from legacy.scripts.scan.area_resolver import AreaRecord
+from legacy.scripts.scan.chapter_writer import (
     USER_EDIT_BEGIN,
     USER_EDIT_END,
     chapter_path_for,

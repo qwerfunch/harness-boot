@@ -6,7 +6,7 @@ import os
 import unittest
 from unittest import mock
 
-from scripts.ui.lang import resolve_lang
+from legacy.scripts.ui.lang import resolve_lang
 
 
 class TestEnvOverride(unittest.TestCase):

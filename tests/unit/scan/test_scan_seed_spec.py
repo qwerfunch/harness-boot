@@ -11,13 +11,13 @@ from pathlib import Path
 
 import yaml
 
-from scripts.scan.seed_spec import (
+from legacy.scripts.scan.seed_spec import (
     DRAFT_MARKER_KEY,
     STARTER_TEMPLATE_PATH,
     compose_seed,
     render_yaml,
 )
-from scripts.spec.validate import validate
+from legacy.scripts.spec.validate import validate
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -102,7 +102,7 @@ class TestRenderYaml(unittest.TestCase):
 class TestCLI(unittest.TestCase):
     def test_preview_emits_yaml_runtime_node(self) -> None:
         proc = subprocess.run(
-            [sys.executable, "-m", "scripts.scan.seed_spec", "--root", str(FIXTURES / "node-react"), "--preview"],
+            [sys.executable, "-m", "legacy.scripts.scan.seed_spec", "--root", str(FIXTURES / "node-react"), "--preview"],
             capture_output=True,
             text=True,
             cwd=REPO_ROOT,
@@ -120,7 +120,7 @@ class TestCLI(unittest.TestCase):
                 [
                     sys.executable,
                     "-m",
-                    "scripts.scan.seed_spec",
+                    "legacy.scripts.scan.seed_spec",
                     "--root",
                     str(target_root / "repo"),
                     "--apply",
@@ -133,7 +133,7 @@ class TestCLI(unittest.TestCase):
             spec_path = target_root / "repo" / ".harness" / "spec.yaml"
             self.assertTrue(spec_path.is_file())
             validate_proc = subprocess.run(
-                [sys.executable, "scripts/spec/validate.py", str(spec_path)],
+                [sys.executable, "legacy/scripts/spec/validate.py", str(spec_path)],
                 capture_output=True,
                 text=True,
                 cwd=REPO_ROOT,
@@ -148,7 +148,7 @@ class TestCLI(unittest.TestCase):
                 [
                     sys.executable,
                     "-m",
-                    "scripts.scan.seed_spec",
+                    "legacy.scripts.scan.seed_spec",
                     "--root",
                     str(target_root),
                     "--skip",

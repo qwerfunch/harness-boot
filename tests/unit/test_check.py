@@ -13,7 +13,7 @@ from unittest import mock
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(REPO_ROOT / "scripts"))
+sys.path.insert(0, str(REPO_ROOT / "legacy" / "scripts"))
 
 from core import canonical_hash as ch  # noqa: E402
 import check  # noqa: E402
@@ -901,7 +901,7 @@ class CompleteUsesBlockingFastPathTests(unittest.TestCase):
     """
 
     def setUp(self) -> None:
-        self.work_py = (REPO_ROOT / "scripts" / "work.py").read_text(
+        self.work_py = (REPO_ROOT / "legacy" / "scripts" / "work.py").read_text(
             encoding="utf-8"
         )
 

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import yaml
 
-from scripts.work import _autowire_fog_clear, activate
+from legacy.scripts.work import _autowire_fog_clear, activate
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]

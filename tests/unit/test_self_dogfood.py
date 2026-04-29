@@ -13,7 +13,7 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SELF_CHECK = REPO_ROOT / "scripts" / "self_check.sh"
+SELF_CHECK = REPO_ROOT / "legacy" / "scripts" / "self_check.sh"
 
 
 class SelfCheckTests(unittest.TestCase):

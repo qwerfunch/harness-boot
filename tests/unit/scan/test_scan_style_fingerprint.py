@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.scan.style_fingerprint import fingerprint
+from legacy.scripts.scan.style_fingerprint import fingerprint
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -14,7 +14,16 @@ FIXTURES = REPO_ROOT / "tests" / "fixtures" / "brownfield-repos"
 
 
 class TestFingerprintHarnessRepo(unittest.TestCase):
-    """Harness-boot itself: pyproject-less, snake_case, pytest pattern."""
+    """Harness-boot itself: hybrid Python + TypeScript repo (since F-084).
+
+    The TypeScript migration thread (F-084 → F-110+) introduces
+    package.json at the repo root, which the manifest detector
+    (`scripts/scan/manifest.py:extract_tech_stack`) prioritises over
+    the legacy Python signals. Snake_case naming and pytest test
+    patterns still dominate today since most source files remain
+    Python; the language field flips first because manifest detection
+    is the cheapest, most reliable signal.
+    """
 
     def test_naming_functions_snake_case(self) -> None:
         fp = fingerprint(REPO_ROOT)
@@ -24,9 +33,13 @@ class TestFingerprintHarnessRepo(unittest.TestCase):
         fp = fingerprint(REPO_ROOT)
         self.assertEqual(fp["test_pattern"], "test_*.py")
 
-    def test_language_python(self) -> None:
+    def test_language_typescript_after_f084(self) -> None:
+        # F-084 added package.json at repo root for the TS migration.
+        # The manifest detector now picks typescript over python.
+        # Once the migration completes (F-110+), this becomes the
+        # permanent state.
         fp = fingerprint(REPO_ROOT)
-        self.assertEqual(fp.get("language"), "python")
+        self.assertEqual(fp.get("language"), "typescript")
 
 
 class TestFingerprintNodeReact(unittest.TestCase):
@@ -86,7 +99,7 @@ class TestTomllibMissingDegradation(unittest.TestCase):
 
     def test_pyproject_signal_silent_when_tomllib_missing(self) -> None:
         from unittest import mock
-        from scripts.scan import style_fingerprint as sf
+        from legacy.scripts.scan import style_fingerprint as sf
 
         with mock.patch.object(sf, "tomllib", None):
             with tempfile.TemporaryDirectory() as tmp:
@@ -104,7 +117,7 @@ class TestTomllibMissingDegradation(unittest.TestCase):
         carries a pyproject.toml the parser cannot read.
         """
         from unittest import mock
-        from scripts.scan import style_fingerprint as sf
+        from legacy.scripts.scan import style_fingerprint as sf
 
         with mock.patch.object(sf, "tomllib", None):
             with tempfile.TemporaryDirectory() as tmp:

@@ -8,8 +8,8 @@ from pathlib import Path
 
 import yaml
 
-from scripts.spec.archive import archive_feature, is_archived
-from scripts.ui.dashboard import render
+from legacy.scripts.spec.archive import archive_feature, is_archived
+from legacy.scripts.ui.dashboard import render
 
 
 class TestArchiveFeature(unittest.TestCase):
