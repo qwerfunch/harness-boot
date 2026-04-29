@@ -2395,8 +2395,34 @@ features:
       20 parity tests; 467/467 cumulative.'
   started_at: '2026-04-29T10:44:51Z'
   completed_at: '2026-04-29T10:47:43Z'
+- id: F-105
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T11:12:57Z'
+      note: 'cmd: npm test'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T11:12:58Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-29T11:12:57Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (1.0s) · cmd: npm test'
+  - ts: '2026-04-29T11:12:58Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-29T11:12:58Z'
+    kind: manual_check
+    summary: 'Build verification cycle: fixed process.exit signature, split tsconfig.build.json
+      (rootDir: src), removed CLI self-invocation duplication. Verified TS↔Python
+      parity for status/events/check/metrics/sync/validate. Python 1192 + TS 467 +
+      self_check 5/5 all PASS.'
+  started_at: '2026-04-29T11:12:45Z'
+  completed_at: null
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-104
+  last_command: /harness:work F-105
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-105
