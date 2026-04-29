@@ -15,6 +15,9 @@
   "engines": {
     "node": ">=20.0.0"
   },
+  "bin": {
+    "harness": "./bin/harness.js"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run --passWithNoTests",

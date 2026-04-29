@@ -3787,6 +3787,47 @@ features:
       - "AC-5: F-103 mirrored on both spec.yaml copies. self_check 5/5 PASS."
       - "AC-6: F-103 completed via the work.py cycle on the umbrella branch."
 
+  - id: "F-104"
+    name: "TS migration — bin/harness CLI shim (commander-based entry point)"
+    type: "feature"
+    description: |
+      Twenty-first cycle of the v1.0 migration thread. Adds the
+      single-binary CLI entry point that wraps every ported module
+      into one `harness <subcommand>` interface. This is the v1.0
+      release path entry point — slash commands will eventually
+      shell out to `npx harness <verb>` instead of
+      `python3 scripts/<file>.py`.
+
+      Subcommands ported:
+
+        - `harness work [F-N] [...flags]` — dashboard / activate /
+          gate / evidence / block / complete / archive / current /
+          deactivate / remove (full work.py CLI surface).
+        - `harness sync [...flags]` — sync orchestrator with
+          `--soft` fail-open mode.
+        - `harness check [...flags]` — drift detection report.
+        - `harness status [...flags]` — read-only state summary.
+        - `harness events [...flags]` — events.log filter.
+        - `harness metrics [...flags]` — events.log aggregator.
+        - `harness validate <spec.yaml>` — spec validator.
+
+      Behaviour preservation:
+
+        - `--harness-dir` default `./.harness` matches Python CLIs.
+        - Exit codes mirror Python: 0 success · 2 IO error ·
+          3 invalid input · 5 schema error · 6 drift detected.
+        - JSON / human output shape identical for every subcommand.
+        - Auto-evidence on gate_run pass preserved.
+
+    acceptance_criteria:
+      - "AC-1: bin/harness shebang + commander wiring exports every subcommand."
+      - "AC-2: package.json `bin` field maps `harness` → `bin/harness.js`."
+      - "AC-3: `npx harness work F-001` activates a feature, `--complete` enforces Iron Law, `--run-gate gate_0` invokes gate runner."
+      - "AC-4: `npx harness sync` produces same SyncResult JSON as Python sync.py --json."
+      - "AC-5: `npx harness check --json` produces drift findings with same structure as Python."
+      - "AC-6: F-104 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-7: F-104 completed via the work.py cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
