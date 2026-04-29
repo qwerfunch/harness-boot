@@ -3218,6 +3218,42 @@ features:
       - "AC-7: F-089 mirrored on both spec.yaml copies. self_check 5/5 PASS · npm run test:parity green."
       - "AC-8: F-089 completed via the work.py 4-verb cycle on the existing `feat/F-084-ts-migration-foundation` branch."
 
+  - id: "F-090"
+    name: "TS migration — port spec/{includeExpander,modeClassifier}.ts (sync runtime path)"
+    type: "feature"
+    description: |
+      Seventh cycle of the v1.0 migration thread. Ports two spec
+      utilities that sit on the sync.py runtime path:
+
+        - **includeExpander** (`scripts/spec/include_expander.py`) —
+          $include depth-1 expansion engine (F-009). Sync invokes
+          this before validation.
+        - **modeClassifier** (`scripts/spec/mode_classifier.py`) —
+          /harness:spec Mode A/B/R/E auto-routing (F-002). Pure
+          decision tree, no I/O.
+
+      Behaviour preservation:
+
+        - $include depth-1 enforced — content from a chapter file is
+          inlined as a string and never re-walked.
+        - Locked field guard rejects `$include` under id/version/
+          name/type/status/priority/schema_version (LOCKED_FIELD_NAMES).
+        - Path traversal escape guard — chapter target must resolve
+          inside the chapters directory.
+        - Mode classifier priority: explicit --mode > --explain >
+          spec-missing+plan.md > spec-missing+empty > spec-existing
+          +addition-hints > refine.
+
+    acceptance_criteria:
+      - "AC-1: src/spec/includeExpander.ts exports `expand`, `findIncludes`, `IncludeError`, `LOCKED_FIELD_NAMES`."
+      - "AC-2: src/spec/modeClassifier.ts exports `classify`, `Mode` enum, `ClassifyResult` interface."
+      - "AC-3: Depth-1 enforcement — nested $include in expanded content stays as literal string."
+      - "AC-4: Locked field guard rejects `$include` under id/version/name/type/status/priority."
+      - "AC-5: Path traversal escape (e.g. `../../etc/passwd`) is rejected with IncludeError."
+      - "AC-6: Mode classifier produces same Mode + subtype + rationale as Python for canonical inputs."
+      - "AC-7: Parity tests — at least 12 tests for includeExpander + 10 for modeClassifier."
+      - "AC-8: F-090 completed via the work.py cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
