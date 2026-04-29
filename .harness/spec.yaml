@@ -3368,6 +3368,39 @@ features:
       - "AC-4: F-093 mirrored on both spec.yaml copies. self_check 5/5 PASS."
       - "AC-5: F-093 completed via the work.py cycle on the umbrella branch."
 
+  - id: "F-094"
+    name: "TS migration — port status.ts (/harness:status read-only summary)"
+    type: "feature"
+    description: |
+      Eleventh cycle of the v1.0 migration thread. Ports
+      `scripts/status.py` to TypeScript. CQS — read-only, no mtime
+      mutation. Composes State (F-086), eventLog (F-085), and
+      harness.yaml metadata into a StatusReport.
+
+      Public API ported:
+
+        - `buildReport(harnessDir, options?)` — returns a typed
+          report covering session, feature counts, drift status,
+          last_sync, and per-feature summary.
+        - `formatHuman(report)` — human-readable text matching
+          Python verbatim (header lines, indentation, separators).
+
+      Behaviour preservation:
+
+        - Same harness.yaml lookup path
+          (`generation.drift_status`).
+        - Same recent-events tail length (5) for sync_completed
+          probe.
+        - spec_hash truncated to 12 chars in last_sync summary.
+        - Same human-format header order and trailing newline.
+
+    acceptance_criteria:
+      - "AC-1: src/status.ts exports `buildReport`, `formatHuman`, plus the StatusReport / FeatureSummary interfaces."
+      - "AC-2: Output matches Python for canonical state + harness fixtures."
+      - "AC-3: CQS — calling buildReport does not modify state.yaml mtime."
+      - "AC-4: F-094 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-5: F-094 completed via the work.py cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
