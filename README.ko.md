@@ -215,7 +215,7 @@ harness-boot/
 
 ## 현재 상태
 
-**v0.13.0** — TS 단일 운영, 자체 도그푸드 운영 중.
+**v0.13.0** — Python → TypeScript 마이그레이션 완료 (30 사이클, F-084 → F-113). esbuild 단일 파일 번들로 사용자 측 `npm install` 불필요. Python 운영 코드는 `legacy/` 로 retired.
 
 - 변경 이력 — [CHANGELOG.md](CHANGELOG.md)
 - 개발자 가이드 — [CLAUDE.md](CLAUDE.md)

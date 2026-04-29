@@ -11,10 +11,70 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ### Queued
 
-- Marketplace submission to anthropic/claude-plugins-official — submission templated text prepared; user submits via https://claude.ai/settings/plugins/submit.
-- F-052/F-053/F-051 docstring sweep follow-ups — see prior queue.
+- Marketplace submission to `anthropic/claude-plugins-official` — held until external soak; submission text templated, user submits via https://claude.ai/settings/plugins/submit.
+- SKILL.md → seed_spec reference rot — `skills/spec-conversion/SKILL.md:409` references `scripts/scan/seed_spec` which is no longer ported. F-114 candidate (skill is Markdown-driven, so the LLM can synthesize the seed inline; not blocking).
+- Deferred autowires named in `src/work.ts:411-413` — `spec/quantClaims`, `scan/chapterWriter`, `scan/styleFingerprint`. Stderr-only hints, never Iron-Law gating; pick up when there is external pressure.
+- F-052/F-053/F-051 docstring sweep follow-ups — carry-forward.
 - F-073 (`read_events(tail=N)`) and F-074 (`canonical_hash` mtime cache) — v0.11.11 cumulative-slowdown audit queue.
-- F-082 (kickoff "Quantitative completeness" section) and F-083 (carry-forward debt escalation) — second sequencing pass; F-081 stays open for the next available slot.
+
+## [0.13.0] — 2026-04-29
+
+**Python → TypeScript runtime migration. 30 cycles, F-084 → F-113. Umbrella PR #46 (60 commits).**
+
+The whole operational surface — `work` · `sync` · `check` · `status` · `events` · `metrics` · `inbox` · `validate` — is now TypeScript. Python sources moved to `legacy/scripts/` as a read-only regression reference.
+
+### Why migrate
+
+- Fresh-install users on macOS / Windows / stripped Docker hit `command not found` before any helpful message reached them. F-081 / F-082 mitigated but did not eliminate this — the failure mode lived inside Python's import path.
+- Other AI CLIs (Cursor, Cline, Aider, Copilot CLI) are all Node-based; extending into them via Python was awkward.
+- Claude Code itself runs on Node, so Node is effectively guaranteed on every harness-boot user's machine. Python was not.
+
+### What landed
+
+- **Foundation (F-084)** — project setup (`package.json`, `tsconfig`, `vitest`, `eslint v9`, `prettier`) + `src/core/canonicalHash.ts` byte-equal port + parity test framework.
+- **Core ports (F-085 → F-088)** — `core/{eventLog,state,pluginRoot,projectMode,gates,routing}.ts`.
+- **Spec / render / scan (F-089 → F-091, F-101)** — `spec/{validate,includeExpander,modeClassifier}.ts`, `render/{architecture,domain}.ts`, `scan/{structure,manifest,areaResolver}.ts`.
+- **UI helpers (F-092, F-099, F-103)** — `ui/{lang,messages,dashboardConfig,render,featureResolver,intentPlanner,dashboard}.ts`.
+- **Read-only views (F-093, F-094, F-098)** — `events.ts`, `status.ts`, `metrics.ts`.
+- **Operational core (F-095 → F-097, F-100, F-102)** — `gate/runner.ts`, `sync.ts`, `ceremonies/{kickoff,retro,designReview,inbox}.ts`, `check.ts` (13-detector drift), `work.ts` (lifecycle orchestrator).
+- **Entry + cutover + cleanup (F-104 → F-108)** — `bin/harness` commander shim, audit gates, `legacy/scripts/` archive, Python operational surface removal, post-cutover end-to-end audit.
+- **Supply-chain follow-ups (F-109 → F-112)** — install + CI verification, single-file esbuild bundle (~850 KB inlining commander · yaml · ajv · ajv-formats · smol-toml), README dependency-section purge, Node.js requirement line drop (Claude Code already implies Node).
+- **Release-prep audit (F-113)** — Python ↔ TS coverage matrix, version lock, v1.0 framing removed. Verdict: 33 direct ports + 5 merged into siblings + 3 deliberately deferred (named inline in `src/work.ts`) + 14 retired-surface drops + 1 documented follow-up + 0 silent gaps.
+
+### Behavioral parity
+
+`tests/parity/` runs Python-generated fixtures against the TypeScript implementations and asserts byte-equal output. **467/467 PASS** at release HEAD across 21 test files. Public APIs match by name (snake_case → camelCase) and by canonical hash where applicable.
+
+### Plugin install path
+
+Claude Code's `/plugin install` mechanism does NOT auto-run `npm install`, and the cached plugin under `~/.claude/plugins/cache/...` has no `node_modules`. F-110 closes this with an esbuild single-file bundle:
+
+- `dist/cli/harness.bundle.mjs` (~850 KB) inlines every runtime dependency.
+- `bin/harness` is a 14-line shim that `import()`s the bundle.
+- The `bin/` directory is auto-PATHed by Claude Code per the plugin spec, so user-facing calls are plain `harness work F-N` — no absolute path, no `node` prefix, no `$PLUGIN_ROOT/bin/harness.js` boilerplate.
+
+Verified in `/tmp/hb-fresh-test`: copy `bin/`, `dist/`, `docs/`, `commands/`, `agents/`, `hooks/`, `skills/`, `.claude-plugin/` to a temp directory without `node_modules` and run `harness {--version, status, validate, work}` — all green.
+
+### CI updates
+
+`.github/workflows/self-check.yml` now runs `npm install` + `bash self_check.sh` on a Node 20 + Node 22 matrix. No Python step in CI any more.
+
+### What is NOT in this release
+
+- `spec/quant_claims`, `scan/chapter_writer`, `scan/style_fingerprint` — deferred-by-design with an inline comment at `src/work.ts:411-413`. They were never Iron-Law gating, only stderr hints. Will land when there is external pressure.
+- `/harness:spec` Mode A/B/R/E CLI — retired in v0.10+; spec edits are direct file edits + `harness check` for drift.
+- F-030 sharding utilities (`spec/shard`, `unshard`, `summary`) — one-shot scaling tools, kept in `legacy/scripts/` for direct invocation if needed past ~300 features.
+- `spec/upgrade_to_2_3_8.py` — one-shot schema migration; users on the latest schema never run it.
+
+### Breaking changes
+
+None for end users. Slash commands `/harness-boot:init` and `/harness-boot:work` keep their full surface. The `harness` CLI subcommands keep their flag shapes (verified by the parity tests).
+
+For contributors: the source tree moved. `scripts/` is gone in operational use; new code goes into `src/`. Tests under `tests/parity/` run via `vitest` — no `pytest` step needed for normal contribution.
+
+### Audit trail
+
+`.harness/_workspace/audit/F-113.md` carries the full Python ↔ TS coverage matrix with per-file dispositions. `tests/parity/` is the live regression net.
 
 ## [0.12.2] — 2026-04-29
 

@@ -212,7 +212,7 @@ harness-boot/
 
 ## Status
 
-**v0.13.0** — TS-only operation, running our own dogfood.
+**v0.13.0** — Python → TypeScript migration complete (30 cycles, F-084 → F-113). Single-file esbuild bundle so plugin install needs no `npm install` at the user side. Python operational surface retired to `legacy/`.
 
 - Changelog — [CHANGELOG.md](CHANGELOG.md)
 - Developer guide — [CLAUDE.md](CLAUDE.md)
