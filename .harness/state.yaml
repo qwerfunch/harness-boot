@@ -2422,7 +2422,7 @@ features:
   started_at: '2026-04-29T11:12:45Z'
   completed_at: '2026-04-29T11:13:36Z'
 - id: F-106
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -2447,9 +2447,9 @@ features:
     kind: gate_run
     summary: 'Gate gate_5 pass (0.8s) · cmd: bash self_check.sh'
   started_at: '2026-04-29T11:18:31Z'
-  completed_at: null
+  completed_at: '2026-04-29T11:30:35Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
   last_command: /harness:work F-106
   last_gate_passed: gate_5
-  active_feature_id: F-106
+  active_feature_id: null
