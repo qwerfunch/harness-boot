@@ -2037,8 +2037,32 @@ features:
       11 parity tests; canonical sample validates clean; cumulative 149/149 PASS.
   started_at: '2026-04-29T09:49:41Z'
   completed_at: '2026-04-29T09:52:42Z'
+- id: F-090
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T09:56:01Z'
+      note: 'cmd: npm test'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T09:56:02Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-29T09:56:01Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (0.7s) · cmd: npm test'
+  - ts: '2026-04-29T09:56:02Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-29T09:56:02Z'
+    kind: test
+    summary: spec/{includeExpander,modeClassifier}.ts ported; 25 parity tests; cumulative
+      174/174 PASS.
+  started_at: '2026-04-29T09:54:02Z'
+  completed_at: '2026-04-29T09:56:13Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-089
+  last_command: /harness:work F-090
   last_gate_passed: gate_5
   active_feature_id: null
