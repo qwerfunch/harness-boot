@@ -2179,8 +2179,31 @@ features:
     summary: esbuild bundle 850.4kb verified — fresh-clone simulation in /tmp/hb-fresh-test (no node_modules) ran --version, status, validate, work all green
   started_at: 2026-04-29T14:25:32Z
   completed_at: 2026-04-29T14:26:52Z
+- id: F-111
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-04-29T14:32:38Z
+      note: "cmd: npm test"
+    gate_5:
+      last_result: pass
+      ts: 2026-04-29T14:32:38Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-04-29T14:32:38Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.1s) · cmd: npm test"
+  - ts: 2026-04-29T14:32:38Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.4s) · cmd: bash self_check.sh"
+  - ts: 2026-04-29T14:32:43Z
+    kind: manual_check
+    summary: README.md + README.ko.md user-facing dep enumeration removed; contributor block reframed; grep audit shows only factual dist/cli reference + labeled contributor block remain
+  started_at: 2026-04-29T14:32:01Z
+  completed_at: 2026-04-29T14:33:04Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-110
+  last_command: /harness:work F-111
   last_gate_passed: gate_5
   active_feature_id: null
