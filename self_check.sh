@@ -1,18 +1,14 @@
 #!/usr/bin/env bash
-# self_check.sh — harness-boot 자체 도그푸드 검증 (Phase 2 active, 2026-04-27~)
+# self_check.sh — harness-boot 자체 도그푸드 검증 (TS-only since F-107)
 #
-# Phase 2 에서도 동일한 5 단계 구조 무결성 검증을 유지한다 (Phase 1 시절의 유일한
-# 검증이 이제는 work.py 사이클의 gate_5 entry point 로도 쓰임 — scripts/smoke.sh
-# 가 이 파일을 thin wrap 한다).
-#
-# 5 단계 검증:
+# 5 단계 검증 (모두 `node bin/harness.js` 경유):
 #   1. .harness/spec.yaml == docs/samples/harness-boot-self/spec.yaml (SSoT 동기성)
-#   2. validate_spec 통과
-#   3. sync --dry-run round-trip 재현
-#   4. check 8/8 drift 에러 없음
-#   5. commands/*.md 규약 (Preamble + Anti-rationalization + bash 블록) 존재
+#   2. validate spec — JSONSchema 통과
+#   3. sync (--soft) — 변경 없으면 skip · derived 파일 보장
+#   4. check 13/13 drift 에러 없음
+#   5. commands/*.md 규약 (Preamble + Anti-rationalization + harness CLI 위임)
 #
-# 하나라도 fail 시 non-zero exit · 마지막 실패 지점 stderr 출력.
+# 하나라도 fail 시 non-zero exit · 실패 지점 stderr 출력.
 # 실행 위치: 레포 루트 cwd.
 
 set -eu
@@ -30,6 +26,14 @@ step() {
     echo "self_check [${1}/5] $2"
 }
 
+HARNESS_BIN="$REPO_ROOT/bin/harness.js"
+if [ ! -f "$HARNESS_BIN" ]; then
+    fail "$HARNESS_BIN 없음 — 'npm install' 후 'npm run build' 가 필요합니다"
+fi
+if [ ! -d "$REPO_ROOT/dist" ]; then
+    fail "$REPO_ROOT/dist 없음 — 'npm run build' 실행 필요"
+fi
+
 # --- Step 1: SSoT 동기성 ---
 step 1 "SSoT diff (.harness/spec.yaml vs docs/samples/...)"
 if ! diff -q .harness/spec.yaml docs/samples/harness-boot-self/spec.yaml >/dev/null; then
@@ -38,46 +42,39 @@ fi
 
 # --- Step 2: JSONSchema 검증 ---
 step 2 "validate .harness/spec.yaml"
-if ! python3 legacy/scripts/spec/validate.py .harness/spec.yaml >/dev/null 2>&1; then
-    # 에러 재실행하여 사용자에게 stderr 보이기
-    python3 legacy/scripts/spec/validate.py .harness/spec.yaml >&2 || true
-    fail "validate_spec 실패"
+if ! node "$HARNESS_BIN" validate .harness/spec.yaml >/dev/null 2>&1; then
+    node "$HARNESS_BIN" validate .harness/spec.yaml >&2 || true
+    fail "validate 실패"
 fi
 
-# --- Step 3: sync round-trip (실제 실행 · derived 파일 생성) ---
-# harness.yaml · domain.md · architecture.yaml 은 gitignored (로컬 생성).
-# 재실행 시 edit-wins 로 보호 · 해시 변화 시만 재생성.
-step 3 "sync (.harness/ · derived 생성)"
-if ! python3 legacy/scripts/sync.py --harness-dir .harness >/dev/null 2>&1; then
-    python3 legacy/scripts/sync.py --harness-dir .harness >&2 || true
+# --- Step 3: sync (--soft 으로 idempotent) ---
+step 3 "sync (.harness/ · derived 보장)"
+if ! node "$HARNESS_BIN" sync --soft --harness-dir .harness >/dev/null 2>&1; then
+    node "$HARNESS_BIN" sync --soft --harness-dir .harness >&2 || true
     fail "sync 실패"
 fi
 
-# --- Step 4: check 8/8 drift ---
-step 4 "check --harness-dir .harness --project-root ."
-# check 는 drift 있으면 exit 6. error severity 만 fail 로 취급 (warn 허용)
-CHECK_OUT=$(python3 legacy/scripts/check.py --harness-dir .harness --project-root . --json 2>/dev/null || true)
+# --- Step 4: check 13 drift kinds — error severity 0 ---
+step 4 "check --harness-dir .harness"
+CHECK_OUT=$(node "$HARNESS_BIN" check --harness-dir .harness --project-root . --json 2>/dev/null || true)
 if [ -z "$CHECK_OUT" ]; then
-    fail "check.py 출력 없음"
+    fail "check 출력 없음"
 fi
-# JSON 파싱 + error severity 카운트
-ERR_COUNT=$(python3 -c "
-import json, sys
-try:
-    d = json.loads('''$CHECK_OUT''')
-except Exception as e:
-    print('PARSE_FAIL', file=sys.stderr); sys.exit(1)
-errs = [f for f in d.get('findings', []) if f.get('severity') == 'error']
-print(len(errs))
-for f in errs:
-    print(f'  [{f[\"kind\"]}] {f[\"path\"]}: {f[\"message\"]}', file=sys.stderr)
+ERR_COUNT=$(node -e "
+const fs = require('fs');
+const d = JSON.parse(\`$CHECK_OUT\`);
+const errs = (d.findings || []).filter(f => f.severity === 'error');
+console.log(errs.length);
+for (const f of errs) {
+  console.error(\`  [\${f.kind}] \${f.path}: \${f.message}\`);
+}
 ")
 if [ "$ERR_COUNT" != "0" ]; then
     fail "check 에 error severity $ERR_COUNT 건 — 위 stderr 참조"
 fi
 
 # --- Step 5: commands/*.md 규약 grep ---
-step 5 "commands/*.md preamble · anti-rationalization · bash 블록"
+step 5 "commands/*.md preamble · anti-rationalization · CLI 위임"
 MISSING=0
 for f in commands/*.md; do
     if ! grep -q "^## Preamble" "$f"; then
@@ -92,11 +89,8 @@ for f in commands/*.md; do
         echo "  [$f] Anti-rationalization 'NO shortcut:' 라인 누락" >&2
         MISSING=$((MISSING + 1))
     fi
-    if ! grep -qE 'scripts/|harness ' "$f"; then
-        # 모든 command 는 한 개 이상 위임 경로를 가져야 함.
-        # legacy/scripts/* 또는 npx harness 어느 쪽이든 허용 (TS 마이그레이션
-        # 진행 중이라 두 surface 모두 정합성 있음).
-        echo "  [$f] 위임 경로 누락 (scripts/ 또는 harness CLI)" >&2
+    if ! grep -qE 'harness\.js|harness ' "$f"; then
+        echo "  [$f] harness CLI 위임 경로 누락" >&2
         MISSING=$((MISSING + 1))
     fi
 done

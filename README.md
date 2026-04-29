@@ -6,9 +6,8 @@
 
 harness-boot is a multi-agent development harness for Claude Code. Where most AI tools add *capability*, we add *focus*.
 
-[![plugin](https://img.shields.io/badge/plugin-v0.12.2-blue)](.claude-plugin/plugin.json)
-[![Python tests](https://img.shields.io/badge/python-1192%20passing-brightgreen)](tests)
-[![TS parity](https://img.shields.io/badge/ts%20parity-467%20passing-brightgreen)](tests/parity)
+[![plugin](https://img.shields.io/badge/plugin-v0.13.0-blue)](.claude-plugin/plugin.json)
+[![tests](https://img.shields.io/badge/tests-467%20passing-brightgreen)](tests/parity)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 ---
@@ -95,10 +94,7 @@ Then drive every feature through the lifecycle:
 /harness-boot:work
 ```
 
-**Requirements**:
-
-- **Python 3.10+** with `pyyaml` (required) and `jsonschema` (recommended) — drives the slash commands today.
-- **Node.js 20+** — optional today, required when the in-progress TS migration becomes the default surface. The TS layer ships under `src/` with a `harness` CLI shim at `bin/harness.js`; build with `npm install && npm run build`.
+**Requirement**: **Node.js 20+**. The plugin ships its built CLI under `dist/` and a shim at `bin/harness.js`, so install just works — no build step needed.
 
 If it takes more than 5 minutes, [open an issue](https://github.com/qwerfunch/harness-boot/issues). We'll fix it.
 
@@ -205,37 +201,30 @@ harness-boot/
 ├── agents/                specialist agent definitions
 ├── commands/              slash commands (init · work)
 ├── hooks/                 session-bootstrap · prompt-log
-├── src/                   TypeScript implementation (in-progress migration)
-├── bin/harness.js         Node CLI shim — `harness <subcommand>` after build
-├── legacy/scripts/        Python implementation (the operational surface today)
+├── src/                   TypeScript implementation
+├── dist/                  pre-built CLI (committed for plugin install)
+├── bin/harness.js         Node CLI entry point — `harness <subcommand>`
 ├── self_check.sh          5-step self-dogfood verification
 ├── skills/spec-conversion/  plan.md → spec.yaml conversion
 ├── docs/                  schema · templates · samples · portfolio assets
-└── tests/                 unit · integration · regression · parity · scale
+└── tests/parity/          TS parity test suite
 ```
-
-**Migration note (v0.12.x):** the Python implementation moved from `scripts/` to `legacy/scripts/` so the TS port at `src/` could occupy the primary slot without a name collision. The slash commands still call Python under the hood — the TS layer is a parallel implementation we are growing toward parity. See `CLAUDE.md` for the current state.
 
 ---
 
 ## Status
 
-**v0.12.2** — preparing for external adoption, running our own dogfood. TS migration in progress (`src/` parallel implementation; full parity test suite green).
+**v0.13.0** — TS-only operation, running our own dogfood.
 
 - Changelog — [CHANGELOG.md](CHANGELOG.md)
 - Developer guide — [CLAUDE.md](CLAUDE.md)
 - Issues — [GitHub Issues](https://github.com/qwerfunch/harness-boot/issues)
 
 ```bash
-# Python side (current operational layer)
-python3 -m pip install --user -r requirements-dev.txt
-python3 -m pytest tests/ -q
-bash self_check.sh
-
-# TypeScript side (parallel implementation, runs alongside)
+# From a fresh clone:
 npm install
-npm run build       # emits dist/ → bin/harness.js becomes runnable
-npm run test:parity # parity suite verifies TS ↔ Python output equivalence
+npm test            # vitest suite (parity tests)
+bash self_check.sh  # 5-step structural verification
 ```
 
 ---

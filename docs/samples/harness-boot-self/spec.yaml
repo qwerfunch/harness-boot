@@ -3940,6 +3940,56 @@ features:
       - "AC-7: F-106 mirrored on both spec.yaml copies."
       - "AC-8: F-106 completed via the work.py cycle on the umbrella branch."
 
+  - id: "F-107"
+    name: "TS-only cutover — Python operational surface removed"
+    type: "feature"
+    description: |
+      Twenty-fourth cycle of the v1.0 migration thread. Closes the
+      Python ↔ TS cohabitation phase: TypeScript becomes the only
+      surface users, slash commands, and self-check exercise. The
+      Python implementation stays under `legacy/scripts/` as a code
+      archive but is no longer wired into anything visible.
+
+      What changes:
+
+        - `dist/` is committed (no longer gitignored) so plugin
+          install works without `npm run build`.
+        - `commands/init.md` + `commands/work.md`: every Python
+          bash block flips to `node "$PLUGIN_ROOT/bin/harness.js"
+          <subcommand>`.
+        - `hooks/pre-commit-phase2.sh`: install path + heredoc
+          guidance now points at the `harness` CLI.
+        - `self_check.sh`: 5 steps now run through
+          `node bin/harness.js {validate,sync,check}` instead of
+          `python3 legacy/scripts/...`.
+        - `README.md` + `README.ko.md`: Python requirement removed,
+          Node.js 20+ becomes the only listed runtime.
+        - `CLAUDE.md`: §3 / §6 / §7 reflect TS-only operation.
+        - `tests/` Python suites stay as a quarantine surface; the
+          operational verification is `npm run test:parity` which
+          is what CI keys off going forward.
+        - `package.json` scripts: `prepare` script triggers a build
+          when `dist/` is missing so a fresh clone has a usable CLI
+          before any explicit build step.
+
+      Out of scope:
+
+        - Deletion of `legacy/scripts/` (kept until external
+          dogfood signals zero regressions on TS-only).
+        - Deletion of `tests/{unit,integration}` (kept as parallel
+          parity safety net during the quarantine phase).
+        - v1.0 release tag (user decision, not part of this cycle).
+
+    acceptance_criteria:
+      - "AC-1: dist/ removed from .gitignore and committed; bin/harness.js resolves out of the box."
+      - "AC-2: commands/{init,work}.md no longer reference python3 in any bash block."
+      - "AC-3: hooks/pre-commit-phase2.sh refers to the harness CLI in heredoc + install message."
+      - "AC-4: self_check.sh 5/5 PASS using node bin/harness.js for validate, sync, check."
+      - "AC-5: README.md + README.ko.md — Python requirement and pytest invocation removed."
+      - "AC-6: CLAUDE.md repo layout + reference table reflect TS-only surfaces."
+      - "AC-7: TS parity + npm run build + node bin/harness.js status all PASS."
+      - "AC-8: F-107 completed via the harness CLI cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

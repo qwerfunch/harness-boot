@@ -17,7 +17,7 @@
 #      options on stderr.
 #   5. Non-whitelisted staged + active feature present → exit 0.
 #
-# Install: python3 .../legacy/scripts/install_pre_commit.py --install
+# Install: copy this file to .git/hooks/pre-commit and chmod +x it.
 
 set -u
 
@@ -52,15 +52,17 @@ if [ "$ALL_WHITELISTED" = "1" ]; then
     exit 0
 fi
 
-# Branches 4/5: active feature check.
-ACTIVE="$(python3 -c '
-import sys, yaml
-try:
-    s = yaml.safe_load(open(".harness/state.yaml"))
-    a = (s.get("session") or {}).get("active_feature_id")
-    print(a or "")
-except Exception:
-    print("")
+# Branches 4/5: active feature check via the harness CLI.
+ACTIVE="$(node -e '
+const yaml = require("yaml");
+const fs = require("fs");
+try {
+  const s = yaml.parse(fs.readFileSync(".harness/state.yaml", "utf-8"));
+  const a = (s && s.session && s.session.active_feature_id) || "";
+  process.stdout.write(a);
+} catch (_) {
+  process.stdout.write("");
+}
 ' 2>/dev/null || true)"
 
 if [ -z "$ACTIVE" ]; then
@@ -68,12 +70,11 @@ if [ -z "$ACTIVE" ]; then
 ✖ pre-commit (harness-boot Phase 2 · F-034): no active feature
 
 You have staged code changes but .harness/state.yaml has no active feature.
-That breaks the "every change MUST go through work.py" discipline (cosmic-
-suika memory).
+That breaks the "every change MUST go through harness work" discipline.
 
 Pick one:
 
-  1. python3 scripts/work.py F-N --harness-dir .harness            # activate
+  1. node bin/harness.js work F-N --harness-dir .harness           # activate
   2. Add a new F-N to spec.yaml first, then 1
   3. git commit --no-verify                                        # one-off bypass
   4. HARNESS_BYPASS_PRE_COMMIT=1 git commit ...                    # env bypass

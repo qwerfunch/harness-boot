@@ -1,6 +1,6 @@
 {
   "name": "harness-boot",
-  "version": "0.12.2",
+  "version": "0.13.0",
   "description": "Multi-agent development harness for Claude Code. Your AI has speed; we give it direction — through living specs and focused specialist agents.",
   "type": "module",
   "license": "MIT",
@@ -20,7 +20,8 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "test": "vitest run --passWithNoTests",
+    "prepare": "node -e \"require('fs').existsSync('dist/cli/harness.js') || process.exit(0)\" || npm run build",
+    "test": "vitest run tests/parity --passWithNoTests",
     "test:parity": "vitest run tests/parity --passWithNoTests",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",

@@ -23,6 +23,19 @@ import {join, resolve as resolvePath} from 'node:path';
 
 import {Command} from 'commander';
 
+import {generateDesignReview} from '../ceremonies/designReview.js';
+import {
+  agentsForShapes as kickoffAgentsForShapes,
+  detectShapes as kickoffDetectShapes,
+  generateKickoff,
+  hasAudioFlag as kickoffHasAudioFlag,
+  renderStyleBlock as kickoffRenderStyleBlock,
+} from '../ceremonies/kickoff.js';
+import {generateRetro} from '../ceremonies/retro.js';
+import {openQuestions, scanInbox} from '../ceremonies/inbox.js';
+import {parse as yamlParseSpec} from 'yaml';
+import {readFileSync as readSpecFile, statSync as statSpecFile} from 'node:fs';
+import {resolveMode} from '../core/projectMode.js';
 import {formatHuman as formatCheckHuman, runCheck} from '../check.js';
 import {filterEvents, formatHuman as formatEventsHuman} from '../events.js';
 import {readEvents} from '../core/eventLog.js';
@@ -125,7 +138,7 @@ function buildProgram(): Command {
   program
     .name('harness')
     .description('Multi-agent development harness — TS CLI for Claude Code plugin')
-    .version('0.12.2');
+    .version('0.13.0');
 
   // -----------------------------------------------------------------
   // work
@@ -152,6 +165,10 @@ function buildProgram(): Command {
     .option('--reason <text>', 'archive reason')
     .option('--deactivate', 'clear session.active_feature_id only')
     .option('--remove <fid>', 'remove a non-done feature from state.yaml')
+    .option('--kickoff', 'force-regenerate the kickoff template (idempotency override)')
+    .option('--design-review', 'force-regenerate the design-review template')
+    .option('--retro', 'force-regenerate the retro template')
+    .option('--no-fog', 'skip the F-037 fog-clear auto-wire on activate')
     .option('--json', 'emit JSON instead of human-readable text')
     .action((feature: string | undefined, options: Record<string, unknown>) => {
       const harnessDir = resolveHarnessDir(options['harnessDir'] as string | undefined);
@@ -219,6 +236,96 @@ function buildProgram(): Command {
       }
 
       const fid = feature;
+
+      // --kickoff / --design-review / --retro: force-regenerate ceremony templates.
+      function loadSpecOrNull(): unknown {
+        const specPath = join(harnessDir, 'spec.yaml');
+        try {
+          if (statSpecFile(specPath).isFile()) {
+            return yamlParseSpec(readSpecFile(specPath, 'utf-8'));
+          }
+        } catch {
+          return null;
+        }
+        return null;
+      }
+      function findFeatureInSpec(spec: unknown, id: string): Record<string, unknown> | null {
+        if (spec === null || typeof spec !== 'object' || Array.isArray(spec)) {
+          return null;
+        }
+        const features = (spec as Record<string, unknown>)['features'];
+        if (!Array.isArray(features)) {
+          return null;
+        }
+        for (const f of features) {
+          if (f !== null && typeof f === 'object' && !Array.isArray(f) && (f as Record<string, unknown>)['id'] === id) {
+            return f as Record<string, unknown>;
+          }
+        }
+        return null;
+      }
+
+      if (options['kickoff']) {
+        const spec = loadSpecOrNull();
+        const featureObj = findFeatureInSpec(spec, fid);
+        if (featureObj === null) {
+          printError(`error: feature ${fid} not in spec.yaml`);
+          process.exit(3);
+        }
+        const shapes = kickoffDetectShapes(featureObj, spec);
+        if (shapes.length === 0) {
+          printError(`error: no shapes detected for ${fid}`);
+          process.exit(3);
+        }
+        let styleBlock = '';
+        try {
+          styleBlock = kickoffRenderStyleBlock(harnessDir, featureObj);
+        } catch {
+          styleBlock = '';
+        }
+        const path = generateKickoff(harnessDir, fid, shapes, {
+          hasAudio: kickoffHasAudioFlag(featureObj),
+          force: true,
+          mode: resolveMode(spec),
+          styleBlock,
+        });
+        if (json) {
+          printJson({path, shapes, agents: kickoffAgentsForShapes(shapes, kickoffHasAudioFlag(featureObj))});
+        } else {
+          printHuman(`${path}\n`);
+        }
+        return;
+      }
+      if (options['designReview']) {
+        const spec = loadSpecOrNull();
+        const featureObj = findFeatureInSpec(spec, fid);
+        if (featureObj === null) {
+          printError(`error: feature ${fid} not in spec.yaml`);
+          process.exit(3);
+        }
+        const path = generateDesignReview(harnessDir, fid, {
+          hasAudio: kickoffHasAudioFlag(featureObj),
+        });
+        if (json) {
+          printJson({path});
+        } else {
+          printHuman(`${path}\n`);
+        }
+        return;
+      }
+      if (options['retro']) {
+        const spec = loadSpecOrNull();
+        const path = generateRetro(harnessDir, fid, {
+          force: true,
+          mode: resolveMode(spec),
+        });
+        if (json) {
+          printJson({path});
+        } else {
+          printHuman(`${path}\n`);
+        }
+        return;
+      }
 
       // --run-gate
       if (options['runGate']) {
@@ -501,6 +608,35 @@ function buildProgram(): Command {
         printJson(report);
       } else {
         printHuman(formatMetricsHuman(report));
+      }
+    });
+
+  // -----------------------------------------------------------------
+  // inbox — Q&A file-drop scanner
+  // -----------------------------------------------------------------
+  program
+    .command('inbox')
+    .description('list open Q&A questions under .harness/_workspace/questions/')
+    .option('--harness-dir <dir>', 'path to .harness directory', './.harness')
+    .option('--feature <fid>', 'filter to one feature id')
+    .option('--all', 'include answered questions')
+    .option('--json', 'emit JSON array')
+    .action((options: Record<string, unknown>) => {
+      const harnessDir = resolveHarnessDir(options['harnessDir'] as string | undefined);
+      const featureId = (options['feature'] as string | undefined) ?? null;
+      const items = options['all']
+        ? scanInbox(harnessDir, featureId)
+        : openQuestions(harnessDir, featureId);
+      if (options['json']) {
+        printJson(items);
+      } else if (items.length === 0) {
+        printHuman(options['all'] ? '(no questions)\n' : '(no open questions)\n');
+      } else {
+        for (const q of items) {
+          const flag = q.blocking ? '🔒' : '  ';
+          const status = q.has_answer ? '✅' : '❓';
+          printHuman(`${status} ${flag} ${q.feature_id} · ${q.from_agent} → ${q.to_agent}  ${q.path}\n`);
+        }
       }
     });
 

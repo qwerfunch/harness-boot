@@ -123,124 +123,39 @@ Example: `🧰 /harness-boot:init · solo · first-time scaffold into empty dir`
    stays committed). Unknown flags get ignored, with a `unknown argument: X`
    note in the final report.
 
-### 0.5. Optional dependency preflight (F-082)
+### 0.5. Runtime prerequisite — Node.js 20+ (F-107)
 
-The plugin uses `pyyaml` for spec parsing and `tomli` (Python 3.10
-backport) for `pyproject.toml` signals. Both are declared in
-`requirements-dev.txt` but are **not bundled**. On a fresh macOS or
-Linux system Python they are typically absent — F-081 graceful
-degradation keeps the plugin alive when they are missing, but the user
-loses sync, style fingerprints, and other features that depend on them.
-F-082 closes the loop: detect the missing deps once at init and offer
-to install them (with explicit consent) so the rest of init runs at
-full fidelity.
+The plugin ships a built CLI under `dist/` and a shim at
+`bin/harness.js`. Both rely on Node.js 20 or newer. v0.13 made the
+TS layer the only operational surface — there is no Python fallback
+anymore.
 
 **Detection** — run this `Bash` block once:
 
 ```bash
-python3 -c "import yaml" 2>/dev/null && \
-  (python3 -c "import tomllib" 2>/dev/null || python3 -c "import tomli" 2>/dev/null) && \
-  echo "deps: ok" || echo "deps: missing"
+node --version 2>/dev/null | awk -F. '{ split($1, v, "v"); if (v[2] >= 20) print "node: ok"; else print "node: too_old" }' \
+  || echo "node: missing"
 ```
 
 Branch on the output:
 
-#### `deps: ok` — continue to §1
+- **`node: ok`** — continue to §1.
+- **`node: missing`** — print:
 
-No further action; init proceeds normally. Append a single
-`deps_preflight` event to `.harness/events.log` with `status: "ok"`
-once §1 has created the file.
+  > harness-boot needs Node.js 20 or newer. Install via your package
+  > manager or [nodejs.org](https://nodejs.org/) and re-run
+  > `/harness-boot:init`.
 
-#### `deps: missing` — ask the user, do not auto-install
+  Then **stop** — there is no degraded mode. Append a single
+  `prereq_check` event later in §5 with `status: "node_missing"`.
+- **`node: too_old`** — print the upgrade hint with the same shape
+  and stop. Append `prereq_check` with `status: "node_too_old"`.
 
-1. Send the user a single message in their language (English template
-   shown; localize as Korean / etc. when the locale resolver from §6 /
-   F-040 indicates):
-
-   > harness-boot needs Python packages: `pyyaml` and `tomli` (Python
-   > 3.10 backport). Should I install them now?
-   >
-   > • `yes` — run `python3 -m pip install --user pyyaml "tomli; python_version<'3.11'"`
-   > • `no` — skip (the plugin will run in degraded mode; F-081 backstop)
-   > • `venv` — show the venv command for manual setup
-
-2. **Wait for the user response.** Do not auto-execute under any
-   circumstance — the user's Python environment is their asset, and
-   surprise modification (especially when PEP 668 is in effect) is a
-   worse experience than asking once.
-
-3. **`yes` branch** — run:
-
-   ```bash
-   python3 -m pip install --user pyyaml "tomli; python_version<'3.11'"
-   ```
-
-   If pip exits non-zero with a `PEP 668` /
-   `externally-managed-environment` marker, ask once more:
-
-   > pip is blocked by PEP 668 (your distribution marks the system
-   > Python as externally managed). Override with
-   > `--break-system-packages`? This installs into the user-site of the
-   > system Python and is the documented escape hatch, but it does
-   > modify a Python that other tools may also use.
-   >
-   > • `yes` — re-run with `--break-system-packages`
-   > • `no` — fall back to the venv path below
-
-   If PEP 668 fallback `yes`: re-run with
-   `python3 -m pip install --user --break-system-packages pyyaml "tomli; python_version<'3.11'"`.
-
-   If PEP 668 fallback `no`: print the venv command (see `venv` branch
-   below) and continue with the F-081 backstop.
-
-4. **`no` branch** — print:
-
-   ```
-   [info] continuing without auto-install. To install later:
-     python3 -m pip install --user pyyaml "tomli; python_version<'3.11'"
-   The plugin will run in degraded mode (F-081 backstop) — sync, style
-   fingerprint, and similar features are silently skipped.
-   ```
-
-   Continue to §1. Append a `deps_preflight` event with
-   `status: "skipped"`.
-
-5. **`venv` branch** — print:
-
-   ```
-   [info] To install in a venv:
-     python3 -m venv .venv
-     source .venv/bin/activate     # Windows: .venv\Scripts\activate
-     python3 -m pip install pyyaml "tomli; python_version<'3.11'"
-   Then re-run /harness-boot:init from the activated venv.
-   ```
-
-   Continue to §1 (the user can re-init after activating the venv).
-   Append a `deps_preflight` event with `status: "skipped"`.
-
-6. After any successful pip install, re-run the detection bash to
-   confirm. Append a `deps_preflight` event with `status: "installed"`
-   on success or `status: "failed"` if pip still fails.
-
-#### Failsafe — never abort init on dep failure
-
-This section is **fail-open**. F-081 graceful degradation keeps the
-rest of init alive whatever the user chose. **Never abort init** on a
-pip install failure or a declined offer — the user reaches §1 either
-way.
-
-#### Event format
-
-Once `.harness/events.log` exists (after §1 + §5 create the directory
-and the file), append one preflight event:
+**Event format** — once `.harness/events.log` exists (after §1 + §5):
 
 ```json
-{"ts":"<ISO8601>","type":"deps_preflight","status":"<ok|installed|skipped|failed>","missing":["pyyaml","tomli"]}
+{"ts":"<ISO8601>","type":"prereq_check","status":"<ok|node_missing|node_too_old>"}
 ```
-
-The `missing` array carries the modules that were absent at detection
-time even when the user later installed them. Retro / metrics use this
-for first-visit user flow analytics.
 
 ### 1. Create directories
 
@@ -366,42 +281,20 @@ in §2.
   user: `No manifest detected — skipping brownfield recon, using the
   empty skeleton.`
 
-**1. Deterministic recon — preview**:
-```bash
-cd "${PLUGIN_ROOT}" && python3 -m scripts.scan.seed_spec --root "${PROJECT_ROOT}" --preview
-```
-Output: a seed YAML on stdout. The following slots fill automatically —
-`project.name` · `constraints.tech_stack.{runtime,language,test,build,min_version}`
-· `metadata.source.origin = "existing_code"` ·
-`metadata.source.maturity = "implementation"` · Walking Skeleton F-0.
+**Status (F-107):** the deterministic seed runner has not been
+ported to the TS CLI yet. Until `harness scan-seed` ships, **fall
+back to Option 1** (straight starter-template copy) and surface a
+note to the user:
 
-**2. (Optional) LLM recon — entities**: when structure recon
-(`metadata.scan.entity_candidate_files`) isn't empty, load the
-spec-conversion `adapters/brownfield.md` to draft `domain.{overview,
-entities[]}`. Every LLM-seeded entry carries a `_seed_status: draft` marker.
+> Brownfield auto-seed is queued for a follow-up release. Using the
+> empty skeleton for now — fill `project` / `constraints.tech_stack`
+> / `domain.entities[]` from the manifest manually, or run
+> `/harness-boot:work F-0` to start the Walking Skeleton cycle and
+> let the orchestrator drive the recon as a feature.
 
-**3. Show the user a preview + 4-option pick** (single choice):
-```
-🔍 Brownfield recon preview:
-<seed YAML body>
-
-Seed this as .harness/spec.yaml?
-  Y = use deterministic + LLM as-is
-  D = deterministic only (drop entities — when LLM confidence is low)
-  S = empty skeleton (Option 1 equivalent — discard the recon)
-  E = save the seed to a draft file and let me edit it before applying
-```
-
-**4. Branch behavior**:
-| Choice | Action |
-|---|---|
-| Y | run `python3 -m scripts.scan.seed_spec --root <project> --apply` → write `.harness/spec.yaml` |
-| D | drop LLM-seeded entities, then run the same `--apply` (compose_seed with `llm_entities=None`) |
-| S | run `python3 -m scripts.scan.seed_spec --root <project> --skip` → byte-equal copy of the starter template (exact Option 1 parity) |
-| E | save the seed to `<project>/.harness/spec.yaml.draft` and tell the user to edit, then `mv` it into place |
-
-**5. Validate gate**: Y/D paths schema-validate before writing. On
-failure, surface the error and recommend the S fallback.
+The Walking Skeleton cycle (`/harness-boot:work F-0`) plus the
+researcher → product-planner agents reach the same end state — a
+populated spec.yaml — without any Python dependency.
 
 **6. Extra event in §5 events.log** (one line):
 ```json
@@ -482,7 +375,7 @@ that works** wins:
 
 1. `Bash: date -u +%Y-%m-%dT%H:%M:%SZ` (POSIX `date` — macOS · Linux ·
    Git Bash on Windows).
-2. On failure: `Bash: python3 -c 'import datetime; print(datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))'`
+2. On failure: `Bash: node -e 'console.log(new Date().toISOString().replace(/\.\d{3}Z$/, "Z"))'`
    (when Python 3 is installed).
 3. On failure: `Bash: node -e 'console.log(new Date().toISOString().replace(/\.\d{3}Z$/, "Z"))'`
    (when Node is installed).
@@ -503,7 +396,7 @@ populated. This eliminates the post-install stutter where the very first
 reference `domain.md`.
 
 ```bash
-python3 "$PLUGIN_ROOT/legacy/scripts/sync.py" --harness-dir "$(pwd)/.harness" --soft
+node "$PLUGIN_ROOT/bin/harness.js" sync --harness-dir "$(pwd)/.harness" --soft
 ```
 
 The `--soft` flag delegates to `sync.try_initial_sync(harness_dir)`,

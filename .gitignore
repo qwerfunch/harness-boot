@@ -24,7 +24,6 @@ Thumbs.db
 
 # Node toolchain
 node_modules/
-dist/
 coverage/
 .vitest-cache/
 
@@ -57,3 +56,6 @@ legacy/
 .harness/_workspace/*
 .harness/_workspace/**/
 !.harness/_workspace/issues-log.md
+
+# F-107 — dist/ committed for plugin install (no build step required)
+# Keep dist/ tracked so npx harness works out of the box; we do NOT add it back to .gitignore.

@@ -6,9 +6,8 @@
 
 Claude Code 위에서 도는 multi-agent 개발 하네스. 다른 AI 도구가 *능력* 을 더할 때, harness-boot 는 *방향* 을 만듭니다.
 
-[![plugin](https://img.shields.io/badge/plugin-v0.12.2-blue)](.claude-plugin/plugin.json)
-[![Python tests](https://img.shields.io/badge/python-1192%20passing-brightgreen)](tests)
-[![TS parity](https://img.shields.io/badge/ts%20parity-467%20passing-brightgreen)](tests/parity)
+[![plugin](https://img.shields.io/badge/plugin-v0.13.0-blue)](.claude-plugin/plugin.json)
+[![tests](https://img.shields.io/badge/tests-467%20passing-brightgreen)](tests/parity)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 ---
@@ -95,10 +94,7 @@ cd my-new-project
 /harness-boot:work
 ```
 
-**의존성**:
-
-- **Python 3.10+** + `pyyaml` (필수) + `jsonschema` (권장) — 현재 슬래시 명령이 의존하는 운영 레이어.
-- **Node.js 20+** — 지금은 선택. TS 마이그레이션이 기본 surface 가 되면 필수가 됩니다. TS 구현은 `src/` 트리, CLI 진입점은 `bin/harness.js`. 빌드는 `npm install && npm run build`.
+**의존성**: **Node.js 20+** 한 가지. 빌드된 CLI 가 `dist/` 에 들어 있고 `bin/harness.js` 가 진입점이라, 설치 직후 별도의 빌드 없이 바로 동작합니다.
 
 5 분 이상 걸리면 [issue 알려주세요](https://github.com/qwerfunch/harness-boot/issues).
 
@@ -208,37 +204,30 @@ harness-boot/
 ├── agents/                전문가 에이전트 정의
 ├── commands/              슬래시 명령 (init · work)
 ├── hooks/                 session-bootstrap · prompt-log
-├── src/                   TypeScript 구현 (마이그레이션 진행 중)
-├── bin/harness.js         Node CLI 엔트리 — `npm run build` 후 실행 가능
-├── legacy/scripts/        Python 구현 (현재 운영 surface)
+├── src/                   TypeScript 구현
+├── dist/                  pre-built CLI (플러그인 설치용으로 commit 됨)
+├── bin/harness.js         Node CLI 엔트리 — `harness <subcommand>`
 ├── self_check.sh          5단계 자체 도그푸드 검증
 ├── skills/spec-conversion/  plan.md → spec.yaml 변환
 ├── docs/                  스키마 · 템플릿 · 샘플 · 결과물 데모
-└── tests/                 단위 · 통합 · 회귀 · parity · 스케일
+└── tests/parity/          TS parity 테스트 스위트
 ```
-
-**마이그레이션 메모 (v0.12.x)**: Python 구현이 `scripts/` 에서 `legacy/scripts/` 로 옮겨졌습니다. TS 포팅이 자라는 동안 동일한 surface 자리를 비워두기 위해서입니다. 슬래시 명령은 여전히 Python 을 호출합니다 — TS 는 같은 동작을 가진 평행 구현으로, parity 테스트로 동등성을 보장합니다. 자세한 진행 상황은 `CLAUDE.md` 참고.
 
 ---
 
 ## 현재 상태
 
-**v0.12.2** — 외부 채택 준비 단계, 자체 도그푸드 운영 중. TS 마이그레이션 진행 중 (`src/` 평행 구현, parity 테스트 모두 통과).
+**v0.13.0** — TS 단일 운영, 자체 도그푸드 운영 중.
 
 - 변경 이력 — [CHANGELOG.md](CHANGELOG.md)
 - 개발자 가이드 — [CLAUDE.md](CLAUDE.md)
 - 문제 보고 — [GitHub Issues](https://github.com/qwerfunch/harness-boot/issues)
 
 ```bash
-# Python (현재 운영 레이어)
-python3 -m pip install --user -r requirements-dev.txt
-python3 -m pytest tests/ -q
-bash self_check.sh
-
-# TypeScript (평행 구현, 함께 동작)
+# 새로 클론한 저장소에서:
 npm install
-npm run build       # dist/ 빌드 → bin/harness.js 실행 가능
-npm run test:parity # TS ↔ Python 출력 동등성 parity 테스트
+npm test            # vitest (parity 스위트)
+bash self_check.sh  # 5단계 구조 검증
 ```
 
 ---
