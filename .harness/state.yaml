@@ -1821,8 +1821,36 @@ features:
       · self_check 5/5 OK.
   started_at: '2026-04-28T17:56:41Z'
   completed_at: '2026-04-28T18:01:37Z'
+- id: F-081
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T07:24:34Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T07:24:35Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-29T07:24:34Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (12.6s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-29T07:24:35Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.7s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-29T07:24:35Z'
+    kind: manual_check
+    summary: Graceful import degradation 7/7 PASS — sync.py wraps yaml import + main()
+      early-exits 0 under --soft when missing (F-076 contract preserved) · sync.py
+      exits 1 strict when missing · scan/{style_fingerprint,manifest,seed_spec}.py
+      3 files use nested try/except + tomllib=None guards on every loads site. 1183
+      unit+integration pass · self_check 5/5 OK.
+  started_at: '2026-04-29T07:19:44Z'
+  completed_at: '2026-04-29T07:25:16Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-080
+  last_command: /harness:work F-081
   last_gate_passed: gate_5
   active_feature_id: null
