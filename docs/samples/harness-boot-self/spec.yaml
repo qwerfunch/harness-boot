@@ -4041,6 +4041,36 @@ features:
       - "AC-7: E2E case 3 (brownfield) — fallback to Option 1 produces a clean .harness/ layout; F-0 walking skeleton can run on top."
       - "AC-8: Audit report written to .harness/_workspace/audit/F-108.md with PASS/WARN/BLOCK per finding."
 
+  - id: "F-109"
+    name: "Install + CI verification (post-cutover supply chain)"
+    type: "feature"
+    description: |
+      Twenty-sixth cycle. Two leverage points the F-108 audit
+      flagged as remaining unknowns:
+
+        1. Fresh-clone install path — does the committed `dist/`
+           plus `bin/harness.js` actually run on a brand-new
+           machine without `npm install`? `bin/harness.js` does
+           `import('../dist/cli/harness.js')` which in turn imports
+           `commander`, `yaml`, `ajv`, `smol-toml` — those need to
+           be in `node_modules` for the CLI to start. So the answer
+           is "you do need npm install for runtime deps, but you do
+           NOT need npm run build because dist/ is committed".
+        2. CI workflow — `.github/workflows/self-check.yml` was
+           authored when the operational layer was Python. After
+           F-107 it must (a) install Node, (b) skip the pytest
+           setup, (c) run `npm install && bash self_check.sh`.
+
+      Audit fixes (if any) applied inline.
+
+    acceptance_criteria:
+      - "AC-1: .github/workflows/self-check.yml runs `npm install` + `bash self_check.sh` on a Node 20 runner; no pytest / Python step left."
+      - "AC-2: Fresh-clone simulation — `git clone` + `npm install` + `node bin/harness.js status --harness-dir <fresh>/.harness` produces a status report without build step."
+      - "AC-3: Without `npm install`, `node bin/harness.js --version` either succeeds (no runtime deps loaded) OR fails with a clear `Cannot find module 'commander'` so the user knows the next step."
+      - "AC-4: .claude-plugin/{plugin,marketplace}.json — name + version + source align; bin field present and points at bin/harness.js."
+      - "AC-5: F-109 mirrored on both spec.yaml copies."
+      - "AC-6: F-109 completed via the harness CLI cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

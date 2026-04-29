@@ -20,7 +20,7 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "prepare": "node -e \"require('fs').existsSync('dist/cli/harness.js') || process.exit(0)\" || npm run build",
+    "prepare": "test -f dist/cli/harness.js || npm run build",
     "test": "vitest run tests/parity --passWithNoTests",
     "test:parity": "vitest run tests/parity --passWithNoTests",
     "test:watch": "vitest",

@@ -94,7 +94,7 @@ Then drive every feature through the lifecycle:
 /harness-boot:work
 ```
 
-**Requirement**: **Node.js 20+**. The plugin ships its built CLI under `dist/` and a shim at `bin/harness.js`, so install just works — no build step needed.
+**Requirement**: **Node.js 20+**. The plugin ships its built CLI under `dist/` and a shim at `bin/harness.js`, so **no build step** is needed. From a fresh clone you only run `npm install` once to fetch runtime deps (`commander`, `yaml`, `ajv`, `smol-toml`).
 
 If it takes more than 5 minutes, [open an issue](https://github.com/qwerfunch/harness-boot/issues). We'll fix it.
 

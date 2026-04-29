@@ -94,7 +94,7 @@ cd my-new-project
 /harness-boot:work
 ```
 
-**의존성**: **Node.js 20+** 한 가지. 빌드된 CLI 가 `dist/` 에 들어 있고 `bin/harness.js` 가 진입점이라, 설치 직후 별도의 빌드 없이 바로 동작합니다.
+**의존성**: **Node.js 20+** 한 가지. 빌드된 CLI 가 `dist/` 에 같이 들어 있어 **별도의 빌드는 필요 없습니다**. 새 clone 에서는 한 번만 `npm install` 로 런타임 의존성 (`commander`, `yaml`, `ajv`, `smol-toml`) 을 받으면 끝.
 
 5 분 이상 걸리면 [issue 알려주세요](https://github.com/qwerfunch/harness-boot/issues).
 
