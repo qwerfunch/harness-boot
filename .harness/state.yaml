@@ -2317,8 +2317,31 @@ features:
     summary: Live walkthrough verified — copied tests/smoke/feature-author/seed-spec.yaml to /tmp/feature-author-smoke/.harness/spec.yaml, then appended the sensitive-shape F-1 entry from walkthroughs/sensitive.md and ran 'node bin/harness validate ... --schema docs/schemas/spec.schema.json' → valid. The skill's expected output for '로그인 기능 구현해줘' produces a v2.3.8 schema-compliant feature entry. Full smoke template (4 walkthroughs + prompts.md + README.md + seed-spec.yaml) checked in at tests/smoke/feature-author/.
   started_at: 2026-04-29T15:18:24Z
   completed_at: 2026-04-29T15:22:11Z
+- id: F-117
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-04-29T15:48:41Z
+      note: "cmd: npm test"
+    gate_5:
+      last_result: pass
+      ts: 2026-04-29T15:48:41Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-04-29T15:48:41Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.0s) · cmd: npm test"
+  - ts: 2026-04-29T15:48:41Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.4s) · cmd: bash self_check.sh"
+  - ts: 2026-04-29T15:48:42Z
+    kind: manual_check
+    summary: "Repo root cleanup verified: pytest.ini · requirements-dev.txt removed (git rm); .pytest_cache/ deleted locally; CLAUDE.md §3 layout no longer references requirements-dev.txt; full regression typecheck+lint clean · parity 497/497 · self_check 5/5 — all PASS post-cleanup."
+  started_at: 2026-04-29T15:48:13Z
+  completed_at: 2026-04-29T15:49:12Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-116
+  last_command: /harness:work F-117
   last_gate_passed: gate_5
   active_feature_id: null
