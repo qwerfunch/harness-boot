@@ -78,21 +78,40 @@ function detectShape(prompt: string): ShapeName {
 describe('feature-author skill — frontmatter', () => {
   const skillMd = readSkill('SKILL.md');
 
-  it('declares name=feature-author and version=0.1', () => {
+  it('declares name=feature-author per Anthropic skill spec', () => {
     expect(skillMd).toMatch(/^name: feature-author$/m);
-    expect(skillMd).toMatch(/^version: 0\.1$/m);
   });
 
-  it('description carries Korean trigger phrases', () => {
-    expect(skillMd).toContain('새 피처 추가');
-    expect(skillMd).toContain('F-N 정의');
-    expect(skillMd).toContain('피처 추가하자');
+  it('does not declare a top-level `version` field (not in Anthropic spec)', () => {
+    // Anthropic frontmatter contract has no `version` key. Internal
+    // versioning lives in the body, not in frontmatter.
+    expect(skillMd).not.toMatch(/^version:/m);
   });
 
-  it('description carries English trigger phrases', () => {
-    expect(skillMd).toContain('draft a feature');
+  it('uses when_to_use frontmatter field for trigger phrases', () => {
+    expect(skillMd).toMatch(/^when_to_use: \|/m);
+  });
+
+  it('description is concise (single-paragraph, frontmatter-loadable)', () => {
+    const descMatch = skillMd.match(/^description:\s+(.+?)$/m);
+    expect(descMatch).not.toBeNull();
+    // Anthropic doc: description + when_to_use truncated at 1536 chars.
+    // Description alone should be tight — under 500 chars is healthy.
+    expect(descMatch![1].length).toBeLessThan(500);
+  });
+
+  it('when_to_use covers Korean natural-phrasing patterns ("기능 구현해줘")', () => {
+    // Korean devs commonly say "X 기능 구현해줘", "X 만들어줘", "X 추가해줘".
+    // The skill must trigger on these or auto-loading misses real users.
+    expect(skillMd).toContain('기능 구현해줘');
+    expect(skillMd).toContain('만들어줘');
+    expect(skillMd).toContain('추가해줘');
+  });
+
+  it('when_to_use carries English trigger phrases', () => {
+    expect(skillMd).toContain('implement X feature');
     expect(skillMd).toContain('spec out');
-    expect(skillMd).toContain('add a feature');
+    expect(skillMd).toContain('scaffold');
   });
 
   it('teaches the four required steps', () => {
@@ -100,6 +119,18 @@ describe('feature-author skill — frontmatter', () => {
     expect(skillMd).toMatch(/Step 2.*Read .*project\.mode/);
     expect(skillMd).toMatch(/Step 3.*Compose the F-N entry/);
     expect(skillMd).toMatch(/Step 4.*lockstep paste instructions/);
+  });
+
+  it('References section explicitly links bundled adapter + template files', () => {
+    expect(skillMd).toContain('[adapters/ui-surface.md](adapters/ui-surface.md)');
+    expect(skillMd).toContain('[adapters/sensitive.md](adapters/sensitive.md)');
+    expect(skillMd).toContain(
+      '[adapters/performance-budget.md](adapters/performance-budget.md)',
+    );
+    expect(skillMd).toContain('[adapters/pure-domain.md](adapters/pure-domain.md)');
+    expect(skillMd).toContain(
+      '[templates/feature-entry.yaml](templates/feature-entry.yaml)',
+    );
   });
 });
 

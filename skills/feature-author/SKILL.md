@@ -1,21 +1,26 @@
 ---
 name: feature-author
-description: |
-  Use this skill when the user wants to add, define, draft, register,
-  spec out, or scaffold a new feature in `.harness/spec.yaml` (the
-  harness-boot single source of truth). Trigger phrases include
-  Korean — "새 피처 추가", "F-N 정의", "이거 spec 으로 등록",
-  "피처 추가하자" — and English — "draft a feature", "spec out X",
-  "add a feature", "register this as F-N", "scaffold a feature".
+description: Convert a feature idea into a complete `features[]` entry for `.harness/spec.yaml` — auto-detects shape (UI / sensitive / performance / pure-domain), sizes acceptance criteria to project mode, and emits a paste-ready block for both spec.yaml mirrors. Use only on harness-boot projects (presence of `.harness/spec.yaml`).
+when_to_use: |
+  Trigger when the user describes a feature idea and wants it scaffolded into the spec, in any of these shapes:
 
-  The skill walks the LLM through four steps: shape detection,
-  project-mode-aware AC sizing, complete F-N entry emission, and
-  lockstep paste instructions for the two spec.yaml mirrors. It is
-  for harness-boot projects only (presence of `.harness/spec.yaml`).
-version: 0.1
+  Korean (most common — natural dev phrasing):
+    - "X 기능 구현해줘", "X 기능 만들어줘", "X 추가해줘", "X 개발해줘"
+    - "로그인 기능 만들자", "결제 붙이자", "회원가입 구현"
+    - "새 피처 추가", "피처 추가하자", "X 작업할게"
+    - "F-N 정의", "이거 spec 으로 등록", "spec.yaml 에 추가"
+
+  English:
+    - "implement X feature", "build X", "add a X feature"
+    - "draft a feature", "spec out X", "scaffold X"
+    - "register this as F-N", "let's spec X"
+
+  Also trigger when the user pastes a 1-2 sentence feature description and asks for scaffolding, or types `/harness-boot:work` with feature-creation prose (not lifecycle ops).
+
+  Do NOT trigger for: lifecycle ops on existing features (gate run, evidence, complete), projects without `.harness/`, or `plan.md` whole-document conversion (that is the `spec-conversion` skill).
 ---
 
-# feature-author skill (v0.1)
+# feature-author skill
 
 This skill teaches Claude how to convert a user's idea ("we need a
 login flow") into a complete `features[]` entry in
@@ -162,7 +167,30 @@ If the user wants any of the above, tell them:
 - "Want me to activate F-N right after? `harness work F-N
   --harness-dir .harness`."
 
-## References
+## Bundled resources (load on demand)
+
+Per Anthropic's skill authoring guidance, sub-files are loaded only
+when referenced. Load these from inside this skill as you need them:
+
+- **Shape adapters** — read the adapter that matches Step 1's
+  detected shape:
+  - [adapters/ui-surface.md](adapters/ui-surface.md) — render /
+    interaction / a11y / state ACs · ui_surface block
+  - [adapters/sensitive.md](adapters/sensitive.md) — STRIDE / authn-z
+    / secret-mgmt / audit ACs · entities block
+  - [adapters/performance-budget.md](adapters/performance-budget.md)
+    — budget assertion / measurement / regression net ACs ·
+    performance_budget block
+  - [adapters/pure-domain.md](adapters/pure-domain.md) — contract /
+    edge cases / determinism ACs · no extra block
+
+- **Paste-ready skeleton** —
+  [templates/feature-entry.yaml](templates/feature-entry.yaml) — the
+  YAML scaffold with placeholder markers (`<F_ID>`, `<NAME>`,
+  `<DESCRIPTION>`, `<AC_N>`) and three commented-out shape blocks.
+  Uncomment the one that matches Step 1's shape.
+
+## External references
 
 - `agents/orchestrator.md` — routing table and conflict-resolution
   rules.
@@ -174,3 +202,8 @@ If the user wants any of the above, tell them:
   to draw shape-specific phrasing from.
 - `commands/work.md` — lifecycle reference for what happens after
   the entry is in place.
+
+## Skill version
+
+Internal version: `0.1` (not part of Anthropic's frontmatter
+contract; tracked here for harness-boot's own change log).

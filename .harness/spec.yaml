@@ -4257,6 +4257,46 @@ features:
       - "AC-6: F-114 mirrored on both spec.yaml copies."
       - "AC-7: F-114 completed via the harness CLI cycle on a feature branch (memory `feedback_git_workflow`)."
 
+  - id: "F-115"
+    name: "feature-author skill — Anthropic guide alignment + Korean natural-phrasing triggers"
+    type: "chore"
+    description: |
+      Thirty-second cycle. Pre-merge audit on F-114 surfaced two
+      gaps in the feature-author skill before PR #47 lands:
+
+      1. Anthropic skill guide compliance (per claude-code docs at
+         code.claude.com/docs/en/skills.md):
+         - `version` is NOT part of the official frontmatter
+           contract. Removed from frontmatter; tracked at the body
+           tail as an internal "Skill version" note.
+         - `when_to_use` is the canonical place for trigger
+           phrases. Split out from `description` (which now carries
+           a single-sentence summary, well under the 1536-char
+           description+when_to_use budget).
+         - Bundled sub-files (adapters/, templates/) need explicit
+           markdown links in a Resources section so Claude knows
+           when to load them on demand. Added.
+
+      2. Korean natural-phrasing trigger gap. Original trigger list
+         covered only "새 피처 추가" / "F-N 정의" type phrases —
+         missed the most common Korean dev phrasing:
+         - "X 기능 구현해줘" / "X 기능 만들어줘"
+         - "X 추가해줘" / "X 개발해줘"
+         - "로그인 기능 만들자" / "결제 붙이자"
+         These are now in the `when_to_use` block; without them,
+         description-matching auto-load would miss real users.
+
+      No new behavior — same skill, fixed surface metadata.
+
+    acceptance_criteria:
+      - "AC-1: skills/feature-author/SKILL.md frontmatter has no `version` field; `name` and `description` (single-line summary) only, plus `when_to_use` block with trigger phrases."
+      - "AC-2: SKILL.md `when_to_use` includes Korean natural phrases: '기능 구현해줘', '만들어줘', '추가해줘'."
+      - "AC-3: SKILL.md ends with a 'Bundled resources' section that markdown-links every adapter ([adapters/ui-surface.md], etc.) and the template file."
+      - "AC-4: SKILL.md body retains a brief 'Skill version' note at the tail (internal versioning preserved without violating Anthropic frontmatter contract)."
+      - "AC-5: tests/parity/skill-feature-author.test.ts updated to assert (a) absence of frontmatter `version`, (b) presence of `when_to_use`, (c) Korean natural-phrasing triggers, (d) bundled-resources markdown links. parity 497/497 PASS."
+      - "AC-6: F-115 mirrored on both spec.yaml copies."
+      - "AC-7: F-115 completed via the harness CLI cycle on the same feature branch as F-114 (PR #47)."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
