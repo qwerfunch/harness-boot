@@ -2371,8 +2371,32 @@ features:
     summary: ui/dashboard.ts ported (~480 LOC TS); 20 parity tests; 447/447 cumulative.
   started_at: '2026-04-29T10:41:52Z'
   completed_at: '2026-04-29T10:44:17Z'
+- id: F-104
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T10:47:41Z'
+      note: 'cmd: npm test'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T10:47:42Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-29T10:47:41Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (1.0s) · cmd: npm test'
+  - ts: '2026-04-29T10:47:42Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-29T10:47:43Z'
+    kind: test
+    summary: 'bin/harness CLI shipped (commander entry point with 7 subcommands: work/sync/check/status/events/metrics/validate);
+      20 parity tests; 467/467 cumulative.'
+  started_at: '2026-04-29T10:44:51Z'
+  completed_at: '2026-04-29T10:47:43Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-103
+  last_command: /harness:work F-104
   last_gate_passed: gate_5
   active_feature_id: null
