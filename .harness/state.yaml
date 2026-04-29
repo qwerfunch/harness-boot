@@ -2013,8 +2013,32 @@ features:
       new parity tests; cumulative 138/138 PASS; lint+typecheck clean.
   started_at: '2026-04-29T09:47:28Z'
   completed_at: '2026-04-29T09:48:57Z'
+- id: F-089
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T09:52:26Z'
+      note: 'cmd: npm test'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T09:52:27Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-29T09:52:26Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (0.7s) · cmd: npm test'
+  - ts: '2026-04-29T09:52:27Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-29T09:52:27Z'
+    kind: test
+    summary: spec/validate.ts ported with ajv 2020-12 (Draft 2020 schema support);
+      11 parity tests; canonical sample validates clean; cumulative 149/149 PASS.
+  started_at: '2026-04-29T09:49:41Z'
+  completed_at: '2026-04-29T09:52:42Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-088
+  last_command: /harness:work F-089
   last_gate_passed: gate_5
   active_feature_id: null
