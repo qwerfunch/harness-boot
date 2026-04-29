@@ -2294,8 +2294,31 @@ features:
     summary: "Anthropic guide audit (claude-code-guide agent + claude.com/docs): version field NOT in spec → removed; when_to_use is canonical for triggers → added; bundled sub-files need explicit markdown links → added Resources section. Korean natural-phrasing gap closed: '기능 구현해줘', '만들어줘', '추가해줘' added to when_to_use. parity 497/497 PASS"
   started_at: 2026-04-29T15:16:01Z
   completed_at: 2026-04-29T15:16:24Z
+- id: F-116
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-04-29T15:21:52Z
+      note: "cmd: npm test"
+    gate_5:
+      last_result: pass
+      ts: 2026-04-29T15:21:53Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-04-29T15:21:52Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.1s) · cmd: npm test"
+  - ts: 2026-04-29T15:21:53Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.4s) · cmd: bash self_check.sh"
+  - ts: 2026-04-29T15:21:53Z
+    kind: manual_check
+    summary: Live walkthrough verified — copied tests/smoke/feature-author/seed-spec.yaml to /tmp/feature-author-smoke/.harness/spec.yaml, then appended the sensitive-shape F-1 entry from walkthroughs/sensitive.md and ran 'node bin/harness validate ... --schema docs/schemas/spec.schema.json' → valid. The skill's expected output for '로그인 기능 구현해줘' produces a v2.3.8 schema-compliant feature entry. Full smoke template (4 walkthroughs + prompts.md + README.md + seed-spec.yaml) checked in at tests/smoke/feature-author/.
+  started_at: 2026-04-29T15:18:24Z
+  completed_at: 2026-04-29T15:22:11Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-115
+  last_command: /harness:work F-116
   last_gate_passed: gate_5
   active_feature_id: null
