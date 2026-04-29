@@ -4347,6 +4347,41 @@ features:
       - "AC-5: F-116 mirrored on both spec.yaml copies."
       - "AC-6: F-116 completed via the harness CLI cycle on the same feature branch as F-114/F-115 (PR #47)."
 
+  - id: "F-117"
+    name: "Repo root cleanup — remove dead Python config after v0.13 TS-only cutover"
+    type: "chore"
+    description: |
+      Thirty-fourth cycle. v0.13 (F-107) retired the Python operational
+      surface to legacy/scripts/, but two Python config files at repo
+      root were left behind:
+
+        - pytest.ini (`testpaths = tests/unit`) — F-026 era; bare
+          `python -m pytest` no longer runs in the v0.13 hot path.
+          Only legacy/scripts/ tests would consume it, but legacy is
+          read-only reference and isn't tested in CI any more.
+        - requirements-dev.txt — pyyaml / jsonschema / pytest /
+          coverage / tomli. All Python-only, all replaced by
+          devDependencies in package.json.
+
+      Plus a local cache directory `.pytest_cache/` (already
+      gitignored, but stale on disk).
+
+      One doc reference still mentions `requirements-dev.txt` in
+      CLAUDE.md §3 layout list — drops in this cycle too.
+
+      legacy/scripts/ keeps no pytest.ini or requirements file of
+      its own; running its tests requires manual env setup, which
+      is the intended posture for a read-only archive.
+
+    acceptance_criteria:
+      - "AC-1: pytest.ini removed from repo root (git rm)."
+      - "AC-2: requirements-dev.txt removed from repo root (git rm)."
+      - "AC-3: .pytest_cache/ deleted from local working tree (already gitignored, no commit needed)."
+      - "AC-4: CLAUDE.md §3 layout no longer lists requirements-dev.txt."
+      - "AC-5: F-117 mirrored on both spec.yaml copies."
+      - "AC-6: F-117 completed via harness CLI cycle on chore/F-117-root-python-cleanup branch."
+      - "AC-7: Full regression — typecheck · lint · parity 497/497 · self_check 5/5 — all pass after cleanup."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
