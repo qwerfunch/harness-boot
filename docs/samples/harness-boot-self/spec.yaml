@@ -4173,6 +4173,42 @@ features:
       - "AC-5: F-112 mirrored on both spec.yaml copies."
       - "AC-6: F-112 completed via the harness CLI cycle on the umbrella branch."
 
+  - id: "F-113"
+    name: "Python ↔ TS coverage audit + 0.13.0 version lock"
+    type: "feature"
+    description: |
+      Thirtieth cycle. Two parts:
+
+      1. **Module-by-module coverage audit.** Walk every file
+         under `legacy/scripts/` against `src/`, classify each
+         Python module as PORTED · MERGED-INTO · INTENTIONALLY-
+         DROPPED · MISSING. Produce
+         `.harness/_workspace/audit/F-113.md` with the matrix.
+         "Missing" findings either get a follow-up F-cycle or a
+         documented justification (per-user direction:
+         optimization-driven drops are acceptable).
+
+      2. **Version walk-back to 0.13.0.** F-110 bumped to 0.13.1
+         per habit, but the user wants to lock 0.13.0 as the
+         single TS-migration release. The supply-chain follow-ups
+         (F-110/F-111/F-112) are part of the same unreleased
+         working set, not separate releases. Walk back:
+         - `package.json.version` 0.13.1 → 0.13.0
+         - `src/cli/harness.ts` `.version('0.13.1')` → `('0.13.0')`
+         - PR #46 title + body — drop "v1.0" framing per memory
+           `feedback_no_v1_framing`. The migration delivers
+           **0.13.0**, not v1.0; v1.0 sits on a far horizon.
+
+    acceptance_criteria:
+      - "AC-1: `.harness/_workspace/audit/F-113.md` exists with a per-module matrix covering every file in legacy/scripts/."
+      - "AC-2: Each Python module is labeled PORTED · MERGED · DROPPED · MISSING with a concrete TS twin path or reason."
+      - "AC-3: Any MISSING entry either spawns a follow-up F-cycle entry in spec.yaml or has a written justification (e.g., 'optimization: feature X never reached external dogfood, dropped intentionally')."
+      - "AC-4: package.json version field reads exactly `0.13.0` (not 0.13.1)."
+      - "AC-5: src/cli/harness.ts `.version('...')` literal reads exactly `0.13.0`."
+      - "AC-6: PR #46 title contains no `v1.0` token; body release-plan section reflects 0.13.0 as the migration release."
+      - "AC-7: F-113 mirrored on both spec.yaml copies."
+      - "AC-8: F-113 completed via the harness CLI cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
