@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/qwerfunch/harness-boot/main/docs/schemas/spec.schema.json
+#
+# Smoke-test seed spec for the feature-author skill.
+# Copy to a scratch directory:
+#   mkdir /tmp/feature-author-smoke && cd $_ && mkdir .harness
+#   cp <repo>/tests/smoke/feature-author/seed-spec.yaml .harness/spec.yaml
+#
+# Then in Claude Code, type one of the prompts in prompts.md and confirm
+# the skill auto-loads + produces a paste-ready F-N entry.
+
+version: "2.3"
+
+project:
+  name: "feature-author smoke"
+  summary: "Scratch project for verifying the feature-author skill."
+  description: "Scratch project for verifying the feature-author skill auto-trigger and shape detection."
+  vision: "Prove the skill triggers on Korean natural-phrasing prompts and emits a valid F-N entry."
+  stakeholders:
+    - role: "maintainer"
+      goals: ["verify skill auto-trigger"]
+  mode: prototype
+
+domain:
+  entities:
+    - name: "user"
+      description: "End user of the smoke project. Placeholder for sensitive-shape walkthroughs."
+  business_rules:
+    - id: "BR-001"
+      statement: "Skill output must validate against docs/schemas/spec.schema.json when appended to this spec."
+      rationale: "feature-author exists to produce paste-ready entries, not draft prose."
+
+constraints:
+  tech_stack: {}
+
+deliverable:
+  type: cli
+  entry_points:
+    - name: "smoke"
+      description: "manual prompt → skill output verification"
+  smoke_scenarios:
+    - name: "korean-natural-trigger"
+      description: "User types '로그인 기능 구현해줘'; skill auto-loads and produces a sensitive-shape F-N entry."
+
+features:
+  - id: F-0
+    type: skeleton
+    title: "feature-author smoke skeleton"
+    priority: P0
+    test_strategy: lean-tdd
+    acceptance_criteria:
+      - "AC-1: At least one prompt from prompts.md triggers the feature-author skill in Claude Code."
+    modules: []
+
+metadata:
+  source:
+    origin: idea
+    maturity: planning
+    revision: "v0.1"
