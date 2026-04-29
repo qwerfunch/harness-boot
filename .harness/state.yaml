@@ -2204,8 +2204,32 @@ features:
       deps); 12 parity tests; 287/287 cumulative.
   started_at: '2026-04-29T10:12:33Z'
   completed_at: '2026-04-29T10:14:49Z'
+- id: F-097
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T10:19:31Z'
+      note: 'cmd: npm test'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T10:19:32Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-29T10:19:31Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (0.8s) · cmd: npm test'
+  - ts: '2026-04-29T10:19:32Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-29T10:19:33Z'
+    kind: test
+    summary: ceremonies/{kickoff,retro,designReview,inbox}.ts ported (~960 LOC TS);
+      24 parity tests; 311/311 cumulative.
+  started_at: '2026-04-29T10:15:48Z'
+  completed_at: '2026-04-29T10:19:50Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-096
+  last_command: /harness:work F-097
   last_gate_passed: gate_5
   active_feature_id: null
