@@ -1877,8 +1877,37 @@ features:
       · self_check 5/5 OK.
   started_at: '2026-04-29T07:25:24Z'
   completed_at: '2026-04-29T07:29:28Z'
+- id: F-084
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T08:02:30Z'
+      note: 'cmd: npm test'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T08:02:31Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-29T08:02:30Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (0.5s) · cmd: npm test'
+  - ts: '2026-04-29T08:02:31Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-29T08:02:31Z'
+    kind: manual_check
+    summary: 'v1.0 TS migration foundation: package.json + tsconfig.json (strict ES2022
+      NodeNext) + vitest.config.ts + eslint v9 flat config + .prettierrc.json. src/core/canonicalHash.ts
+      ported byte-for-byte from scripts/core/canonical_hash.py with full JSDoc. tests/parity/canonicalHash.test.ts:
+      14 Python-generated fixtures × byte-equal SHA-256 + computeAll bundle parity
+      + helper standalone + 6 error-handling cases = 31/31 PASS. Python 1192 still
+      pass · self_check 5/5 OK · ESLint clean. test_language_python updated to test_language_typescript_after_f084
+      reflecting hybrid repo state.'
+  started_at: '2026-04-29T07:56:13Z'
+  completed_at: '2026-04-29T08:03:24Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-082
+  last_command: /harness:work F-084
   last_gate_passed: gate_5
   active_feature_id: null
