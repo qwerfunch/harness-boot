@@ -2084,8 +2084,32 @@ features:
     summary: render/{domain,architecture}.ts ported; 20 parity tests; 194/194 cumulative.
   started_at: '2026-04-29T09:56:58Z'
   completed_at: '2026-04-29T09:59:41Z'
+- id: F-092
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T10:03:14Z'
+      note: 'cmd: npm test'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T10:03:15Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-29T10:03:14Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (0.7s) · cmd: npm test'
+  - ts: '2026-04-29T10:03:15Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-29T10:03:16Z'
+    kind: test
+    summary: ui/{lang,messages,dashboardConfig,render,featureResolver}.ts ported (5
+      modules); 30 parity tests; 224/224 cumulative.
+  started_at: '2026-04-29T10:00:58Z'
+  completed_at: '2026-04-29T10:03:27Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-091
+  last_command: /harness:work F-092
   last_gate_passed: gate_5
   active_feature_id: null
