@@ -1849,8 +1849,36 @@ features:
       unit+integration pass · self_check 5/5 OK.
   started_at: '2026-04-29T07:19:44Z'
   completed_at: '2026-04-29T07:25:16Z'
+- id: F-082
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T07:27:15Z'
+      note: 'cmd: /opt/homebrew/opt/python@3.14/bin/python3.14 -m pytest'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T07:27:16Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-29T07:27:15Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (13.0s) · cmd: /opt/homebrew/opt/python@3.14/bin/python3.14
+      -m pytest'
+  - ts: '2026-04-29T07:27:16Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-29T07:27:16Z'
+    kind: manual_check
+    summary: init.md §0.5 markdown contract test 9/9 PASS — section anchor between
+      §0/§1 · detection bash (yaml + tomllib/tomli probes) · three branches (yes/no/venv)
+      · pip install --user · PEP 668 + --break-system-packages 두 단계 fallback · venv
+      명령 · deps_preflight events.log · never-abort 명시. 1192 unit+integration pass
+      · self_check 5/5 OK.
+  started_at: '2026-04-29T07:25:24Z'
+  completed_at: '2026-04-29T07:29:28Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-081
+  last_command: /harness:work F-082
   last_gate_passed: gate_5
   active_feature_id: null
