@@ -2396,7 +2396,7 @@ features:
   started_at: '2026-04-29T10:44:51Z'
   completed_at: '2026-04-29T10:47:43Z'
 - id: F-105
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -2420,9 +2420,9 @@ features:
       parity for status/events/check/metrics/sync/validate. Python 1192 + TS 467 +
       self_check 5/5 all PASS.'
   started_at: '2026-04-29T11:12:45Z'
-  completed_at: null
+  completed_at: '2026-04-29T11:13:36Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
   last_command: /harness:work F-105
   last_gate_passed: gate_5
-  active_feature_id: F-105
+  active_feature_id: null
