@@ -1936,8 +1936,34 @@ features:
       + ESLint clean.'
   started_at: '2026-04-29T08:08:54Z'
   completed_at: '2026-04-29T08:14:14Z'
+- id: F-086
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T08:35:50Z'
+      note: 'cmd: npm test'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T08:35:54Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-29T08:35:50Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (0.5s) · cmd: npm test'
+  - ts: '2026-04-29T08:35:54Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-29T08:36:00Z'
+    kind: test
+    summary: core/state.ts ported (semantic-equivalence parity); 43 new state parity
+      tests + 17 mutator/edge tests; cumulative parity 104/104 PASS (canonicalHash
+      31 + eventLog 30 + state 43); Python regression 1192 PASS; self_check 5/5; tsc
+      --noEmit clean; eslint clean. Iron Law math byte-equal across runtimes.
+  started_at: '2026-04-29T08:26:40Z'
+  completed_at: '2026-04-29T08:36:29Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-085
+  last_command: /harness:work F-086
   last_gate_passed: gate_5
   active_feature_id: null
