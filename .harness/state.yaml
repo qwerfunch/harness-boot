@@ -2252,8 +2252,32 @@ features:
       323/323 cumulative.
   started_at: '2026-04-29T10:20:50Z'
   completed_at: '2026-04-29T10:22:26Z'
+- id: F-099
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T10:24:38Z'
+      note: 'cmd: npm test'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T10:24:39Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-29T10:24:38Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (1.0s) · cmd: npm test'
+  - ts: '2026-04-29T10:24:39Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-29T10:24:39Z'
+    kind: test
+    summary: ui/intentPlanner.ts ported (337 LOC, deterministic next-action recommender);
+      17 parity tests; 340/340 cumulative.
+  started_at: '2026-04-29T10:23:06Z'
+  completed_at: '2026-04-29T10:24:40Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-098
+  last_command: /harness:work F-099
   last_gate_passed: gate_5
   active_feature_id: null
