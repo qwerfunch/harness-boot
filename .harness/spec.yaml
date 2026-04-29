@@ -4297,6 +4297,56 @@ features:
       - "AC-6: F-115 mirrored on both spec.yaml copies."
       - "AC-7: F-115 completed via the harness CLI cycle on the same feature branch as F-114 (PR #47)."
 
+  - id: "F-116"
+    name: "feature-author skill — live smoke template + walkthrough"
+    type: "chore"
+    description: |
+      Thirty-third cycle. F-114 shipped the feature-author skill
+      and F-115 aligned its frontmatter with Anthropic's official
+      skill guide. Both passed structural parity tests, but those
+      tests cannot exercise the LLM actually reading SKILL.md and
+      producing output — that needs a live Claude Code session.
+
+      F-116 closes the loop with a permanent smoke template at
+      `tests/smoke/feature-author/` and a one-shot live walkthrough
+      that demonstrates the skill correctly following its own
+      Steps 1-5 for a real Korean trigger phrase.
+
+      Template contents (checked in for any future contributor):
+        - README.md — how to run the smoke (open a fresh project,
+          install the plugin, type one of the prompts).
+        - seed-spec.yaml — minimal .harness/spec.yaml for the
+          temp project (project.mode + one placeholder feature so
+          the schema validates).
+        - prompts.md — 8 trigger prompts (4 shapes × Korean/English)
+          covering both natural-phrasing patterns and explicit
+          F-N-style asks.
+        - walkthroughs/<shape>.md (×4) — expected output per shape.
+
+      Live walkthrough (the actual skill verification, captured
+      verbatim in evidence): Claude reads
+      `skills/feature-author/SKILL.md`, follows Steps 1-5 against
+      the prompt "로그인 기능 구현해줘", produces a complete F-N
+      entry that includes the `entities` block, the right AC count
+      for prototype mode, lockstep paste instructions, and the
+      sensitive_or_auth routing chain.
+
+      Out of scope for this cycle:
+        - End-to-end Claude Code skill auto-load test (cannot be
+          automated in CI without a live model).
+        - Other shape walkthroughs beyond the one captured —
+          template covers all four, but only one is executed live.
+          Remaining three are documented expected outputs that a
+          contributor can compare against.
+
+    acceptance_criteria:
+      - "AC-1: tests/smoke/feature-author/README.md documents the manual smoke procedure (install plugin → cd to scratch dir → type one of the prompts → confirm skill auto-loads → verify output matches walkthrough)."
+      - "AC-2: tests/smoke/feature-author/prompts.md lists 8 trigger prompts (4 shapes × ko/en) with expected adapter selection."
+      - "AC-3: tests/smoke/feature-author/walkthroughs/{ui-surface,sensitive,performance,pure-domain}.md each contain a paste-ready expected F-N entry for that shape."
+      - "AC-4: Live walkthrough for 'sensitive' shape (prompt: '로그인 기능 구현해줘') produces a valid F-N entry that node bin/harness validate accepts when appended to spec.yaml."
+      - "AC-5: F-116 mirrored on both spec.yaml copies."
+      - "AC-6: F-116 completed via the harness CLI cycle on the same feature branch as F-114/F-115 (PR #47)."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
