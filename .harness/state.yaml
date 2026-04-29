@@ -2324,8 +2324,32 @@ features:
       tests; 396/396 cumulative.
   started_at: '2026-04-29T10:31:57Z'
   completed_at: '2026-04-29T10:34:28Z'
+- id: F-102
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T10:40:01Z'
+      note: 'cmd: npm test'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T10:40:02Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-29T10:40:01Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (1.0s) · cmd: npm test'
+  - ts: '2026-04-29T10:40:02Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-29T10:40:02Z'
+    kind: test
+    summary: work.ts ported (~700 LOC TS, biggest single port wires up state + ceremonies
+      + gate runner + check + sync); 31 parity tests; 427/427 cumulative.
+  started_at: '2026-04-29T10:36:31Z'
+  completed_at: '2026-04-29T10:40:23Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-101
+  last_command: /harness:work F-102
   last_gate_passed: gate_5
   active_feature_id: null
