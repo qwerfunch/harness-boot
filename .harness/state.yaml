@@ -2134,7 +2134,7 @@ features:
   started_at: 2026-04-29T11:48:28Z
   completed_at: 2026-04-29T11:57:16Z
 - id: F-109
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -2155,9 +2155,9 @@ features:
     kind: manual_check
     summary: "CI workflow rewrite (Python matrix → Node 20/22 + npm install + npm run typecheck/lint/test:parity + bash self_check.sh). Fresh-clone simulation passed: dist/ tracked, npm install once + node bin/harness.js works end-to-end. Plugin manifest cross-check OK (name/version/source aligned across plugin.json + marketplace.json + package.json). Bug fix: package.json prepare hook had inverted logic (dist missing → no build); replaced with test -f dist/cli/harness.js || npm run build."
   started_at: 2026-04-29T14:10:58Z
-  completed_at: null
+  completed_at: 2026-04-29T14:14:33Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-109
   last_gate_passed: gate_5
-  active_feature_id: F-109
+  active_feature_id: null
