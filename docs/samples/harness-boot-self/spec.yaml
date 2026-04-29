@@ -3047,6 +3047,81 @@ features:
       - "AC-7: F-086 mirrored on both spec.yaml copies. bash scripts/self_check.sh 5/5 PASS · 1192+ Python tests still pass · npm run test:parity green for canonicalHash + eventLog + state."
       - "AC-8: F-086 completed via the work.py 4-verb cycle on the existing `feat/F-084-ts-migration-foundation` branch."
 
+  - id: "F-087"
+    name: "TS migration — port core/pluginRoot.ts (4-strategy chain plugin root resolver)"
+    type: "feature"
+    description: |
+      Fourth cycle of the v1.0 migration thread. Ports
+      `scripts/core/plugin_root.py` (the 4-strategy plugin root chain
+      from `commands/init.md §2`) to TypeScript with byte-equal
+      strategy ordering and identical fallback semantics.
+
+      Why this module: every TS-side script that has to find plugin
+      assets (templates, agents, ceremonies, schemas) calls this
+      resolver. A drift in strategy ordering or fallback decisions
+      silently changes which plugin source the runtime picks, breaking
+      live `/harness-boot:*` invocations across users.
+
+      Public API ported (camelCase TS, semantic 1:1 with Python):
+
+        - `resolve(pluginName?)` — runs the 4-strategy chain, returns a
+          `Resolution` (root path · winning strategy · attempt log) or
+          throws `PluginRootError`.
+        - `PluginRootError` — class extending `Error`.
+        - `Resolution` — `{ root, strategy, attempts[] }` interface.
+        - Internal helpers exposed for parity tests:
+          `_strategyPathBin`, `_strategyRegistry`, `_strategyMarketplaceSource`.
+
+      Strategy chain (first hit wins):
+
+        A. `$PATH` scan for `/plugins/<dir>/bin` segment + plugin.json
+           name match.
+        B. `~/.claude/plugins/installed_plugins.json` `installPath` (must
+           exist on disk).
+        C. `~/.claude/settings.json` `extraKnownMarketplaces.<mp>.source.path`
+           combined with marketplace.json plugin source.
+        D. (Failure) — throw `PluginRootError` with the attempt trace.
+
+      Behaviour preservation focus:
+
+        - Strategy ordering identical — A wins over B wins over C.
+        - PATH parsing uses `path.delimiter` (matches Python's
+          `os.pathsep`). Trailing slashes on PATH entries are
+          tolerated; only entries that contain `/plugins/` and end in
+          `/bin` count.
+        - `~` expansion — `os.homedir()` is the TS equivalent of
+          `os.path.expanduser`. Both expand only at the leading
+          position; later-segment `~` is a literal directory name.
+        - Failure mode — same error message format ("플러그인
+          '<name>' 루트 해석 실패 — attempts: A path-bin: miss, B
+          registry: miss, C mp-source: miss"). Korean preserved
+          verbatim from the Python source so cross-runtime log
+          tooling matches strings exactly.
+        - Attempts trace — `attempts: ["A path-bin: hit|miss", ...]`
+          identical wording.
+
+      Parity test scope:
+
+        - Per-strategy hit / miss / name-mismatch coverage with
+          temporary HOME directories.
+        - Chain ordering — A wins when both A and B are populated.
+        - Attempt trace — when A and B miss but C hits, attempts has
+          three entries with the right strings.
+        - PluginRootError fires the exact message format on full miss.
+        - PATH separator handling on POSIX (the only target platform
+          for now; Windows path-delimiter semantics are deferred to a
+          later cycle when slash-command Windows support is in scope).
+
+    acceptance_criteria:
+      - "AC-1: src/core/pluginRoot.ts exports `resolve`, `PluginRootError`, `Resolution`, plus `_strategyPathBin` / `_strategyRegistry` / `_strategyMarketplaceSource` for tests."
+      - "AC-2: Strategy chain order matches Python: A:path-bin → B:registry → C:marketplace-source."
+      - "AC-3: Each strategy's hit / miss / name-mismatch behaviour matches the Python helper byte-for-byte."
+      - "AC-4: Resolution.attempts trace uses identical wording (`A path-bin: hit|miss`, `B registry: hit|miss`, `C mp-source: hit|miss`)."
+      - "AC-5: PluginRootError message matches Python verbatim — `플러그인 '<name>' 루트 해석 실패 — attempts: ...` (Korean preserved as-is)."
+      - "AC-6: tests/parity/pluginRoot.test.ts covers all three strategies + chain ordering + error message; uses fresh tmp HOME dirs to avoid host pollution."
+      - "AC-7: F-087 mirrored on both spec.yaml copies. bash scripts/self_check.sh 5/5 PASS · 1192+ Python tests still pass · npm run test:parity green for canonicalHash + eventLog + state + pluginRoot."
+      - "AC-8: F-087 completed via the work.py 4-verb cycle on the existing `feat/F-084-ts-migration-foundation` branch (umbrella PR #46 strategy)."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
