@@ -2132,8 +2132,32 @@ features:
       cumulative.
   started_at: '2026-04-29T10:04:09Z'
   completed_at: '2026-04-29T10:05:07Z'
+- id: F-094
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T10:06:54Z'
+      note: 'cmd: npm test'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T10:06:55Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-29T10:06:54Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (0.7s) · cmd: npm test'
+  - ts: '2026-04-29T10:06:55Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-29T10:06:55Z'
+    kind: test
+    summary: status.ts ported (read-only summary composing State + harness.yaml +
+      events.log); 13 parity tests; 251/251 cumulative.
+  started_at: '2026-04-29T10:05:43Z'
+  completed_at: '2026-04-29T10:07:05Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-093
+  last_command: /harness:work F-094
   last_gate_passed: gate_5
   active_feature_id: null
