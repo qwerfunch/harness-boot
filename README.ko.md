@@ -215,7 +215,9 @@ harness-boot/
 
 ## 현재 상태
 
-**v0.13.1** — `feature-author` skill v0.1 추가. "X 기능 구현해줘", "X 만들어줘" 같은 한국어 자연어 (또는 "draft a feature", "spec out X" 같은 영어) 에 자동 트리거되어 shape 감지 · project mode 별 AC 개수 · 양쪽 spec.yaml lockstep 안내까지 갖춘 `features[]` entry 를 한 번에 생성. 4 shape A/B 테스트로 효용 입증.
+**v0.13.2** — 레포 루트 정리 (F-117). v0.13 TS-only 전환 이후 잔존하던 Python 설정 (`pytest.ini`, `requirements-dev.txt`) 제거. 동작 변화 없음.
+
+직전 **v0.13.1** — `feature-author` skill 추가. "X 기능 구현해줘", "X 만들어줘" 같은 한국어 자연어 (또는 "draft a feature", "spec out X" 같은 영어) 에 자동 트리거되어 shape 감지 · project mode 별 AC 개수 · 양쪽 spec.yaml lockstep 안내까지 갖춘 `features[]` entry 한 번에 생성.
 
 - 변경 이력 — [CHANGELOG.md](CHANGELOG.md)
 - 개발자 가이드 — [CLAUDE.md](CLAUDE.md)

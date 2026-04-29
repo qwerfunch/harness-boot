@@ -109,7 +109,7 @@ function buildProgram() {
     program
         .name('harness')
         .description('Multi-agent development harness — TS CLI for Claude Code plugin')
-        .version('0.13.1');
+        .version('0.13.2');
     // -----------------------------------------------------------------
     // work
     // -----------------------------------------------------------------

@@ -212,7 +212,9 @@ harness-boot/
 
 ## Status
 
-**v0.13.1** — `feature-author` skill v0.1 added. Auto-triggers on Korean ("X 기능 구현해줘", "X 만들어줘") and English ("draft a feature", "spec out X") prompts to scaffold a complete `features[]` entry with shape detection, project-mode-aware AC count, and lockstep paste instructions. Multi-shape A/B verified.
+**v0.13.2** — Repo root cleanup (F-117): dead Python config (`pytest.ini`, `requirements-dev.txt`) removed after the v0.13 TS-only cutover. No behavior change.
+
+Previously: **v0.13.1** added the `feature-author` skill — auto-triggers on Korean ("X 기능 구현해줘", "X 만들어줘") or English ("draft a feature", "spec out X") prompts to scaffold a complete `features[]` entry with shape detection, project-mode-aware AC count, and lockstep paste instructions.
 
 - Changelog — [CHANGELOG.md](CHANGELOG.md)
 - Developer guide — [CLAUDE.md](CLAUDE.md)

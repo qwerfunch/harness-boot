@@ -16,7 +16,35 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - Deferred autowires named in `src/work.ts:411-413` — `spec/quantClaims`, `scan/chapterWriter`, `scan/styleFingerprint`. Stderr-only hints, never Iron-Law gating; pick up when there is external pressure.
 - F-052/F-053/F-051 docstring sweep follow-ups — carry-forward.
 - F-073 (`read_events(tail=N)`) and F-074 (`canonical_hash` mtime cache) — v0.11.11 cumulative-slowdown audit queue.
-- Next-skill candidates after feature-author soaks — `drift-explain-and-fix` · `acceptance-criteria-craft` · `gate-recover` · `evidence-craft`. Sequential, not parallel — one experiment at a time.
+- Next-skill candidates after feature-author soaks — `drift-explain-and-fix` · `acceptance-criteria-craft` · `gate-recover` · `evidence-craft`. Sequential, not parallel — one experiment at a time. Internal A/B test (2026-04-30) showed existing capability already covers these cases — pick up only on external user pain signal.
+
+## [0.13.2] — 2026-04-30
+
+**Repo root cleanup — remove dead Python config (F-117).**
+
+After v0.13 (F-107) retired the Python operational surface to `legacy/scripts/`, two config files at root were left behind. Both dead in the v0.13 hot path. Cleanup PR #48.
+
+### Removed
+
+- `pytest.ini` — F-026 era; `testpaths = tests/unit` constraint on bare `python -m pytest`. v0.13 hot path no longer invokes bare pytest.
+- `requirements-dev.txt` — pyyaml · jsonschema · pytest · coverage · tomli. All Python-only; replaced by `package.json` devDependencies (vitest · typescript · eslint · prettier · esbuild).
+- `.pytest_cache/` (local working tree only — already gitignored).
+
+### Doc updates
+
+- `CLAUDE.md` §3 repo layout drops `requirements-dev.txt` reference.
+
+### Out of scope
+
+- `legacy/scripts/` keeps no `pytest.ini` or `requirements*.txt` of its own. Running legacy tests requires manual env setup — intended posture for a read-only archive.
+- `.DS_Store` at root — macOS junk, untracked, leave alone.
+
+### Verification
+
+- `npm run typecheck` clean
+- `npm run lint` clean
+- `npm run test:parity` 497/497 PASS (no regression)
+- `bash self_check.sh` 5/5 OK
 
 ## [0.13.1] — 2026-04-30
 
