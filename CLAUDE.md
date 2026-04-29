@@ -74,7 +74,7 @@ docs/
 ├── preamble-spec.md                # F-042 — single source for Preamble + NO skip / NO shortcut
 └── archive/                        # F-042 — historical (local-install · first-run · v0.1.0 / v0.4 plans · i18n-ko-frozen-f041/)
 .github/workflows/self-check.yml    # Phase 3 CI (v0.8.3) — self_check.sh per PR
-README.md · CHANGELOG.md · LICENSE · CLAUDE.md (this file) · requirements-dev.txt
+README.md · CHANGELOG.md · LICENSE · CLAUDE.md (this file)
 ```
 
 **Untracked** (.gitignore): `design/` · `legacy/` · `translations-ko/` · `node_modules/` · `.harness/{events.log,harness.yaml,domain.md,architecture.yaml,chapters/}` · etc.
