@@ -212,7 +212,7 @@ harness-boot/
 
 ## Status
 
-**v0.13.0** — Python → TypeScript migration complete (30 cycles, F-084 → F-113). Single-file esbuild bundle so plugin install needs no `npm install` at the user side. Python operational surface retired to `legacy/`.
+**v0.13.1** — `feature-author` skill v0.1 added. Auto-triggers on Korean ("X 기능 구현해줘", "X 만들어줘") and English ("draft a feature", "spec out X") prompts to scaffold a complete `features[]` entry with shape detection, project-mode-aware AC count, and lockstep paste instructions. Multi-shape A/B verified.
 
 - Changelog — [CHANGELOG.md](CHANGELOG.md)
 - Developer guide — [CLAUDE.md](CLAUDE.md)

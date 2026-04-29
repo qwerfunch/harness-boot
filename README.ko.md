@@ -215,7 +215,7 @@ harness-boot/
 
 ## 현재 상태
 
-**v0.13.0** — Python → TypeScript 마이그레이션 완료 (30 사이클, F-084 → F-113). esbuild 단일 파일 번들로 사용자 측 `npm install` 불필요. Python 운영 코드는 `legacy/` 로 retired.
+**v0.13.1** — `feature-author` skill v0.1 추가. "X 기능 구현해줘", "X 만들어줘" 같은 한국어 자연어 (또는 "draft a feature", "spec out X" 같은 영어) 에 자동 트리거되어 shape 감지 · project mode 별 AC 개수 · 양쪽 spec.yaml lockstep 안내까지 갖춘 `features[]` entry 를 한 번에 생성. 4 shape A/B 테스트로 효용 입증.
 
 - 변경 이력 — [CHANGELOG.md](CHANGELOG.md)
 - 개발자 가이드 — [CLAUDE.md](CLAUDE.md)

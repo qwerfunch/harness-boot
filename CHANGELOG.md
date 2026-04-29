@@ -12,10 +12,63 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 ### Queued
 
 - Marketplace submission to `anthropic/claude-plugins-official` — held until external soak; submission text templated, user submits via https://claude.ai/settings/plugins/submit.
-- SKILL.md → seed_spec reference rot — `skills/spec-conversion/SKILL.md:409` references `scripts/scan/seed_spec` which is no longer ported. F-114 candidate (skill is Markdown-driven, so the LLM can synthesize the seed inline; not blocking).
+- SKILL.md → seed_spec reference rot — `skills/spec-conversion/SKILL.md:409` references `scripts/scan/seed_spec` which is no longer ported. Skill is Markdown-driven, so the LLM can synthesize the seed inline; not blocking.
 - Deferred autowires named in `src/work.ts:411-413` — `spec/quantClaims`, `scan/chapterWriter`, `scan/styleFingerprint`. Stderr-only hints, never Iron-Law gating; pick up when there is external pressure.
 - F-052/F-053/F-051 docstring sweep follow-ups — carry-forward.
 - F-073 (`read_events(tail=N)`) and F-074 (`canonical_hash` mtime cache) — v0.11.11 cumulative-slowdown audit queue.
+- Next-skill candidates after feature-author soaks — `drift-explain-and-fix` · `acceptance-criteria-craft` · `gate-recover` · `evidence-craft`. Sequential, not parallel — one experiment at a time.
+
+## [0.13.1] — 2026-04-30
+
+**`feature-author` skill v0.1 — auto-trigger F-N entry authoring.**
+
+The first Skill expansion since `spec-conversion`. harness-boot used 17 agents and 2 slash commands as primary surface, with skills participating only in the plan.md → spec.yaml conversion path. v0.13.1 puts a Skill on the friction point self-dogfood surfaced 121+ times: writing the F-N entry itself.
+
+### What landed
+
+- **F-114** — `skills/feature-author/` v0.1: SKILL.md (5-step procedure) + 4 shape adapters (ui-surface · sensitive · performance-budget · pure-domain) + paste-ready `feature-entry.yaml` skeleton + 26-case structural parity test.
+- **F-115** — Anthropic skill-guide alignment: dropped non-spec `version` frontmatter field, split trigger phrases into canonical `when_to_use`, added "Bundled resources" section with explicit markdown links per the official authoring guide.
+- **F-116** — smoke verification template at `tests/smoke/feature-author/` with seed-spec.yaml + prompts.md (4 shapes × ko/en) + 4 shape walkthroughs + live schema-validate evidence.
+
+### Trigger phrases (auto-load)
+
+Korean natural-phrasing patterns the skill responds to:
+- "X 기능 구현해줘" · "X 기능 만들어줘" · "X 추가해줘" · "X 개발해줘"
+- "로그인 기능 만들자" · "결제 붙이자" · "회원가입 구현"
+- "새 피처 추가" · "피처 추가하자" · "F-N 정의" · "spec.yaml 에 추가"
+
+English equivalents: "implement X feature", "build X", "add a X feature", "draft a feature", "spec out X", "scaffold X", "register this as F-N".
+
+### How it works
+
+1. **Shape detection** — picks one of `ui-surface` / `sensitive` / `performance-budget` / `pure-domain` from the user's intent, with stricter-shape-wins precedence (sensitive > performance > ui-surface > pure-domain).
+2. **Project-mode-aware AC count** — reads `project.mode` from spec.yaml; `prototype` → 3-4 ACs, `product` → 6-8 ACs.
+3. **Adapter-driven AC content** — loads the matching shape adapter for category-specific AC templates (e.g., sensitive shape's threat-model / authn-z / secret-mgmt / audit ACs).
+4. **Paste-ready output** — emits the complete entry with shape-specific block (`entities` / `ui_surface` / `performance_budget`) and lockstep paste instructions for both spec.yaml mirrors.
+5. **Routing preview** — surfaces the orchestrator agent chain for the detected shape so the user knows what to expect at activate time.
+
+### Pre-merge verification
+
+Multi-shape A/B test (n=4 + 1 adversarial) showed measurable lift across all 4 shapes when no prompt steering is given:
+- AC categorical coverage went from 1.5-4 / 4 (without skill) to 4 / 4 (with skill).
+- Routing chain accuracy: skill-guided output matched the orchestrator routing table; without-skill output sometimes invented non-existent agent names.
+- Schema discipline: skill-guided output never misplaced top-level fields at feature level; without-skill output occasionally did.
+- Adversarial baseline (no skill but strong steering) matched skill output, confirming the skill is essentially a saved prompt that auto-loads — value scales with how rarely users hand-type equivalent steering.
+
+Audit trail at `tests/smoke/feature-author/SOAK.md` (now obsolete after merge but kept as design record).
+
+### What is NOT in this release
+
+- The other skill candidates from the recommendation thread (`drift-explain-and-fix`, `acceptance-criteria-craft`, `gate-recover`, `evidence-craft`). Held until external dogfood signal on `feature-author`.
+- Auto-write to spec.yaml. Skill emits the entry; the user pastes manually so the human stays in the loop.
+
+### Verification
+
+- `npm run typecheck` clean
+- `npm run lint` clean
+- `npm run test:parity` 497/497 PASS (was 467 + 30 new across F-114/F-115/F-116)
+- `bash self_check.sh` 5/5 OK
+- Live schema validate of the sensitive walkthrough output → valid
 
 ## [0.13.0] — 2026-04-29
 
