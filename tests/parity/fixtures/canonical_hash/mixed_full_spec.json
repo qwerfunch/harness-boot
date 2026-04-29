@@ -1,0 +1,30 @@
+{
+  "version": "2.3.8",
+  "project": {
+    "name": "demo",
+    "mode": "prototype"
+  },
+  "domain": {
+    "entities": [
+      {
+        "name": "User"
+      }
+    ],
+    "business_rules": [
+      {
+        "id": "BR-001",
+        "rule": "unique id"
+      }
+    ]
+  },
+  "features": [
+    {
+      "id": "F-0",
+      "title": "Skeleton"
+    },
+    {
+      "id": "F-1",
+      "title": "Auth"
+    }
+  ]
+}

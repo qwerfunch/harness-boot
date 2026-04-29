@@ -1,0 +1,7 @@
+{
+  "id": "F-1",
+  "title": "Skeleton",
+  "modules": [
+    "src/main.ts"
+  ]
+}

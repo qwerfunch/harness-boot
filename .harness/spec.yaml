@@ -2784,6 +2784,81 @@ features:
       - "AC-9: F-082 completed via the work.py 4-verb cycle — Phase 2 dogfood."
       - "AC-10: F-081 + F-082 ship together as v0.12.2 patch release. Originally-queued F-082 (kickoff Quantitative completeness section) and F-083 (carry-forward debt) renumber to F-084 and F-085 respectively; CHANGELOG queue line updated to reflect the shift."
 
+  - id: "F-084"
+    name: "v1.0 TypeScript migration — foundation (project setup + canonical_hash port)"
+    type: "feature"
+    description: |
+      Strategic pivot kickoff. The Python dependency is a long-term
+      burden: fresh-install users on macOS / Windows / stripped Docker
+      hit `command not found` before any helpful message reaches them
+      (F-081 / F-082 mitigated but did not eliminate this); other AI
+      CLIs (Cursor, Cline, Aider, Copilot CLI) are all Node-based;
+      Claude Code itself runs on Node. v1.0 collapses the runtime to
+      TypeScript / Node.
+
+      Rewriting ~50 Python modules into TS is a multi-cycle thread
+      (F-084 → F-110+). F-084 is the foundation cycle:
+
+      1. Project bootstrap — package.json, tsconfig.json, vitest
+         config, eslint + prettier, src/ + tests/ skeleton.
+      2. Library choices locked: `yaml` (eemeli/yaml), `smol-toml`,
+         `zod`, `commander`, `node:crypto`, `vitest`.
+      3. Port the most critical module first —
+         `scripts/core/canonical_hash.py` →
+         `src/core/canonicalHash.ts`. Every drift detector and every
+         spec_hash record depends on this byte-for-byte. If the TS
+         port deviates by even one byte, the entire drift system
+         breaks.
+      4. Parity test framework — `tests/parity/` directory with
+         Python-generated fixtures + TS reads same fixtures + asserts
+         byte-equal SHA-256 output.
+
+      Behaviour preservation is the prime directive (memory
+      `feedback_typescript_migration`). Every subsequent module port
+      (F-085+) follows the same pattern: parity test first, port
+      second, byte-equal verification third. Python sources stay live
+      during migration so the plugin keeps working — TS modules
+      graduate to production use only after their parity tests are
+      green and the Python equivalents are demoted to legacy/.
+
+      Subsequent migration cycles (rough plan, 30+ features):
+      F-085~F-087 core/state, eventLog, pluginRoot, projectMode,
+      gates · F-088~F-090 spec/* · F-091 render/* · F-092~F-094
+      scan/* · F-095~F-097 check/* (13 drift detectors) · F-098~F-100
+      work/* + autowires · F-101~F-104 ceremonies/* · F-105~F-107
+      ui/* · F-108 gate/runner · F-109 bin/harness + commands/*.md
+      update · F-110+ slash command rewrite + Python deprecation +
+      v1.0 release.
+    modules:
+      - "package.json"
+      - "tsconfig.json"
+      - "vitest.config.ts"
+      - ".eslintrc.json"
+      - ".prettierrc.json"
+      - "src/core/canonicalHash.ts"
+      - "tests/parity/canonicalHash.test.ts"
+      - "tests/parity/fixtures/canonical_hash/"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "package.json declares yaml + smol-toml + zod + commander + vitest + typescript + eslint + prettier; scripts: build, test, lint, format, typecheck"
+      - "tsconfig.json uses Google TS settings — strict mode, ES2022 target, NodeNext module, no implicit any"
+      - "src/core/canonicalHash.ts exports `canonicalHash(data: unknown): string` matching scripts/core/canonical_hash.py:canonical_hash signature"
+      - "JSDoc class/function-level comments mandatory and in English (memory `feedback_typescript_migration`)"
+      - "tests/parity/canonicalHash.test.ts loads Python-generated fixtures and asserts byte-equal hash output"
+      - "vitest runs cleanly (`npm test` exits 0); ESLint + Prettier pass on src/ and tests/"
+      - "Existing Python tests (1204) still pass — TS port is additive, not replacing yet"
+    acceptance_criteria:
+      - "AC-1: package.json declares yaml, smol-toml, zod, commander as runtime deps; vitest, typescript, @types/node, eslint, @typescript-eslint/eslint-plugin, @typescript-eslint/parser, prettier as dev deps. Scripts: build (tsc), test (vitest), test:parity (vitest run tests/parity), lint, format, typecheck."
+      - "AC-2: tsconfig.json — strict true, target ES2022, module NodeNext, moduleResolution NodeNext, esModuleInterop true, noImplicitAny true, declaration true, outDir dist, rootDir src, include [src/**/*, tests/**/*]."
+      - "AC-3: vitest.config.ts wired so `npm test` runs unit tests under tests/, parity tests opt-in via test:parity script."
+      - "AC-4: .eslintrc.json + .prettierrc.json reflect Google TS style — single quotes, 100-char lines, semicolons explicit, no any."
+      - "AC-5: src/core/canonicalHash.ts ports scripts/core/canonical_hash.py byte-for-byte. Public API: `canonicalHash(data: unknown): string`. JSDoc references the Python source explicitly. Comments in English."
+      - "AC-6: tests/parity/fixtures/canonical_hash/ contains at least 5 Python-generated fixture pairs (empty dict, simple feature, full subtree, null/nested arrays edge case, unicode strings). Each fixture is {input.json, expected.txt} with the Python-computed hash."
+      - "AC-7: tests/parity/canonicalHash.test.ts loads each fixture pair, runs canonicalHash(input), asserts equality with expected.txt. All fixtures pass."
+      - "AC-8: .gitignore adds node_modules/ and dist/. Existing Python scripts/ and tests/ are unchanged in this cycle."
+      - "AC-9: bash scripts/self_check.sh 5/5 PASS (Python-side regression) · 1204+ Python tests still pass · `npm test` exits 0 (TS-side foundation)."
+      - "AC-10: F-084 mirrored on both spec.yaml copies. Self-dogfood cycle (activate → gates → evidence → complete) on `feat/F-084-ts-migration-foundation` branch; PR opened to develop, awaiting user approval before any merge."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
