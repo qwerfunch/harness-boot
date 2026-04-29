@@ -2300,8 +2300,32 @@ features:
       cumulative.
   started_at: '2026-04-29T10:26:16Z'
   completed_at: '2026-04-29T10:30:24Z'
+- id: F-101
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T10:34:26Z'
+      note: 'cmd: npm test'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T10:34:27Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-29T10:34:26Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (0.9s) · cmd: npm test'
+  - ts: '2026-04-29T10:34:27Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-29T10:34:28Z'
+    kind: test
+    summary: scan/{structure,manifest,areaResolver}.ts ported (~660 LOC TS); 18 parity
+      tests; 396/396 cumulative.
+  started_at: '2026-04-29T10:31:57Z'
+  completed_at: '2026-04-29T10:34:28Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-100
+  last_command: /harness:work F-101
   last_gate_passed: gate_5
   active_feature_id: null
