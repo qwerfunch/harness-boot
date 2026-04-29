@@ -3569,6 +3569,40 @@ features:
       - "AC-5: F-098 mirrored on both spec.yaml copies. self_check 5/5 PASS."
       - "AC-6: F-098 completed via the work.py cycle on the umbrella branch."
 
+  - id: "F-099"
+    name: "TS migration — port ui/intentPlanner.ts (next-action suggestions)"
+    type: "feature"
+    description: |
+      Sixteenth cycle of the v1.0 migration thread. Ports
+      `scripts/ui/intent_planner.py` (337 LOC) — the deterministic
+      "next actions" recommender used by the dashboard. Pure logic
+      (no I/O), no LLM call.
+
+      Public API ported:
+
+        - `suggest(stateData, spec?, options?)` — returns up to 3
+          ordered Suggestions.
+        - `Suggestion` interface with `label / action / featureId? / gate?`.
+        - `Action` literal type — exhaustive union of routing
+          identifiers.
+
+      Behaviour preservation:
+
+        - Same priority order (blocked → fail → next gate → evidence →
+          complete).
+        - Same Korean labels — preserved verbatim for dashboard parity.
+        - Same idle path (resume → start → init).
+        - F-079 coverage carry-forward suggestion prepended when
+          coverage < default threshold (0.80).
+
+    acceptance_criteria:
+      - "AC-1: src/ui/intentPlanner.ts exports `suggest`, `Suggestion`, `Action` types."
+      - "AC-2: Active-feature priority order matches Python (blocked → fail → next-gate → evidence → complete)."
+      - "AC-3: Idle path returns resume/start/init based on state."
+      - "AC-4: Coverage < 0.80 prepends review_carry_forward suggestion."
+      - "AC-5: F-099 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-6: F-099 completed via the work.py cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
