@@ -1989,8 +1989,32 @@ features:
       PATH-bin/registry/marketplace fallback semantics 1:1 with Python.
   started_at: '2026-04-29T09:41:48Z'
   completed_at: '2026-04-29T09:45:11Z'
+- id: F-088
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T09:48:43Z'
+      note: 'cmd: npm test'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T09:48:44Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-29T09:48:43Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (0.5s) · cmd: npm test'
+  - ts: '2026-04-29T09:48:44Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-29T09:48:44Z'
+    kind: test
+    summary: core/{projectMode,gates,routing}.ts ported (3 modules in 1 cycle); 19
+      new parity tests; cumulative 138/138 PASS; lint+typecheck clean.
+  started_at: '2026-04-29T09:47:28Z'
+  completed_at: '2026-04-29T09:48:57Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-087
+  last_command: /harness:work F-088
   last_gate_passed: gate_5
   active_feature_id: null
