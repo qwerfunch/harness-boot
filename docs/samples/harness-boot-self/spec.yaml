@@ -3828,6 +3828,64 @@ features:
       - "AC-6: F-104 mirrored on both spec.yaml copies. self_check 5/5 PASS."
       - "AC-7: F-104 completed via the work.py cycle on the umbrella branch."
 
+  - id: "F-105"
+    name: "TS migration audit — build + bin + parity verification (pre-v1.0 gate)"
+    type: "feature"
+    description: |
+      Twenty-second cycle of the v1.0 migration thread. Pre-v1.0
+      verification cycle — not a new port but an audit of everything
+      shipped in F-084 → F-104.
+
+      Audit findings + fixes:
+
+        1. **Build emission** — `tsc -p tsconfig.json` choked on
+           `cli.test.ts` because Node 22's `process.exit` types
+           accept `string | number | null` while my mock declared
+           only `number | null`. Widened the mock signature.
+        2. **Dist layout** — single `tsconfig.json` set `rootDir: '.'`
+           which made `dist/` mirror the full repo (`dist/src/...`,
+           `dist/tests/...`). Split into `tsconfig.build.json` with
+           `rootDir: 'src'` so `dist/cli/harness.js` resolves
+           directly off the bin shim. `npm run build` now wipes
+           `dist/` first for clean output.
+        3. **CLI self-invocation** — src/cli/harness.ts had a
+           `process.argv[1].endsWith('harness.js')` branch that
+           triggered alongside bin/harness.js's `main(...)` call,
+           producing duplicate output. Removed.
+        4. **Parity verification** — TS vs Python output checked
+           on the live `.harness/`:
+           - `status --json` — substantive parity (cosmetic key-
+             order difference because Python's `frozenset`
+             iteration is non-deterministic; TS array ordering is
+             actually stricter).
+           - `events --json` — byte-equal.
+           - `check --json` — clean=true on both, identical 13
+             checked categories.
+           - `metrics --json` — total_events, features.done, and
+             gate_stats keys all match.
+           - `sync --soft` — idempotent skip on second call.
+           - `validate` — canonical sample spec accepts on both.
+        5. **Regression** — Python 1192 + TS 467 + self_check 5/5
+           all green after build fixes.
+
+      Out of scope for this cycle (deferred):
+
+        - Auto-wire restoration (quant_lint, fog_clear) — needs
+          spec/quantClaims + scan/{chapterWriter, seedSpec,
+          styleFingerprint} ports.
+        - Slash command wrapper migration to `npx harness`.
+        - Python entry-point deprecation.
+
+    acceptance_criteria:
+      - "AC-1: `npm run build` produces `dist/` with `cli/harness.js` resolvable from `bin/harness.js`."
+      - "AC-2: `node bin/harness.js status --harness-dir .harness` prints status without duplicating output."
+      - "AC-3: `harness check --json` and `python3 scripts/check.py --json` agree on `clean` and `checked[]`."
+      - "AC-4: `harness sync --soft` exits 0 and reports `already synced` on a populated harness."
+      - "AC-5: `harness validate docs/samples/harness-boot-self/spec.yaml` succeeds."
+      - "AC-6: Python 1192 + TS 467 parity + self_check 5/5 all PASS."
+      - "AC-7: F-105 mirrored on both spec.yaml copies."
+      - "AC-8: F-105 completed via the work.py cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

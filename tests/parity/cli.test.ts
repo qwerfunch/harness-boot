@@ -43,10 +43,12 @@ function captureRun(argv: ReadonlyArray<string>): CliRun {
       stderrChunks.push(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf-8'));
       return true;
     });
-  const exitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: number | null): never => {
-    exitCode = code ?? 0;
-    throw new Error('__exit__');
-  });
+  const exitSpy = vi
+    .spyOn(process, 'exit')
+    .mockImplementation((code?: string | number | null): never => {
+      exitCode = typeof code === 'number' ? code : 0;
+      throw new Error('__exit__');
+    });
 
   try {
     cliMain(['node', 'harness', ...argv]);

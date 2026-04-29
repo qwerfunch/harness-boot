@@ -550,7 +550,3 @@ export function main(argv: ReadonlyArray<string> = process.argv): void {
   const program = buildProgram();
   program.parse([...argv]);
 }
-
-if (process.argv[1] && process.argv[1].endsWith('harness.js')) {
-  main(process.argv);
-}
