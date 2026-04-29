@@ -3688,6 +3688,71 @@ features:
       - "AC-5: F-101 mirrored on both spec.yaml copies. self_check 5/5 PASS."
       - "AC-6: F-101 completed via the work.py cycle on the umbrella branch."
 
+  - id: "F-102"
+    name: "TS migration — port work.ts (lifecycle orchestrator, biggest single file)"
+    type: "feature"
+    description: |
+      Nineteenth cycle of the v1.0 migration thread. Largest single
+      port — 1570 LOC Python scripts/work.py to TypeScript.
+
+      Public API ported (camelCase TS, semantic 1:1 with Python):
+
+        - `WorkResult` interface with all fields.
+        - `activate(harnessDir, fid, options?)` — planned →
+          in_progress with kickoff/design-review auto-wire.
+        - `recordGate(harnessDir, fid, gateName, result, options?)` —
+          state mutation + events.log + design-review re-evaluation.
+        - `addEvidence(harnessDir, fid, kind, summary)` — state +
+          events.log.
+        - `block(harnessDir, fid, reason, options?)` — status →
+          blocked.
+        - `complete(harnessDir, fid, options?)` — Iron Law (gate_5
+          pass + declared evidence ≥ N) + working-tree-clean guard
+          + F-048 drift × Iron Law gating + retro auto-wire.
+        - `archive(harnessDir, fid, options?)` — done → archived
+          with superseded_by validation.
+        - `current(harnessDir)` — read-only active feature query.
+        - `runAndRecordGate(harnessDir, fid, gateName, options?)` —
+          gate runner integration with auto-evidence on pass.
+        - `deactivate(harnessDir)`, `removeFeature(harnessDir, fid)`.
+
+      Auto-wire helpers ported:
+
+        - `_autowireKickoff` — fires generateKickoff with shape
+          detection.
+        - `_autowireRetro` — fires generateRetro after complete.
+        - `_autowireDesignReview` — 4-condition AND check.
+
+      Auto-wire helpers stubbed (deps not yet ported):
+
+        - `_autowireQuantLint` — needs spec/quant_claims (deferred).
+        - `_autowireFogClear` — needs scan/chapter_writer +
+          scan/style_fingerprint (deferred).
+        - `_autowireInitialSync` — wires sync.tryInitialSync (already
+          ported in F-096).
+
+      Behaviour preservation:
+
+        - Iron Law thresholds: prototype=1, product=3, hotfix=1.
+        - Working-tree-clean guard with whitelist
+          (.harness/state.yaml, .harness/_workspace/*, CHANGELOG.md).
+        - F-048 blocking drift kinds: Code · Stale ·
+          AnchorIntegration · Coverage. hotfix override.
+        - Product mode strict: any failed gate blocks complete()
+          unless --hotfix-reason.
+        - Idempotency: already-done complete() returns queried;
+          already-archived archive() returns queried.
+
+    acceptance_criteria:
+      - "AC-1: src/work.ts exports `activate`, `recordGate`, `addEvidence`, `block`, `complete`, `archive`, `current`, `runAndRecordGate`, `deactivate`, `removeFeature`, `WorkResult` interface."
+      - "AC-2: activate transitions planned → in_progress, fires kickoff + design-review auto-wires."
+      - "AC-3: complete enforces Iron Law (gate_5 + declared evidence) + working-tree-clean + F-048 drift gating."
+      - "AC-4: hotfix override collapses required to 1 and records hotfix evidence."
+      - "AC-5: runAndRecordGate calls gate runner + records result + adds evidence on pass."
+      - "AC-6: events.log lines byte-equal Python (Python-style separators)."
+      - "AC-7: F-102 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-8: F-102 completed via the work.py cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
