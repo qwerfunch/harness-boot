@@ -2,11 +2,11 @@
  * `harness` CLI entry point — single-binary wrapper exposing every
  * ported subsystem as `harness <subcommand>` (F-104).
  *
- * Subcommands mirror the existing `python3 scripts/<file>.py` CLIs
- * one-to-one. This is the v1.0 release path entry point; slash
- * commands will eventually shell out to `npx harness <verb>`.
+ * Slash commands shell out here. Each subcommand maps to a single
+ * module under `src/` (`work`, `sync`, `check`, `status`, `events`,
+ * `metrics`, `validate`, `inbox`).
  *
- * Exit codes (mirror Python conventions):
+ * Exit codes:
  *
  *   - `0` — success
  *   - `2` — IO / setup error

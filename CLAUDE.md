@@ -21,7 +21,7 @@ Cumulative state:
 - **Two slash commands** (`/harness-boot:init` · `/harness-boot:work`) — collapsed in v0.9.0. `init` accepts a free-form natural-language prompt or a 3-option menu; `work` handles no-args (dashboard, v0.9.2), natural-language intents, and direct F-ID invocation alike.
 - **Gate automation 0/1/2/3/5** — `src/gate/runner.ts` walks pyproject pytest → npm scripts (typecheck/lint/test:coverage/smoke/test:e2e, v0.10.2) → direct tool invocation → polyglot fallback in that order. **BR-004 Iron Law (gate_5 = pass + declared evidence ≥ N) is automated end-to-end.**
 - **Iron Law — cumulative declared evidence** (v0.9.3) + **product mode strict** (v0.10.3) — when `project.mode == product`, every recorded gate's `last_result` must be non-fail before complete is allowed. Prototype mode keeps the lighter contract. The "D" suffix from v0.9.3 history was dropped in v0.11.1 — internal evolution marker that confused users.
-- **Drift × Iron Law gating** (v0.11.1, F-048) — `complete()` now calls `check.py` first. `severity="error"` findings on wire-integrity drift kinds (`Code` · `Stale` · `AnchorIntegration`) reject the transition; `--hotfix-reason` still bypasses. Closes GAP 1 from the 4-mechanism cohesion analysis.
+- **Drift × Iron Law gating** (v0.11.1, F-048) — `complete()` now calls `src/check.ts` first. `severity="error"` findings on wire-integrity drift kinds (`Code` · `Stale` · `AnchorIntegration`) reject the transition; `--hotfix-reason` still bypasses. Closes GAP 1 from the 4-mechanism cohesion analysis.
 - **Project mode axis** (v0.9.6) — `spec.project.mode ∈ {prototype, product}` is the single switch that determines the Iron Law floor, kickoff/retro template depth, and design-review autowire behavior. Unset → product (strict default).
 - **Drift detection 12 kinds** — Generated · Derived · Spec · Include · Evidence · Code · Anchor · Adr · Stale · AnchorIntegration · Doc · Protocol. Two-layer supersession metadata (`features[].supersedes` / `superseded_by`) and the archive flow (v0.10.0).
 - **Ceremony automation 4/4** — kickoff · retro · design-review · inbox.
@@ -158,7 +158,7 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (this file) · requirements-de
     ```
   - Slash commands **cannot live-edit from this repo** — the installed copy always wins. So the dev entry point is always `node bin/harness.js work` directly. (In a user project, `/harness-boot:work` is the wrapper.)
   - `.harness/state.yaml` is committed alongside the feature PR (the previous Phase 1 "only at release tag" restriction is lifted).
-  - `events.log` accumulates lifecycle events (`feature_activated`, `gate_run`, `evidence_declared`, `feature_completed`). The `/harness-boot:work` dashboard and `scripts/metrics.py` use them to compute real lead time and gate pass rate.
+  - `events.log` accumulates lifecycle events (`feature_activated`, `gate_run`, `evidence_declared`, `feature_completed`). The `/harness-boot:work` dashboard and `harness metrics` use them to compute real lead time and gate pass rate.
   - `project.mode` is `prototype` (current default) — the Iron Law floor is `evidence ≥ 1` plus `gate_5 = pass`. Promotion to product is a user decision.
 
 - **Common rules** (Phase-independent):
@@ -196,7 +196,7 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (this file) · requirements-de
 
 **Open:**
 - Cross-language canonical hash test vectors (Appendix D.7) — Node / Go cross-validation not yet implemented.
-- AC coverage drift (a candidate for a 13th drift detector in `check.py`).
+- AC coverage drift (a candidate for a 13th drift detector in `src/check.ts`).
 - URL → design seed — large scope and IP-boundary concerns (reviewed 2026-04-24).
 - gate_perf auto-detect heuristics (lighthouse / k6 / wrk config detection).
 - The pre-commit hook is in place, but the discipline still relies on memory; tighten if it slips.
@@ -218,7 +218,7 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (this file) · requirements-de
 - **F-053** — Phase 5: CHANGELOG English-only-going-forward policy (history preserved as-is).
 
 ### Available but not scheduled
-- AC coverage drift detector — would be the 13th drift kind in `check.py`.
+- AC coverage drift detector — would be the 13th drift kind in `src/check.ts`.
 - The next batch of cosmic-suika ISSUES-LOG returns, when external usage surfaces them.
 - F-049 Tier-promotion candidates from the 4-mechanism cohesion analysis (LLM author-attribution on evidence; Preamble compliance scanner). Held until external dogfood validates the need.
 

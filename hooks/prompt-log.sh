@@ -23,13 +23,15 @@ set -u
 INPUT="$(cat 2>/dev/null || true)"
 
 # Resolve cwd: input.cwd > $CLAUDE_PROJECT_DIR > pwd.
-CWD="$(printf '%s' "$INPUT" | python3 -c '
-import json, sys
-try:
-    d = json.loads(sys.stdin.read())
-    print(d.get("cwd", "") or "")
-except Exception:
-    print("")
+CWD="$(printf '%s' "$INPUT" | node -e '
+let raw = "";
+process.stdin.on("data", c => raw += c);
+process.stdin.on("end", () => {
+  try {
+    const d = JSON.parse(raw);
+    process.stdout.write(d.cwd || "");
+  } catch { /* silent */ }
+});
 ' 2>/dev/null || true)"
 [ -z "$CWD" ] && CWD="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 
@@ -43,18 +45,19 @@ MONTH="$(date -u +%Y-%m 2>/dev/null || echo unknown)"
 TS="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo unknown)"
 DEST="$DEST_DIR/${MONTH}.jsonl"
 
-# Append a single JSONL line. If python3 is unavailable, exit 0 silently.
-printf '%s' "$INPUT" | python3 -c "
-import json, sys
-try:
-    raw = sys.stdin.read()
-    d = json.loads(raw) if raw.strip() else {}
-    text = d.get('user_prompt') or d.get('prompt') or ''
-    sid = d.get('session_id', '')
-    entry = {'ts': '$TS', 'session_id': sid, 'prompt': text}
-    print(json.dumps(entry, ensure_ascii=False))
-except Exception:
-    pass
-" >> "$DEST" 2>/dev/null || true
+# Append a single JSONL line. If node is unavailable, exit 0 silently.
+printf '%s' "$INPUT" | TS_VALUE="$TS" node -e '
+let raw = "";
+process.stdin.on("data", c => raw += c);
+process.stdin.on("end", () => {
+  try {
+    const d = raw.trim() ? JSON.parse(raw) : {};
+    const text = d.user_prompt || d.prompt || "";
+    const sid = d.session_id || "";
+    const entry = {ts: process.env.TS_VALUE, session_id: sid, prompt: text};
+    console.log(JSON.stringify(entry));
+  } catch { /* silent */ }
+});
+' >> "$DEST" 2>/dev/null || true
 
 exit 0

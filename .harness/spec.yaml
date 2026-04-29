@@ -3990,6 +3990,57 @@ features:
       - "AC-7: TS parity + npm run build + node bin/harness.js status all PASS."
       - "AC-8: F-107 completed via the harness CLI cycle on the umbrella branch."
 
+  - id: "F-108"
+    name: "Migration + functionality audit (post-cutover end-to-end review)"
+    type: "feature"
+    description: |
+      Twenty-fifth cycle of the v1.0 migration thread. Comprehensive
+      audit after the F-107 TS-only cutover. Goal: confirm the
+      migration is correct end-to-end and that the three canonical
+      entry points (idea-only init, plan.md init, brownfield init)
+      all drive a feature lifecycle to completion through the TS
+      CLI alone.
+
+      Audit dimensions:
+
+        - Code: walk every src/*.ts file, flag stale Python refs in
+          comments, dead imports, half-ported helpers, missing
+          exports.
+        - Parity: pick three tricky modules (canonicalHash, check,
+          work) and diff TS output vs the legacy Python on the same
+          fixture. Flag any non-cosmetic divergence.
+        - Docs: line-by-line walk README.md, README.ko.md,
+          CLAUDE.md, commands/{init,work}.md, hooks/*.sh,
+          self_check.sh, plugin manifests. Verify zero python3
+          references and consistent v0.13.0 versioning.
+        - E2E case 1 (idea-only): simulate `/harness-boot:init
+          "<idea>"` → stub spec.yaml → drive a feature through
+          lifecycle. Confirm state.yaml + events.log + ceremony
+          files materialize correctly.
+        - E2E case 2 (plan.md): simulate `/harness-boot:init
+          plan.md` → richer-context spec → drive 1-2 features
+          through lifecycle. Confirm same.
+        - E2E case 3 (brownfield): simulate a project with
+          package.json + source files → currently falls back to
+          Option 1 → drive F-0 walking skeleton on top. Confirm
+          fallback path is clean.
+
+      Out of scope:
+
+        - Any new feature work (this is a verification cycle).
+        - LLM-driven init steps (we stub the LLM output and verify
+          the deterministic harness behaviour).
+
+    acceptance_criteria:
+      - "AC-1: src/ tree audit complete — every module exports what cli/work consumes; no orphan helpers."
+      - "AC-2: TS-vs-Python parity sample passes for canonicalHash + check + work; only cosmetic differences (key order, whitespace) tolerated."
+      - "AC-3: README.md + README.ko.md + CLAUDE.md zero python3 references; v0.13.0 consistent across badges, status block, plugin manifest."
+      - "AC-4: commands/{init,work}.md zero python3 references; every bash block calls node bin/harness.js or shell builtins."
+      - "AC-5: E2E case 1 (idea-only) — harness work F-N activate → gate_0/5 PASS → evidence → complete done; retro file generated."
+      - "AC-6: E2E case 2 (plan.md) — same lifecycle on a richer spec; second feature also completes."
+      - "AC-7: E2E case 3 (brownfield) — fallback to Option 1 produces a clean .harness/ layout; F-0 walking skeleton can run on top."
+      - "AC-8: Audit report written to .harness/_workspace/audit/F-108.md with PASS/WARN/BLOCK per finding."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
