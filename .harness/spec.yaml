@@ -4209,6 +4209,54 @@ features:
       - "AC-7: F-113 mirrored on both spec.yaml copies."
       - "AC-8: F-113 completed via the harness CLI cycle on the umbrella branch."
 
+  - id: "F-114"
+    name: "feature-author skill v0.1 — auto-trigger F-N entry authoring"
+    type: "feature"
+    description: |
+      Thirty-first cycle. First Skill expansion since
+      spec-conversion (v0.5). harness-boot used 17 agents and 2
+      slash commands as primary surface, with skills participating
+      only in the plan.md → spec.yaml conversion path. F-114 puts
+      a Skill on the friction point self-dogfood surfaced 121
+      times: writing the F-N entry itself.
+
+      User trigger phrases like "새 피처 추가", "feature 추가",
+      "draft a feature", "spec out X" auto-load the skill.
+      The skill teaches the LLM:
+
+      1. Detect the feature shape from user intent (UI surface,
+         sensitive entity, performance budget, or pure-domain
+         logic) and pick the matching adapter.
+      2. Read `project.mode` from spec.yaml — prototype yields
+         3-4 ACs, product yields 6-8.
+      3. Produce a complete F-N entry (`id` · `name` · `type` ·
+         `description` · `acceptance_criteria`) ready to paste
+         into BOTH spec.yaml copies (docs/samples/... and
+         .harness/) — lockstep is enforced by self_check.sh.
+      4. Surface the routing the orchestrator will use so the
+         user sees up-front which agents the activate cycle
+         will summon.
+
+      Scope (v0.1):
+      - Markdown-only skill (no executable code). Skills
+        teach the LLM what to do; the LLM does it.
+      - Four shape adapters: ui-surface · sensitive ·
+        performance-budget · pure-domain.
+      - One feature-entry YAML template with placeholder
+        markers.
+      - One backlink-matrix-style note for AC↔modules pairing.
+      - parity test: golden input → expected F-N entry across
+        4 shapes × 2 modes = 8 cases.
+
+    acceptance_criteria:
+      - "AC-1: skills/feature-author/SKILL.md frontmatter has name=feature-author, description containing trigger phrases (Korean + English), version=0.1."
+      - "AC-2: skills/feature-author/adapters/ contains exactly four shape adapters (ui-surface.md · sensitive.md · performance-budget.md · pure-domain.md), each with a one-paragraph When + AC-template + modules-template structure."
+      - "AC-3: skills/feature-author/templates/feature-entry.yaml is a paste-ready F-N skeleton with explicit placeholder markers (e.g., <FEATURE_ID>, <SHAPE_NAME>)."
+      - "AC-4: SKILL.md instructs the LLM to (a) detect shape, (b) read project.mode, (c) emit a complete F-N entry, (d) print lockstep paste instructions, (e) print the orchestrator routing chain."
+      - "AC-5: tests/parity/skill-feature-author.test.ts covers 8 golden cases (4 shapes × prototype/product) and asserts exact AC count + adapter selection from the user prompt."
+      - "AC-6: F-114 mirrored on both spec.yaml copies."
+      - "AC-7: F-114 completed via the harness CLI cycle on a feature branch (memory `feedback_git_workflow`)."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
