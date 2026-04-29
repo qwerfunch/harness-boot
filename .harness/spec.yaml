@@ -3338,6 +3338,36 @@ features:
       - "AC-6: F-092 mirrored on both spec.yaml copies. self_check 5/5 PASS."
       - "AC-7: F-092 completed via the work.py cycle on the umbrella branch."
 
+  - id: "F-093"
+    name: "TS migration — port events.ts (events.log filter helpers)"
+    type: "feature"
+    description: |
+      Tenth cycle of the v1.0 migration thread. Ports the
+      `/harness:events` filter library to TypeScript. CQS: read-only,
+      no mtime mutation.
+
+      Public API ported:
+
+        - `filterEvents(events, options)` — filter by kind, feature
+          id (matches `feature` / `feature_id` / `payload.feature`),
+          and `since` ISO 8601 cutoff.
+        - `formatHuman(events)` — human-readable summary lines.
+
+      Behaviour preservation:
+
+        - Same filter precedence (kind > feature > since).
+        - Same human format ("ts type (extras...)").
+        - Same `since` parsing — accepts both `Z` and microsecond
+          forms.
+        - spec_hash truncated to 12 chars in extras (matches Python).
+
+    acceptance_criteria:
+      - "AC-1: src/events.ts exports `filterEvents`, `formatHuman`, `parseTs`."
+      - "AC-2: filterEvents matches Python output for kind / feature / since combinations."
+      - "AC-3: formatHuman produces strings byte-equal to Python for canonical fixtures."
+      - "AC-4: F-093 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-5: F-093 completed via the work.py cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
