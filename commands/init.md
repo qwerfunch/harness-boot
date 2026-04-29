@@ -125,10 +125,11 @@ Example: `🧰 /harness-boot:init · solo · first-time scaffold into empty dir`
 
 ### 0.5. Runtime prerequisite — Node.js 20+ (F-107)
 
-The plugin ships a built CLI under `dist/` and a shim at
-`bin/harness.js`. Both rely on Node.js 20 or newer. v0.13 made the
-TS layer the only operational surface — there is no Python fallback
-anymore.
+The plugin ships a single-file CLI bundle under `dist/cli/` and a
+shim at `bin/harness`. Both rely on Node.js 20 or newer. v0.13 made
+the TS layer the only operational surface — no Python fallback. The
+`bin/` directory is auto-added to PATH by Claude Code, so calls
+look like `harness work F-N` without absolute paths.
 
 **Detection** — run this `Bash` block once:
 
@@ -396,7 +397,7 @@ populated. This eliminates the post-install stutter where the very first
 reference `domain.md`.
 
 ```bash
-node "$PLUGIN_ROOT/bin/harness.js" sync --harness-dir "$(pwd)/.harness" --soft
+harness sync --harness-dir "$(pwd)/.harness" --soft
 ```
 
 The `--soft` flag delegates to `sync.try_initial_sync(harness_dir)`,

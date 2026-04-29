@@ -24,21 +24,13 @@
 import { readFileSync, statSync } from 'node:fs';
 import { dirname, join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
+import Ajv2020Default from 'ajv/dist/2020.js';
+import addFormatsDefault from 'ajv-formats';
 import { parse as yamlParse } from 'yaml';
-// The shipped schema declares `$schema: draft/2020-12`. ajv 8's
-// default constructor only knows draft-07 + draft-2019-09; using the
-// `ajv/dist/2020` entry point picks up draft-2020-12 support.
-//
-// Both ajv and ajv-formats ship CJS; under `verbatimModuleSyntax` we
-// resolve through createRequire to stay portable across bundlers.
-const requireFn = createRequire(import.meta.url);
-const Ajv2020Mod = requireFn('ajv/dist/2020.js');
-const Ajv2020Ctor = (Ajv2020Mod.default ?? Ajv2020Mod);
-const addFormatsExport = requireFn('ajv-formats');
-const addFormats = typeof addFormatsExport === 'function'
-    ? addFormatsExport
-    : addFormatsExport.default;
+const Ajv2020Ctor = (Ajv2020Default.default ??
+    Ajv2020Default);
+const addFormats = (addFormatsDefault.default ??
+    addFormatsDefault);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 /**

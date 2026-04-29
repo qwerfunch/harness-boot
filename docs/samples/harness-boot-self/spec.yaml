@@ -4071,6 +4071,52 @@ features:
       - "AC-5: F-109 mirrored on both spec.yaml copies."
       - "AC-6: F-109 completed via the harness CLI cycle on the umbrella branch."
 
+  - id: "F-110"
+    name: "Single-file bundle for plugin install (esbuild)"
+    type: "feature"
+    description: |
+      Twenty-seventh cycle. F-109 verified that the plugin install
+      path needs `npm install` at the install site to pull runtime
+      deps (commander · yaml · ajv · ajv-formats · smol-toml). But
+      Claude Code's plugin install mechanism does NOT auto-run
+      `npm install` — it just copies repo files into
+      `~/.claude/plugins/cache/<owner>/<plugin>/<version>/`. So the
+      installed plugin has no `node_modules` and the CLI fails to
+      start.
+
+      Fix: ship a single-file esbuild bundle at
+      `dist/cli/harness.bundle.mjs` that inlines every runtime dep
+      via static imports. `bin/harness` becomes a 14-line shim that
+      `import()`s the bundle. The `bin/` directory is auto-added to
+      PATH by Claude Code (per plugin-spec docs), so user-facing
+      calls look like plain `harness work F-N` — no absolute path,
+      no node prefix, no `$PLUGIN_ROOT/bin/harness.js` boilerplate.
+
+      Side-quests:
+        - `src/spec/validate.ts` was using `createRequire` to load
+          `ajv/dist/2020.js` and `ajv-formats`. esbuild can't trace
+          dynamic require, so refactor to static imports with a
+          default-export unwrap fallback (handles both ESM and CJS
+          interop modes of the dep).
+        - `package.json prepare` hook was buggy:
+          `node -e "...|| process.exit(0)" || npm run build` always
+          exits 0, so the build never fired. Replace with
+          `test -f dist/cli/harness.bundle.mjs || npm run build`.
+        - All bash blocks in commands/{init,work}.md plus
+          hooks/pre-commit-phase2.sh + self_check.sh switch from
+          `node "$PLUGIN_ROOT/bin/harness.js" <subcmd>` to plain
+          `harness <subcmd>`.
+
+    acceptance_criteria:
+      - "AC-1: package.json `bundle` script invokes esbuild with `--bundle --platform=node --format=esm --target=node20` plus a `createRequire` banner for ESM/CJS interop."
+      - "AC-2: `dist/cli/harness.bundle.mjs` is a single file < 1MB that contains commander, yaml, ajv, ajv-formats, smol-toml inlined."
+      - "AC-3: Fresh-clone simulation — copy bin/+dist/+docs/+.claude-plugin/ to a temp dir with NO node_modules, then `node bin/harness {--version, status, validate, work}` all succeed."
+      - "AC-4: `bin/harness` (no .js suffix) — Claude Code auto-PATH means users just call `harness <subcmd>` after install."
+      - "AC-5: All slash-command bash blocks reference plain `harness` (no `$PLUGIN_ROOT/bin/harness.js` indirection)."
+      - "AC-6: `src/spec/validate.ts` uses static imports for ajv subpath (esbuild-traceable), with default-export unwrap for both interop modes."
+      - "AC-7: F-110 mirrored on both spec.yaml copies."
+      - "AC-8: F-110 completed via the harness CLI cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

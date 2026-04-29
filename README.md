@@ -202,8 +202,8 @@ harness-boot/
 ├── commands/              slash commands (init · work)
 ├── hooks/                 session-bootstrap · prompt-log
 ├── src/                   TypeScript implementation
-├── dist/                  pre-built CLI (committed for plugin install)
-├── bin/harness.js         Node CLI entry point — `harness <subcommand>`
+├── dist/cli/              esbuild single-file bundle (committed; no node_modules at install site)
+├── bin/harness            Node shim that loads the bundle — `harness <subcommand>`
 ├── self_check.sh          5-step self-dogfood verification
 ├── skills/spec-conversion/  plan.md → spec.yaml conversion
 ├── docs/                  schema · templates · samples · portfolio assets

@@ -25,7 +25,7 @@ Cumulative state:
 - **Project mode axis** (v0.9.6) — `spec.project.mode ∈ {prototype, product}` is the single switch that determines the Iron Law floor, kickoff/retro template depth, and design-review autowire behavior. Unset → product (strict default).
 - **Drift detection 12 kinds** — Generated · Derived · Spec · Include · Evidence · Code · Anchor · Adr · Stale · AnchorIntegration · Doc · Protocol. Two-layer supersession metadata (`features[].supersedes` / `superseded_by`) and the archive flow (v0.10.0).
 - **Ceremony automation 4/4** — kickoff · retro · design-review · inbox.
-- **Phase 2 self-dogfood active** (since 2026-04-27) — `.harness/` is the live workspace. Every new feature in this repo runs through `node bin/harness.js work F-N --harness-dir .harness`. See §7 for the contract.
+- **Phase 2 self-dogfood active** (since 2026-04-27) — `.harness/` is the live workspace. Every new feature in this repo runs through `node bin/harness work F-N --harness-dir .harness`. See §7 for the contract.
 - **Init/work observability** (v0.10.5) — the `## Issue logging` section in `commands/{init,work}.md` plus `hooks/prompt-log.sh` (UserPromptSubmit). Users accumulate `.harness/_workspace/{issues-log.md, prompts/YYYY-MM.jsonl}` → maintainer return cycle + prompt-shape corpus.
 - **Scaling preparedness** (v0.10.6) — five additive fields on `features[]` (area · archived_at · archive_reason · digest · include_path) plus `src/spec/{shard,unshard,summary}.ts` (TS port pending; spec utilities deferred past v0.13.0) and `tests/scale/test_scale.py` measuring 100 / 1000 / 3000 / 10000 features. Users won't need to invoke any of this until ~300 features.
 - **cosmic-suika ISSUES-LOG batch return** (v0.10.7) — I-003 (recommended tsconfig) · I-004 (relaxed `risks[].id` pattern) · I-006 (clarified `--kind trivial`) · I-007 (changelog version optional). The first return cycle for the F-027 convention.
@@ -57,8 +57,8 @@ src/                                # TypeScript implementation (operational sin
 ├── ceremonies/ · gate/ · scan/     # ceremony + gate + scan helpers
 ├── cli/harness.ts                  # commander-based CLI (8 subcommands)
 └── work.ts · sync.ts · check.ts · status.ts · events.ts · metrics.ts
-dist/                               # pre-built CLI (committed for plugin install)
-bin/harness.js                      # Node entry point
+dist/cli/harness.bundle.mjs         # esbuild single-file bundle (committed for plugin install — no node_modules at install site)
+bin/harness                         # Node shim that loads the bundle (auto-PATH by Claude Code)
 self_check.sh                       # repo-root 5-step self-dogfood verification
 legacy/scripts/                     # Python archive (read-only since v0.13.0)
                                     # — kept until external dogfood signals zero regressions
@@ -151,12 +151,12 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (this file) · requirements-de
   - **Every new feature goes through the work.py cycle.** Same contract as cosmic-suika and other external dogfood projects. "Refactor" / "doc-only" / "small fix" are not exceptions.
   - The four-verb flow:
     ```
-    node bin/harness.js work F-N --harness-dir .harness                        # activate
-    node bin/harness.js work F-N --harness-dir .harness --run-gate gate_0      # ... 1, 2, 3, 5
-    node bin/harness.js work F-N --harness-dir .harness --evidence "..."       # declared evidence
-    node bin/harness.js work F-N --harness-dir .harness --complete             # transition
+    node bin/harness work F-N --harness-dir .harness                        # activate
+    node bin/harness work F-N --harness-dir .harness --run-gate gate_0      # ... 1, 2, 3, 5
+    node bin/harness work F-N --harness-dir .harness --evidence "..."       # declared evidence
+    node bin/harness work F-N --harness-dir .harness --complete             # transition
     ```
-  - Slash commands **cannot live-edit from this repo** — the installed copy always wins. So the dev entry point is always `node bin/harness.js work` directly. (In a user project, `/harness-boot:work` is the wrapper.)
+  - Slash commands **cannot live-edit from this repo** — the installed copy always wins. So the dev entry point is always `node bin/harness work` directly. (In a user project, `/harness-boot:work` is the wrapper.)
   - `.harness/state.yaml` is committed alongside the feature PR (the previous Phase 1 "only at release tag" restriction is lifted).
   - `events.log` accumulates lifecycle events (`feature_activated`, `gate_run`, `evidence_declared`, `feature_completed`). The `/harness-boot:work` dashboard and `harness metrics` use them to compute real lead time and gate pass rate.
   - `project.mode` is `prototype` (current default) — the Iron Law floor is `evidence ≥ 1` plus `gate_5 = pass`. Promotion to product is a user decision.
@@ -169,7 +169,7 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (this file) · requirements-de
 - **Slash command pathway** (validated 2026-04-23, re-checked 2026-04-27):
   - Works: `/plugin marketplace add qwerfunch/harness-boot` plus `/plugin install harness-boot@harness-boot` → `/harness-boot:{init,work}` available. Update via `/plugin update harness-boot@harness-boot`.
   - Doesn't work: `CLAUDE_PLUGIN_ROOT` env or `settings.json plugins[]` for live dev-checkout reflection — the installed copy always wins.
-  - Conclusion: edits don't reflect into slash commands instantly. **The dev workflow inside this repo always calls `node bin/harness.js` directly.** Slash-command verification happens through release → `/plugin update`.
+  - Conclusion: edits don't reflect into slash commands instantly. **The dev workflow inside this repo always calls `node bin/harness` directly.** Slash-command verification happens through release → `/plugin update`.
   - Details: `docs/archive/local-install-v0.1.0.md` §2 + Appendix A (F-042 archive).
 
 - **Tags never move.** A broken release gets yanked and hotfixed (`docs/archive/release-v0.1.0-playbook.md` §5 · F-042 archive).

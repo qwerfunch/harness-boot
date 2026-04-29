@@ -74,7 +74,7 @@ That breaks the "every change MUST go through harness work" discipline.
 
 Pick one:
 
-  1. node bin/harness.js work F-N --harness-dir .harness           # activate
+  1. node bin/harness work F-N --harness-dir .harness           # activate
   2. Add a new F-N to spec.yaml first, then 1
   3. git commit --no-verify                                        # one-off bypass
   4. HARNESS_BYPASS_PRE_COMMIT=1 git commit ...                    # env bypass

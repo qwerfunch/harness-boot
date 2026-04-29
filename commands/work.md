@@ -51,8 +51,8 @@ via the 4-strategy chain in `commands/init.md §2` (or `scripts/core/plugin_root
 ### Dashboard (v0.9.2 — empty call)
 
 ```bash
-node "$PLUGIN_ROOT/bin/harness.js" work --harness-dir "$(pwd)/.harness"
-node "$PLUGIN_ROOT/bin/harness.js" work --harness-dir "$(pwd)/.harness" --json
+harness work --harness-dir "$(pwd)/.harness"
+harness work --harness-dir "$(pwd)/.harness" --json
 ```
 
 With no arguments, you get a **read-only dashboard**.
@@ -88,7 +88,7 @@ issue an explicit subcommand, control routes to that branch.
 ### Activate
 
 ```bash
-node "$PLUGIN_ROOT/bin/harness.js" work F-NNN --harness-dir "$(pwd)/.harness" --json
+harness work F-NNN --harness-dir "$(pwd)/.harness" --json
 ```
 
 - Transitions `planned` → `in_progress` and sets `session.active_feature_id`.
@@ -113,7 +113,7 @@ survive regeneration.
 ### Record gate result (manual)
 
 ```bash
-node "$PLUGIN_ROOT/bin/harness.js" work F-NNN --gate gate_0 pass --note "19 unit tests" --json
+harness work F-NNN --gate gate_0 pass --note "19 unit tests" --json
 ```
 
 Result ∈ {pass, fail, skipped}. On `pass`, `session.last_gate_passed`
@@ -122,9 +122,9 @@ updates.
 ### Auto-run a gate
 
 ```bash
-node "$PLUGIN_ROOT/bin/harness.js" work F-NNN --run-gate gate_0 --json
-node "$PLUGIN_ROOT/bin/harness.js" work F-NNN --run-gate gate_0 --override-command "pytest tests/unit" --json
-node "$PLUGIN_ROOT/bin/harness.js" work F-NNN --run-gate gate_0 --project-root ../other --timeout 60
+harness work F-NNN --run-gate gate_0 --json
+harness work F-NNN --run-gate gate_0 --override-command "pytest tests/unit" --json
+harness work F-NNN --run-gate gate_0 --project-root ../other --timeout 60
 ```
 
 `scripts/gate/runner.py` auto-detects the runner:
@@ -166,13 +166,13 @@ declares a `performance_budget`.
 ### Add evidence
 
 ```bash
-node "$PLUGIN_ROOT/bin/harness.js" work F-NNN --evidence "domain smoke passes" --kind test --json
+harness work F-NNN --evidence "domain smoke passes" --kind test --json
 ```
 
 ### Block
 
 ```bash
-node "$PLUGIN_ROOT/bin/harness.js" work F-NNN --block "external API not deployed yet" --kind blocker --json
+harness work F-NNN --block "external API not deployed yet" --kind blocker --json
 ```
 
 → status `blocked` + reason recorded as evidence + `feature_blocked`
@@ -181,8 +181,8 @@ event appended to events.log.
 ### Complete (transition to done)
 
 ```bash
-node "$PLUGIN_ROOT/bin/harness.js" work F-NNN --complete --json
-node "$PLUGIN_ROOT/bin/harness.js" work F-NNN --complete --hotfix-reason "prod down — redis race"
+harness work F-NNN --complete --json
+harness work F-NNN --complete --hotfix-reason "prod down — redis race"
 ```
 
 **Iron Law** (v0.9.3 — BR-004 reinforcement):
@@ -220,7 +220,7 @@ real emergency bypass, use `--hotfix-reason`.
 ### Query the active feature (CQS — read-only)
 
 ```bash
-node "$PLUGIN_ROOT/bin/harness.js" work --current --json
+harness work --current --json
 ```
 
 ## Coding style (read before implementing)
@@ -414,7 +414,7 @@ orchestrator) has filled in the headings, re-activating preserves the
 content. To force regeneration use the `--kickoff` flag:
 
 ```bash
-node "$PLUGIN_ROOT/bin/harness.js" work F-N --kickoff --harness-dir .harness
+harness work F-N --kickoff --harness-dir .harness
 ```
 
 Use this when the agent lineup needs to refresh — typically because
@@ -427,7 +427,7 @@ the feature's shape changed. (Same pattern as `--design-review`.)
 `kickoff.generate_kickoff()` fires. Manual reproduction via the CLI:
 
 ```bash
-node "$PLUGIN_ROOT/bin/harness.js" work F-N --kickoff --harness-dir .harness
+harness work F-N --kickoff --harness-dir .harness
 ```
 
 Shape detection rules (`kickoff.detect_shapes`):
@@ -490,7 +490,7 @@ tokens/motion/session-start says 200ms but the AC doesn't pin it.
 **Polling**:
 
 ```bash
-node "$PLUGIN_ROOT/bin/harness.js" inbox --harness-dir .harness --feature F-N
+harness inbox --harness-dir .harness --feature F-N
 # → 🔒/⬜️ · 🔒 blocking · F-N · from → to · path
 ```
 
@@ -528,7 +528,7 @@ fails, silent skip.
 needs a refresh):
 
 ```bash
-node "$PLUGIN_ROOT/bin/harness.js" work F-N --design-review --harness-dir .harness
+harness work F-N --design-review --harness-dir .harness
 ```
 
 The `--design-review` flag bypasses condition (3) and rewrites.
@@ -538,7 +538,7 @@ non-UI feature still does nothing.
 **Direct CLI** (raw template only):
 
 ```bash
-node "$PLUGIN_ROOT/bin/harness.js" work F-N --design-review --harness-dir .harness
+harness work F-N --design-review --harness-dir .harness
 ```
 
 **Participants**: `visual-designer` + `frontend-engineer` +
@@ -569,14 +569,14 @@ it silent-skips (symmetric with kickoff).
 - Force regeneration with `--retro`:
 
 ```bash
-node "$PLUGIN_ROOT/bin/harness.js" work F-N --retro --harness-dir .harness
+harness work F-N --retro --harness-dir .harness
 ```
 
 (Same pattern as `--kickoff` and `--design-review`. All three
 ceremonies behave identically.)
 
 ```bash
-node "$PLUGIN_ROOT/bin/harness.js" work F-N --retro --harness-dir .harness
+harness work F-N --retro --harness-dir .harness
 ```
 
 **Output**: `.harness/_workspace/retro/F-N.md`

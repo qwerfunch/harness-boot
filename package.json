@@ -1,6 +1,6 @@
 {
   "name": "harness-boot",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "description": "Multi-agent development harness for Claude Code. Your AI has speed; we give it direction — through living specs and focused specialist agents.",
   "type": "module",
   "license": "MIT",
@@ -16,11 +16,12 @@
     "node": ">=20.0.0"
   },
   "bin": {
-    "harness": "./bin/harness.js"
+    "harness": "./bin/harness"
   },
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "prepare": "test -f dist/cli/harness.js || npm run build",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && npm run bundle",
+    "bundle": "esbuild src/cli/harness.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/cli/harness.bundle.mjs --banner:js=\"import{createRequire as __cr}from 'module';const require=__cr(import.meta.url);\"",
+    "prepare": "test -f dist/cli/harness.bundle.mjs || npm run build",
     "test": "vitest run tests/parity --passWithNoTests",
     "test:parity": "vitest run tests/parity --passWithNoTests",
     "test:watch": "vitest",
@@ -42,6 +43,7 @@
     "@types/node": "^22.10.0",
     "@typescript-eslint/eslint-plugin": "^8.16.0",
     "@typescript-eslint/parser": "^8.16.0",
+    "esbuild": "^0.28.0",
     "eslint": "^9.16.0",
     "eslint-config-prettier": "^9.1.0",
     "prettier": "^3.4.1",

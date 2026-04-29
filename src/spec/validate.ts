@@ -27,29 +27,30 @@ import {dirname, join, resolve as resolvePath} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 import type {ErrorObject, ValidateFunction} from 'ajv';
-import {createRequire} from 'node:module';
+import Ajv2020Default from 'ajv/dist/2020.js';
+import addFormatsDefault from 'ajv-formats';
 import {parse as yamlParse} from 'yaml';
 
 // The shipped schema declares `$schema: draft/2020-12`. ajv 8's
-// default constructor only knows draft-07 + draft-2019-09; using the
+// default constructor only knows draft-07 + draft-2019-09; the
 // `ajv/dist/2020` entry point picks up draft-2020-12 support.
 //
-// Both ajv and ajv-formats ship CJS; under `verbatimModuleSyntax` we
-// resolve through createRequire to stay portable across bundlers.
-const requireFn = createRequire(import.meta.url);
+// Both ajv and ajv-formats ship CJS; the static imports above let
+// esbuild bundle them at build time. The default-export unwrap below
+// covers both interop modes (esbuild esm + Node's default require).
 interface Ajv2020Instance {
   compile(schema: object): ValidateFunction;
 }
 type Ajv2020Constructor = new (options?: Record<string, unknown>) => Ajv2020Instance;
-const Ajv2020Mod = requireFn('ajv/dist/2020.js');
-const Ajv2020Ctor: Ajv2020Constructor = (Ajv2020Mod.default ?? Ajv2020Mod) as Ajv2020Constructor;
+const Ajv2020Ctor: Ajv2020Constructor = (
+  (Ajv2020Default as unknown as {default?: Ajv2020Constructor}).default ??
+  (Ajv2020Default as unknown as Ajv2020Constructor)
+);
 type Ajv2020 = Ajv2020Instance;
 
-const addFormatsExport = requireFn('ajv-formats');
 const addFormats: (ajv: Ajv2020) => Ajv2020 =
-  typeof addFormatsExport === 'function'
-    ? (addFormatsExport as (ajv: Ajv2020) => Ajv2020)
-    : (addFormatsExport.default as (ajv: Ajv2020) => Ajv2020);
+  ((addFormatsDefault as unknown as {default?: (ajv: Ajv2020) => Ajv2020}).default ??
+    (addFormatsDefault as unknown as (ajv: Ajv2020) => Ajv2020));
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

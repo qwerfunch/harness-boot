@@ -205,8 +205,8 @@ harness-boot/
 ├── commands/              슬래시 명령 (init · work)
 ├── hooks/                 session-bootstrap · prompt-log
 ├── src/                   TypeScript 구현
-├── dist/                  pre-built CLI (플러그인 설치용으로 commit 됨)
-├── bin/harness.js         Node CLI 엔트리 — `harness <subcommand>`
+├── dist/cli/              esbuild 단일 파일 번들 (commit 됨, 설치 측 node_modules 불필요)
+├── bin/harness            번들을 로드하는 Node 셈 — `harness <subcommand>`
 ├── self_check.sh          5단계 자체 도그푸드 검증
 ├── skills/spec-conversion/  plan.md → spec.yaml 변환
 ├── docs/                  스키마 · 템플릿 · 샘플 · 결과물 데모

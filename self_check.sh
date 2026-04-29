@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # self_check.sh — harness-boot 자체 도그푸드 검증 (TS-only since F-107)
 #
-# 5 단계 검증 (모두 `node bin/harness.js` 경유):
+# 5 단계 검증 (모두 `node bin/harness` 경유):
 #   1. .harness/spec.yaml == docs/samples/harness-boot-self/spec.yaml (SSoT 동기성)
 #   2. validate spec — JSONSchema 통과
 #   3. sync (--soft) — 변경 없으면 skip · derived 파일 보장
@@ -26,7 +26,7 @@ step() {
     echo "self_check [${1}/5] $2"
 }
 
-HARNESS_BIN="$REPO_ROOT/bin/harness.js"
+HARNESS_BIN="$REPO_ROOT/bin/harness"
 if [ ! -f "$HARNESS_BIN" ]; then
     fail "$HARNESS_BIN 없음 — 'npm install' 후 'npm run build' 가 필요합니다"
 fi
