@@ -2108,8 +2108,32 @@ features:
       modules); 30 parity tests; 224/224 cumulative.
   started_at: '2026-04-29T10:00:58Z'
   completed_at: '2026-04-29T10:03:27Z'
+- id: F-093
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T10:05:05Z'
+      note: 'cmd: npm test'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T10:05:06Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-29T10:05:05Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (0.7s) · cmd: npm test'
+  - ts: '2026-04-29T10:05:06Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-29T10:05:07Z'
+    kind: test
+    summary: events.ts ported (read-only filter helpers); 14 parity tests; 238/238
+      cumulative.
+  started_at: '2026-04-29T10:04:09Z'
+  completed_at: '2026-04-29T10:05:07Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-092
+  last_command: /harness:work F-093
   last_gate_passed: gate_5
   active_feature_id: null
