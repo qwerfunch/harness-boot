@@ -2784,6 +2784,63 @@ features:
       - "AC-9: F-082 completed via the work.py 4-verb cycle — Phase 2 dogfood."
       - "AC-10: F-081 + F-082 ship together as v0.12.2 patch release. Originally-queued F-082 (kickoff Quantitative completeness section) and F-083 (carry-forward debt) renumber to F-084 and F-085 respectively; CHANGELOG queue line updated to reflect the shift."
 
+  - id: "F-083"
+    name: "Python/pip prerequisite check at init §0.4 — abort gracefully when Python is absent"
+    type: "feature"
+    description: |
+      F-082 (v0.12.2) added a §0.5 dep preflight that detects missing
+      `pyyaml` / `tomli` and offers `pip install --user` with explicit
+      consent. But the very first line of that preflight runs
+      `python3 -c "import yaml"` — which assumes `python3` itself
+      exists on the user's PATH. On Windows without a Python
+      installation, on Debian/Ubuntu without `python3-pip`, on
+      stripped Docker images, or on a fresh macOS where the user has
+      not run `xcode-select --install` yet, that assumption breaks.
+
+      Claude Code CLI is Node.js-based, so the user can have Claude
+      Code working without Python at all. F-083 closes the prerequisite
+      gap by adding a §0.4 "Python / pip prerequisite check" between
+      the existing §0 (Pre-flight detect existing install) and §0.5
+      (F-082 dep preflight). When `python3` is missing or too old,
+      init aborts with a per-OS install instructions block before any
+      filesystem changes happen — the user's machine stays clean. When
+      pip is missing but Python is present, init continues in degraded
+      mode (F-081 backstop) and silently disables the F-082 yes branch
+      (auto-install would fail anyway).
+
+      Layered defense:
+        * §0.4 (F-083) — prereq check: `python3` exists, version ≥ 3.8,
+          `python3 -m pip` works
+        * §0.5 (F-082) — dep preflight: pyyaml / tomli detection +
+          consent prompt
+        * scripts/* (F-081) — graceful degradation backstop at runtime
+
+      v0.12.3 patch — additive defensive code, no user-visible behavior
+      change for users who already have Python + pip installed.
+    modules:
+      - "commands/init.md"
+      - "tests/unit/test_init_md_prereq_contract.py"
+    test_strategy: "contract"
+    tdd_focus:
+      - "init.md gains a §0.4 'Python / pip prerequisite check' section between §0 and §0.5"
+      - "detection bash uses `command -v python3` + version check + `python3 -m pip --version`"
+      - "python: missing branch documents per-OS install commands (macOS Homebrew + python.org + Ubuntu/Debian + Fedora/RHEL + Arch + Windows)"
+      - "python: too_old branch documents pyenv as the cross-platform upgrade path"
+      - "pip: missing branch references `python3 -m ensurepip --upgrade` and continues in degraded mode"
+      - "section ordering invariant — §0.4 must precede §0.5 so dep preflight only runs after prereq check"
+      - "abort path leaves the user's machine clean — `.harness/` is not created"
+    acceptance_criteria:
+      - "AC-1: commands/init.md adds a §0.4 'Python / pip prerequisite check (F-083)' section between the existing §0 (Pre-flight detect existing install) and §0.5 (Optional dependency preflight, F-082)."
+      - "AC-2: §0.4 detection bash probes in order: (a) `command -v python3` exists, (b) `python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)'`, (c) `python3 -m pip --version`. Outputs `python: missing` / `python: too_old` / `pip: missing` / `prereq: ok` per branch."
+      - "AC-3: `python: missing` branch instructs Claude to abort init with a per-OS install instructions block (macOS Homebrew, macOS installer, Ubuntu/Debian, Fedora/RHEL, Arch, Windows) and explicit message that `.harness/` is not created."
+      - "AC-4: `python: too_old` branch reports the actual Python version, recommends pyenv as the cross-platform upgrade path, and aborts."
+      - "AC-5: `pip: missing` branch references `python3 -m ensurepip --upgrade`, continues in degraded mode (F-081 backstop), and notes that the §0.5 yes branch should not be offered (auto-install would fail without pip)."
+      - "AC-6: tests/unit/test_init_md_prereq_contract.py asserts the §0.4 anchor exists, all four branches are documented (ok/missing/too_old/pip_missing), per-OS install commands are present, the abort vs degraded boundary is explicit, and §0.4 precedes §0.5 in document order."
+      - "AC-7: F-083 mirrored on both spec.yaml copies. bash scripts/self_check.sh 5/5 PASS · regression 0 across 1192+ unit + integration tests."
+      - "AC-8: F-083 completed via the work.py 4-verb cycle — Phase 2 dogfood."
+      - "AC-9: F-083 ships as v0.12.3 patch release. README.md + README.ko.md gain a 'Prerequisites' section listing Python 3.8+ and pip (memory `feedback_release_readme_sync`)."
+      - "AC-10: First application of the new git workflow (memory `feedback_git_workflow`): work happens on `feat/F-083-python-pip-prereq` branch; PR targets `develop`; main + tag + gh release happen only after explicit user release approval."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

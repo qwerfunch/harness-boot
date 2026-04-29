@@ -123,6 +123,118 @@ Example: `🧰 /harness-boot:init · solo · first-time scaffold into empty dir`
    stays committed). Unknown flags get ignored, with a `unknown argument: X`
    note in the final report.
 
+### 0.4. Python / pip prerequisite check (F-083)
+
+The plugin's core scripts (`work.py`, `sync.py`, `check.py`) are all
+Python — no JavaScript / shell fallback exists. Before §0.5 (which
+runs `python3 -c "import yaml"`) we must confirm `python3` itself is
+on PATH, the version is recent enough, and `pip` is available. Without
+this guard, fresh users on Windows / Debian-without-`python3-pip` /
+stripped Docker hit `command not found` traceback before any helpful
+message is printed.
+
+Run this `Bash` block:
+
+```bash
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "python: missing"
+elif ! python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)' 2>/dev/null; then
+    echo "python: too_old"
+elif ! python3 -m pip --version >/dev/null 2>&1; then
+    echo "pip: missing"
+else
+    echo "prereq: ok"
+fi
+```
+
+Branch on the output:
+
+#### `prereq: ok` — continue to §0.5
+
+Pass through. Any missing optional deps will be caught by §0.5
+(F-082).
+
+#### `python: missing` — ABORT init (clean machine)
+
+The plugin is fundamentally Python — no fallback path. Tell the user
+the per-OS install command and stop **before any filesystem changes**.
+`.harness/` is not created. The user re-runs `/harness-boot:init`
+after installing Python.
+
+```
+❌ harness-boot needs Python 3.8 or newer, but `python3` was not found
+   on your PATH.
+
+Install Python 3.8+:
+  • macOS (Homebrew):  brew install python
+  • macOS (installer): https://www.python.org/downloads/macos/
+  • Ubuntu / Debian:   sudo apt install python3 python3-pip
+  • Fedora / RHEL:     sudo dnf install python3 python3-pip
+  • Arch:              sudo pacman -S python python-pip
+  • Windows:           https://www.python.org/downloads/windows/
+                       (check "Add Python to PATH" during install)
+
+After install, verify with `python3 --version`, then re-run
+/harness-boot:init.
+```
+
+#### `python: too_old` — ABORT init (clean machine)
+
+Same shape as `python: missing` but reports the actual version. The
+plugin uses Python 3.8+ language features; backporting is not in scope.
+Recommend pyenv as the cross-platform upgrade path.
+
+```
+❌ harness-boot needs Python 3.8+. You have Python <version>.
+
+Upgrade options:
+  • macOS Homebrew:   brew install python@3.12 && brew link python@3.12
+  • Ubuntu (PPA):     sudo add-apt-repository ppa:deadsnakes/ppa
+                      sudo apt install python3.12
+  • pyenv:            pyenv install 3.12 && pyenv global 3.12
+  • Windows:          https://www.python.org/downloads/
+
+After upgrade, verify with `python3 --version`, then re-run
+/harness-boot:init.
+```
+
+`.harness/` is not created on this branch either.
+
+#### `pip: missing` — continue in degraded mode
+
+Python is present but pip is not. F-082's auto-install (`yes` branch)
+would fail without pip, so silently disable that option in §0.5 — only
+`no` and `venv` branches are offered. The F-081 runtime backstop keeps
+the plugin alive.
+
+```
+⚠ pip is not available with this Python. F-082 auto-install is
+disabled; the plugin will continue in degraded mode (F-081 backstop).
+
+To enable pip:
+  python3 -m ensurepip --upgrade
+  # Ubuntu/Debian: sudo apt install python3-pip
+  # macOS:         pip should be bundled — try `python3 -m ensurepip` first
+
+Once pip is available, install the optional deps:
+  python3 -m pip install --user pyyaml "tomli; python_version<'3.11'"
+
+Continuing init...
+```
+
+Continue to §0.5 (F-082) but treat the `yes` branch as unavailable.
+
+#### Event format
+
+Once `.harness/events.log` exists (after §1 + §5 create the directory
+and the file), append one prereq event for the `ok` and `pip_missing`
+cases. The `python_missing` / `python_too_old` branches abort before
+events.log is created — no event is written for those.
+
+```json
+{"ts":"<ISO8601>","type":"prereq_check","status":"<ok|pip_missing>","python_version":"<X.Y.Z>"}
+```
+
 ### 0.5. Optional dependency preflight (F-082)
 
 The plugin uses `pyyaml` for spec parsing and `tomli` (Python 3.10
