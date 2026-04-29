@@ -2225,8 +2225,31 @@ features:
     summary: Requirement / 필요한 것 / Node.js — three grep targets all return zero matches in README.md + README.ko.md after edit
   started_at: 2026-04-29T14:34:15Z
   completed_at: 2026-04-29T14:34:43Z
+- id: F-113
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-04-29T14:46:04Z
+      note: "cmd: npm test"
+    gate_5:
+      last_result: pass
+      ts: 2026-04-29T14:46:05Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-04-29T14:46:04Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.1s) · cmd: npm test"
+  - ts: 2026-04-29T14:46:05Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.4s) · cmd: bash self_check.sh"
+  - ts: 2026-04-29T14:46:05Z
+    kind: manual_check
+    summary: "audit matrix written to .harness/_workspace/audit/F-113.md — 33 direct ports + 5 merged + 3 deferred (work.ts:411 inline comment) + 14 retired-surface drops + 1 doc-rot follow-up (SKILL.md → seed_spec) + 0 silent gaps. Version walked back to 0.13.0 in package.json + src/cli/harness.ts; bundle rebuilt; PR #46 v1.0 framing removed"
+  started_at: 2026-04-29T14:40:27Z
+  completed_at: 2026-04-29T14:46:29Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-112
+  last_command: /harness:work F-113
   last_gate_passed: gate_5
   active_feature_id: null
