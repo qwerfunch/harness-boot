@@ -123,6 +123,125 @@ Example: `🧰 /harness-boot:init · solo · first-time scaffold into empty dir`
    stays committed). Unknown flags get ignored, with a `unknown argument: X`
    note in the final report.
 
+### 0.5. Optional dependency preflight (F-082)
+
+The plugin uses `pyyaml` for spec parsing and `tomli` (Python 3.10
+backport) for `pyproject.toml` signals. Both are declared in
+`requirements-dev.txt` but are **not bundled**. On a fresh macOS or
+Linux system Python they are typically absent — F-081 graceful
+degradation keeps the plugin alive when they are missing, but the user
+loses sync, style fingerprints, and other features that depend on them.
+F-082 closes the loop: detect the missing deps once at init and offer
+to install them (with explicit consent) so the rest of init runs at
+full fidelity.
+
+**Detection** — run this `Bash` block once:
+
+```bash
+python3 -c "import yaml" 2>/dev/null && \
+  (python3 -c "import tomllib" 2>/dev/null || python3 -c "import tomli" 2>/dev/null) && \
+  echo "deps: ok" || echo "deps: missing"
+```
+
+Branch on the output:
+
+#### `deps: ok` — continue to §1
+
+No further action; init proceeds normally. Append a single
+`deps_preflight` event to `.harness/events.log` with `status: "ok"`
+once §1 has created the file.
+
+#### `deps: missing` — ask the user, do not auto-install
+
+1. Send the user a single message in their language (English template
+   shown; localize as Korean / etc. when the locale resolver from §6 /
+   F-040 indicates):
+
+   > harness-boot needs Python packages: `pyyaml` and `tomli` (Python
+   > 3.10 backport). Should I install them now?
+   >
+   > • `yes` — run `python3 -m pip install --user pyyaml "tomli; python_version<'3.11'"`
+   > • `no` — skip (the plugin will run in degraded mode; F-081 backstop)
+   > • `venv` — show the venv command for manual setup
+
+2. **Wait for the user response.** Do not auto-execute under any
+   circumstance — the user's Python environment is their asset, and
+   surprise modification (especially when PEP 668 is in effect) is a
+   worse experience than asking once.
+
+3. **`yes` branch** — run:
+
+   ```bash
+   python3 -m pip install --user pyyaml "tomli; python_version<'3.11'"
+   ```
+
+   If pip exits non-zero with a `PEP 668` /
+   `externally-managed-environment` marker, ask once more:
+
+   > pip is blocked by PEP 668 (your distribution marks the system
+   > Python as externally managed). Override with
+   > `--break-system-packages`? This installs into the user-site of the
+   > system Python and is the documented escape hatch, but it does
+   > modify a Python that other tools may also use.
+   >
+   > • `yes` — re-run with `--break-system-packages`
+   > • `no` — fall back to the venv path below
+
+   If PEP 668 fallback `yes`: re-run with
+   `python3 -m pip install --user --break-system-packages pyyaml "tomli; python_version<'3.11'"`.
+
+   If PEP 668 fallback `no`: print the venv command (see `venv` branch
+   below) and continue with the F-081 backstop.
+
+4. **`no` branch** — print:
+
+   ```
+   [info] continuing without auto-install. To install later:
+     python3 -m pip install --user pyyaml "tomli; python_version<'3.11'"
+   The plugin will run in degraded mode (F-081 backstop) — sync, style
+   fingerprint, and similar features are silently skipped.
+   ```
+
+   Continue to §1. Append a `deps_preflight` event with
+   `status: "skipped"`.
+
+5. **`venv` branch** — print:
+
+   ```
+   [info] To install in a venv:
+     python3 -m venv .venv
+     source .venv/bin/activate     # Windows: .venv\Scripts\activate
+     python3 -m pip install pyyaml "tomli; python_version<'3.11'"
+   Then re-run /harness-boot:init from the activated venv.
+   ```
+
+   Continue to §1 (the user can re-init after activating the venv).
+   Append a `deps_preflight` event with `status: "skipped"`.
+
+6. After any successful pip install, re-run the detection bash to
+   confirm. Append a `deps_preflight` event with `status: "installed"`
+   on success or `status: "failed"` if pip still fails.
+
+#### Failsafe — never abort init on dep failure
+
+This section is **fail-open**. F-081 graceful degradation keeps the
+rest of init alive whatever the user chose. **Never abort init** on a
+pip install failure or a declined offer — the user reaches §1 either
+way.
+
+#### Event format
+
+Once `.harness/events.log` exists (after §1 + §5 create the directory
+and the file), append one preflight event:
+
+```json
+{"ts":"<ISO8601>","type":"deps_preflight","status":"<ok|installed|skipped|failed>","missing":["pyyaml","tomli"]}
+```
+
+The `missing` array carries the modules that were absent at detection
+time even when the user later installed them. Retro / metrics use this
+for first-visit user flow analytics.
+
 ### 1. Create directories
 
 Via `Bash`:

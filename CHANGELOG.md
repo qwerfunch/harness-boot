@@ -16,6 +16,51 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - F-073 (`read_events(tail=N)`) and F-074 (`canonical_hash` mtime cache) — v0.11.11 cumulative-slowdown audit queue.
 - F-082 (kickoff "Quantitative completeness" section) and F-083 (carry-forward debt escalation) — second sequencing pass; F-081 stays open for the next available slot.
 
+## [0.12.2] — 2026-04-29
+
+**External dogfood feedback batch — graceful optional-dep handling (F-081 + F-082).**
+
+A new external user installed v0.12.1 on macOS system Python 3.9 and reported two install-time blockers within hours:
+
+1. **Blocker** — `/harness-boot:work` dashboard crashes with `ModuleNotFoundError` when neither `tomllib` (Python 3.11+) nor `tomli` is present. The two-step try/except in `scripts/scan/style_fingerprint.py:14-17` catches the first ImportError but the second propagates and aborts module load. `work.py` imports the scan package, so even the read-only dashboard becomes unreachable. Same crash shape in `scripts/scan/manifest.py` and `scripts/scan/seed_spec.py`.
+
+2. **Annoying** — `scripts/sync.py --soft` exits 1 instead of 0 when `pyyaml` is missing. The module-level `import yaml` runs before argparse sees `--soft`, breaking F-076's "soft mode always exits 0" contract. `/harness-boot:init §5.5` invokes `sync.py --soft`, so a fresh init treated the missing optional dep as a hard failure.
+
+Both bugs share a common root: the plugin assumes `pyyaml` / `tomli` are installed (declared in `requirements-dev.txt`) but neither bundles them nor surfaces the missing dep before crashing. Catch-22: the user could not reach the install instructions because the plugin itself could not run.
+
+This release ships two coordinated layers so the first-run experience stays smooth regardless of the user's Python environment.
+
+### Added — `_YAML_AVAILABLE` + nested tomllib import wraps (F-081 inner layer)
+
+`scripts/sync.py` wraps `import yaml` so module load survives when `pyyaml` is absent. `main()` inspects raw `argv` before argparse so `--soft` short-circuits with `sync (initial): fail — pyyaml not available (install via …)` and `return 0` (F-076 contract preserved). The strict path keeps `return 1` with a stderr install hint.
+
+`scripts/scan/{style_fingerprint, manifest, seed_spec}.py` rewrite the import block to a nested try/except — outer catches `tomllib`, inner catches `tomli`, both branches set `tomllib = None`. Every `tomllib.loads` site (style_fingerprint `_pyproject_has`, manifest `extract_project_name` pyproject + Cargo branches, manifest `_detect_python`, manifest `_detect_rust`, seed_spec `_infer_deliverable` Cargo branch) gains a `if tomllib is None: …skip` guard. Pyproject signals are silently lost in degraded mode; the dashboard / kickoff / scan flows keep working.
+
+### Added — `commands/init.md §0.5` Optional dependency preflight (F-082 outer layer)
+
+`/harness-boot:init` now runs a quick `python3 -c "import yaml"` and `import tomllib || import tomli` probe between §0 and §1. When `deps: missing`, init sends the user a single message asking `yes / no / venv`:
+
+* **`yes`** → run `python3 -m pip install --user pyyaml "tomli; python_version<'3.11'"`. If pip fails with `PEP 668 / externally-managed-environment`, ask once more whether to override with `--break-system-packages`. If `no`, fall back to the venv path.
+* **`no`** → print the install command for later use, continue init in degraded mode (F-081 backstop).
+* **`venv`** → print the `python3 -m venv .venv && source .venv/bin/activate && pip install …` command, continue init.
+
+Init never aborts on dep failure — F-081 graceful degradation handles whatever the user chose. A `deps_preflight` event with `status ∈ {ok, installed, skipped, failed}` is appended to events.log so retro / metrics can track first-visit user flows.
+
+The contract explicitly forbids auto-install: the user's Python environment is their asset, and surprise modification (especially when PEP 668 is in effect) is worse UX than asking once.
+
+### Tests
+
+* `tests/unit/test_sync.py` — `SoftCliTests` +2 cases: `test_soft_cli_returns_zero_when_pyyaml_missing` and `test_strict_cli_returns_one_when_pyyaml_missing` (mock `_YAML_AVAILABLE = False`).
+* `tests/unit/scan/test_scan_style_fingerprint.py` — `TestTomllibMissingDegradation` (2 cases: `_pyproject_has` returns False + `fingerprint()` does not raise when `tomllib` is mocked None).
+* `tests/unit/test_init_md_preflight_contract.py` (new) — markdown contract test (9 cases): section anchor exists between §0 and §1, detection bash present, three branches documented, pip install command present, PEP 668 fallback documented, venv command present, never-abort clause present, `deps_preflight` event documented.
+* 1192 tests pass (1153 unit + 39 integration; +13 new across F-081 / F-082). `bash scripts/self_check.sh` 5/5 OK.
+
+### Notes
+
+* **No auto-install** by design. The plugin asks once, then respects whatever the user chose. F-081 ensures the plugin stays alive in any branch.
+* `.harness/_workspace/issues-log.md` carries both reporter entries verbatim with a `✅ FIXED in v0.12.2` resolution note (v0.10.7 cosmic-suika batch-return pattern, second application).
+* F-080 was previously the kickoff "Quantitative completeness" section; that work renumbers to F-084. F-081 (carry-forward debt) renumbers to F-085. F-082 was claimed for the init preflight.
+
 ## [0.12.1] — 2026-04-29
 
 **v0.12.0 substantive coverage validation — synthetic replay + integration regression (F-080).**

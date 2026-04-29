@@ -89,3 +89,27 @@
 - 이 파일은 gitignored (.harness/_workspace/) — 외부 공유 시 수동 export.
 - cosmic-suika 의 ISSUES-LOG.md 와 양식 통일 권장 (`I-NNN — title` heading).
 - 환원 사이클 패턴: 이 파일에서 actionable 한 항목 → harness-boot 메인테이너에게 공유 → 다음 release 의 F-N 으로 트래킹 → ✅ FIXED 표기.
+
+---
+
+## External dogfood return — extract-sensitive-calls (2026-04-29)
+
+신규 외부 사용자가 macOS 시스템 Python 3.9 환경에서 발견한 두 install-time 버그. v0.12.2 (F-081 graceful degradation + F-082 init dep preflight) 으로 동시 fix. v0.10.7 cosmic-suika ISSUES-LOG 환원 패턴의 두 번째 적용.
+
+### 2026-04-29T06:25:00Z — `scripts/work.py` crashes when tomli missing on Python 3.9 ✅ FIXED in v0.12.2 (F-081)
+
+- **Source**: /harness-boot:work
+- **Category**: bug
+- **Severity**: blocker
+- **What happened**: Empty `/harness-boot:work` call (dashboard mode) crashes with `ModuleNotFoundError: No module named 'tomllib'` then `No module named 'tomli'`. Trace points to `scripts/scan/style_fingerprint.py:15-17` — it tries `import tomllib` (Python 3.11+) and falls back to `import tomli`. On macOS system Python 3.9 neither is present, so even the **read-only dashboard** (which doesn't read any TOML file) is unreachable. After `pip install --user tomli` the dashboard works fine.
+- **Suggested fix**: in `style_fingerprint.py`, make tomli optional — wrap the import in try/except and degrade gracefully (e.g. set `tomllib = None` and skip TOML-only fingerprinting). Or add `tomli; python_version < "3.11"` to plugin's declared deps and surface a clear "missing optional dep" message at startup instead of a raw traceback. Same gap as the pyyaml issue logged above — plugin assumes deps it doesn't bundle/declare.
+- **Resolution**: F-081 (v0.12.2) ships nested try/except so `tomllib = None` when neither package is installed. Each `tomllib.loads` site (3 files: `style_fingerprint.py`, `manifest.py`, `seed_spec.py`) now guards on `if tomllib is None: return False/{}` so the dashboard / kickoff / scan flows stay alive. F-082 adds `/harness-boot:init §0.5` preflight that detects the missing dep at install time and offers `pip install --user` (with explicit user consent + PEP 668 fallback chain).
+
+### 2026-04-29T06:19:40Z — `scripts/sync.py --soft` exits 1 when pyyaml missing ✅ FIXED in v0.12.2 (F-081)
+
+- **Source**: /harness-boot:init
+- **Category**: bug
+- **Severity**: annoying
+- **What happened**: `/harness-boot:init` §5.5 calls `python3 scripts/sync.py --harness-dir .harness --soft`. On a fresh macOS where the system `python3` doesn't have `pyyaml` installed, the script prints `pyyaml is required` and exits with code 1. Per the init.md contract: "fail-open by design ... prints `sync (initial): fail — <reason>` and **still exits 0**." The actual behavior breaks that contract — the wrapper should catch ImportError and exit 0 in `--soft` mode, otherwise CI/automation that checks the exit code will treat a missing optional dep as a hard init failure.
+- **Suggested fix**: wrap the pyyaml import in `scripts/sync.py` so that under `--soft`, an ImportError prints `sync (initial): fail — pyyaml not available` and `sys.exit(0)` instead of bubbling up.
+- **Resolution**: F-081 (v0.12.2) wraps `import yaml` with `_YAML_AVAILABLE` flag. `main()` inspects raw argv before argparse so `--soft + yaml missing` short-circuits with `print("sync (initial): fail — pyyaml not available …")` and `return 0` (F-076 contract preserved). Strict path keeps `return 1` with a stderr install hint.
