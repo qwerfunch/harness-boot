@@ -2156,8 +2156,32 @@ features:
       events.log); 13 parity tests; 251/251 cumulative.
   started_at: '2026-04-29T10:05:43Z'
   completed_at: '2026-04-29T10:07:05Z'
+- id: F-095
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: '2026-04-29T10:11:44Z'
+      note: 'cmd: npm test'
+    gate_5:
+      last_result: pass
+      ts: '2026-04-29T10:11:45Z'
+      note: 'cmd: sh scripts/smoke.sh'
+  evidence:
+  - ts: '2026-04-29T10:11:44Z'
+    kind: gate_run
+    summary: 'Gate gate_0 pass (0.8s) · cmd: npm test'
+  - ts: '2026-04-29T10:11:45Z'
+    kind: gate_run
+    summary: 'Gate gate_5 pass (0.8s) · cmd: sh scripts/smoke.sh'
+  - ts: '2026-04-29T10:11:45Z'
+    kind: test
+    summary: gate/runner.ts ported (830 LOC, polyglot detection); 24 parity tests;
+      275/275 cumulative.
+  started_at: '2026-04-29T10:09:01Z'
+  completed_at: '2026-04-29T10:12:01Z'
 session:
   started_at: '2026-04-23T13:02:49Z'
-  last_command: /harness:work F-094
+  last_command: /harness:work F-095
   last_gate_passed: gate_5
   active_feature_id: null
