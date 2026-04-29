@@ -94,7 +94,7 @@ cd my-new-project
 /harness-boot:work
 ```
 
-**의존성**: **Node.js 20+** 한 가지. 빌드된 CLI 가 `dist/` 에 같이 들어 있어 **별도의 빌드는 필요 없습니다**. 새 clone 에서는 한 번만 `npm install` 로 런타임 의존성 (`commander`, `yaml`, `ajv`, `smol-toml`) 을 받으면 끝.
+**필요한 것**: **Node.js 20+** 하나만 있으면 됩니다. 플러그인은 모든 런타임 의존성을 미리 인라인한 단일 파일 번들 (`dist/cli/`) 로 배포되므로, `/plugin install harness-boot@harness-boot` 만 하면 바로 동작합니다 — 설치 측에 `npm install` 도, `node_modules` 도 필요 없습니다.
 
 5 분 이상 걸리면 [issue 알려주세요](https://github.com/qwerfunch/harness-boot/issues).
 
@@ -224,7 +224,8 @@ harness-boot/
 - 문제 보고 — [GitHub Issues](https://github.com/qwerfunch/harness-boot/issues)
 
 ```bash
-# 새로 클론한 저장소에서:
+# 소스에서 빌드/테스트하려는 기여자용 (devDependencies 만 필요 —
+# 사용자는 /plugin install 만으로 충분, npm 단계 불필요):
 npm install
 npm test            # vitest (parity 스위트)
 bash self_check.sh  # 5단계 구조 검증

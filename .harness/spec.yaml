@@ -4117,6 +4117,34 @@ features:
       - "AC-7: F-110 mirrored on both spec.yaml copies."
       - "AC-8: F-110 completed via the harness CLI cycle on the umbrella branch."
 
+  - id: "F-111"
+    name: "README dependency-section purge after bundle cutover"
+    type: "feature"
+    description: |
+      Twenty-eighth cycle. Follow-up to F-110: now that the
+      esbuild bundle inlines every runtime dep, the user-facing
+      "Requirement" line in README.md / README.ko.md is wrong.
+      Both files used to enumerate `commander`, `yaml`, `ajv`,
+      `smol-toml` as runtime deps and instruct `npm install` —
+      neither is true for plugin users anymore. The plugin
+      installs via `/plugin marketplace add` + `/plugin install`,
+      and `bin/harness` runs the inlined bundle. No node_modules,
+      no enumerated deps.
+
+      The "fresh clone" block lower in the README is a different
+      audience — contributors who want to build from source still
+      need `npm install` for devDependencies (eslint, vitest,
+      esbuild, typescript). Reword that block to make the
+      contributor-only scope explicit instead of removing it.
+
+    acceptance_criteria:
+      - "AC-1: README.md user-facing 'Requirement' line — no enumeration of runtime npm packages, no `npm install` instruction in the install/use path."
+      - "AC-2: README.ko.md '의존성' line mirrors AC-1 (no runtime npm package enumeration, no `npm install` in user install path)."
+      - "AC-3: README.md fresh-clone block reframed as 'For contributors' — `npm install` retained because devDeps still apply."
+      - "AC-4: README.ko.md mirrors AC-3 ('기여자용' or equivalent labeling)."
+      - "AC-5: F-111 mirrored on both spec.yaml copies."
+      - "AC-6: F-111 completed via the harness CLI cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
