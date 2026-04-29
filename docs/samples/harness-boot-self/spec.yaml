@@ -2948,6 +2948,105 @@ features:
       - "AC-7: F-085 mirrored on both spec.yaml copies. bash scripts/self_check.sh 5/5 PASS · 1192+ Python tests still pass · npm run test:parity green for both canonicalHash and eventLog."
       - "AC-8: F-085 completed via the work.py 4-verb cycle on the existing `feat/F-084-ts-migration-foundation` branch (memory `feedback_migration_pr_strategy` — single umbrella PR for the whole thread)."
 
+  - id: "F-086"
+    name: "TS migration — port core/state.ts (state.yaml read/write + Iron Law math)"
+    type: "feature"
+    description: |
+      Third cycle of the v1.0 migration thread. Ports
+      `scripts/core/state.py` (the State class plus Iron Law math
+      helpers) to TypeScript with semantic-equivalence parity.
+
+      Why this module: state.yaml is the canonical mutable state of a
+      harness install. Every work.py verb (activate, recordGate,
+      addEvidence, complete) reads and writes it. Iron Law's "declared
+      evidence count" check is implemented here and is the gate
+      complete() relies on. A drift in state mutations or in the Iron
+      Law math silently corrupts feature progress tracking.
+
+      Public API ported (camelCase TS, semantic 1:1 with Python):
+
+        - `State` class with `load(harnessDir)` / `save()` /
+          `featureIds()` / `getFeature(fid)` / `ensureFeature(fid)` /
+          `setStatus(fid, status)` / `recordGateResult(fid, gate, result, opts)` /
+          `addEvidence(fid, kind, summary, opts)` /
+          `addSkippedAgent(fid, agent, reason, opts)` /
+          `getSkippedAgents(fid)` / `setActive(fid)` /
+          `removeFeature(fid)` / `featuresInProgress()` /
+          `setLastCommand(command)` / `featureCounts()` / `snapshot()`
+        - `isDeclaredEvidence(ev)` — kind-based discriminator for Iron
+          Law (automatic kinds vs declared kinds)
+        - `countDeclaredEvidence(feature, options)` — trailing-window
+          count for Iron Law gate
+        - Constants: `FEATURE_STATUSES`, `GATE_RESULTS`,
+          `AUTOMATIC_EVIDENCE_KINDS`, `IRON_LAW_WINDOW_DAYS`
+        - Types: `GateResult`, `FeatureStatus`, `Feature`, `Session`,
+          `StateData`
+
+      Behaviour preservation focus:
+
+        - YAML output: Python PyYAML uses block style with
+          `sort_keys=False` + `allow_unicode=True` +
+          `default_flow_style=False`. The TS port targets
+          **semantic-equivalence parity** rather than byte-equal
+          output: round-trip (parse → mutate → dump → parse) yields
+          the same logical data, and both runtimes parse each other's
+          output without surprise.
+        - Timestamps: ISO 8601 `YYYY-MM-DDTHH:MM:SSZ`, identical
+          format to Python's `_now()`.
+        - Iron Law math: trailing-window inclusion rule — entries with
+          unparseable or missing `ts` are treated as recent
+          (conservative; matches Python).
+        - Validation enums: same FEATURE_STATUSES + GATE_RESULTS sets
+          throw on invalid values.
+
+      Why semantic-equivalence (not byte-equal) for YAML output:
+
+        - PyYAML and `yaml` (eemeli/yaml) have different quoting rules
+          for ambiguous strings, slightly different scalar styling,
+          different empty-string representations.
+        - state.yaml is a data file, not a wire-format contract.
+          What matters is that the data round-trips; byte equality
+          would force us to reimplement PyYAML in TS, which is
+          out of scope.
+        - Cross-runtime read/write compatibility is the production
+          requirement: Python writes → TS reads → TS writes → Python
+          reads must all preserve data.
+
+      Parity test scope:
+
+        - Round-trip: load Python-generated state.yaml in TS, verify
+          data shape matches Python's `yaml.safe_load`. Mutate in TS,
+          save, reload — verify new shape matches Python's mutation
+          output.
+        - Iron Law math: identical inputs produce identical counts
+          across runtimes (this is byte-equal — pure logic).
+        - Mutation API: every Python method has a TS twin with the
+          same observable effect on data shape.
+        - Validation: invalid statuses / gate results throw in both
+          runtimes.
+    modules:
+      - "src/core/state.ts"
+      - "tests/parity/state.test.ts"
+      - "tests/parity/fixtures/state/"
+    test_strategy: "tdd"
+    tdd_focus:
+      - "State.load reads existing state.yaml or returns default schema; round-trips Python-written file"
+      - "ensureFeature / setStatus / recordGateResult / addEvidence / addSkippedAgent mutate identically to Python"
+      - "setActive auto-creates feature entry; removeFeature returns boolean"
+      - "isDeclaredEvidence treats automatic kinds as non-counted, declared kinds as counted"
+      - "countDeclaredEvidence honors trailing window, treats unparseable ts as recent"
+      - "save produces YAML that Python's yaml.safe_load reads back identically"
+      - "JSDoc class/function-level English comments throughout"
+    acceptance_criteria:
+      - "AC-1: src/core/state.ts exports the State class with all 17 methods from Python state.py, plus FEATURE_STATUSES / GATE_RESULTS / AUTOMATIC_EVIDENCE_KINDS / IRON_LAW_WINDOW_DAYS / isDeclaredEvidence / countDeclaredEvidence."
+      - "AC-2: tests/parity/fixtures/state/ contains at least 6 fixture pairs covering empty state, active feature only, multi-feature with gates and evidence, Iron Law evidence counting (declared vs automatic mix), unicode summary, and skipped_agents trail."
+      - "AC-3: tests/parity/state.test.ts verifies State.load → identical data shape (Python yaml.safe_load vs TS load.data)."
+      - "AC-4: countDeclaredEvidence parity — identical counts across runtimes for the same fixture."
+      - "AC-5: Mutation parity — for each public method, applying it on a fixture produces a state shape that Python recognizes as equivalent (parse + assertion)."
+      - "AC-6: Save round-trip — TS writes state.yaml, Python yaml.safe_load reads it without error and produces the same logical data."
+      - "AC-7: F-086 mirrored on both spec.yaml copies. bash scripts/self_check.sh 5/5 PASS · 1192+ Python tests still pass · npm run test:parity green for canonicalHash + eventLog + state."
+      - "AC-8: F-086 completed via the work.py 4-verb cycle on the existing `feat/F-084-ts-migration-foundation` branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)

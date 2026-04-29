@@ -1,0 +1,21 @@
+version: '2.3'
+schema_version: '2.3'
+features:
+- id: F-004
+  status: in_progress
+  gates: {}
+  evidence: []
+  started_at: '2026-04-30T00:00:00Z'
+  completed_at: null
+  skipped_agents:
+  - agent: security-engineer
+    reason: no sensitive entity, static client only
+    ts: '2026-04-30T00:01:00Z'
+  - agent: audio-designer
+    reason: ui_surface.has_audio=false
+    ts: '2026-04-30T00:02:00Z'
+session:
+  started_at: '2026-04-30T00:00:00Z'
+  last_command: /harness:work F-004
+  last_gate_passed: null
+  active_feature_id: F-004

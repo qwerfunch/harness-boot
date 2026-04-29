@@ -1,0 +1,37 @@
+{
+  "version": "2.3",
+  "schema_version": "2.3",
+  "features": [
+    {
+      "id": "F-003",
+      "status": "done",
+      "gates": {
+        "gate_5": {
+          "last_result": "pass",
+          "ts": "2026-04-30T20:00:00Z",
+          "note": "smoke 통과 ✅"
+        }
+      },
+      "evidence": [
+        {
+          "ts": "2026-04-30T20:30:00Z",
+          "kind": "manual_check",
+          "summary": "한국어 spec — Walking Skeleton 검증"
+        },
+        {
+          "ts": "2026-04-30T21:00:00Z",
+          "kind": "user_feedback",
+          "summary": "✅ done · 사용자 승인"
+        }
+      ],
+      "started_at": "2026-04-25T00:00:00Z",
+      "completed_at": "2026-04-30T22:00:00Z"
+    }
+  ],
+  "session": {
+    "started_at": "2026-04-25T00:00:00Z",
+    "last_command": "/harness:work F-003",
+    "last_gate_passed": "gate_5",
+    "active_feature_id": null
+  }
+}
