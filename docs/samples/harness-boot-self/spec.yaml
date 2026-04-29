@@ -3603,6 +3603,53 @@ features:
       - "AC-5: F-099 mirrored on both spec.yaml copies. self_check 5/5 PASS."
       - "AC-6: F-099 completed via the work.py cycle on the umbrella branch."
 
+  - id: "F-100"
+    name: "TS migration — port check.ts (drift detection, 13 detectors)"
+    type: "feature"
+    description: |
+      Seventeenth cycle of the v1.0 migration thread. Most complex
+      single port. Mirrors `scripts/check.py` (1054 LOC) — drift
+      detection across 13 kinds, with a fast-path `runBlockingCheck`
+      used by complete()'s F-048 wire-integrity gate.
+
+      Public API ported:
+
+        - `DriftFinding` interface (`kind / path / message / severity`).
+        - `CheckReport` interface (`findings / checked / clean`).
+        - 13 `check*` detector functions (one per drift kind).
+        - `runCheck(harnessDir, projectRoot?)` — full 13-detector
+          report.
+        - `runBlockingCheck(harnessDir, projectRoot?)` — fast path
+          (Code · Stale · AnchorIntegration · Coverage only).
+        - `formatHuman(report)` — text report.
+
+      Drift kinds covered:
+
+        Generated, Derived, Spec, Include, Evidence, Code, Doc,
+        Anchor (+ Adr supersedes consistency), Protocol, Stale,
+        AnchorIntegration, Coverage.
+
+      Behaviour preservation:
+
+        - Detector ordering identical to Python in runCheck.
+        - Severity assignment identical (error vs warn).
+        - F-078 Coverage threshold reads from
+          `harness.yaml.coverage.threshold`, default 0.80.
+        - Anchor cycle detection (DFS WHITE/GRAY/BLACK) preserved.
+        - Bidirectional supersedes consistency check.
+        - Stale + AnchorIntegration heuristics: basename match or
+          `/<stem>` / `'<stem>` / `"<stem>` path-token match.
+
+    acceptance_criteria:
+      - "AC-1: src/check.ts exports `runCheck`, `runBlockingCheck`, `formatHuman`, plus the 13 detector functions."
+      - "AC-2: DriftFinding + CheckReport interfaces match Python shape (kind/path/message/severity)."
+      - "AC-3: runCheck on a clean harness dir returns clean=true with all 13 categories in `checked[]`."
+      - "AC-4: Drift detection on canonical fixtures (missing Derived hash, broken depends_on, etc.) emits findings with the right kind + severity."
+      - "AC-5: runBlockingCheck only emits Code · Stale · AnchorIntegration · Coverage findings."
+      - "AC-6: Coverage threshold reads from harness.yaml override; defaults to 0.80."
+      - "AC-7: F-100 mirrored on both spec.yaml copies. self_check 5/5 PASS."
+      - "AC-8: F-100 completed via the work.py cycle on the umbrella branch."
+
 constraints:
   tech_stack:
     language: "typescript"            # §3 시스템 경계에 언급 없음 — 메타적 공백(NEW 갭 후보)
