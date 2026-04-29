@@ -2271,8 +2271,31 @@ features:
     summary: "skills/feature-author/ structure: SKILL.md (frontmatter + 5 steps) + 4 adapters (ui-surface · sensitive · performance-budget · pure-domain) + feature-entry.yaml template. tests/parity/skill-feature-author.test.ts: 26 cases (frontmatter + adapter structure + template placeholders + 8 golden shape-detection prompts) all PASS. Total parity 493/493."
   started_at: 2026-04-29T15:07:18Z
   completed_at: 2026-04-29T15:11:19Z
+- id: F-115
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-04-29T15:16:10Z
+      note: "cmd: npm test"
+    gate_5:
+      last_result: pass
+      ts: 2026-04-29T15:16:11Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-04-29T15:16:10Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.1s) · cmd: npm test"
+  - ts: 2026-04-29T15:16:11Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.4s) · cmd: bash self_check.sh"
+  - ts: 2026-04-29T15:16:11Z
+    kind: manual_check
+    summary: "Anthropic guide audit (claude-code-guide agent + claude.com/docs): version field NOT in spec → removed; when_to_use is canonical for triggers → added; bundled sub-files need explicit markdown links → added Resources section. Korean natural-phrasing gap closed: '기능 구현해줘', '만들어줘', '추가해줘' added to when_to_use. parity 497/497 PASS"
+  started_at: 2026-04-29T15:16:01Z
+  completed_at: 2026-04-29T15:16:24Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-114
+  last_command: /harness:work F-115
   last_gate_passed: gate_5
   active_feature_id: null
