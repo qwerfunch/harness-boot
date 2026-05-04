@@ -2429,7 +2429,7 @@ features:
   started_at: 2026-05-04T03:05:48Z
   completed_at: 2026-05-04T03:25:48Z
 - id: F-120
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -2471,9 +2471,9 @@ features:
     kind: test
     summary: "F-120 fix lands in v0.14.1: commander option spec changed from <name> <result> to <values...> variadic. 2 new regression tests in cli.test.ts pin the contract (happy path + cardinality guard). 613/613 tests green; self_check 5/5; bundle 918 KB unchanged. issues-log I-009 marked resolved per F-027 return cycle."
   started_at: 2026-05-04T03:38:04Z
-  completed_at: null
+  completed_at: 2026-05-04T03:40:10Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-120
   last_gate_passed: gate_5
-  active_feature_id: F-120
+  active_feature_id: null
