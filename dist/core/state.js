@@ -34,6 +34,15 @@
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { parse as yamlParse, stringify as yamlStringify } from 'yaml';
+/** All valid goal status values (runtime check + iteration). */
+export const GOAL_STATUSES = [
+    'planning',
+    'scaffolded',
+    'executing',
+    'done',
+    'paused',
+    'blocked',
+];
 /** All valid feature statuses (runtime check + iteration). */
 export const FEATURE_STATUSES = [
     'planned',
@@ -361,6 +370,117 @@ export class State {
         if (this.data.session.started_at === null) {
             this.data.session.started_at = nowIso();
         }
+    }
+    // --------------------------------------------------------------------
+    // Goal helpers (v0.14.0 — F-118)
+    // --------------------------------------------------------------------
+    /**
+     * Returns the in-memory goals array, normalizing missing or
+     * malformed entries on a legacy state.yaml. Mutations on the
+     * returned array are visible on the next {@link State.save}.
+     */
+    goals() {
+        if (!Array.isArray(this.data.goals)) {
+            this.data.goals = [];
+        }
+        return this.data.goals;
+    }
+    /** Returns the goal record for `gid`, or `null`. */
+    getGoal(gid) {
+        for (const g of this.goals()) {
+            if (isPlainObject(g) && g.id === gid) {
+                return g;
+            }
+        }
+        return null;
+    }
+    /**
+     * Returns the goal record for `gid`, inserting a `planning`
+     * placeholder when the id is new.
+     *
+     * Identity is preserved across calls — mutations on the returned
+     * object are visible on the next {@link State.save}.
+     */
+    ensureGoal(gid) {
+        const existing = this.getGoal(gid);
+        if (existing !== null) {
+            return existing;
+        }
+        const entry = {
+            id: gid,
+            status: 'planning',
+            started_at: null,
+            completed_at: null,
+            iteration: 0,
+            elapsed_sec: 0,
+            feature_progress: {},
+            last_halt_reason: null,
+        };
+        this.goals().push(entry);
+        return entry;
+    }
+    /**
+     * Sets `goal.status` for `gid`, updating `started_at` and
+     * `completed_at` lifecycle timestamps when the transition warrants.
+     *
+     * Throws on unknown status. Resetting to an earlier phase is
+     * allowed but does not clear timestamps.
+     */
+    setGoalStatus(gid, status) {
+        if (!GOAL_STATUSES.includes(status)) {
+            throw new Error(`invalid goal status '${status}' (expected one of ${GOAL_STATUSES.join(', ')})`);
+        }
+        const g = this.ensureGoal(gid);
+        g.status = status;
+        const ts = nowIso();
+        if (status === 'executing' && g.started_at === null) {
+            g.started_at = ts;
+        }
+        if (status === 'done' && g.completed_at === null) {
+            g.completed_at = ts;
+        }
+    }
+    /**
+     * Sets `session.active_goal_id`.
+     *
+     * BR-015 (g) — sequential constraint. The previous goal stays
+     * recorded under `goals[]` but is no longer the driver target.
+     */
+    setActiveGoal(gid) {
+        this.data.session.active_goal_id = gid;
+    }
+    /** Returns `session.active_goal_id` (defaults to `null`). */
+    activeGoalId() {
+        const v = this.data.session.active_goal_id;
+        return typeof v === 'string' ? v : null;
+    }
+    /**
+     * Updates the cached per-feature status for a goal.
+     *
+     * Used by drive loop iterations to keep the progress renderer
+     * snapshot current without re-walking `state.features[]` on every
+     * render. Out-of-band updates (work.py setStatus on a feature
+     * inside a goal) are reconciled on the next drive iteration.
+     */
+    setGoalFeatureProgress(gid, fid, status) {
+        if (!FEATURE_STATUSES.includes(status)) {
+            throw new Error(`invalid feature status '${status}'`);
+        }
+        const g = this.ensureGoal(gid);
+        if (!isPlainObject(g.feature_progress)) {
+            g.feature_progress = {};
+        }
+        g.feature_progress[fid] = status;
+    }
+    /** Removes a goal from `goals[]`. Also clears active_goal_id when matching. */
+    removeGoal(gid) {
+        const before = this.goals().length;
+        this.data.goals = this.goals().filter((g) => !(isPlainObject(g) && g.id === gid));
+        const removed = this.data.goals.length < before;
+        if (removed && this.activeGoalId() === gid) {
+            this.setActiveGoal(null);
+        }
+        return removed;
     }
     // --------------------------------------------------------------------
     // Summary helpers (used by status / check / dashboards)

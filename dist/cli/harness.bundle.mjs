@@ -11,8 +11,15 @@ var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require
   if (typeof require !== "undefined") return require.apply(this, arguments);
   throw Error('Dynamic require of "' + x + '" is not supported');
 });
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
 var __commonJS = (cb, mod) => function __require2() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+};
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
 };
 var __copyProps = (to, from, except, desc) => {
   if (from && typeof from === "object" || typeof from === "function") {
@@ -10326,6 +10333,508 @@ var require_dist = __commonJS({
   }
 });
 
+// src/core/state.ts
+import { existsSync, mkdirSync as mkdirSync4, readFileSync as readFileSync4, statSync as statSync5, writeFileSync as writeFileSync4 } from "node:fs";
+import { dirname as dirname4, join as join5 } from "node:path";
+function nowIso4() {
+  const d = /* @__PURE__ */ new Date();
+  const yyyy = d.getUTCFullYear().toString().padStart(4, "0");
+  const mm = (d.getUTCMonth() + 1).toString().padStart(2, "0");
+  const dd = d.getUTCDate().toString().padStart(2, "0");
+  const hh = d.getUTCHours().toString().padStart(2, "0");
+  const mi = d.getUTCMinutes().toString().padStart(2, "0");
+  const ss = d.getUTCSeconds().toString().padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}Z`;
+}
+function defaultState() {
+  return {
+    version: "2.3",
+    schema_version: "2.3",
+    features: [],
+    session: {
+      started_at: null,
+      last_command: "",
+      last_gate_passed: null,
+      active_feature_id: null
+    }
+  };
+}
+function isPlainObject4(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function isDeclaredEvidence(ev) {
+  if (!isPlainObject4(ev)) {
+    return false;
+  }
+  const kind = ev.kind;
+  if (typeof kind !== "string") {
+    return true;
+  }
+  return !AUTOMATIC_EVIDENCE_KINDS.has(kind);
+}
+function parseTs(value) {
+  if (typeof value !== "string" || value.length === 0) {
+    return null;
+  }
+  const ms = Date.parse(value);
+  if (Number.isNaN(ms)) {
+    return null;
+  }
+  return new Date(ms);
+}
+function countDeclaredEvidence(feature, options = {}) {
+  if (!isPlainObject4(feature)) {
+    return 0;
+  }
+  const windowDays = options.windowDays ?? IRON_LAW_WINDOW_DAYS;
+  const now = options.now ?? /* @__PURE__ */ new Date();
+  const cutoffMs = now.getTime() - Math.max(windowDays, 0) * 24 * 60 * 60 * 1e3;
+  const evidence = feature.evidence;
+  if (!Array.isArray(evidence)) {
+    return 0;
+  }
+  let count = 0;
+  for (const ev of evidence) {
+    if (!isDeclaredEvidence(ev)) {
+      continue;
+    }
+    const ts = parseTs(ev.ts);
+    if (ts !== null && ts.getTime() < cutoffMs) {
+      continue;
+    }
+    count += 1;
+  }
+  return count;
+}
+var import_yaml3, GOAL_STATUSES, FEATURE_STATUSES, GATE_RESULTS, AUTOMATIC_EVIDENCE_KINDS, IRON_LAW_WINDOW_DAYS, State;
+var init_state = __esm({
+  "src/core/state.ts"() {
+    "use strict";
+    import_yaml3 = __toESM(require_dist(), 1);
+    GOAL_STATUSES = [
+      "planning",
+      "scaffolded",
+      "executing",
+      "done",
+      "paused",
+      "blocked"
+    ];
+    FEATURE_STATUSES = [
+      "planned",
+      "in_progress",
+      "blocked",
+      "done",
+      "archived"
+    ];
+    GATE_RESULTS = ["pass", "fail", "skipped"];
+    AUTOMATIC_EVIDENCE_KINDS = /* @__PURE__ */ new Set(["gate_run", "gate_auto_run"]);
+    IRON_LAW_WINDOW_DAYS = 7;
+    State = class _State {
+      /** Resolved absolute path of `state.yaml` for this view. */
+      path;
+      /** In-memory state document. Mutations are visible here immediately. */
+      data;
+      /** Construct directly when the path and data are already resolved. */
+      constructor(path, data) {
+        this.path = path;
+        this.data = data;
+      }
+      /**
+       * Reads `<harnessDir>/state.yaml` and returns a {@link State} view.
+       *
+       * When the file does not exist the view is initialized with the
+       * default schema; nothing is written to disk until
+       * {@link State.save} is called.
+       *
+       * @param harnessDir - Path to the project's `.harness/` directory.
+       * @returns A new `State` instance.
+       */
+      static load(harnessDir) {
+        const path = join5(harnessDir, "state.yaml");
+        let data;
+        if (existsSync(path) && statSync5(path).isFile()) {
+          const raw = readFileSync4(path, "utf-8");
+          const parsed = (0, import_yaml3.parse)(raw);
+          if (isPlainObject4(parsed)) {
+            data = parsed;
+          } else {
+            data = defaultState();
+          }
+        } else {
+          data = defaultState();
+        }
+        if (!isPlainObject4(data.session)) {
+          data.session = defaultState().session;
+        }
+        if (!Array.isArray(data.features)) {
+          data.features = [];
+        }
+        return new _State(path, data);
+      }
+      /** Persist the in-memory shape back to disk. */
+      save() {
+        mkdirSync4(dirname4(this.path), { recursive: true });
+        const out = (0, import_yaml3.stringify)(this.data, {
+          // Preserve insertion order — Python's PyYAML used `sort_keys=False`.
+          sortMapEntries: false,
+          // Avoid extra indent on sequences inside maps so the output stays
+          // close to PyYAML's `default_flow_style=False` block style.
+          indentSeq: false,
+          // No hard wrap — long strings stay on one line.
+          lineWidth: 0
+        });
+        writeFileSync4(this.path, out, "utf-8");
+      }
+      // --------------------------------------------------------------------
+      // Feature helpers
+      // --------------------------------------------------------------------
+      /** All feature ids currently in the `features[]` array. */
+      featureIds() {
+        const ids = [];
+        for (const f of this.data.features) {
+          if (isPlainObject4(f) && typeof f.id === "string") {
+            ids.push(f.id);
+          }
+        }
+        return ids;
+      }
+      /** Returns the feature record matching `fid`, or `null`. */
+      getFeature(fid) {
+        for (const f of this.data.features) {
+          if (isPlainObject4(f) && f.id === fid) {
+            return f;
+          }
+        }
+        return null;
+      }
+      /**
+       * Returns the feature record for `fid`, inserting a `planned`
+       * placeholder when the id is new.
+       *
+       * Identity is preserved across calls — mutations on the returned
+       * object are visible on the next {@link State.save}.
+       */
+      ensureFeature(fid) {
+        const existing = this.getFeature(fid);
+        if (existing !== null) {
+          return existing;
+        }
+        const entry = {
+          id: fid,
+          status: "planned",
+          gates: {},
+          evidence: [],
+          started_at: null,
+          completed_at: null
+        };
+        this.data.features.push(entry);
+        return entry;
+      }
+      /**
+       * Sets `feature.status` for `fid`, updating `started_at` /
+       * `completed_at` lifecycle timestamps when the transition warrants.
+       *
+       * Resetting to `planned` is allowed but does not clear timestamps —
+       * the user can audit prior progress. Throws on unknown status.
+       */
+      setStatus(fid, status) {
+        if (!FEATURE_STATUSES.includes(status)) {
+          throw new Error(
+            `invalid status '${status}' (expected one of ${FEATURE_STATUSES.join(", ")})`
+          );
+        }
+        const f = this.ensureFeature(fid);
+        f.status = status;
+        const ts = nowIso4();
+        if (status === "in_progress" && f.started_at === null) {
+          f.started_at = ts;
+        }
+        if (status === "done" && f.completed_at === null) {
+          f.completed_at = ts;
+        }
+      }
+      /**
+       * Writes `feature.gates[gateName]` for `fid` and updates
+       * `session.last_gate_passed` on `pass`.
+       *
+       * Throws on unknown gate result.
+       */
+      recordGateResult(fid, gateName, result, options = {}) {
+        if (!GATE_RESULTS.includes(result)) {
+          throw new Error(`invalid gate result '${result}'`);
+        }
+        const f = this.ensureFeature(fid);
+        if (!isPlainObject4(f.gates)) {
+          f.gates = {};
+        }
+        f.gates[gateName] = {
+          last_result: result,
+          ts: options.ts ?? nowIso4(),
+          note: options.note ?? ""
+        };
+        if (result === "pass") {
+          this.data.session.last_gate_passed = gateName;
+        }
+      }
+      /**
+       * Appends an evidence row to `features[fid].evidence`.
+       *
+       * Evidence is the unit Iron Law counts; see
+       * {@link countDeclaredEvidence} for what qualifies as declared.
+       */
+      addEvidence(fid, kind, summary, options = {}) {
+        const f = this.ensureFeature(fid);
+        if (!Array.isArray(f.evidence)) {
+          f.evidence = [];
+        }
+        f.evidence.push({
+          ts: options.ts ?? nowIso4(),
+          kind,
+          summary
+        });
+      }
+      /**
+       * Records that an agent was intentionally skipped for a feature.
+       *
+       * v0.5 routing documented `skipped_agents[]` but the original
+       * Python state module never implemented the writer — orchestrator
+       * skip decisions left no audit trail. v0.7.2 added the API; this
+       * port preserves it.
+       *
+       * @throws when `agent` is empty or `reason` is empty (silent skips
+       *   defeat the audit purpose).
+       */
+      addSkippedAgent(fid, agent, reason, options = {}) {
+        if (!agent) {
+          throw new Error("agent name required");
+        }
+        if (!reason) {
+          throw new Error("reason required \u2014 silent skips defeat the audit purpose");
+        }
+        const f = this.ensureFeature(fid);
+        let skipped = f.skipped_agents;
+        if (!Array.isArray(skipped)) {
+          skipped = [];
+          f.skipped_agents = skipped;
+        }
+        skipped.push({
+          agent,
+          reason,
+          ts: options.ts ?? nowIso4()
+        });
+      }
+      /** Returns a shallow copy of the skipped-agents log for `fid`. */
+      getSkippedAgents(fid) {
+        const f = this.getFeature(fid);
+        if (f === null) {
+          return [];
+        }
+        if (!Array.isArray(f.skipped_agents)) {
+          return [];
+        }
+        return [...f.skipped_agents];
+      }
+      // --------------------------------------------------------------------
+      // Session helpers
+      // --------------------------------------------------------------------
+      /**
+       * Sets `session.active_feature_id`.
+       *
+       * Auto-registers the feature as `planned` when the id is unknown
+       * (mirrors Python so a typo'd activate does not corrupt the file).
+       */
+      setActive(fid) {
+        if (fid !== null && this.getFeature(fid) === null) {
+          this.ensureFeature(fid);
+        }
+        this.data.session.active_feature_id = fid;
+      }
+      /**
+       * Removes a feature from `features[]`.
+       *
+       * Returns `true` when something was removed. Also clears
+       * `session.active_feature_id` when it pointed at the removed id.
+       */
+      removeFeature(fid) {
+        const before = this.data.features.length;
+        this.data.features = this.data.features.filter(
+          (f) => !(isPlainObject4(f) && f.id === fid)
+        );
+        const removed = this.data.features.length < before;
+        if (removed && this.data.session.active_feature_id === fid) {
+          this.data.session.active_feature_id = null;
+        }
+        return removed;
+      }
+      /** Returns ids of all features whose status is `in_progress`. */
+      featuresInProgress() {
+        const out = [];
+        for (const f of this.data.features) {
+          if (isPlainObject4(f) && f.status === "in_progress" && typeof f.id === "string") {
+            out.push(f.id);
+          }
+        }
+        return out;
+      }
+      /**
+       * Records the most recent slash-command invocation and stamps
+       * `session.started_at` on the very first call.
+       */
+      setLastCommand(command) {
+        this.data.session.last_command = command;
+        if (this.data.session.started_at === null) {
+          this.data.session.started_at = nowIso4();
+        }
+      }
+      // --------------------------------------------------------------------
+      // Goal helpers (v0.14.0 — F-118)
+      // --------------------------------------------------------------------
+      /**
+       * Returns the in-memory goals array, normalizing missing or
+       * malformed entries on a legacy state.yaml. Mutations on the
+       * returned array are visible on the next {@link State.save}.
+       */
+      goals() {
+        if (!Array.isArray(this.data.goals)) {
+          this.data.goals = [];
+        }
+        return this.data.goals;
+      }
+      /** Returns the goal record for `gid`, or `null`. */
+      getGoal(gid) {
+        for (const g of this.goals()) {
+          if (isPlainObject4(g) && g.id === gid) {
+            return g;
+          }
+        }
+        return null;
+      }
+      /**
+       * Returns the goal record for `gid`, inserting a `planning`
+       * placeholder when the id is new.
+       *
+       * Identity is preserved across calls — mutations on the returned
+       * object are visible on the next {@link State.save}.
+       */
+      ensureGoal(gid) {
+        const existing = this.getGoal(gid);
+        if (existing !== null) {
+          return existing;
+        }
+        const entry = {
+          id: gid,
+          status: "planning",
+          started_at: null,
+          completed_at: null,
+          iteration: 0,
+          elapsed_sec: 0,
+          feature_progress: {},
+          last_halt_reason: null
+        };
+        this.goals().push(entry);
+        return entry;
+      }
+      /**
+       * Sets `goal.status` for `gid`, updating `started_at` and
+       * `completed_at` lifecycle timestamps when the transition warrants.
+       *
+       * Throws on unknown status. Resetting to an earlier phase is
+       * allowed but does not clear timestamps.
+       */
+      setGoalStatus(gid, status) {
+        if (!GOAL_STATUSES.includes(status)) {
+          throw new Error(
+            `invalid goal status '${status}' (expected one of ${GOAL_STATUSES.join(", ")})`
+          );
+        }
+        const g = this.ensureGoal(gid);
+        g.status = status;
+        const ts = nowIso4();
+        if (status === "executing" && g.started_at === null) {
+          g.started_at = ts;
+        }
+        if (status === "done" && g.completed_at === null) {
+          g.completed_at = ts;
+        }
+      }
+      /**
+       * Sets `session.active_goal_id`.
+       *
+       * BR-015 (g) — sequential constraint. The previous goal stays
+       * recorded under `goals[]` but is no longer the driver target.
+       */
+      setActiveGoal(gid) {
+        this.data.session.active_goal_id = gid;
+      }
+      /** Returns `session.active_goal_id` (defaults to `null`). */
+      activeGoalId() {
+        const v = this.data.session.active_goal_id;
+        return typeof v === "string" ? v : null;
+      }
+      /**
+       * Updates the cached per-feature status for a goal.
+       *
+       * Used by drive loop iterations to keep the progress renderer
+       * snapshot current without re-walking `state.features[]` on every
+       * render. Out-of-band updates (work.py setStatus on a feature
+       * inside a goal) are reconciled on the next drive iteration.
+       */
+      setGoalFeatureProgress(gid, fid, status) {
+        if (!FEATURE_STATUSES.includes(status)) {
+          throw new Error(`invalid feature status '${status}'`);
+        }
+        const g = this.ensureGoal(gid);
+        if (!isPlainObject4(g.feature_progress)) {
+          g.feature_progress = {};
+        }
+        g.feature_progress[fid] = status;
+      }
+      /** Removes a goal from `goals[]`. Also clears active_goal_id when matching. */
+      removeGoal(gid) {
+        const before = this.goals().length;
+        this.data.goals = this.goals().filter((g) => !(isPlainObject4(g) && g.id === gid));
+        const removed = this.data.goals.length < before;
+        if (removed && this.activeGoalId() === gid) {
+          this.setActiveGoal(null);
+        }
+        return removed;
+      }
+      // --------------------------------------------------------------------
+      // Summary helpers (used by status / check / dashboards)
+      // --------------------------------------------------------------------
+      /** Returns a `{status: count}` map for each FEATURE_STATUSES entry. */
+      featureCounts() {
+        const counts = {
+          planned: 0,
+          in_progress: 0,
+          blocked: 0,
+          done: 0,
+          archived: 0
+        };
+        for (const f of this.data.features) {
+          if (!isPlainObject4(f)) {
+            continue;
+          }
+          const status = f.status ?? "planned";
+          if (status in counts) {
+            counts[status] += 1;
+          }
+        }
+        return counts;
+      }
+      /**
+       * Returns a deep-cloned snapshot of the in-memory state.
+       *
+       * Used by `/harness:status --json` and parity tests that want to
+       * compare two states without aliasing concerns.
+       */
+      snapshot() {
+        return structuredClone(this.data);
+      }
+    };
+  }
+});
+
 // node_modules/ajv/dist/compile/codegen/code.js
 var require_code = __commonJS({
   "node_modules/ajv/dist/compile/codegen/code.js"(exports) {
@@ -17919,9 +18428,403 @@ var require_dist2 = __commonJS({
   }
 });
 
+// src/drive/goalStore.ts
+import { createHash as createHash4 } from "node:crypto";
+import { readFileSync as readFileSync15, writeFileSync as writeFileSync7 } from "node:fs";
+function isPlainObject13(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function normalizeSlug(title) {
+  const ascii = title.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
+  if (ascii.length > 0 && /^[a-z0-9]/.test(ascii)) {
+    return ascii.length > MAX_SLUG_LENGTH ? ascii.slice(0, MAX_SLUG_LENGTH) : ascii;
+  }
+  const hash = createHash4("sha256").update(title, "utf8").digest("hex").slice(0, 8);
+  return `goal-${hash}`;
+}
+function readGoals(specPath) {
+  const raw = readFileSync15(specPath, "utf-8");
+  const doc = (0, import_yaml13.parse)(raw);
+  if (!isPlainObject13(doc)) {
+    return [];
+  }
+  const goals = doc.goals;
+  if (!Array.isArray(goals)) {
+    return [];
+  }
+  const out = [];
+  for (const g of goals) {
+    if (!isPlainObject13(g)) {
+      continue;
+    }
+    if (typeof g.id !== "string" || typeof g.title !== "string") {
+      continue;
+    }
+    const slug = typeof g.slug === "string" ? g.slug : normalizeSlug(g.title);
+    const featureIds = Array.isArray(g.feature_ids) ? g.feature_ids.filter((x) => typeof x === "string") : [];
+    out.push({
+      ...g,
+      id: g.id,
+      slug,
+      title: g.title,
+      feature_ids: featureIds
+    });
+  }
+  return out;
+}
+var import_yaml13, MAX_SLUG_LENGTH;
+var init_goalStore = __esm({
+  "src/drive/goalStore.ts"() {
+    "use strict";
+    import_yaml13 = __toESM(require_dist(), 1);
+    MAX_SLUG_LENGTH = 60;
+  }
+});
+
+// src/drive/progressRenderer.ts
+function isPlainObject14(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function featureIcon(status, emoji) {
+  if (!emoji) {
+    const map2 = {
+      done: "[x]",
+      in_progress: "[>]",
+      planned: "[ ]",
+      blocked: "[!]",
+      archived: "[~]"
+    };
+    return map2[status] ?? "[ ]";
+  }
+  const map = {
+    done: "\u2705",
+    in_progress: "\u{1F535}",
+    planned: "\u26AA",
+    blocked: "\u26A0",
+    archived: "\u{1F5C4}"
+  };
+  return map[status] ?? "\u26AA";
+}
+function countGatesPassed2(feature) {
+  if (!isPlainObject14(feature.gates)) {
+    return 0;
+  }
+  let count = 0;
+  for (const g of STANDARD_GATES3) {
+    const entry = feature.gates[g];
+    if (isPlainObject14(entry) && entry.last_result === "pass") {
+      count += 1;
+    }
+  }
+  return count;
+}
+function countDeclaredEvidence2(feature) {
+  if (!Array.isArray(feature.evidence)) {
+    return 0;
+  }
+  let count = 0;
+  for (const ev of feature.evidence) {
+    if (!isPlainObject14(ev)) {
+      continue;
+    }
+    const kind = ev.kind;
+    if (typeof kind === "string" && (kind === "gate_run" || kind === "gate_auto_run")) {
+      continue;
+    }
+    count += 1;
+  }
+  return count;
+}
+function elapsedMinutes(startedAt, now) {
+  if (typeof startedAt !== "string" || startedAt.length === 0) {
+    return null;
+  }
+  const ms = Date.parse(startedAt);
+  if (Number.isNaN(ms)) {
+    return null;
+  }
+  const diff = now.getTime() - ms;
+  if (diff < 0) {
+    return 0;
+  }
+  return Math.round(diff / 6e4);
+}
+function elapsedMinutesFromSec(elapsed_sec) {
+  if (typeof elapsed_sec !== "number" || !Number.isFinite(elapsed_sec) || elapsed_sec < 0) {
+    return null;
+  }
+  return Math.round(elapsed_sec / 60);
+}
+function computePercentDone(features) {
+  if (features.length === 0) {
+    return 0;
+  }
+  let done = 0;
+  for (const f of features) {
+    if (f.status === "done") {
+      done += 1;
+    }
+  }
+  return Math.round(done / features.length * 100);
+}
+function inflightGateLabel(feature) {
+  if (feature.status !== "in_progress") {
+    return null;
+  }
+  for (const g of STANDARD_GATES3) {
+    const entry = feature.gates?.[g];
+    if (!isPlainObject14(entry)) {
+      return g;
+    }
+    if (entry.last_result !== "pass") {
+      return g;
+    }
+  }
+  return null;
+}
+function renderProgress(input, options = {}) {
+  const { goalSpec, goalRuntime, features } = input;
+  const emoji = options.emoji ?? true;
+  const now = options.now ?? /* @__PURE__ */ new Date();
+  const percentDone = computePercentDone(features);
+  const goalIcon = emoji ? "\u{1F4CA}" : "##";
+  const status = goalRuntime?.status ?? "planning";
+  const lines = [];
+  lines.push(`${goalIcon} Goal ${goalSpec.id}: ${goalSpec.title} (${percentDone}%) [${status}]`);
+  for (const f of features) {
+    const icon = featureIcon(f.status, emoji);
+    const passed = countGatesPassed2(f);
+    const declared = countDeclaredEvidence2(f);
+    const inflight = inflightGateLabel(f);
+    const elapsed = elapsedMinutes(f.started_at, now);
+    const parts = [];
+    parts.push(`${f.status}`);
+    if (inflight !== null) {
+      parts.push(`${inflight} running`);
+    } else if (passed > 0) {
+      parts.push(`${passed}/${STANDARD_GATES3.length} gates`);
+    }
+    if (declared > 0) {
+      parts.push(`${declared} evidence`);
+    }
+    if (elapsed !== null && f.status !== "planned") {
+      parts.push(`${elapsed}m`);
+    }
+    const fname = featureName(f);
+    lines.push(`  ${icon} ${f.id} ${fname} [${parts.join(" \xB7 ")}]`);
+  }
+  const activeFeature = features.find((f) => f.status === "in_progress") ?? null;
+  const iteration = goalRuntime?.iteration ?? 0;
+  const elapsedGoal = elapsedMinutesFromSec(goalRuntime?.elapsed_sec);
+  const lastHalt = goalRuntime?.last_halt_reason ?? null;
+  if (activeFeature !== null) {
+    const inflight = inflightGateLabel(activeFeature);
+    const phase = inflight !== null ? `${inflight} (running)` : "awaiting evidence";
+    const arrow = emoji ? "\u25B6" : ">";
+    const elapsedSegment = elapsedGoal !== null ? ` \xB7 ${elapsedGoal}m elapsed` : "";
+    const haltSegment = lastHalt !== null ? ` \xB7 last halt: ${lastHalt}` : "";
+    lines.push(
+      `${arrow} now: ${activeFeature.id} / ${phase} \xB7 iteration ${iteration}${elapsedSegment}${haltSegment}`
+    );
+  } else {
+    const arrow = emoji ? "\u25B6" : ">";
+    const elapsedSegment = elapsedGoal !== null ? ` \xB7 ${elapsedGoal}m elapsed` : "";
+    lines.push(`${arrow} now: idle \xB7 iteration ${iteration}${elapsedSegment}`);
+  }
+  return lines.join("\n");
+}
+function renderProgressJson(input, options = {}) {
+  const { goalSpec, goalRuntime, features } = input;
+  const now = options.now ?? /* @__PURE__ */ new Date();
+  const featuresJson = features.map((f) => ({
+    id: f.id,
+    status: f.status,
+    gates_passed: countGatesPassed2(f),
+    evidence_count: countDeclaredEvidence2(f),
+    elapsed_min: elapsedMinutes(f.started_at, now)
+  }));
+  return {
+    goal_id: goalSpec.id,
+    title: goalSpec.title,
+    status: goalRuntime?.status ?? "planning",
+    percent_done: computePercentDone(features),
+    features: featuresJson,
+    iteration: goalRuntime?.iteration ?? 0,
+    elapsed_min: elapsedMinutesFromSec(goalRuntime?.elapsed_sec),
+    last_halt_reason: goalRuntime?.last_halt_reason ?? null
+  };
+}
+function featureName(feature) {
+  const n = feature.name;
+  return typeof n === "string" && n.length > 0 ? n : "";
+}
+var STANDARD_GATES3;
+var init_progressRenderer = __esm({
+  "src/drive/progressRenderer.ts"() {
+    "use strict";
+    STANDARD_GATES3 = ["gate_0", "gate_1", "gate_2", "gate_3", "gate_5"];
+  }
+});
+
+// src/drive/statusCommand.ts
+var statusCommand_exports = {};
+__export(statusCommand_exports, {
+  composeStatusJson: () => composeStatusJson,
+  composeStatusText: () => composeStatusText,
+  runDriveStatus: () => runDriveStatus
+});
+import { existsSync as existsSync4, readFileSync as readFileSync16 } from "node:fs";
+import { join as join16 } from "node:path";
+function isPlainObject15(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function readSpecFeatures(harnessDir) {
+  const path = join16(harnessDir, "spec.yaml");
+  if (!existsSync4(path)) {
+    return [];
+  }
+  const raw = readFileSync16(path, "utf-8");
+  const doc = (0, import_yaml14.parse)(raw);
+  if (!isPlainObject15(doc)) {
+    return [];
+  }
+  if (!Array.isArray(doc.features)) {
+    return [];
+  }
+  return doc.features.filter(isPlainObject15);
+}
+function enrichFeatures(runtimeFeatures, specFeatures) {
+  const nameById = /* @__PURE__ */ new Map();
+  for (const f of specFeatures) {
+    if (typeof f.id === "string" && typeof f.name === "string") {
+      nameById.set(f.id, f.name);
+    }
+  }
+  return runtimeFeatures.map((f) => {
+    const name = nameById.get(f.id);
+    return name === void 0 ? f : { ...f, name };
+  });
+}
+function resolveGoalFeatures(state, goalSpec, specFeatures) {
+  const runtimeById = /* @__PURE__ */ new Map();
+  for (const f of state.data.features ?? []) {
+    if (isPlainObject15(f) && typeof f.id === "string") {
+      runtimeById.set(f.id, f);
+    }
+  }
+  const out = [];
+  for (const fid of goalSpec.feature_ids) {
+    const existing = runtimeById.get(fid);
+    if (existing !== void 0) {
+      out.push(existing);
+      continue;
+    }
+    out.push({
+      id: fid,
+      status: "planned",
+      gates: {},
+      evidence: [],
+      started_at: null,
+      completed_at: null
+    });
+  }
+  return enrichFeatures(out, specFeatures);
+}
+function selectGoals(goals, state, options) {
+  if (options.all === true) {
+    return [...goals];
+  }
+  if (typeof options.goalId === "string" && options.goalId.length > 0) {
+    const found = goals.find((g) => g.id === options.goalId);
+    return found === void 0 ? [] : [found];
+  }
+  const active = state.activeGoalId();
+  if (active !== null) {
+    const found = goals.find((g) => g.id === active);
+    if (found !== void 0) {
+      return [found];
+    }
+  }
+  if (goals.length > 0) {
+    return [goals[goals.length - 1]];
+  }
+  return [];
+}
+function composeStatusText(goals, state, specFeatures, options) {
+  const selected = selectGoals(goals, state, options);
+  if (selected.length === 0) {
+    return 'no goals registered yet \u2014 drive --plan or /harness-boot:drive "<goal>" (stage 2 / F-119)';
+  }
+  const blocks = [];
+  for (const goalSpec of selected) {
+    const goalRuntime = state.getGoal(goalSpec.id);
+    const features = resolveGoalFeatures(state, goalSpec, specFeatures);
+    blocks.push(renderProgress({ goalSpec, goalRuntime, features }));
+  }
+  return blocks.join("\n\n");
+}
+function composeStatusJson(goals, state, specFeatures, options) {
+  const selected = selectGoals(goals, state, options);
+  const out = [];
+  for (const goalSpec of selected) {
+    const goalRuntime = state.getGoal(goalSpec.id);
+    const features = resolveGoalFeatures(state, goalSpec, specFeatures);
+    out.push(renderProgressJson({ goalSpec, goalRuntime, features }));
+  }
+  return { goals: out };
+}
+function sleep(ms) {
+  return new Promise((resolve2) => setTimeout(resolve2, ms));
+}
+async function runDriveStatus(options) {
+  const out = options.out ?? ((s) => process.stdout.write(s));
+  const harnessDir = options.harnessDir;
+  if (!existsSync4(harnessDir)) {
+    out(`drive --status: harness dir not found: ${harnessDir}
+`);
+    return 2;
+  }
+  const intervalSec = options.intervalSec ?? 2;
+  const watch = options.watch ?? false;
+  const renderOnce = () => {
+    const specPath = join16(harnessDir, "spec.yaml");
+    const goals = existsSync4(specPath) ? readGoals(specPath) : [];
+    const specFeatures = readSpecFeatures(harnessDir);
+    const state = State.load(harnessDir);
+    if (options.json === true) {
+      const payload = composeStatusJson(goals, state, specFeatures, options);
+      out(JSON.stringify(payload, null, 2) + "\n");
+    } else {
+      const text = composeStatusText(goals, state, specFeatures, options);
+      out(text + "\n");
+    }
+  };
+  if (!watch) {
+    renderOnce();
+    return 0;
+  }
+  while (true) {
+    if (options.json !== true) {
+      out("\x1B[2J\x1B[H");
+    }
+    renderOnce();
+    await sleep(intervalSec * 1e3);
+  }
+}
+var import_yaml14;
+var init_statusCommand = __esm({
+  "src/drive/statusCommand.ts"() {
+    "use strict";
+    import_yaml14 = __toESM(require_dist(), 1);
+    init_state();
+    init_goalStore();
+    init_progressRenderer();
+  }
+});
+
 // src/cli/harness.ts
-import { existsSync as existsSync4, statSync as statSync16 } from "node:fs";
-import { join as join16, resolve as resolvePath7 } from "node:path";
+import { existsSync as existsSync5, statSync as statSync16 } from "node:fs";
+import { join as join17, resolve as resolvePath7 } from "node:path";
 
 // node_modules/commander/esm.mjs
 var import_index = __toESM(require_commander(), 1);
@@ -18692,7 +19595,7 @@ function openQuestions(harnessDir, featureId2 = null) {
 }
 
 // src/cli/harness.ts
-var import_yaml13 = __toESM(require_dist(), 1);
+var import_yaml15 = __toESM(require_dist(), 1);
 import { readFileSync as readSpecFile, statSync as statSpecFile } from "node:fs";
 
 // src/core/projectMode.ts
@@ -18790,380 +19693,8 @@ function merkleRoot(subtrees) {
   return canonicalHash(combined);
 }
 
-// src/core/state.ts
-var import_yaml3 = __toESM(require_dist(), 1);
-import { existsSync, mkdirSync as mkdirSync4, readFileSync as readFileSync4, statSync as statSync5, writeFileSync as writeFileSync4 } from "node:fs";
-import { dirname as dirname4, join as join5 } from "node:path";
-var FEATURE_STATUSES = [
-  "planned",
-  "in_progress",
-  "blocked",
-  "done",
-  "archived"
-];
-var GATE_RESULTS = ["pass", "fail", "skipped"];
-var AUTOMATIC_EVIDENCE_KINDS = /* @__PURE__ */ new Set(["gate_run", "gate_auto_run"]);
-var IRON_LAW_WINDOW_DAYS = 7;
-function nowIso4() {
-  const d = /* @__PURE__ */ new Date();
-  const yyyy = d.getUTCFullYear().toString().padStart(4, "0");
-  const mm = (d.getUTCMonth() + 1).toString().padStart(2, "0");
-  const dd = d.getUTCDate().toString().padStart(2, "0");
-  const hh = d.getUTCHours().toString().padStart(2, "0");
-  const mi = d.getUTCMinutes().toString().padStart(2, "0");
-  const ss = d.getUTCSeconds().toString().padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}Z`;
-}
-function defaultState() {
-  return {
-    version: "2.3",
-    schema_version: "2.3",
-    features: [],
-    session: {
-      started_at: null,
-      last_command: "",
-      last_gate_passed: null,
-      active_feature_id: null
-    }
-  };
-}
-function isPlainObject4(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-var State = class _State {
-  /** Resolved absolute path of `state.yaml` for this view. */
-  path;
-  /** In-memory state document. Mutations are visible here immediately. */
-  data;
-  /** Construct directly when the path and data are already resolved. */
-  constructor(path, data) {
-    this.path = path;
-    this.data = data;
-  }
-  /**
-   * Reads `<harnessDir>/state.yaml` and returns a {@link State} view.
-   *
-   * When the file does not exist the view is initialized with the
-   * default schema; nothing is written to disk until
-   * {@link State.save} is called.
-   *
-   * @param harnessDir - Path to the project's `.harness/` directory.
-   * @returns A new `State` instance.
-   */
-  static load(harnessDir) {
-    const path = join5(harnessDir, "state.yaml");
-    let data;
-    if (existsSync(path) && statSync5(path).isFile()) {
-      const raw = readFileSync4(path, "utf-8");
-      const parsed = (0, import_yaml3.parse)(raw);
-      if (isPlainObject4(parsed)) {
-        data = parsed;
-      } else {
-        data = defaultState();
-      }
-    } else {
-      data = defaultState();
-    }
-    if (!isPlainObject4(data.session)) {
-      data.session = defaultState().session;
-    }
-    if (!Array.isArray(data.features)) {
-      data.features = [];
-    }
-    return new _State(path, data);
-  }
-  /** Persist the in-memory shape back to disk. */
-  save() {
-    mkdirSync4(dirname4(this.path), { recursive: true });
-    const out = (0, import_yaml3.stringify)(this.data, {
-      // Preserve insertion order — Python's PyYAML used `sort_keys=False`.
-      sortMapEntries: false,
-      // Avoid extra indent on sequences inside maps so the output stays
-      // close to PyYAML's `default_flow_style=False` block style.
-      indentSeq: false,
-      // No hard wrap — long strings stay on one line.
-      lineWidth: 0
-    });
-    writeFileSync4(this.path, out, "utf-8");
-  }
-  // --------------------------------------------------------------------
-  // Feature helpers
-  // --------------------------------------------------------------------
-  /** All feature ids currently in the `features[]` array. */
-  featureIds() {
-    const ids = [];
-    for (const f of this.data.features) {
-      if (isPlainObject4(f) && typeof f.id === "string") {
-        ids.push(f.id);
-      }
-    }
-    return ids;
-  }
-  /** Returns the feature record matching `fid`, or `null`. */
-  getFeature(fid) {
-    for (const f of this.data.features) {
-      if (isPlainObject4(f) && f.id === fid) {
-        return f;
-      }
-    }
-    return null;
-  }
-  /**
-   * Returns the feature record for `fid`, inserting a `planned`
-   * placeholder when the id is new.
-   *
-   * Identity is preserved across calls — mutations on the returned
-   * object are visible on the next {@link State.save}.
-   */
-  ensureFeature(fid) {
-    const existing = this.getFeature(fid);
-    if (existing !== null) {
-      return existing;
-    }
-    const entry = {
-      id: fid,
-      status: "planned",
-      gates: {},
-      evidence: [],
-      started_at: null,
-      completed_at: null
-    };
-    this.data.features.push(entry);
-    return entry;
-  }
-  /**
-   * Sets `feature.status` for `fid`, updating `started_at` /
-   * `completed_at` lifecycle timestamps when the transition warrants.
-   *
-   * Resetting to `planned` is allowed but does not clear timestamps —
-   * the user can audit prior progress. Throws on unknown status.
-   */
-  setStatus(fid, status) {
-    if (!FEATURE_STATUSES.includes(status)) {
-      throw new Error(
-        `invalid status '${status}' (expected one of ${FEATURE_STATUSES.join(", ")})`
-      );
-    }
-    const f = this.ensureFeature(fid);
-    f.status = status;
-    const ts = nowIso4();
-    if (status === "in_progress" && f.started_at === null) {
-      f.started_at = ts;
-    }
-    if (status === "done" && f.completed_at === null) {
-      f.completed_at = ts;
-    }
-  }
-  /**
-   * Writes `feature.gates[gateName]` for `fid` and updates
-   * `session.last_gate_passed` on `pass`.
-   *
-   * Throws on unknown gate result.
-   */
-  recordGateResult(fid, gateName, result, options = {}) {
-    if (!GATE_RESULTS.includes(result)) {
-      throw new Error(`invalid gate result '${result}'`);
-    }
-    const f = this.ensureFeature(fid);
-    if (!isPlainObject4(f.gates)) {
-      f.gates = {};
-    }
-    f.gates[gateName] = {
-      last_result: result,
-      ts: options.ts ?? nowIso4(),
-      note: options.note ?? ""
-    };
-    if (result === "pass") {
-      this.data.session.last_gate_passed = gateName;
-    }
-  }
-  /**
-   * Appends an evidence row to `features[fid].evidence`.
-   *
-   * Evidence is the unit Iron Law counts; see
-   * {@link countDeclaredEvidence} for what qualifies as declared.
-   */
-  addEvidence(fid, kind, summary, options = {}) {
-    const f = this.ensureFeature(fid);
-    if (!Array.isArray(f.evidence)) {
-      f.evidence = [];
-    }
-    f.evidence.push({
-      ts: options.ts ?? nowIso4(),
-      kind,
-      summary
-    });
-  }
-  /**
-   * Records that an agent was intentionally skipped for a feature.
-   *
-   * v0.5 routing documented `skipped_agents[]` but the original
-   * Python state module never implemented the writer — orchestrator
-   * skip decisions left no audit trail. v0.7.2 added the API; this
-   * port preserves it.
-   *
-   * @throws when `agent` is empty or `reason` is empty (silent skips
-   *   defeat the audit purpose).
-   */
-  addSkippedAgent(fid, agent, reason, options = {}) {
-    if (!agent) {
-      throw new Error("agent name required");
-    }
-    if (!reason) {
-      throw new Error("reason required \u2014 silent skips defeat the audit purpose");
-    }
-    const f = this.ensureFeature(fid);
-    let skipped = f.skipped_agents;
-    if (!Array.isArray(skipped)) {
-      skipped = [];
-      f.skipped_agents = skipped;
-    }
-    skipped.push({
-      agent,
-      reason,
-      ts: options.ts ?? nowIso4()
-    });
-  }
-  /** Returns a shallow copy of the skipped-agents log for `fid`. */
-  getSkippedAgents(fid) {
-    const f = this.getFeature(fid);
-    if (f === null) {
-      return [];
-    }
-    if (!Array.isArray(f.skipped_agents)) {
-      return [];
-    }
-    return [...f.skipped_agents];
-  }
-  // --------------------------------------------------------------------
-  // Session helpers
-  // --------------------------------------------------------------------
-  /**
-   * Sets `session.active_feature_id`.
-   *
-   * Auto-registers the feature as `planned` when the id is unknown
-   * (mirrors Python so a typo'd activate does not corrupt the file).
-   */
-  setActive(fid) {
-    if (fid !== null && this.getFeature(fid) === null) {
-      this.ensureFeature(fid);
-    }
-    this.data.session.active_feature_id = fid;
-  }
-  /**
-   * Removes a feature from `features[]`.
-   *
-   * Returns `true` when something was removed. Also clears
-   * `session.active_feature_id` when it pointed at the removed id.
-   */
-  removeFeature(fid) {
-    const before = this.data.features.length;
-    this.data.features = this.data.features.filter(
-      (f) => !(isPlainObject4(f) && f.id === fid)
-    );
-    const removed = this.data.features.length < before;
-    if (removed && this.data.session.active_feature_id === fid) {
-      this.data.session.active_feature_id = null;
-    }
-    return removed;
-  }
-  /** Returns ids of all features whose status is `in_progress`. */
-  featuresInProgress() {
-    const out = [];
-    for (const f of this.data.features) {
-      if (isPlainObject4(f) && f.status === "in_progress" && typeof f.id === "string") {
-        out.push(f.id);
-      }
-    }
-    return out;
-  }
-  /**
-   * Records the most recent slash-command invocation and stamps
-   * `session.started_at` on the very first call.
-   */
-  setLastCommand(command) {
-    this.data.session.last_command = command;
-    if (this.data.session.started_at === null) {
-      this.data.session.started_at = nowIso4();
-    }
-  }
-  // --------------------------------------------------------------------
-  // Summary helpers (used by status / check / dashboards)
-  // --------------------------------------------------------------------
-  /** Returns a `{status: count}` map for each FEATURE_STATUSES entry. */
-  featureCounts() {
-    const counts = {
-      planned: 0,
-      in_progress: 0,
-      blocked: 0,
-      done: 0,
-      archived: 0
-    };
-    for (const f of this.data.features) {
-      if (!isPlainObject4(f)) {
-        continue;
-      }
-      const status = f.status ?? "planned";
-      if (status in counts) {
-        counts[status] += 1;
-      }
-    }
-    return counts;
-  }
-  /**
-   * Returns a deep-cloned snapshot of the in-memory state.
-   *
-   * Used by `/harness:status --json` and parity tests that want to
-   * compare two states without aliasing concerns.
-   */
-  snapshot() {
-    return structuredClone(this.data);
-  }
-};
-function isDeclaredEvidence(ev) {
-  if (!isPlainObject4(ev)) {
-    return false;
-  }
-  const kind = ev.kind;
-  if (typeof kind !== "string") {
-    return true;
-  }
-  return !AUTOMATIC_EVIDENCE_KINDS.has(kind);
-}
-function parseTs(value) {
-  if (typeof value !== "string" || value.length === 0) {
-    return null;
-  }
-  const ms = Date.parse(value);
-  if (Number.isNaN(ms)) {
-    return null;
-  }
-  return new Date(ms);
-}
-function countDeclaredEvidence(feature, options = {}) {
-  if (!isPlainObject4(feature)) {
-    return 0;
-  }
-  const windowDays = options.windowDays ?? IRON_LAW_WINDOW_DAYS;
-  const now = options.now ?? /* @__PURE__ */ new Date();
-  const cutoffMs = now.getTime() - Math.max(windowDays, 0) * 24 * 60 * 60 * 1e3;
-  const evidence = feature.evidence;
-  if (!Array.isArray(evidence)) {
-    return 0;
-  }
-  let count = 0;
-  for (const ev of evidence) {
-    if (!isDeclaredEvidence(ev)) {
-      continue;
-    }
-    const ts = parseTs(ev.ts);
-    if (ts !== null && ts.getTime() < cutoffMs) {
-      continue;
-    }
-    count += 1;
-  }
-  return count;
-}
+// src/check.ts
+init_state();
 
 // src/spec/includeExpander.ts
 import { readFileSync as readFileSync5, statSync as statSync6 } from "node:fs";
@@ -21563,8 +22094,12 @@ function validate(spec, schemaPath = null) {
   );
 }
 
+// src/cli/harness.ts
+init_state();
+
 // src/status.ts
 var import_yaml7 = __toESM(require_dist(), 1);
+init_state();
 import { readFileSync as readFileSync10, statSync as statSync11 } from "node:fs";
 import { join as join11 } from "node:path";
 function isPlainObject10(value) {
@@ -21721,8 +22256,8 @@ function formatHuman4(report) {
 }
 
 // src/cli/harness.ts
-var import_yaml14 = __toESM(require_dist(), 1);
-import { readFileSync as readFileSync15 } from "node:fs";
+var import_yaml16 = __toESM(require_dist(), 1);
+import { readFileSync as readFileSync17 } from "node:fs";
 
 // src/sync.ts
 var import_yaml10 = __toESM(require_dist(), 1);
@@ -22776,6 +23311,7 @@ var import_yaml12 = __toESM(require_dist(), 1);
 import { appendFileSync as appendFileSync6, mkdirSync as mkdirSync6, readFileSync as readFileSync14, statSync as statSync15 } from "node:fs";
 import { dirname as dirname8, join as join15, resolve as resolvePath6 } from "node:path";
 import { spawnSync as spawnSync2 } from "node:child_process";
+init_state();
 
 // src/gate/runner.ts
 var import_yaml11 = __toESM(require_dist(), 1);
@@ -24156,7 +24692,7 @@ function isDirectory4(path) {
   }
 }
 function resolveHarnessDir(opt) {
-  return resolvePath7(opt ?? join16(process.cwd(), ".harness"));
+  return resolvePath7(opt ?? join17(process.cwd(), ".harness"));
 }
 function workResultToJson(r) {
   return {
@@ -24237,11 +24773,11 @@ function buildProgram() {
     }
     if (!feature) {
       const state = State.load(harnessDir);
-      const specPath = join16(harnessDir, "spec.yaml");
+      const specPath = join17(harnessDir, "spec.yaml");
       let spec = null;
       try {
-        if (existsSync4(specPath)) {
-          spec = (0, import_yaml14.parse)(readFileSync15(specPath, "utf-8"));
+        if (existsSync5(specPath)) {
+          spec = (0, import_yaml16.parse)(readFileSync17(specPath, "utf-8"));
         }
       } catch {
         spec = null;
@@ -24266,10 +24802,10 @@ function buildProgram() {
     }
     const fid = feature;
     function loadSpecOrNull() {
-      const specPath = join16(harnessDir, "spec.yaml");
+      const specPath = join17(harnessDir, "spec.yaml");
       try {
         if (statSpecFile(specPath).isFile()) {
-          return (0, import_yaml13.parse)(readSpecFile(specPath, "utf-8"));
+          return (0, import_yaml15.parse)(readSpecFile(specPath, "utf-8"));
         }
       } catch {
         return null;
@@ -24573,6 +25109,45 @@ function buildProgram() {
 `);
       }
     }
+  });
+  program2.command("drive").description("autonomous loop driver \u2014 Stage 1 (F-118) ships read-only --status").argument("[target]", "goal id (G-NNN), feature id (F-NNN), or free-text goal \u2014 Stage 2 (F-119)").option("--harness-dir <dir>", "path to .harness directory", "./.harness").option("--status", "render the progress dashboard for one (or all) goal(s) \u2014 read-only").option("--all", "with --status: render every goal in the spec").option("--json", "with --status: emit JSON instead of formatted text").option("--watch", "with --status: re-render every <interval> seconds").option("--interval <sec>", "with --status --watch: refresh interval (default 2s)", "2").option("--resume", "continue a paused drive run \u2014 Stage 2 (F-119)").option("--plan-only", "run only Phase A (researcher \u2192 planner) \u2014 Stage 2 (F-119)").option("--auto-approve-brief", "skip the researcher-approval halt \u2014 Stage 2 (F-119)").option("--auto-approve-all", "skip every plan-phase halt \u2014 Stage 2 (F-119)").option("--max-iterations <n>", "iteration cap \u2014 Stage 2 (F-119)").option("--max-hours <n>", "wall-clock cap \u2014 Stage 2 (F-119)").option("--dry-run", "print actions without executing \u2014 Stage 2 (F-119)").option("--abort <gid>", "abort a running goal \u2014 Stage 2 (F-119)").action((target, options) => {
+    const harnessDir = resolveHarnessDir(options["harnessDir"]);
+    if (!isDirectory4(harnessDir)) {
+      printError(`error: ${harnessDir} not found`);
+      process.exit(2);
+    }
+    const stage2Flag = options["resume"] || options["planOnly"] || options["autoApproveBrief"] || options["autoApproveAll"] || options["maxIterations"] || options["maxHours"] || options["dryRun"] || options["abort"];
+    if (stage2Flag) {
+      printError(
+        "drive: that flag is part of Stage 2 (F-119) \u2014 only --status, --all, --json, --watch land in v0.14.0 Stage 1."
+      );
+      printError("       The Goal domain primitives are in place; the autonomous loop ships in the next release.");
+      process.exit(3);
+    }
+    if (typeof target === "string" && !/^[FG]-\d+$/i.test(target)) {
+      printError(
+        "drive: free-text goal scaffolding is Stage 2 (F-119). For now, register the Goal manually in spec.yaml goals[] and use `harness drive --status`."
+      );
+      process.exit(3);
+    }
+    const explicitGoal = typeof target === "string" && /^G-\d+$/i.test(target) ? target : null;
+    void Promise.resolve().then(() => (init_statusCommand(), statusCommand_exports)).then(
+      ({ runDriveStatus: runDriveStatus2 }) => runDriveStatus2({
+        harnessDir,
+        goalId: explicitGoal,
+        all: Boolean(options["all"]),
+        json: Boolean(options["json"]),
+        watch: Boolean(options["watch"]),
+        intervalSec: Number(options["interval"] ?? 2)
+      })
+    ).then((code) => {
+      if (typeof code === "number" && code !== 0) {
+        process.exit(code);
+      }
+    }).catch((err) => {
+      printError(`drive: ${err.message}`);
+      process.exit(2);
+    });
   });
   program2.command("validate").description("validate a spec.yaml against the JSONSchema").argument("<spec-path>", "path to spec.yaml").option("--schema <path>", "override schema location").option("--json", "emit JSON result").action((specPath, options) => {
     try {
