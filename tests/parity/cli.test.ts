@@ -154,6 +154,31 @@ describe('cli — work subcommand', () => {
     expect(r.stdout).toContain('gate_5');
   });
 
+  it('F-120 — --gate <name> <result> records the gate (commander variadic fix)', () => {
+    captureRun(['work', 'F-001', '--harness-dir', ws.harness]);
+    const r = captureRun([
+      'work',
+      'F-001',
+      '--harness-dir',
+      ws.harness,
+      '--gate',
+      'gate_5',
+      'pass',
+      '--note',
+      'smoke OK',
+    ]);
+    expect(r.exitCode).toBe(0);
+    expect(r.stdout).toContain('gate_5');
+    expect(r.stdout).toContain('passed: gate_5');
+  });
+
+  it('F-120 — --gate with one value fails the cardinality guard', () => {
+    captureRun(['work', 'F-001', '--harness-dir', ws.harness]);
+    const r = captureRun(['work', 'F-001', '--harness-dir', ws.harness, '--gate', 'gate_5']);
+    expect(r.exitCode).toBe(3);
+    expect(r.stderr).toContain('--gate takes two values');
+  });
+
   it('--run-gate with override exit-zero passes', () => {
     captureRun(['work', 'F-001', '--harness-dir', ws.harness]);
     const r = captureRun([

@@ -2428,8 +2428,52 @@ features:
     summary: "F-119 Stage 2 ships drive autonomous loop body — Phase A state machine + Phase B execute loop + Phase C goal retro + 9 halt taxonomy + BR-015 enforcement (self-hotfix reject test). Tests: 53 new (driveCheckpoint 15, driveExecutor 14, driveHaltAndRetro 10, driveLoopAndPlan 14) — 611/611 total green. typecheck/lint/build/self_check 5/5 OK. v0.14.0 minor bump applied across package.json + plugin.json + marketplace.json + cli/harness.ts + README/README.ko/CHANGELOG. commands/drive.md ships full slash-command orchestration prose (researcher → planner → feature-author trio + halt forwarding)."
   started_at: 2026-05-04T03:05:48Z
   completed_at: 2026-05-04T03:25:48Z
+- id: F-120
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-04T03:39:31Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-04T03:39:32Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-04T03:39:34Z
+      note: "cmd: npm run lint"
+    gate_3:
+      last_result: pass
+      ts: 2026-05-04T03:39:36Z
+      note: "cmd: npx nyc npm test"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-04T03:39:42Z
+      note: "F-120 fix verified: --gate <name> <result> now works (commander variadic)"
+  evidence:
+  - ts: 2026-05-04T03:39:31Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.3s) · cmd: npm test"
+  - ts: 2026-05-04T03:39:32Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.8s) · cmd: npm run typecheck"
+  - ts: 2026-05-04T03:39:34Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.1s) · cmd: npm run lint"
+  - ts: 2026-05-04T03:39:36Z
+    kind: gate_run
+    summary: "Gate gate_3 pass (2.3s) · cmd: npx nyc npm test"
+  - ts: 2026-05-04T03:39:37Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.5s) · cmd: bash self_check.sh"
+  - ts: 2026-05-04T03:39:45Z
+    kind: test
+    summary: "F-120 fix lands in v0.14.1: commander option spec changed from <name> <result> to <values...> variadic. 2 new regression tests in cli.test.ts pin the contract (happy path + cardinality guard). 613/613 tests green; self_check 5/5; bundle 918 KB unchanged. issues-log I-009 marked resolved per F-027 return cycle."
+  started_at: 2026-05-04T03:38:04Z
+  completed_at: 2026-05-04T03:40:10Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-119
-  last_gate_passed: gate_2
+  last_command: /harness:work F-120
+  last_gate_passed: gate_5
   active_feature_id: null

@@ -109,7 +109,7 @@ function buildProgram() {
     program
         .name('harness')
         .description('Multi-agent development harness — TS CLI for Claude Code plugin')
-        .version('0.14.0');
+        .version('0.14.1');
     // -----------------------------------------------------------------
     // work
     // -----------------------------------------------------------------
@@ -119,7 +119,7 @@ function buildProgram() {
         .argument('[feature]', 'feature id (e.g. F-001) — omitted invokes the dashboard')
         .option('--harness-dir <dir>', 'path to .harness directory', './.harness')
         .option('--current', 'show the active feature (read-only)')
-        .option('--gate <name> <result>', 'record a gate result manually (legacy 2-arg form)')
+        .option('--gate <values...>', 'record a gate result manually — `--gate <name> <result>` (e.g. `--gate gate_0 pass`)')
         .option('--run-gate <name>', 'auto-run a gate via the gate runner and record the result')
         .option('--project-root <dir>', 'cwd for --run-gate (default: harness-dir parent)')
         .option('--override-command <cmd>', 'override gate command (space-separated)')

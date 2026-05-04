@@ -18,6 +18,29 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - F-073 (`read_events(tail=N)`) and F-074 (`canonical_hash` mtime cache) — v0.11.11 cumulative-slowdown audit queue.
 - Next-skill candidates after feature-author soaks — `drift-explain-and-fix` · `acceptance-criteria-craft` · `gate-recover` · `evidence-craft`. Sequential, not parallel — one experiment at a time. Internal A/B test (2026-04-30) showed existing capability already covers these cases — pick up only on external user pain signal.
 
+## [0.14.1] — 2026-05-04
+
+**`harness work --gate <name> <result>` parsing fix (F-120).**
+
+Post-v0.14.0 E2E sample-project verification surfaced that `harness work F-N --gate gate_5 pass --note "..."` exited with `error: --gate takes two values` against a fresh project. Root cause: the commander option spec was authored as `.option('--gate <name> <result>', ...)` — commander does not support multi-placeholder option specs, so it captured only the first arg and rejected the second as a stray positional. `commands/work.md`'s documented Typical Scenario was therefore not directly invokable; users had to fall back to `--run-gate` (auto-detect).
+
+### Fixed
+
+- **F-120** — `src/cli/harness.ts` switches the `--gate` option spec to commander variadic (`<values...>`). Both `--gate gate_0 pass` and `--gate gate_0 pass --note "..."` now parse correctly. The action-side `Array.isArray && length === 2` cardinality guard is preserved — `--gate gate_5` (one arg) still exits 3 with the same `--gate takes two values` message.
+
+### Verification
+
+- `npm run typecheck` clean
+- `npm run lint` clean
+- `npm test` — **613/613** (611 from v0.14.0 + 2 new F-120 regression tests in `tests/parity/cli.test.ts`)
+- `npm run build` clean
+- `bash self_check.sh` 5/5 OK
+- Manual smoke against a fresh sample project — both `--gate <name> <result>` paths now work.
+
+### Issues-log return cycle
+
+- I-009 entry — `--gate <name> <result>` two-arg option parsing rejects valid input → **resolved by F-120**. Pattern follows the cosmic-suika I-001/I-008 batch return convention.
+
 ## [0.14.0] — 2026-05-04
 
 **`drive` — bounded autonomous loop. Codex `/goal` reimagined as a Bounded Goal Driver under BR-015 (F-118 + F-119).**
