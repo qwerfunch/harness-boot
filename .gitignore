@@ -43,6 +43,14 @@ design/
 # but no new local artifacts under legacy/ should enter git
 legacy/
 
+# Quarantined Python test suites (F-126) — retired after the v0.13.0
+# Python -> TypeScript cutover. The TS parity suite under tests/parity/
+# is the operational test surface; these directories remain on the
+# maintainer's disk for local reference only and must not re-enter git.
+tests/unit/
+tests/integration/
+tests/scale/
+
 # harness-boot 자체 도그푸드 (.harness/) — derived + 로그 + ceremony 산출은 미추적.
 # spec.yaml · state.yaml · README.md · _workspace/issues-log.md 만 tracked.
 .harness/events.log

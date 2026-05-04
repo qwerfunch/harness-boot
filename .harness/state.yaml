@@ -2686,8 +2686,52 @@ features:
     summary: "F-125 legacy/scripts/ git eviction verified: git ls-files legacy/ returns 0 (was 72); find legacy -type f returns 146 (working tree fully preserved on maintainer machine). CLAUDE.md L31/64-65/119 reference sites updated; layout block trimmed by 2 lines (legacy/scripts/ entry removed); §7 working rule changed from 'keep tracked, no new' to 'fully untracked, do not re-add'. self_check 5/5 PASS, harness check clean, npm test 622/622 PASS, harness validate clean. Scope deliberately narrow: tests/unit + tests/integration Python suites (74 files, ~15k LOC) are quarantined but distinct from legacy/scripts and remain a separate user decision noted in the PR body."
   started_at: 2026-05-04T17:45:11Z
   completed_at: 2026-05-04T17:47:27Z
+- id: F-126
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-04T17:54:11Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-04T17:54:12Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-04T17:54:13Z
+      note: "cmd: npm run lint"
+    gate_3:
+      last_result: pass
+      ts: 2026-05-04T17:54:16Z
+      note: "cmd: npx nyc npm test"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-04T17:54:17Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-04T17:54:11Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.4s) · cmd: npm test"
+  - ts: 2026-05-04T17:54:12Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.8s) · cmd: npm run typecheck"
+  - ts: 2026-05-04T17:54:13Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.3s) · cmd: npm run lint"
+  - ts: 2026-05-04T17:54:16Z
+    kind: gate_run
+    summary: "Gate gate_3 pass (2.7s) · cmd: npx nyc npm test"
+  - ts: 2026-05-04T17:54:17Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.5s) · cmd: bash self_check.sh"
+  - ts: 2026-05-04T17:54:30Z
+    kind: manual_check
+    summary: "F-126 Python test eviction verified: git ls-files tests/unit | wc -l = 0 (was 69), tests/integration = 0 (was 5), tests/scale = 0 (was 2). Working tree preserved (find tests/unit tests/integration tests/scale -type f = 231 files including pycache). tests/parity/fixtures/**/generate_fixtures.py (3) + tests/fixtures/brownfield-repos/python-fastapi/.../models.py (1) preserved as helper/fixture (not tests). .gitignore L43-49 grew block for tests/unit + tests/integration + tests/scale alongside legacy/. CLAUDE.md L30 (Scaling preparedness) updated to note Python benchmark retired with TS port queued; L66 (Python tests quarantined line) removed; L109 reference-map row removed. self_check 5/5 PASS, npm test 622/622 PASS (TS parity unaffected), harness check clean, harness validate clean."
+  started_at: 2026-05-04T17:52:40Z
+  completed_at: null
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-125
+  last_command: /harness:work F-126
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-126
