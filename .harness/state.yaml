@@ -2516,6 +2516,50 @@ features:
     summary: "L-001 template summary added · L-003 gate_0 cargo+go probes · L-002 halt #10 gate_no_progress wired — 8 new tests, 621/621 green, self_check OK"
   started_at: 2026-05-04T05:41:51Z
   completed_at: 2026-05-04T05:50:12Z
+- id: F-122
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-04T16:30:31Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-04T16:30:32Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-04T16:30:34Z
+      note: "cmd: npm run lint"
+    gate_3:
+      last_result: pass
+      ts: 2026-05-04T16:30:37Z
+      note: "cmd: npx nyc npm test"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-04T16:30:37Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-04T16:30:31Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.4s) · cmd: npm test"
+  - ts: 2026-05-04T16:30:32Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.8s) · cmd: npm run typecheck"
+  - ts: 2026-05-04T16:30:34Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.4s) · cmd: npm run lint"
+  - ts: 2026-05-04T16:30:37Z
+    kind: gate_run
+    summary: "Gate gate_3 pass (2.6s) · cmd: npx nyc npm test"
+  - ts: 2026-05-04T16:30:37Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.5s) · cmd: bash self_check.sh"
+  - ts: 2026-05-04T16:31:28Z
+    kind: test
+    summary: seedCheckpoint started_at dynamic + regression-guard test added; npm test 622/622 (was 615/621)
+  started_at: 2026-05-04T16:29:32Z
+  completed_at: 2026-05-04T16:32:03Z
 - id: F-123
   status: done
   gates:

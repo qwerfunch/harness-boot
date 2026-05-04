@@ -4566,11 +4566,48 @@ features:
       - "AC-8: F-121 mirrored on both spec.yaml copies; logcat-on ISSUES-LOG entries grow a `Resolution:` line citing F-121 + the merge commit, per the F-027 return convention."
       - "AC-9: F-121 completed via the harness CLI cycle on `feat/v0.14.2-logcat-on-issues-log-batch`. Patch release v0.14.2."
 
+  - id: "F-122"
+    name: "driveLoopAndPlan.test.ts seedCheckpoint time-bomb fix"
+    type: "fix"
+    description: |
+      Thirty-ninth cycle. Discovered during the v0.14.2 work-vs-drive
+      verification cycle: `tests/parity/driveLoopAndPlan.test.ts`
+      hardcoded `seedCheckpoint()` to `started_at = '2026-05-04T10:00:00Z'`
+      with the default `max_seconds = 7200` (2h). The six halt-detection
+      cases that did not inject `now:` (#5 blocked, #3 retry_threshold,
+      #10 gate_no_progress x2, retry-vs-stagnation priority, goal
+      completion) used real time — so 24h after F-119 was authored
+      (2026-05-04 -> 2026-05-05) every CI run produced
+      `wall_clock` halt #6 first, masking the expected halts.
+
+      Production code (src/drive/loop.ts wall_clock check at line
+      303-323) is correct — the test fixture failed to isolate time.
+      Fix is one-line: change seedCheckpoint default `started_at` to
+      `new Date().toISOString()` so the fixture always represents a
+      "drive that just started" with `elapsed = 0`. Cases that need
+      to assert wall_clock behaviour (line 137-141) explicitly
+      override both `started_at` and `now:` and remain unaffected.
+
+      Add a regression-guard test that asserts `seedCheckpoint`
+      default is dynamic so the next person who tries to hardcode
+      a date is caught at test time rather than 24h later.
+
+      Patch-only — no production code changes, no schema changes,
+      no behaviour changes for users.
+
+    acceptance_criteria:
+      - "AC-1: `tests/parity/driveLoopAndPlan.test.ts` `seedCheckpoint()` default `started_at` becomes `new Date().toISOString()` (dynamic) instead of the hardcoded ISO literal."
+      - "AC-2: The six previously failing halt-detection cases (halt #5, #3, #10 x2, retry-vs-stagnation priority, goal completion) all pass without any `now:` injection — the dynamic default already keeps `elapsed` near 0."
+      - "AC-3: A new regression-guard `it()` block asserts that after `seedCheckpoint()` runs, `Date.now() - Date.parse(ck.execute.started_at)` is < 60_000 ms — catches anyone who tries to revert the fix."
+      - "AC-4: `npm test` passes 622+/622+ (was 615/621 with 6 fails before this patch). The wall_clock self-test (`halt #6 — wall-clock cap reached`) keeps passing because it overrides both `started_at` and `now:` explicitly."
+      - "AC-5: F-122 mirrored on both spec.yaml copies."
+      - "AC-6: F-122 completed via the harness CLI cycle on `fix/v0.14.3-driveloop-test-time-isolation`. Patch release v0.14.3."
+
   - id: "F-123"
     name: "CLAUDE.md staleness refresh + harness.yaml spec hash sync"
     type: "chore"
     description: |
-      Thirty-ninth cycle. Self-audit caught two distinct
+      Fortieth cycle. Self-audit caught two distinct
       maintenance debts that had accumulated since v0.11.1:
 
       Debt 1 — `CLAUDE.md` (the project context loaded into every

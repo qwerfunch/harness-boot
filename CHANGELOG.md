@@ -18,6 +18,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - F-073 (`read_events(tail=N)`) and F-074 (`canonical_hash` mtime cache) — v0.11.11 cumulative-slowdown audit queue.
 - Next-skill candidates after feature-author soaks — `drift-explain-and-fix` · `acceptance-criteria-craft` · `gate-recover` · `evidence-craft`. Sequential, not parallel — one experiment at a time. Internal A/B test (2026-04-30) showed existing capability already covers these cases — pick up only on external user pain signal.
 
+## [0.14.3] — 2026-05-05
+
+**driveLoopAndPlan.test.ts seedCheckpoint time-bomb fix (F-122).**
+
+Discovered while running the v0.14.2 work-vs-drive verification cycle on 2026-05-05. Six halt-detection cases in `tests/parity/driveLoopAndPlan.test.ts` started failing 24h after F-119 (drive Stage 2) was authored. Root cause: the test fixture `seedCheckpoint()` hardcoded `started_at = '2026-05-04T10:00:00Z'`, and `defaultCheckpoint.max_seconds = 7200` (2h). Once real wall-clock outran the 2h window, drive's `wall_clock` halt #6 fired before any other halt the test was actually asserting (#5 blocked, #3 retry_threshold, #10 gate_no_progress, retry-vs-stagnation priority, goal completion).
+
+Production code (`src/drive/loop.ts:303-323` wall_clock check) is correct — only the test fixture failed to isolate time. The fix flips the default `started_at` to `new Date().toISOString()` (dynamic, "drive that just started"), and a regression-guard `it()` block pins the dynamic-default behaviour so the next person who tries to revert is caught at test time rather than 24h later.
+
+Patch-only — zero production code changes, zero schema/behaviour changes. Users do not need to update; the existing v0.14.2 install is functionally identical. The release exists so CI on every downstream fork stays green.
+
+### Fixed
+
+- **F-122** — `tests/parity/driveLoopAndPlan.test.ts` `seedCheckpoint()` default `started_at` becomes dynamic (`new Date().toISOString()`) instead of the hardcoded `'2026-05-04T10:00:00Z'` literal. The wall_clock self-test (`halt #6 — wall-clock cap reached`) keeps passing because it overrides both `started_at` and `now:` explicitly. New regression-guard test `seedCheckpoint default started_at is dynamic` asserts the fix is preserved.
+
+### Verification
+
+- `npm run typecheck` clean
+- `npm run lint` clean
+- `npm test` — **622/622** (was 615/621 with 6 fails on 2026-05-05 before this patch; 621/621 on the day of authorship 2026-05-04)
+- `bash self_check.sh` 5/5 OK
+- F-122 completed via `node bin/harness work F-122 --harness-dir .harness --complete` on `fix/v0.14.3-driveloop-test-time-isolation`
+
 ## [0.14.2] — 2026-05-04
 
 **logcat-on ISSUES-LOG batch return — L-001 / L-002 / L-003 (F-121).**
