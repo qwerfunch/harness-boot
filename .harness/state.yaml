@@ -2775,7 +2775,7 @@ features:
   started_at: 2026-05-04T18:05:29Z
   completed_at: 2026-05-04T18:08:37Z
 - id: F-128
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -2817,9 +2817,9 @@ features:
     kind: manual_check
     summary: "F-128 v0.14.3 release prep verified: CHANGELOG.md [0.14.3] entry expanded — F-122 narrative preserved, Fixed/Changed/Removed sections added enumerating F-122/F-127 (Fixed) + F-123/F-124 (Changed) + F-125/F-126 (Removed). README.md v0.14.x section grew **v0.14.3** entry above v0.14.0; README.ko.md got matching native-Korean entry. plugin.json/package.json already at 0.14.3 (no edit). self_check 5/5 PASS, npm test 622/622 PASS, harness check clean, harness validate clean. Tag + gh release create deferred to post-merge main fast-forward."
   started_at: 2026-05-04T18:14:11Z
-  completed_at: null
+  completed_at: 2026-05-04T18:16:33Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-128
   last_gate_passed: gate_5
-  active_feature_id: F-128
+  active_feature_id: null
