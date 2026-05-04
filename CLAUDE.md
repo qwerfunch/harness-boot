@@ -7,37 +7,38 @@
 
 The source of the Claude Code plugin `harness-boot`. Users install the `.harness/` skeleton into their own project with `/harness-boot:init`, then run the per-feature cycle (activate → gate → evidence → complete) through a single `/harness-boot:work` command. The v0.9.0 UX rewrite collapsed the surface to two slash commands you actually have to memorize.
 
-- **Current release**: v0.11.1 (tagged 2026-04-27 — Iron Law rename + F-048 drift × Iron Law gating). The marketplace PR is held until the user explicitly green-lights it (memory: `marketplace_timing`). For full history see `git log` and `CHANGELOG.md`.
+- **Current release**: see [`.claude-plugin/plugin.json`](./.claude-plugin/plugin.json) `version` field (canonical). Tagged-release narrative is in [`CHANGELOG.md`](./CHANGELOG.md) (Keep a Changelog 1.1.0). Commit-level history: `git log --oneline`. The marketplace PR is held until the user explicitly green-lights it (memory: `marketplace_timing`).
 - **Install path**: `/plugin marketplace add qwerfunch/harness-boot` then `/plugin install harness-boot@harness-boot`. Update with `/plugin update harness-boot@harness-boot`.
 - **SemVer policy**: patch-first. Even new features ship as X.Y.Z+1. Minor and major bumps require user confirmation and are reserved for substantial milestones.
 - **License**: MIT · Author: qwerfunch
 
 ## 2. Where we are
 
-**v0.11.1 — Iron Law (renamed from "Iron Law D") + drift × Iron Law gating** (2026-04-27).
+For *which release* and *what shipped in it* see [`CHANGELOG.md`](./CHANGELOG.md). The list below is the cumulative *capability inventory* — what the harness can do, not when each capability landed. Capability lines stay current as long as the underlying code stays current; release labels are deliberately omitted to keep the document evergreen.
 
 Cumulative state:
 
-- **Two slash commands** (`/harness-boot:init` · `/harness-boot:work`) — collapsed in v0.9.0. `init` accepts a free-form natural-language prompt or a 3-option menu; `work` handles no-args (dashboard, v0.9.2), natural-language intents, and direct F-ID invocation alike.
-- **Gate automation 0/1/2/3/5** — `src/gate/runner.ts` walks pyproject pytest → npm scripts (typecheck/lint/test:coverage/smoke/test:e2e, v0.10.2) → direct tool invocation → polyglot fallback in that order. **BR-004 Iron Law (gate_5 = pass + declared evidence ≥ N) is automated end-to-end.**
-- **Iron Law — cumulative declared evidence** (v0.9.3) + **product mode strict** (v0.10.3) — when `project.mode == product`, every recorded gate's `last_result` must be non-fail before complete is allowed. Prototype mode keeps the lighter contract. The "D" suffix from v0.9.3 history was dropped in v0.11.1 — internal evolution marker that confused users.
-- **Drift × Iron Law gating** (v0.11.1, F-048) — `complete()` now calls `src/check.ts` first. `severity="error"` findings on wire-integrity drift kinds (`Code` · `Stale` · `AnchorIntegration`) reject the transition; `--hotfix-reason` still bypasses. Closes GAP 1 from the 4-mechanism cohesion analysis.
-- **Project mode axis** (v0.9.6) — `spec.project.mode ∈ {prototype, product}` is the single switch that determines the Iron Law floor, kickoff/retro template depth, and design-review autowire behavior. Unset → product (strict default).
-- **Drift detection 12 kinds** — Generated · Derived · Spec · Include · Evidence · Code · Anchor · Adr · Stale · AnchorIntegration · Doc · Protocol. Two-layer supersession metadata (`features[].supersedes` / `superseded_by`) and the archive flow (v0.10.0).
-- **Ceremony automation 4/4** — kickoff · retro · design-review · inbox.
-- **Phase 2 self-dogfood active** (since 2026-04-27) — `.harness/` is the live workspace. Every new feature in this repo runs through `node bin/harness work F-N --harness-dir .harness`. See §7 for the contract.
-- **Init/work observability** (v0.10.5) — the `## Issue logging` section in `commands/{init,work}.md` plus `hooks/prompt-log.sh` (UserPromptSubmit). Users accumulate `.harness/_workspace/{issues-log.md, prompts/YYYY-MM.jsonl}` → maintainer return cycle + prompt-shape corpus.
-- **Scaling preparedness** (v0.10.6) — five additive fields on `features[]` (area · archived_at · archive_reason · digest · include_path) plus `src/spec/{shard,unshard,summary}.ts` (TS port pending; spec utilities deferred past v0.13.0) and `tests/scale/test_scale.py` measuring 100 / 1000 / 3000 / 10000 features. Users won't need to invoke any of this until ~300 features.
-- **cosmic-suika ISSUES-LOG batch return** (v0.10.7) — I-003 (recommended tsconfig) · I-004 (relaxed `risks[].id` pattern) · I-006 (clarified `--kind trivial`) · I-007 (changelog version optional). The first return cycle for the F-027 convention.
-- **Cumulative tests**: 1119 (1110 unit + 26 integration + F-048's 7 new). 41+ test files.
+- **Two slash commands** (`/harness-boot:init` · `/harness-boot:work`) — `init` scaffolds the `.harness/` skeleton; `work` handles no-args dashboard, natural-language intents, and direct F-ID invocation.
+- **Gate automation** — `src/gate/runner.ts` auto-detects toolchains for gate_0 (tests) · gate_1 (typecheck) · gate_2 (lint) · gate_3 (coverage) · gate_5 (smoke) · gate_perf, walking pyproject → npm → Cargo → Go in that priority. **BR-004 Iron Law (gate_5 = pass + declared evidence ≥ N) is automated end-to-end.**
+- **Iron Law — cumulative declared evidence + product-mode strict** — when `project.mode == product`, every recorded gate's `last_result` must be non-fail before complete is allowed. `prototype` mode keeps the lighter contract (1 declared evidence). `--hotfix-reason` is the audited bypass.
+- **Drift × Iron Law gating** (F-048) — `complete()` calls `src/check.ts` first. `severity="error"` findings on the wire-integrity drift kinds reject the transition. <!-- harness:fact key=blocking_drift_kinds_count value=4 source=src/work.ts:BLOCKING_DRIFT_KINDS --> Four kinds (`Code · Stale · AnchorIntegration · Coverage`) <!-- /harness:fact --> currently block; `--hotfix-reason` bypasses with audit trail.
+- **Project mode axis** — `spec.project.mode ∈ {prototype, product}` is the single switch determining the Iron Law floor, kickoff/retro template depth, and design-review autowire behavior. Unset → product (strict default).
+- **Drift detection** — <!-- harness:fact key=drift_kinds_count value=13 source=src/check.ts:runCheck --> 13 kinds <!-- /harness:fact -->: Generated · Derived · Spec · Include · Evidence · Code · Anchor · Adr · Stale · AnchorIntegration · Doc · Protocol · Coverage (description-vs-fingerprint substantive coverage). Two-layer supersession metadata (`features[].supersedes` / `superseded_by`) and the archive flow.
+- **Ceremony automation 4/4** — kickoff · retro · design-review · inbox; all auto-fire from `src/work.ts` lifecycle hooks (silent on failure).
+- **Phase 2 self-dogfood active** — `.harness/` is the live workspace. Every new feature in this repo runs through `node bin/harness work F-N --harness-dir .harness`. See §7 for the contract.
+- **Init/work observability** — the `## Issue logging` section in `commands/{init,work}.md` plus `hooks/prompt-log.sh` (UserPromptSubmit). Users accumulate `.harness/_workspace/{issues-log.md, prompts/YYYY-MM.jsonl}` → maintainer return cycle + prompt-shape corpus.
+- **Scaling preparedness** — five additive fields on `features[]` (area · archived_at · archive_reason · digest · include_path) plus `tests/scale/test_scale.py` measuring 100 / 1000 / 3000 / 10000 features. Sharding utilities are scoped but not required until ~300 features.
+- **TS migration cutover** — full Python → TypeScript operational rewrite. The plugin ships as a single `dist/cli/harness.bundle.mjs` (esbuild) loaded by `bin/harness`; install sites no longer need `node_modules`. Python files in `legacy/` are read-only history.
+- **Drive autonomous loop** — natural-language goal → researcher → product-planner → feature-author → execute, with bounded halts (10-enum: max iterations, wall clock, blocked feature, retry threshold, gate no progress, …). Halt classes live in `src/drive/halt.ts`.
+- **feature-author skill** — auto-trigger spec entry authoring on free-text feature ideas; auto-detects shape (UI / sensitive / performance / pure-domain) and emits paste-ready `features[]` blocks for both spec.yaml mirrors.
 
-**Next-thread candidates**: see §9.
+**Next-thread candidates**: see §9. **Recent shipped releases**: see [`CHANGELOG.md`](./CHANGELOG.md).
 
 ## 3. Repo layout (tracked files only)
 
 ```
 .claude-plugin/
-├── plugin.json                     # plugin manifest (name: "harness-boot", v0.11.1)
+├── plugin.json                     # plugin manifest — `version` is the canonical SSoT
 └── marketplace.json                # single-plugin marketplace
 .harness/                           # Phase 2 active dogfood workspace (§7)
 ├── spec.yaml                       # copy of docs/samples/harness-boot-self/spec.yaml (diff -q enforced)
@@ -67,7 +68,7 @@ tests/unit/ · tests/integration/    # Python tests (quarantined; reference-only
 tests/regression/conversion-goldens/   # golden samples + MANIFEST
 docs/
 ├── schemas/spec.schema.json        # spec v2.3.8 JSONSchema (Walking Skeleton enforced + project.mode)
-├── samples/harness-boot-self/      # self-referential canonical spec (49 features incl. F-048/F-049)
+├── samples/harness-boot-self/      # self-referential canonical spec — `wc -l` for current size
 ├── templates/starter/              # the templates /harness-boot:init copies (CLAUDE.md.template, etc.)
 ├── glossary/BRAND_TERMS.md         # F-041 — 28 brand terms (Walking Skeleton · Iron Law · …)
 ├── i18n/README.md                  # F-040 — runtime locale policy
@@ -81,47 +82,17 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (this file)
 
 ## 4. Current git state
 
-- **Tags**: v0.1.0 through v0.11.1 are pushed to origin (v0.10.4 was retroactive). Tags must not move.
-- **main HEAD**: `eeb35bc release: v0.11.1 — Iron Law rename + F-048 drift × Iron Law gating`.
-- **Default branch**: main (the marketplace fetch ref). Work branches follow `feat/v0.X.Y-*` / `fix/v0.X.Y-*` and fast-forward into main.
-- **Working tree**: clean.
-- **Next thread**: F-049 (in progress) — native English consolidation, Phase 1 entry-point dev surfaces. See §9.
+- **Tags**: see `git tag --sort=-version:refname` (canonical). Retroactive tags (e.g. v0.10.4) are documented in `CHANGELOG.md` where relevant. **Tags must not move.**
+- **main HEAD**: `git rev-parse main` and `git log -1 main` for current pointer + message.
+- **Default branch**: main (the marketplace fetch ref). Work branches follow `feat/v0.X.Y-*` / `fix/v0.X.Y-*` and merge into `develop`; `develop` fast-forwards into `main` on user-confirmed release.
+- **Working tree state and in-flight branches**: `git status` and `gh pr list --state open` are the SSoT — this document does not enumerate them. In-progress F-IDs live in [`.harness/state.yaml`](./.harness/state.yaml) `features[].status==in_progress`.
+- **Next-thread candidates**: see §9.
 
 ## 5. Recent commit context
 
-**v0.11.x line — naming cleanup + 4-mechanism cohesion (Iron Law × drift gating)** (2026-04-27 cluster):
-- `eeb35bc release: v0.11.1 — Iron Law rename + F-048 drift × Iron Law gating` (3-commit thread bundled into a patch release)
-- `b03441d feat(F-048): drift × Iron Law gating — complete() blocks on wire-integrity drift` (closes GAP 1: complete() now calls check.py)
-- `856198c chore: rename "Iron Law D" → "Iron Law" (BR-004 simplification)` (drop the v0.9.3 history-marker "D" from external naming)
+**Source of truth**: [`CHANGELOG.md`](./CHANGELOG.md) (Keep a Changelog 1.1.0 — structured BREAKING / Added / Changed / Deprecated / Removed / Fixed / Security per release). For commit-level context: `git log --oneline v0.X.0..HEAD` or `git log --grep="F-NNN"`.
 
-**v0.11.0 — vision consolidation**:
-- `97e71f9 feat(v0.11.0): vision consolidation — 6-release refactor thread closes (F-047)` (F-001 → F-010 archived in place; minor bump on user confirmation)
-
-**v0.10.x line — Phase 2 self-hosting + cosmic-suika ISSUES-LOG return + observability + scaling preparedness**:
-- `2610829 feat(v0.10.7): cosmic-suika ISSUES-LOG batch return (I-003 / I-004 / I-006 / I-007)`
-- `3e8160a feat(v0.10.6): scaling preparedness — F-029 schema + F-030 sharding tools + F-031 stress test` (avoids 1k–10k feature post-hoc migration cost)
-- `36dab82 feat(v0.10.5): init/work observability — issue logging (F-027) + prompt logging (F-028)` (standardizes the cosmic-suika ISSUES-LOG pattern)
-- `bc8e539 feat(v0.10.4): Phase 2 self-hosting active — F-025/F-026 + smoke shim + pytest scope` (the Phase 1 → Phase 2 flip)
-- `38eba96 feat(v0.10.3): cosmic-suika I-008 — Iron Law D product mode strict` (recorded gate fail blocks complete)
-- `2a4c66d feat(v0.10.2): cosmic-suika I-001 — npm scripts auto-detection in gate runner`
-- `89c5776 feat(v0.10.1): cosmic-suika ISSUES-LOG patch — AnchorIntegration drift + no-args dashboard candidates`
-- `ede6f98 feat(v0.10.0): two-layer supersession — features[] supersedes/superseded_by + archive flow + Stale drift`
-
-**v0.9.x line — UX rewrite + Iron Law + mode axis**:
-- `e969e28 feat(v0.9.0)!: UX re-architecture step 1 — namespace rename + command consolidation` (8 → 2 commands, `harness` → `harness-boot`)
-- `87a490c feat(v0.9.1): feature_resolver module + scripts/ui/ scaffolding`
-- `9d31637 feat(v0.9.2): dashboard + intent_planner — no-args entry point`
-- `1a631ab feat(v0.9.3): Iron Law D — cumulative declared evidence + hotfix override`
-- `8194716 feat(v0.9.4): README overhaul + scenario contract table + plugin description modernization`
-- `db9d0db feat(v0.9.6): project mode axis — prototype/product ceremony lightening`
-
-**v0.8.x line — agent fixtures + ceremonies + CI**:
-- `66c8a25 feat(v0.8.0): design-review auto-wire closes 4/4 ceremony automation`
-- `aae9e8f feat(v0.8.1): complete agent-eval fixtures 15/15`
-- `9746770 feat(v0.8.3): Phase 3 CI — GitHub Actions self-check workflow`
-- `1bc95a8 feat(v0.8.6): events.log monthly rotation`
-
-**Pre-v0.7.x** (subpackage cleanup, gate auto-runners) is recoverable via `git log --oneline v0.7.0..HEAD` or the tag list (`git tag --sort=-version:refname`).
+**Why this section is a pointer, not a narrative**: every prior version of CLAUDE.md hardcoded release-cluster summaries here. They duplicated CHANGELOG.md verbatim and went stale as soon as the next release shipped (v0.11.1 → v0.14.x drifted three minor versions before the F-123 / F-124 sweep caught it). The CHANGELOG is the canonical timeline; this file documents capability inventory (§2) and decision intent (§8 / §9), not history.
 
 ## 6. Reference map
 
@@ -130,13 +101,14 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (this file)
 | 30-second status check | `README.md` plus this file |
 | **Continuing work in Claude Code** | `design/HANDOFF-to-claude-code.md` (gitignored) |
 | First-run smoke verification | `docs/archive/first-run-checklist-v0.1.0.md` (F-042 archive) |
-| Tagging / release playbook | `docs/archive/release-v0.1.0-playbook.md` (F-042 archive — same playbook applies through v0.11.x) |
+| Tagging / release playbook | `docs/archive/release-v0.1.0-playbook.md` (F-042 archive — same playbook applies through v0.14.x) |
 | Full change history | `CHANGELOG.md` |
 | Slash command spec | `commands/{init,work}.md` (Preamble convention · BR-014 NO skip / NO shortcut two-liner) |
 | Spec v2.3.8 JSONSchema | `docs/schemas/spec.schema.json` |
 | **Self-referential canonical spec** | `docs/samples/harness-boot-self/spec.yaml` — the SSoT for `.harness/spec.yaml` |
 | Skill v0.5 implementation guide | `skills/spec-conversion/SKILL.md` |
-| Script-layer tests | `tests/unit/test_*.py` (1119 tests) |
+| TS parity tests | `tests/parity/*.test.ts` (~620 vitest tests, operational since v0.13.0) |
+| Legacy Python tests | `tests/unit/test_*.py` (1119 tests, quarantined post-v0.13.0 cutover; reference-only) |
 | Project mode semantics | `src/core/projectMode.ts` (prototype-vs-product docstring) |
 | Self-hosting appendix | `docs/archive/local-install-v0.1.0.md` Appendix A (F-042 archive) |
 | Local memory (user style, progress notes) | `~/.claude/projects/.../memory/MEMORY.md` (gitignored) |
@@ -180,52 +152,50 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (this file)
 - **Anti-rationalization**: both slash commands carry the Preamble, with the `NO skip:` / `NO shortcut:` pair on lines 2 and 3 (BR-014).
 - **CQS**: read-only commands (`status` · `check` · `events` · `metrics`) never change a target file's mtime. Tests verify the invariant.
 
-## 8. Known limitations (as of v0.11.1)
+## 8. Known limitations
 
-**Closed since the last CLAUDE.md snapshot:**
-- v0.4 → v0.7: agent fixtures 15/15 · ceremonies 4/4 · subpackage cleanup · gate auto-runners.
-- v0.8.x: Phase 3 CI · monthly events.log rotation · agent fixtures complete · design-review autowire.
-- v0.9.x: command consolidation (8 → 2) · feature_resolver · no-args dashboard · Iron Law · README user-friendly · project mode axis.
-- v0.10.0–3: two-layer supersession + Stale drift · cosmic-suika I-001/I-008/I-010 returns.
-- v0.10.4: **Phase 2 self-hosting deferral resolved** (2026-04-27) — this repo became real dogfood.
-- v0.10.5: init/work observability — F-027 issue-logging convention + F-028 prompt-log hook.
-- v0.10.6: scaling preparedness — F-029 schema (5 additive fields) + F-030 sharding tools + F-031 stress test (1k–10k features measured).
-- v0.10.7: cosmic-suika ISSUES-LOG batch return (I-003 tsconfig + I-004 risks pattern + I-006 kind=trivial + I-007 changelog version optional).
-- v0.11.0: vision consolidation — F-001 → F-010 archived in place, 6-release refactor thread closed.
-- v0.11.1: Iron Law rename ("D" suffix dropped) + F-048 drift × Iron Law gating (GAP 1 of the 4-mechanism cohesion analysis closed).
+**Closed items**: tracked release-by-release in [`CHANGELOG.md`](./CHANGELOG.md). This section deliberately does *not* enumerate them — that history is the changelog's job, not this document's.
 
-**Open:**
-- Cross-language canonical hash test vectors (Appendix D.7) — Node / Go cross-validation not yet implemented.
-- AC coverage drift (a candidate for a 13th drift detector in `src/check.ts`).
-- URL → design seed — large scope and IP-boundary concerns (reviewed 2026-04-24).
+**Open** (decision intent — what we know but have not yet acted on):
+
+- **Cross-language canonical hash test vectors** (Appendix D.7) — Node / Go cross-validation not yet implemented.
+- **AC ↔ Test traceability** (proposed 14th drift kind, F-125 candidate): ensure each `acceptance_criteria[]` entry maps to a concrete test function. Distinct from the `Coverage` detector, which is description-vs-fingerprint, not AC-vs-test.
+- **LLM author attribution on evidence** (F-126 candidate): tag each `evidence[]` entry with `author=human|llm` so audits can distinguish declared human verification from automated gate runs. Closes the F-122 audit weakness ("five evidence entries, all `gate_run`").
+- **Content drift detector** (proposed 15th drift kind, F-127 candidate): validate `<!-- harness:fact key=X value=V source=Y -->` sigil regions in this CLAUDE.md (and elsewhere) against the cited code SSoT — auto-rejects stale L2 facts.
+- **Pre-push hook** calling `runBlockingCheck` — moves Iron Law from post-hoc (`--complete`) to in-flight (`git push`). Pre-commit was rejected as too-frequent; pre-push is the right cadence.
+- **External dogfood expansion** beyond cosmic-suika and logcat-on — recruit 1–2 additional OSS adopters and run an ISSUES-LOG return cycle. Differentiation narrative is currently single-source.
+- URL → design seed — large scope and IP-boundary concerns.
 - gate_perf auto-detect heuristics (lighthouse / k6 / wrk config detection).
-- The pre-commit hook is in place, but the discipline still relies on memory; tighten if it slips.
-- F-030 sharding utility (and other spec/* author tools) has not been ported to TS yet — listed under tier-3 follow-ups.
+- F-030 sharding utility (and other spec/* author tools) has not been ported to TS yet — `harness check` runs at 0.27 s on the live workspace, so low priority until real-world scale demands it.
 - F-028 prompt-log hook needs a production check — confirm prompts actually accumulate after a real `/plugin update`.
-- F-049 → F-053 native-English consolidation thread (§9) is in flight: F-049 closes the Phase 1 entry-point surfaces; F-050 covers spec mirrors + schema; F-051 covers `scripts/` Python docstrings; F-052 covers `tests/`; F-053 settles a CHANGELOG English-only-going-forward policy.
+- F-034 pre-commit hook does not cover merge commits (no `active_feature_id` after a feature completes); a `.git/MERGE_HEAD` short-circuit is logged in `.harness/_workspace/issues-log.md`.
 
 ## 9. Next-phase candidates
 
-**v0.11.1 shipped (2026-04-27). Active and queued:**
-
 ### In progress
-- **F-049** — native English consolidation, Phase 1: top-level dev docs + supporting docs + hook script banners. (this commit)
+The authoritative list lives in [`.harness/state.yaml`](./.harness/state.yaml) `features[]` where `status == in_progress`. Open PRs: `gh pr list --state open`. This document does not enumerate them — those values change per push and are guaranteed to drift if hardcoded here.
 
-### Queued (user opt-in per phase)
-- **F-050** — Phase 2: both spec mirrors + `docs/schemas/spec.schema.json` description bodies.
-- **F-051** — Phase 3: `scripts/` Python docstrings and comments.
-- **F-052** — Phase 4: `tests/` Python docstrings and comments.
-- **F-053** — Phase 5: CHANGELOG English-only-going-forward policy (history preserved as-is).
+### Queued — Tier 1 (promotable to the next cycle)
+- **AC ↔ Test traceability detector** (proposed 14th drift kind) — each `acceptance_criteria[]` entry must map to a concrete test function. Distinct from the `Coverage` detector (description-vs-fingerprint). Strengthens the differentiation axis.
+- **LLM author attribution on evidence** — schema 1 field (`author=human|llm`) + work.ts kind branching. Closes the audit weakness where automated gate-run evidence alone passes the Iron Law without any declared human verification.
+- **Content drift detector** (proposed 15th drift kind, Step B of the CLAUDE.md info-architecture refactor) — validates `<!-- harness:fact key=X value=V source=Y -->` sigil regions in this CLAUDE.md against the cited code SSoT. Auto-rejects stale L2 facts. Self_check.sh adds a step 6.
+
+### Queued — Tier 2 (external-validation gated)
+- **Pre-push hook** invoking `runBlockingCheck` — moves Iron Law from post-hoc (`--complete`) to in-flight (`git push`). Pre-commit was rejected as too-frequent; pre-push is the right cadence. Predicate: at least 1–2 external dogfood adopters have run a complete cycle without trip-wires firing.
+- **External dogfood expansion** — beyond cosmic-suika and logcat-on, recruit 1–2 OSS adopters and run an ISSUES-LOG return cycle. The differentiation narrative needs more than one external signal.
 
 ### Available but not scheduled
-- AC coverage drift detector — would be the 13th drift kind in `src/check.ts`.
-- The next batch of cosmic-suika ISSUES-LOG returns, when external usage surfaces them.
-- F-049 Tier-promotion candidates from the 4-mechanism cohesion analysis (LLM author-attribution on evidence; Preamble compliance scanner). Held until external dogfood validates the need.
+- The next batch of ISSUES-LOG returns from any adopter, when external usage surfaces them.
+- `harness check` parallelisation + incremental mode — currently a premature optimisation (sub-second on the live workspace). Re-evaluate at ~1 k features.
 
-### Larger milestones (user confirmation, minor bump)
+### Larger milestones (user confirmation, minor or major bump)
 - Cross-language canonical hash test vectors (Node / Go cross-check).
+- MCP server (`@modelcontextprotocol/sdk`) — exposes harness state · spec · events to non-Claude-Code clients (Cursor, Continue, Cline). Predicate: external dogfood corpus large enough to justify cross-client investment.
+- VSCode extension — IDE sidebar dashboard + drift squigglies. Predicate: same as MCP.
+- Plugin SDK / external detector registration — let downstream projects register custom drift detectors via `harness.yaml.detectors[]`.
 - URL → design seed (scope decision needed).
 - gate_perf auto-detect heuristics.
+- Semantic drift detector (LLM-based) — `acceptance_criteria` intent vs code behaviour. Held: LLM non-determinism + cost.
 
 ## 10. Imports
 

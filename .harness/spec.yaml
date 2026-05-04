@@ -4603,6 +4603,123 @@ features:
       - "AC-5: F-122 mirrored on both spec.yaml copies."
       - "AC-6: F-122 completed via the harness CLI cycle on `fix/v0.14.3-driveloop-test-time-isolation`. Patch release v0.14.3."
 
+  - id: "F-123"
+    name: "CLAUDE.md staleness refresh + harness.yaml spec hash sync"
+    type: "chore"
+    description: |
+      Fortieth cycle. Self-audit caught two distinct
+      maintenance debts that had accumulated since v0.11.1:
+
+      Debt 1 — `CLAUDE.md` (the project context loaded into every
+      new session) reports `Current release: v0.11.1` while
+      `.claude-plugin/plugin.json` is at v0.14.3 and the latest tag
+      is v0.14.2. Three minor versions of recent activity (v0.12.x,
+      v0.13.x — including the Python -> TS full migration —
+      v0.14.x) are missing from the repo's primary onboarding
+      document. Net effect: every fresh chat begins reasoning on
+      a stale snapshot. Two factual errors compound the staleness:
+      §2 still prints "Drift detection 12 kinds" (the Coverage
+      detector at `src/check.ts:1099` brings the count to 13), and
+      the F-048 wire-integrity blocking set is documented as 3
+      kinds (`Code · Stale · AnchorIntegration`) when
+      `BLOCKING_DRIFT_KINDS` in `src/work.ts:75` enumerates 4
+      (`Code · Stale · AnchorIntegration · Coverage`).
+
+      Debt 2 — `harness check` against the live `.harness/`
+      reports `[Spec] spec.yaml: spec change detected — sync
+      required (expected=8eefd348..., actual=f36bc6b3...)`.
+      Root cause: a prior cycle modified `.harness/spec.yaml`
+      without running `harness sync`, so
+      `.harness/harness.yaml.spec_hash` froze at the pre-edit
+      digest. Both mirrors stayed in lockstep with each other
+      (`diff -q` clean), so `self_check.sh` step 1 passes; only
+      step 4 (`harness check`) catches it. Fix: run
+      `harness sync` to recompute the canonical spec hash and
+      regenerate any stale derived artefacts.
+
+      Both debts are recorded as one feature because they share
+      the same audit surface (project-level metadata
+      consistency) and the same fix pattern (read current state,
+      rewrite the stale file). No code-behaviour changes; this
+      is a pure maintenance sweep.
+
+      Patch-only — no schema, behaviour, or BR changes.
+
+    test_strategy: "smoke"
+    acceptance_criteria:
+      - "AC-1: `CLAUDE.md` §1 'Current release' line names the tag matching `.claude-plugin/plugin.json` (v0.14.x family); the dev pointer is the in-flight version when the patch lands."
+      - "AC-2: `CLAUDE.md` §2 'Drift detection' line reports `13 kinds` and includes `Coverage` in the enumerated list."
+      - "AC-3: `CLAUDE.md` §2 'Drift × Iron Law gating' line reports the 4-kind blocking set (`Code · Stale · AnchorIntegration · Coverage`)."
+      - "AC-4: `CLAUDE.md` §3 plugin manifest comment matches the current `.claude-plugin/plugin.json` version."
+      - "AC-5: `CLAUDE.md` §4 'Tags' range covers v0.14.x and 'main HEAD' matches `git rev-parse main`."
+      - "AC-6: `CLAUDE.md` §5 'Recent commit context' grows v0.12.x, v0.13.x (TS-migration cluster), and v0.14.x summary blocks. v0.11.x stays for continuity."
+      - "AC-7: After `harness sync`, `harness check` reports zero `Spec` drift findings — `harness.yaml.spec_hash` matches the live hash of `.harness/spec.yaml`."
+      - "AC-8: F-123 mirrored on both spec.yaml copies (`.harness/spec.yaml` and `docs/samples/harness-boot-self/spec.yaml`); `diff -q` clean."
+      - "AC-9: F-123 completed via the harness CLI cycle on `feat/v0.14.3-claude-md-refresh`. Targets patch release v0.14.3."
+
+  - id: "F-124"
+    name: "CLAUDE.md information architecture refactor — Step A (volatile-data eviction)"
+    type: "chore"
+    description: |
+      Forty-first cycle. Direct follow-up to F-123. The F-123 refresh
+      brought the document back in sync, but it confirmed the deeper
+      problem: CLAUDE.md mixes three classes of information at the same
+      hardcode level, so the file is structurally guaranteed to drift.
+
+      Information classes (canonical labels for the project going
+      forward):
+
+        L1 stable narrative — vision, BR catalogue, working rules,
+            glossary references. Changes in months/years. Hardcode is
+            correct.
+        L2 semi-static — counts and enumerations derived from code
+            (drift kind count, gate enum, Iron Law floor, ceremony 4
+            count). Changes only when the underlying code changes.
+            Hardcode is acceptable but should be marked with a sigil
+            so the value can be auto-validated.
+        L3 volatile — release version, main HEAD hash, tag range,
+            recent-commit cluster summaries, in-flight branches,
+            in-progress F-IDs. Changes every release / merge / PR.
+            Hardcode is the bug. Belongs to its native SSoT
+            (plugin.json, CHANGELOG.md, git, .harness/state.yaml).
+
+      Step A (this feature) rewrites CLAUDE.md so every L3 datum is
+      replaced by a one-line pointer. §5 'Recent commit context' is
+      already 100% redundant with CHANGELOG.md (Keep a Changelog
+      1.1.0 format) — the section collapses to a single pointer.
+      L2 facts gain a `<!-- harness:fact key=... source=... -->`
+      sigil so a future detector (Step B / F-127) can validate them
+      against runCheck output. L1 narrative is preserved verbatim.
+
+      Why now: F-123 already paid the staleness cost once (three
+      minor versions of drift). Without Step A, the next release
+      restarts the same trap. A new memory ritual
+      (`feedback_claude_md_release_ritual.md`) accompanies this
+      patch so the rule survives across chat sessions.
+
+      Step B (`Content` drift detector — F-127) is queued, not
+      bundled. Step A first lets the structure settle so the
+      detector has a stable target.
+
+      Patch-only — no code, schema, or BR changes.
+
+    test_strategy: "smoke"
+    acceptance_criteria:
+      - "AC-1: `CLAUDE.md` §1 'Current release' line is a pointer (e.g. 'see `.claude-plugin/plugin.json` for the canonical version; CHANGELOG.md for recent history') with no `vX.Y.Z` literal."
+      - "AC-2: `CLAUDE.md` §2 'Drift detection' line wraps the count (`13`) inside a sigil `<!-- harness:fact key=drift_count value=13 source=src/check.ts:runCheck --> ... <!-- /harness:fact -->`."
+      - "AC-3: `CLAUDE.md` §2 'Drift × Iron Law gating' line wraps the blocking-set enumeration (4-kind) inside the same sigil pattern (`key=blocking_drift_kinds_count`)."
+      - "AC-4: `CLAUDE.md` §3 plugin manifest comment carries no version literal — points to `.claude-plugin/plugin.json` instead."
+      - "AC-5: `CLAUDE.md` §4 'Tags' and 'main HEAD' replaced by pointers (`see git tag --sort=-version:refname` / `see git rev-parse main`); no SHA, no version range hardcoded."
+      - "AC-6: `CLAUDE.md` §5 'Recent commit context' collapses to a single pointer block referencing `CHANGELOG.md` (Keep a Changelog 1.1.0) and `git log --oneline`. No release-cluster prose, no commit SHAs."
+      - "AC-7: `CLAUDE.md` §8 'Known limitations' Closed-since list collapses to a CHANGELOG pointer. Open list stays as narrative (decision intent is L1, not L3)."
+      - "AC-8: `CLAUDE.md` §9 'In progress' becomes a pointer to `.harness/state.yaml.features[].status==in_progress`. Queued / Available sections stay as narrative."
+      - "AC-9: `wc -l CLAUDE.md` is < 200 (down from 258 after F-123)."
+      - "AC-10: `grep -nE \"v0\\.[0-9]+\\.[0-9]+\" CLAUDE.md` returns matches only inside `<!-- harness:fact ... -->` sigil blocks (Step B will enforce; Step A is grep-clean by inspection)."
+      - "AC-11: `bash self_check.sh` step 5 (commands/*.md preamble) keeps passing — the new sigil syntax does not collide with the existing user-edit-begin/end sigil."
+      - "AC-12: A user memory entry `feedback_claude_md_release_ritual.md` documents the L1/L2/L3 rule, with `Why:` and `How to apply:` lines per the memory schema. Filed alongside this commit so the discipline survives across sessions."
+      - "AC-13: F-124 mirrored on both spec.yaml copies; `diff -q` clean."
+      - "AC-14: F-124 completed via the harness CLI cycle on `feat/v0.14.3-claude-md-refresh` (bundled with F-123 in the same PR — both touch the same file with the same intent of staleness elimination). Patch release v0.14.3."
+
 # v0.14.0 — Drive autonomous loop containers (filled in Stage 2 / F-119).
 # Each Goal groups N features under one user-supplied natural-language
 # objective. The runtime state mirror lives in state.yaml goals[].
