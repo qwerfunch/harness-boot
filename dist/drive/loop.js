@@ -22,6 +22,19 @@ import { executeAction, mapSuggestion, } from './executor.js';
 import { generateGoalRetro } from './goalRetro.js';
 /** Default consecutive-fail threshold for halt #3 (gate retry). */
 export const DEFAULT_MAX_RETRIES = 3;
+/**
+ * F-121 / L-002 — sliding-window cap for the per-(feature, gate) recent
+ * results array on the checkpoint. Three entries is enough to spot
+ * stuck loops without bloating the YAML.
+ */
+export const RECENT_GATE_RESULTS_WINDOW = 3;
+/**
+ * F-121 / L-002 — number of consecutive identical non-pass gate results
+ * that fires halt #10 (`gate_no_progress`). Two is the smallest value
+ * that still distinguishes "first miss" from "stuck on the same point";
+ * tests assert the value to keep the contract explicit.
+ */
+export const GATE_STAGNATION_THRESHOLD = 2;
 /** Returns the current UTC timestamp formatted as `YYYY-MM-DDTHH:MM:SSZ`. */
 function nowIso(now) {
     const yyyy = now.getUTCFullYear().toString().padStart(4, '0');
@@ -176,6 +189,43 @@ function bumpRetryCounter(ck, fid, gate, failed) {
     map[gate] = next;
     return next;
 }
+/**
+ * F-121 / L-002 — appends a gate result to the per-(feature, gate)
+ * sliding window on the checkpoint and reports whether the window has
+ * stagnated.
+ *
+ * Stagnation = the last {@link GATE_STAGNATION_THRESHOLD} entries are
+ * identical AND the result is not `pass`. A `pass` entry resets the
+ * window's stagnation potential — the function still records it so the
+ * audit trail is preserved, but the return flag is false.
+ *
+ * Defensive against legacy checkpoints (`recent_gate_results` may be
+ * absent on pre-F-121 runs); the field is initialised on first call.
+ */
+function recordGateResult(ck, fid, gate, result) {
+    if (!isPlainObject(ck.execute.recent_gate_results)) {
+        ck.execute.recent_gate_results = {};
+    }
+    if (!isPlainObject(ck.execute.recent_gate_results[fid])) {
+        ck.execute.recent_gate_results[fid] = {};
+    }
+    const perFeature = ck.execute.recent_gate_results[fid];
+    const window = Array.isArray(perFeature[gate]) ? [...perFeature[gate]] : [];
+    window.push(result);
+    while (window.length > RECENT_GATE_RESULTS_WINDOW) {
+        window.shift();
+    }
+    perFeature[gate] = window;
+    if (result === 'pass') {
+        return { window, stagnated: false };
+    }
+    if (window.length < GATE_STAGNATION_THRESHOLD) {
+        return { window, stagnated: false };
+    }
+    const tail = window.slice(-GATE_STAGNATION_THRESHOLD);
+    const stagnated = tail.every((r) => r === result);
+    return { window, stagnated };
+}
 /** Returns `feature.status` from a possibly-missing record. */
 function statusOf(feature) {
     return feature === null ? 'planned' : feature.status;
@@ -320,7 +370,10 @@ export function runDriveStep(harnessDir, options) {
     }
     const mapped = mapSuggestion(chosen);
     const executed = executeAction(harnessDir, mapped, options.executorHooks);
-    // Counter bookkeeping for halt #3.
+    // Counter bookkeeping for halt #3 + sliding window for halt #10.
+    // Order matters: retry_threshold is evaluated first so consecutive
+    // FAIL still routes to #3 (its dedicated reason); #10 catches the
+    // residual cases (typically `skipped` from undetectable gates).
     if (mapped.kind === 'run_gate' && executed.work !== undefined) {
         const failed = Array.isArray(executed.work.gates_failed) && executed.work.gates_failed.includes(mapped.gate);
         const count = bumpRetryCounter(ck, mapped.feature_id, mapped.gate, failed);
@@ -337,6 +390,34 @@ export function runDriveStep(harnessDir, options) {
                     feature_id: mapped.feature_id,
                     gate: mapped.gate,
                     iteration: ck.execute.iteration,
+                    now,
+                }),
+            };
+        }
+        // F-121 / L-002 — stagnation detector for non-fail repeats. The
+        // executor's gate result is derived from work.gates_failed (fail)
+        // and work.gates_passed (pass); anything else is `skipped`. A
+        // window of N=GATE_STAGNATION_THRESHOLD identical non-pass entries
+        // halts the loop with an actionable hint instead of burning the
+        // iteration cap on the same point.
+        const passed = Array.isArray(executed.work.gates_passed) && executed.work.gates_passed.includes(mapped.gate);
+        const result = failed ? 'fail' : passed ? 'pass' : 'skipped';
+        const { stagnated, window } = recordGateResult(ck, mapped.feature_id, mapped.gate, result);
+        if (stagnated) {
+            ck.execute.iteration += 1;
+            saveCheckpoint(harnessDir, ck, now);
+            return {
+                proceed: false,
+                action: mapped,
+                executor: executed,
+                feature_id: mapped.feature_id,
+                halt: emitHalt(harnessDir, 'gate_no_progress', `${mapped.gate} on ${mapped.feature_id} produced '${result}' ${window.length} times in a row with no detectable progress — yielding.`, {
+                    goal_id: ck.goal_id,
+                    feature_id: mapped.feature_id,
+                    gate: mapped.gate,
+                    iteration: ck.execute.iteration,
+                    result,
+                    window_size: window.length,
                     now,
                 }),
             };

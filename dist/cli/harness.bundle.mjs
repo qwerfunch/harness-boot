@@ -21949,6 +21949,14 @@ function detectGate0Command(projectRoot) {
     } catch {
     }
   }
+  const cargoToml = join14(projectRoot, "Cargo.toml");
+  if (isFile6(cargoToml)) {
+    return ["cargo", "test", "--workspace"];
+  }
+  const goMod = join14(projectRoot, "go.mod");
+  if (isFile6(goMod)) {
+    return ["go", "test", "./..."];
+  }
   return null;
 }
 function hasTestFiles(dir) {
@@ -23674,6 +23682,7 @@ function defaultCheckpoint(goalId, now = /* @__PURE__ */ new Date()) {
       elapsed_sec: 0,
       active_feature: null,
       retry_counts: {},
+      recent_gate_results: {},
       max_iterations: DEFAULT_MAX_ITERATIONS,
       max_seconds: DEFAULT_MAX_SECONDS
     },
@@ -23862,6 +23871,7 @@ var init_halt = __esm({
       iteration_cap: { n: 7, tag: "iteration cap" },
       network_failure: { n: 8, tag: "network failure" },
       stop_file: { n: 9, tag: "STOP file" },
+      gate_no_progress: { n: 10, tag: "gate no progress" },
       manual: { n: 0, tag: "manual" }
     };
   }
@@ -24427,6 +24437,8 @@ var init_goalRetro = __esm({
 var loop_exports = {};
 __export(loop_exports, {
   DEFAULT_MAX_RETRIES: () => DEFAULT_MAX_RETRIES,
+  GATE_STAGNATION_THRESHOLD: () => GATE_STAGNATION_THRESHOLD,
+  RECENT_GATE_RESULTS_WINDOW: () => RECENT_GATE_RESULTS_WINDOW,
   runDriveLoop: () => runDriveLoop,
   runDriveStep: () => runDriveStep
 });
@@ -24533,6 +24545,30 @@ function bumpRetryCounter(ck, fid, gate, failed) {
   const next = (map[gate] ?? 0) + 1;
   map[gate] = next;
   return next;
+}
+function recordGateResult(ck, fid, gate, result) {
+  if (!isPlainObject19(ck.execute.recent_gate_results)) {
+    ck.execute.recent_gate_results = {};
+  }
+  if (!isPlainObject19(ck.execute.recent_gate_results[fid])) {
+    ck.execute.recent_gate_results[fid] = {};
+  }
+  const perFeature = ck.execute.recent_gate_results[fid];
+  const window = Array.isArray(perFeature[gate]) ? [...perFeature[gate]] : [];
+  window.push(result);
+  while (window.length > RECENT_GATE_RESULTS_WINDOW) {
+    window.shift();
+  }
+  perFeature[gate] = window;
+  if (result === "pass") {
+    return { window, stagnated: false };
+  }
+  if (window.length < GATE_STAGNATION_THRESHOLD) {
+    return { window, stagnated: false };
+  }
+  const tail2 = window.slice(-GATE_STAGNATION_THRESHOLD);
+  const stagnated = tail2.every((r) => r === result);
+  return { window, stagnated };
 }
 function statusOf(feature) {
   return feature === null ? "planned" : feature.status;
@@ -24689,6 +24725,33 @@ function runDriveStep(harnessDir, options) {
         )
       };
     }
+    const passed = Array.isArray(executed.work.gates_passed) && executed.work.gates_passed.includes(mapped.gate);
+    const result = failed ? "fail" : passed ? "pass" : "skipped";
+    const { stagnated, window } = recordGateResult(ck, mapped.feature_id, mapped.gate, result);
+    if (stagnated) {
+      ck.execute.iteration += 1;
+      saveCheckpoint(harnessDir, ck, now);
+      return {
+        proceed: false,
+        action: mapped,
+        executor: executed,
+        feature_id: mapped.feature_id,
+        halt: emitHalt(
+          harnessDir,
+          "gate_no_progress",
+          `${mapped.gate} on ${mapped.feature_id} produced '${result}' ${window.length} times in a row with no detectable progress \u2014 yielding.`,
+          {
+            goal_id: ck.goal_id,
+            feature_id: mapped.feature_id,
+            gate: mapped.gate,
+            iteration: ck.execute.iteration,
+            result,
+            window_size: window.length,
+            now
+          }
+        )
+      };
+    }
   }
   ck.execute.iteration += 1;
   ck.execute.active_feature = active.fid;
@@ -24760,7 +24823,7 @@ function countDeclaredEvidence3(feature) {
   }
   return count;
 }
-var import_yaml16, DEFAULT_MAX_RETRIES;
+var import_yaml16, DEFAULT_MAX_RETRIES, RECENT_GATE_RESULTS_WINDOW, GATE_STAGNATION_THRESHOLD;
 var init_loop = __esm({
   "src/drive/loop.ts"() {
     "use strict";
@@ -24772,6 +24835,8 @@ var init_loop = __esm({
     init_executor();
     init_goalRetro();
     DEFAULT_MAX_RETRIES = 3;
+    RECENT_GATE_RESULTS_WINDOW = 3;
+    GATE_STAGNATION_THRESHOLD = 2;
   }
 });
 

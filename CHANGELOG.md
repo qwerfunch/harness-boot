@@ -18,6 +18,33 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - F-073 (`read_events(tail=N)`) and F-074 (`canonical_hash` mtime cache) — v0.11.11 cumulative-slowdown audit queue.
 - Next-skill candidates after feature-author soaks — `drift-explain-and-fix` · `acceptance-criteria-craft` · `gate-recover` · `evidence-craft`. Sequential, not parallel — one experiment at a time. Internal A/B test (2026-04-30) showed existing capability already covers these cases — pick up only on external user pain signal.
 
+## [0.14.2] — 2026-05-04
+
+**logcat-on ISSUES-LOG batch return — L-001 / L-002 / L-003 (F-121).**
+
+Thirty-eighth cycle. The external dogfood project `logcat-on` (Rust workspace) accumulated three friction points on its `.harness/_workspace/issues-log.md`. Returned in one patch following the cosmic-suika v0.10.7 ISSUES-LOG batch-return precedent.
+
+### Fixed
+
+- **F-121 / L-001** — `docs/templates/starter/spec.yaml.template` now declares `summary: ""` under `project:`. The schema (`docs/schemas/spec.schema.json`) requires `["name", "summary"]`, so the very first `harness sync --soft` after `/harness-boot:init` previously surfaced a "fail — SpecValidationError: project: must have required property 'summary'" message. Exit code stayed 0 (fail-open intact) but the wording scared users on a brand-new skeleton. New parity test in `tests/parity/validate.test.ts` AJV-validates the template directly so any future schema change that breaks the starter is caught at test time.
+- **F-121 / L-003** — `src/gate/runner.ts` `detectGate0Command()` now probes `Cargo.toml` (→ `cargo test --workspace`) and `go.mod` (→ `go test ./...`), mirroring the symmetric branches that already existed in `detectGate1Command` / `detectGate2Command` / `detectGate3Command`. Without this every Rust or Go project hit "no test command detected" → `gate_0 = skipped` and fell into L-002 below. Pyproject / npm / tests/ / Makefile precedence is preserved (regression test in `tests/parity/gateRunner.test.ts`).
+- **F-121 / L-002** — `src/drive/loop.ts` adds halt **#10 `gate_no_progress`**. `bumpRetryCounter()` only counts FAIL, and `intentPlanner.suggest()` is pure (no memory of prior recommendations), so a stuck gate (`skipped` from L-003 above) caused drive's Phase B to recommend the same `run_gate` action every iteration, never trip halt #3 (`retry_threshold`), and burn all 50 iterations until halt #7 (`iteration_cap`). The new halt records the last 3 `(gate, result)` tuples per `(feature, gate)` on the checkpoint; when the same non-pass result repeats N=2 times in a row, drive yields with an actionable hint ("set `harness.yaml.gate_commands.<gate>` or fix project detection"). Retry_threshold (#3) keeps priority on consecutive FAIL — a dedicated test guards the order.
+
+### Changed
+
+- **`src/drive/types.ts`** — `HaltReason` adds `'gate_no_progress'` (additive, no breaking change for existing `--resume` flows).
+- **`src/drive/halt.ts`** — `HALT_REASON_INDEX` adds `{n: 10, tag: 'gate no progress'}`; `nextStepFor()` adds the matching one-line hint.
+- **`src/drive/checkpoint.ts`** — `ExecutePhaseCheckpoint` adds `recent_gate_results: Record<string, Record<string, Array<'pass'|'fail'|'skipped'>>>`. `defaultCheckpoint()` initializes it to `{}`; `loadCheckpoint()` defensively fills the field when missing, so pre-v0.14.2 checkpoints resume cleanly.
+- **`src/drive/loop.ts`** — exports `RECENT_GATE_RESULTS_WINDOW = 3` and `GATE_STAGNATION_THRESHOLD = 2`; new `recordGateResult()` helper next to `bumpRetryCounter()`.
+
+### Verification
+
+- `npm run typecheck` clean
+- `npm run lint` clean
+- `npm test` — **621/621** (613 from v0.14.1 + 8 new tests across `validate.test.ts` (template), `gateRunner.test.ts` (Cargo/go probes), `driveLoopAndPlan.test.ts` (halt #10 + reset + priority over halt #3))
+- `bash self_check.sh` passes (spec mirror lockstep + smoke)
+- F-121 completed via `node bin/harness work F-121 --harness-dir .harness --complete` on `feat/v0.14.2-logcat-on-issues-log-batch`
+
 ## [0.14.1] — 2026-05-04
 
 **`harness work --gate <name> <result>` parsing fix (F-120).**

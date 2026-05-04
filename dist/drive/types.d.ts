@@ -58,6 +58,13 @@ export interface CreateGoalInput {
  *
  * Stage 1 only emits `manual` (the dashboard / status surface is
  * read-only); the rest are wired in stage 2 (F-119).
+ *
+ * `gate_no_progress` (#10) was added in F-121 / L-002 — distinct from
+ * `retry_threshold` (#3) which only counts consecutive failures. #10
+ * fires when the same non-pass result (typically `skipped`) repeats
+ * N times in a row, which is what happens when a gate is genuinely
+ * undetectable (e.g. Rust project before L-003 added the cargo probe)
+ * and the planner has no memory of prior recommendations.
  */
-export type HaltReason = 'plan_phase_approval' | 'commit_boundary' | 'retry_threshold' | 'drift_severity_error' | 'feature_blocked' | 'wall_clock' | 'iteration_cap' | 'network_failure' | 'stop_file' | 'manual';
+export type HaltReason = 'plan_phase_approval' | 'commit_boundary' | 'retry_threshold' | 'drift_severity_error' | 'feature_blocked' | 'wall_clock' | 'iteration_cap' | 'network_failure' | 'stop_file' | 'gate_no_progress' | 'manual';
 //# sourceMappingURL=types.d.ts.map

@@ -202,6 +202,94 @@ describe('drive/loop — runDriveStep halt detection', () => {
     expect(r2.halt?.reason).toBe('retry_threshold');
   });
 
+  // F-121 / L-002 — same (gate, result) repeated N times with no
+  // progress is its own halt (#10), distinct from retry_threshold (#3)
+  // which only counts FAIL. Without this, a Rust project hitting
+  // gate_0=skipped (pre-L-003) burned all 50 iterations until #7.
+  it('halt #10 (gate_no_progress) — two consecutive skipped results halts the loop', () => {
+    const skipResult = (fid: string) => ({
+      feature_id: fid,
+      action: 'gate_run' as const,
+      current_status: 'in_progress',
+      gates_passed: [] as string[],
+      gates_failed: [] as string[], // skipped = neither passed nor failed
+      evidence_count: 0,
+      message: '',
+      routed_agents: [] as string[],
+      parallel_groups: [] as string[][],
+    });
+    const hooks = {
+      runGate: ((_h: string, fid: string, _g: string) => skipResult(fid)) as never,
+    };
+    // First skipped — window length 1, no halt yet.
+    const r1 = runDriveStep(harnessDir, {harnessDir, executorHooks: hooks});
+    expect(r1.proceed).toBe(true);
+    expect(r1.halt).toBeUndefined();
+    // Second skipped — window [skipped, skipped], stagnated → halt #10.
+    const r2 = runDriveStep(harnessDir, {harnessDir, executorHooks: hooks});
+    expect(r2.proceed).toBe(false);
+    expect(r2.halt?.reason).toBe('gate_no_progress');
+    // Iteration count is far below the cap (50) — the point is we
+    // halted early, not after burning the iteration budget.
+    const ck = loadCheckpoint(harnessDir)!;
+    expect(ck.execute.iteration).toBeLessThan(10);
+  });
+
+  it('halt #10 — pass between two skipped resets the stagnation window', () => {
+    let call = 0;
+    // Sequence: skip → pass → skip → skip
+    // Stagnation only fires on the second pair of skips (after pass reset).
+    const sequence: Array<'skip' | 'pass'> = ['skip', 'pass', 'skip', 'skip'];
+    const hooks = {
+      runGate: ((_h: string, fid: string, gate: string) => {
+        const kind = sequence[call] ?? 'skip';
+        call += 1;
+        return {
+          feature_id: fid,
+          action: 'gate_run' as const,
+          current_status: 'in_progress',
+          gates_passed: kind === 'pass' ? [gate] : [],
+          gates_failed: [] as string[],
+          evidence_count: 0,
+          message: '',
+          routed_agents: [] as string[],
+          parallel_groups: [] as string[][],
+        };
+      }) as never,
+    };
+    expect(runDriveStep(harnessDir, {harnessDir, executorHooks: hooks}).proceed).toBe(true); // skip
+    expect(runDriveStep(harnessDir, {harnessDir, executorHooks: hooks}).proceed).toBe(true); // pass — resets
+    expect(runDriveStep(harnessDir, {harnessDir, executorHooks: hooks}).proceed).toBe(true); // skip again
+    const r4 = runDriveStep(harnessDir, {harnessDir, executorHooks: hooks}); // skip → halt
+    expect(r4.proceed).toBe(false);
+    expect(r4.halt?.reason).toBe('gate_no_progress');
+  });
+
+  it('halt #3 (retry_threshold) keeps priority over halt #10 on consecutive fails', () => {
+    // Two FAIL with maxRetries=2 → retry_threshold fires first, not
+    // gate_no_progress. The two halts are distinct reasons; #3 is
+    // dedicated to fail counting and #10 catches everything else.
+    const hooks = {
+      runGate: ((_h: string, fid: string, gate: string) => ({
+        feature_id: fid,
+        action: 'gate_run' as const,
+        current_status: 'in_progress',
+        gates_passed: [] as string[],
+        gates_failed: [gate],
+        evidence_count: 0,
+        message: '',
+        routed_agents: [] as string[],
+        parallel_groups: [] as string[][],
+      })) as never,
+    };
+    expect(
+      runDriveStep(harnessDir, {harnessDir, executorHooks: hooks, maxRetries: 2}).proceed,
+    ).toBe(true);
+    const r2 = runDriveStep(harnessDir, {harnessDir, executorHooks: hooks, maxRetries: 2});
+    expect(r2.proceed).toBe(false);
+    expect(r2.halt?.reason).toBe('retry_threshold');
+  });
+
   it('goal completion — every feature done → goal_done:true + retro generated', () => {
     seedState(harnessDir, {
       features: [

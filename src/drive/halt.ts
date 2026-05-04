@@ -71,6 +71,7 @@ export const HALT_REASON_INDEX: Readonly<Record<HaltReason, {n: number; tag: str
   iteration_cap: {n: 7, tag: 'iteration cap'},
   network_failure: {n: 8, tag: 'network failure'},
   stop_file: {n: 9, tag: 'STOP file'},
+  gate_no_progress: {n: 10, tag: 'gate no progress'},
   manual: {n: 0, tag: 'manual'},
 };
 
@@ -227,6 +228,8 @@ function nextStepFor(reason: HaltReason): string {
       return 'restore network connectivity, then `harness drive --resume`.';
     case 'stop_file':
       return 'remove `_workspace/drive/STOP`, then `harness drive --resume`.';
+    case 'gate_no_progress':
+      return 'set `harness.yaml.gate_commands.<gate>` (or fix project detection), then `harness drive --resume`.';
     case 'manual':
       return 'use `harness drive --resume` when ready.';
     default:

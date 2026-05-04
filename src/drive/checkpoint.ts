@@ -61,6 +61,17 @@ export interface ExecutePhaseCheckpoint {
    * when any value reaches the configured cap (default 3).
    */
   retry_counts: Record<string, Record<string, number>>;
+  /**
+   * Per-feature, per-gate sliding window of the most recent gate
+   * results (oldest first, newest last; capped at 3 entries by
+   * loop.ts). Drives halt #10 (`gate_no_progress`) when the same
+   * non-pass result repeats N times in a row.
+   *
+   * Added in F-121 / L-002. Defensive default `{}` keeps existing
+   * checkpoints backward-compatible — `loadCheckpoint()` fills the
+   * field when absent.
+   */
+  recent_gate_results: Record<string, Record<string, Array<'pass' | 'fail' | 'skipped'>>>;
   /** Iteration cap (default 50, override via --max-iterations). */
   max_iterations: number;
   /** Wall-clock cap in seconds (default 7200 / 2h, override via --max-hours). */
@@ -161,6 +172,7 @@ export function defaultCheckpoint(goalId: string, now: Date = new Date()): Drive
       elapsed_sec: 0,
       active_feature: null,
       retry_counts: {},
+      recent_gate_results: {},
       max_iterations: DEFAULT_MAX_ITERATIONS,
       max_seconds: DEFAULT_MAX_SECONDS,
     },

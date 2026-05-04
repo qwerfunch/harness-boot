@@ -191,6 +191,19 @@ export function detectGate0Command(projectRoot) {
             // fall through
         }
     }
+    // F-121 / L-003 — Rust + Go probes mirror gate_1/2/3 ordering. Placed
+    // last so existing pyproject / npm / tests / Makefile precedence is
+    // preserved; only kicks in when none of the prior probes matched.
+    // `cargo test --workspace` is harmless on a single-crate project
+    // (cargo treats absent workspace as the root package itself).
+    const cargoToml = join(projectRoot, 'Cargo.toml');
+    if (isFile(cargoToml)) {
+        return ['cargo', 'test', '--workspace'];
+    }
+    const goMod = join(projectRoot, 'go.mod');
+    if (isFile(goMod)) {
+        return ['go', 'test', './...'];
+    }
     return null;
 }
 function hasTestFiles(dir) {
