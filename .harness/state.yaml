@@ -2599,7 +2599,7 @@ features:
   started_at: 2026-05-04T16:54:54Z
   completed_at: 2026-05-04T17:01:52Z
 - id: F-124
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -2641,9 +2641,9 @@ features:
     kind: manual_check
     summary: "F-124 Step A verified end-to-end: CLAUDE.md trimmed 258->202 lines (22% reduction). L3 volatile data (release version, main HEAD, tag range, recent-commit cluster) replaced by SSoT pointers (plugin.json, CHANGELOG.md, git, .harness/state.yaml). L2 facts (drift_kinds_count=13, blocking_drift_kinds_count=4) wrapped in <!-- harness:fact key=X value=V source=Y --> sigil regions for the upcoming F-127 Content drift detector. §5 Recent commit context collapsed from 50 lines of release-cluster prose to a 2-line CHANGELOG pointer. §8 Closed list collapsed similarly. §9 In-progress block now points to state.yaml. self_check 5/5 PASS, harness check clean, npm test 622/622 (driveLoop fix already merged via F-122). All 14 ACs verified against the diff."
   started_at: 2026-05-04T17:28:03Z
-  completed_at: null
+  completed_at: 2026-05-04T17:33:30Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-124
   last_gate_passed: gate_5
-  active_feature_id: F-124
+  active_feature_id: null
