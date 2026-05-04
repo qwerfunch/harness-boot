@@ -2341,7 +2341,7 @@ features:
   started_at: 2026-04-29T15:48:13Z
   completed_at: 2026-04-29T15:49:12Z
 - id: F-118
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -2383,9 +2383,9 @@ features:
     kind: test
     summary: "F-118 Stage 1 ships Goal domain primitives + drive --status: 61 new unit tests pass, all 558 total tests green, npm typecheck/lint/build/self_check 5/5 OK, drive --status renders empty-goals state correctly, --resume rejected with stage-2 message, --json schema stable. Existing init/work/status/check/sync untouched (verified manually + by parity tests)."
   started_at: 2026-05-04T01:51:26Z
-  completed_at: null
+  completed_at: 2026-05-04T02:02:41Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-118
   last_gate_passed: gate_5
-  active_feature_id: F-118
+  active_feature_id: null
