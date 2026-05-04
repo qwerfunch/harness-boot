@@ -215,6 +215,8 @@ harness-boot/
 
 ## 현재 상태
 
+**v0.14.3** — 안정화·정리 묶음 (F-122 → F-128). `tests/parity/driveLoopAndPlan.test.ts` 의 시간 폭탄을 잡아 (F-122) 모든 downstream fork 의 CI 가 다시 green 으로 돌아오게 만들고, CLAUDE.md 를 최신 상태로 동기화 (F-123) 한 다음 stable / semi-static sigil / volatile-pointer 의 3 계층으로 재설계 (F-124) 해 다음 release 부터는 drift 자체가 구조적으로 못 끼어들게 막았습니다. v0.13 TS 전환 이후 git 에 남아있던 Python 자취 (`legacy/scripts/`, `tests/unit`, `tests/integration`, `tests/scale` — 합쳐 약 28 k 줄) 도 추적에서 빼냈고 (F-125 + F-126), `hooks/pre-commit-phase2.sh` 가 git 자체의 merge / cherry-pick / revert / rebase finalizer 에서는 short-circuit 하도록 고쳐 (F-127) `HARNESS_BYPASS_PRE_COMMIT=1` 우회가 더 이상 필요 없게 만들었습니다. capability 추가는 0 건이고 사용자가 보는 동작도 v0.14.2 와 동일합니다.
+
 **v0.14.0** — `drive` 출시 (F-118 + F-119). 자율 루프 슬래시 명령 `/harness-boot:drive "<자연어 목표>"` 추가. *Goal* (여러 feature 를 묶는 컨테이너) 을 researcher → product-planner → feature-author 로 자동 분해한 뒤, 각 feature 의 gate cycle 까지 끝까지 운전합니다. **본질적으로 bounded**: BR-015 가 자가 `--hotfix-reason`, `git commit/push/tag`, 모든 shared-state mutation 을 금지. 루프는 9 가지 명시 조건 (commit boundary · retry threshold · drift error · blocked feature · wall-clock · iteration cap · network failure · STOP file · plan-phase approval) 중 하나가 트리거되면 즉시 *halt* 하여 사용자에게 yield. read-only `harness drive --status [G-N] [--all] [--json] [--watch]` 는 mtime 불변 (CQS, BR-012).
 
 직전 **v0.13.2** — 레포 루트 정리 (F-117). v0.13 TS-only 전환 이후 잔존하던 Python 설정 (`pytest.ini`, `requirements-dev.txt`) 제거. 동작 변화 없음.

@@ -4901,6 +4901,71 @@ features:
       - "AC-9: F-127 mirrored on both spec.yaml copies; `diff -q` clean."
       - "AC-10: F-127 completed via the harness CLI cycle on `feat/v0.14.4-pre-commit-merge-fix`. Targets the next patch release in the v0.14.x family."
 
+  - id: "F-128"
+    name: "v0.14.3 release prep — CHANGELOG expansion + README sync + tag"
+    type: "chore"
+    description: |
+      Forty-fifth cycle. Release prep for v0.14.3, bundling six
+      already-merged features (F-122 fix, F-123 staleness refresh,
+      F-124 CLAUDE.md info-architecture refactor, F-125 legacy/scripts
+      git eviction, F-126 quarantined Python test eviction, F-127
+      F-034 hook merge-commit short-circuit) into a single tagged
+      release.
+
+      Why one release, not two: F-122 alone landed in develop earlier
+      and CHANGELOG.md already carries a [0.14.3] entry naming only
+      F-122. Rather than fragmenting v0.14.3 (F-122) and v0.14.4
+      (F-123 → F-127), this cycle expands the existing [0.14.3] entry
+      to enumerate all six. Rationale: (a) `plugin.json` was already
+      at version 0.14.3 across the whole batch, (b) every change is
+      fix/chore — zero capability addition — so SemVer "patch" stays
+      correct under the user's patch-first cadence, (c) shipping six
+      tiny patches in two days as v0.14.3 / v0.14.4 / v0.14.5 / v0.14.6
+      / v0.14.7 / v0.14.8 would be SemVer noise, not signal.
+
+      Scope of this cycle:
+
+        - `CHANGELOG.md` [0.14.3] entry expanded — keeps the existing
+          F-122 prose but adds Fixed / Changed / Removed sections
+          for the other five features.
+        - `README.md` and `README.ko.md` — the existing v0.14.x
+          capability narrative gains a short `**v0.14.3**` line each.
+          The plugin badge is already at v0.14.3 (set when
+          `plugin.json` was bumped during F-117).
+        - F-128 itself is recorded as a feature so the release prep
+          stays inside the work.py audit trail (no off-the-books main
+          edits).
+
+      Out of scope:
+
+        - `plugin.json` version — already 0.14.3, no edit needed.
+        - `package.json` version — already 0.14.3 (mirrored at the
+          v0.13.0 cutover and bumped together since).
+        - `CLAUDE.md` — F-124 made it L3-pointer-only; it correctly
+          says nothing about specific releases.
+
+      After the cycle completes and the PR merges to develop,
+      develop fast-forwards into main and main is tagged v0.14.3.
+      `gh release create v0.14.3 --notes-file <CHANGELOG section>`
+      finalizes the GitHub release. All three are user-confirmed
+      release-time operations covered by the maintainer's release
+      flow memory.
+
+      Patch-only — no code, schema, or BR changes.
+
+    test_strategy: "smoke"
+    acceptance_criteria:
+      - "AC-1: `CHANGELOG.md` [0.14.3] entry retains the existing F-122 narrative and gains explicit Fixed / Changed / Removed sections enumerating F-123, F-124, F-125, F-126, and F-127 with one-line per feature plus user-impact note."
+      - "AC-2: `CHANGELOG.md` [Unreleased] block is empty (or carries only Queued items) once F-128 prep merges — nothing in flight after this release until the next cycle starts."
+      - "AC-3: `README.md` capability narrative gains a `**v0.14.3** — ...` line one paragraph above (or after) the v0.14.0 entry, summarising the release in one or two sentences."
+      - "AC-4: `README.ko.md` gains the same line in Korean, matching the existing native-Korean tone (no English direct translation)."
+      - "AC-5: `bash self_check.sh` returns 5/5 OK."
+      - "AC-6: `npm test` returns 622/622 PASS."
+      - "AC-7: F-128 mirrored on both spec.yaml copies; `diff -q` clean."
+      - "AC-8: F-128 completed via the harness CLI cycle on `chore/v0.14.3-release-prep`."
+      - "AC-9: After PR merges to develop, develop fast-forwards into main; main is tagged `v0.14.3` (annotated, message references the F-122 → F-127 batch); the tag is pushed to origin."
+      - "AC-10: `gh release create v0.14.3 --notes-file <CHANGELOG-section-extracted-to-temp-file>` creates the GitHub release with the v0.14.3 CHANGELOG content as the release notes body."
+
 # v0.14.0 — Drive autonomous loop containers (filled in Stage 2 / F-119).
 # Each Goal groups N features under one user-supplied natural-language
 # objective. The runtime state mirror lives in state.yaml goals[].
