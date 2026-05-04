@@ -2385,7 +2385,7 @@ features:
   started_at: 2026-05-04T01:51:26Z
   completed_at: 2026-05-04T02:02:41Z
 - id: F-119
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -2427,9 +2427,9 @@ features:
     kind: test
     summary: "F-119 Stage 2 ships drive autonomous loop body — Phase A state machine + Phase B execute loop + Phase C goal retro + 9 halt taxonomy + BR-015 enforcement (self-hotfix reject test). Tests: 53 new (driveCheckpoint 15, driveExecutor 14, driveHaltAndRetro 10, driveLoopAndPlan 14) — 611/611 total green. typecheck/lint/build/self_check 5/5 OK. v0.14.0 minor bump applied across package.json + plugin.json + marketplace.json + cli/harness.ts + README/README.ko/CHANGELOG. commands/drive.md ships full slash-command orchestration prose (researcher → planner → feature-author trio + halt forwarding)."
   started_at: 2026-05-04T03:05:48Z
-  completed_at: null
+  completed_at: 2026-05-04T03:25:48Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-119
   last_gate_passed: gate_2
-  active_feature_id: F-119
+  active_feature_id: null
