@@ -11,7 +11,7 @@
       "name": "harness-boot",
       "description": "Multi-agent development harness for Claude Code. Your AI has speed; we give it direction — through living specs and focused specialist agents.",
       "source": "./",
-      "version": "0.13.2",
+      "version": "0.14.0",
       "homepage": "https://github.com/qwerfunch/harness-boot",
       "category": "development"
     }

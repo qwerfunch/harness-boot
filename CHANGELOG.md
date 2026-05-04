@@ -18,6 +18,50 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 - F-073 (`read_events(tail=N)`) and F-074 (`canonical_hash` mtime cache) — v0.11.11 cumulative-slowdown audit queue.
 - Next-skill candidates after feature-author soaks — `drift-explain-and-fix` · `acceptance-criteria-craft` · `gate-recover` · `evidence-craft`. Sequential, not parallel — one experiment at a time. Internal A/B test (2026-04-30) showed existing capability already covers these cases — pick up only on external user pain signal.
 
+## [0.14.0] — 2026-05-04
+
+**`drive` — bounded autonomous loop. Codex `/goal` reimagined as a Bounded Goal Driver under BR-015 (F-118 + F-119).**
+
+Two-stage landing: F-118 ships the *Goal* domain primitives + read-only `harness drive --status`; F-119 ships the autonomous loop body — Phase A (researcher → product-planner → feature-author trio) + Phase B (executor + intentPlanner-driven loop with 9 enumerated halt conditions) + Phase C (Goal-level retrospective). Single new BR (BR-015) charters the discipline: **escalate, never bypass**.
+
+### What landed
+
+- **F-118** — Goal domain primitives: spec schema v2.3.8 → v2.3.9 (additive — top-level `goals[]` + `features[].goal_id`), `state.yaml` runtime mirror (`session.active_goal_id` + `goals[]`), `src/drive/{types,goalStore,progressRenderer,statusCommand}.ts`, `harness drive --status [G-N] [--all] [--json] [--watch]` (CQS, mtime invariant per BR-012).
+- **F-119** — autonomous loop body: `src/drive/{checkpoint,halt,executor,planPhase,loop,goalRetro}.ts`, `commands/drive.md` slash command, full CLI surface (`harness drive "<goal>" | --resume | --plan-only | --auto-approve-{brief,all} | --max-iterations | --max-hours | --max-retries | --dry-run | --abort`).
+- **BR-015** — Bounded Autonomy Charter (new). Drive cannot self-issue `--hotfix-reason`; cannot call `git commit/push/tag`, `gh release`, or `/plugin marketplace`; must escalate on `severity=error` drift; must escalate after the configured retry threshold; records every halt to `_workspace/drive/run.yaml` + `progress.log` + `events.log`; obeys the BR-014 preamble itself; single active goal + single active feature (sequential only).
+
+### Halt taxonomy (9 reasons, all from a single union type)
+
+| # | Reason | Trigger |
+|---|---|---|
+| 1 | `plan_phase_approval` | researcher / planner / feature-author handoff awaits user action |
+| 2 | `commit_boundary` | active feature is gate_5-pass + ≥ 1 evidence and tree is dirty |
+| 3 | `retry_threshold` | same gate failed `--max-retries` times in a row (default 3) |
+| 4 | `drift_severity_error` | `harness check` finds a `severity=error` Code/Stale/AnchorIntegration/Coverage drift |
+| 5 | `feature_blocked` | every remaining feature in the goal is `blocked` |
+| 6 | `wall_clock` | `--max-hours` exceeded |
+| 7 | `iteration_cap` | `--max-iterations` exceeded |
+| 8 | `network_failure` | researcher's WebFetch / WebSearch failed (Phase A) |
+| 9 | `stop_file` | emergency-pedal sigil at `_workspace/drive/STOP` |
+
+### Verification
+
+- `npm run typecheck` clean
+- `npm run lint` clean
+- `npm test` — **611/611** (497 pre-Stage-1 + 61 Stage-1 + 53 Stage-2)
+- `npm run build` clean
+- `bash self_check.sh` 5/5 OK (SSoT diff · validate · sync · check · commands grep)
+- BR-015 self-hotfix reject — covered by `tests/parity/driveExecutor.test.ts`
+- 9 halt conditions — exercised across `tests/parity/driveLoopAndPlan.test.ts` + `driveHaltAndRetro.test.ts`
+- Goal retro idempotency (AC-6) — second `generateGoalRetro` call returns `created:false`, no duplicate `goal_retro_written` events
+- F-118 + F-119 both completed via the harness CLI cycle on `feat/v0.14.0-drive-stage1` and `feat/v0.14.0-drive-stage2`
+
+### Out of scope (next minor)
+
+- Stage-2 LLM-required actions (`analyze_fail`, `resolve_block`) currently halt to user; a future `--use-llm-judgment` flag could route them to an Agent call inside Phase B.
+- `drift_severity_error` halt is reactive (only fires when `runDriveStep` itself observes a finding); a *proactive* check before each iteration is queued for v0.14.1+.
+- BRAND_TERMS.md additions for *Goal* / *halt* / *Bounded Goal Driver* — to be added with the user-friendly README sweep.
+
 ## [0.13.2] — 2026-04-30
 
 **Repo root cleanup — remove dead Python config (F-117).**
