@@ -4467,6 +4467,42 @@ features:
       - "AC-7: F-119 mirrored on both spec.yaml copies."
       - "AC-8: F-119 completed via the harness CLI cycle on feat/v0.14.0-drive-stage2 (own branch, separate PR, both PRs roll up to v0.14.0 release)."
 
+  - id: "F-120"
+    name: "harness work --gate two-arg parsing fix (commander variadic)"
+    type: "fix"
+    description: |
+      Thirty-seventh cycle. Post-v0.14.0 E2E sample-project
+      verification surfaced that `harness work F-N --gate gate_5
+      pass --note "..."` exits with `error: --gate takes two values`
+      against a fresh project. Root cause: the commander option spec
+      was authored as `.option('--gate <name> <result>', ...)` —
+      commander does not support multi-placeholder option specs, so
+      it captures only the first arg (`gate_5`) and leaves `pass`
+      as a stray positional that fails the action's
+      `Array.isArray(gateArgs) && length === 2` check.
+
+      Fix: switch the option spec to `--gate <values...>` (commander's
+      variadic syntax). Commander then collects every following
+      space-separated arg until the next dashed option into an array,
+      so both `--gate gate_5 pass` and `--gate gate_5 pass --note x`
+      yield `options.gate === ['gate_5', 'pass']`. The action body's
+      length-2 check is preserved as the cardinality guard.
+
+      User-facing impact: `commands/work.md` Typical Scenario block
+      starts working again. `--run-gate` (auto-detect) was the
+      documented workaround during v0.14.0; both forms are valid
+      after this patch.
+
+      Patch-only — no schema, behaviour, or BR changes.
+
+    acceptance_criteria:
+      - "AC-1: `src/cli/harness.ts` changes the `--gate` option spec from `<name> <result>` to `<values...>` (commander variadic)."
+      - "AC-2: `harness work F-N --gate gate_0 pass --note '...'` records gate_0 as pass with the note (regression test in tests/parity/cli.test.ts)."
+      - "AC-3: `harness work F-N --gate` with the wrong number of values still exits 3 with the existing error message (the action's length-2 guard remains the cardinality check)."
+      - "AC-4: `.harness/_workspace/issues-log.md` entry for the bug grows a `Resolution:` line citing F-120 + this commit, mirroring the I-001/I-008 return convention."
+      - "AC-5: F-120 mirrored on both spec.yaml copies."
+      - "AC-6: F-120 completed via the harness CLI cycle on `fix/v0.14.1-gate-option-parsing`. Patch release v0.14.1."
+
 # v0.14.0 — Drive autonomous loop containers (filled in Stage 2 / F-119).
 # Each Goal groups N features under one user-supplied natural-language
 # objective. The runtime state mirror lives in state.yaml goals[].
