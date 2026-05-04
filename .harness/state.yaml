@@ -2517,7 +2517,7 @@ features:
   started_at: 2026-05-04T05:41:51Z
   completed_at: 2026-05-04T05:50:12Z
 - id: F-122
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -2559,9 +2559,9 @@ features:
     kind: test
     summary: seedCheckpoint started_at dynamic + regression-guard test added; npm test 622/622 (was 615/621)
   started_at: 2026-05-04T16:29:32Z
-  completed_at: null
+  completed_at: 2026-05-04T16:32:03Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-122
   last_gate_passed: gate_5
-  active_feature_id: F-122
+  active_feature_id: null
