@@ -2516,8 +2516,46 @@ features:
     summary: "L-001 template summary added · L-003 gate_0 cargo+go probes · L-002 halt #10 gate_no_progress wired — 8 new tests, 621/621 green, self_check OK"
   started_at: 2026-05-04T05:41:51Z
   completed_at: 2026-05-04T05:50:12Z
+- id: F-123
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: fail
+      ts: 2026-05-04T16:59:29Z
+      note: exit 1
+    gate_1:
+      last_result: pass
+      ts: 2026-05-04T17:00:53Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-04T17:00:55Z
+      note: "cmd: npm run lint"
+    gate_3:
+      last_result: fail
+      ts: 2026-05-04T17:01:02Z
+      note: exit 1
+    gate_5:
+      last_result: pass
+      ts: 2026-05-04T17:01:02Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-04T17:00:53Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.9s) · cmd: npm run typecheck"
+  - ts: 2026-05-04T17:00:55Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.4s) · cmd: npm run lint"
+  - ts: 2026-05-04T17:01:02Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.5s) · cmd: bash self_check.sh"
+  - ts: 2026-05-04T17:01:22Z
+    kind: trivial
+    summary: "F-123 doc/state-only sweep verified end-to-end: CLAUDE.md §1-5/8/9 now reflect v0.14.x cumulative state (release line, drift catalog 12->13, F-048 blocking 3->4, plugin manifest v0.14.3, main HEAD a77dd6a, v0.12-14 cluster summaries, AC traceability + LLM author attribution as next-thread candidates); harness sync cleared the spec hash drift (harness check: clean); both spec.yaml mirrors lockstep (diff -q clean); JSONSchema validate: pass. gate_5 self_check 5/5 PASS (SSoT diff + validate + sync + drift check + commands regulation). gate_0/gate_3 fail are F-122 pre-existing driveLoopAndPlan time-bomb failures (PR #53 open) and unrelated to this doc-only change."
+  started_at: 2026-05-04T16:54:54Z
+  completed_at: null
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-121
+  last_command: /harness:work F-123
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-123
