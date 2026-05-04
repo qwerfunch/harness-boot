@@ -2517,7 +2517,7 @@ features:
   started_at: 2026-05-04T05:41:51Z
   completed_at: 2026-05-04T05:50:12Z
 - id: F-123
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: fail
@@ -2553,9 +2553,9 @@ features:
     kind: trivial
     summary: "F-123 doc/state-only sweep verified end-to-end: CLAUDE.md §1-5/8/9 now reflect v0.14.x cumulative state (release line, drift catalog 12->13, F-048 blocking 3->4, plugin manifest v0.14.3, main HEAD a77dd6a, v0.12-14 cluster summaries, AC traceability + LLM author attribution as next-thread candidates); harness sync cleared the spec hash drift (harness check: clean); both spec.yaml mirrors lockstep (diff -q clean); JSONSchema validate: pass. gate_5 self_check 5/5 PASS (SSoT diff + validate + sync + drift check + commands regulation). gate_0/gate_3 fail are F-122 pre-existing driveLoopAndPlan time-bomb failures (PR #53 open) and unrelated to this doc-only change."
   started_at: 2026-05-04T16:54:54Z
-  completed_at: null
+  completed_at: 2026-05-04T17:01:52Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-123
   last_gate_passed: gate_5
-  active_feature_id: F-123
+  active_feature_id: null
