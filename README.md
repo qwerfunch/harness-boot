@@ -6,7 +6,7 @@
 
 harness-boot is a multi-agent development harness for Claude Code. Where most AI tools add *capability*, we add *focus*.
 
-[![plugin](https://img.shields.io/badge/plugin-v0.13.2-blue)](.claude-plugin/plugin.json)
+[![plugin](https://img.shields.io/badge/plugin-v0.14.0-blue)](.claude-plugin/plugin.json)
 [![tests](https://img.shields.io/badge/tests-467%20passing-brightgreen)](tests/parity)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
@@ -212,9 +212,11 @@ harness-boot/
 
 ## Status
 
-**v0.13.2** — Repo root cleanup (F-117): dead Python config (`pytest.ini`, `requirements-dev.txt`) removed after the v0.13 TS-only cutover. No behavior change.
+**v0.14.0** — `drive` ships (F-118 + F-119). New autonomous-loop slash command `/harness-boot:drive "<natural-language goal>"` that scaffolds a *Goal* (a container that groups N features) via researcher → product-planner → feature-author and then runs every feature's gate cycle to completion. **Bounded by design**: BR-015 forbids self-issued `--hotfix-reason`, `git commit/push/tag`, and any shared-state mutation; the loop *halts* on 9 enumerated conditions (commit boundary, retry threshold, drift error, blocked feature, wall-clock, iteration cap, network failure, STOP file, plan-phase approval) and yields back to the user. Read-only `harness drive --status [G-N] [--all] [--json] [--watch]` is mtime-invariant (CQS, BR-012).
 
-Previously: **v0.13.1** added the `feature-author` skill — auto-triggers on Korean ("X 기능 구현해줘", "X 만들어줘") or English ("draft a feature", "spec out X") prompts to scaffold a complete `features[]` entry with shape detection, project-mode-aware AC count, and lockstep paste instructions.
+Previously: **v0.13.2** — Repo root cleanup (F-117): dead Python config (`pytest.ini`, `requirements-dev.txt`) removed after the v0.13 TS-only cutover. No behavior change.
+
+**v0.13.1** added the `feature-author` skill — auto-triggers on Korean ("X 기능 구현해줘", "X 만들어줘") or English ("draft a feature", "spec out X") prompts to scaffold a complete `features[]` entry with shape detection, project-mode-aware AC count, and lockstep paste instructions.
 
 - Changelog — [CHANGELOG.md](CHANGELOG.md)
 - Developer guide — [CLAUDE.md](CLAUDE.md)

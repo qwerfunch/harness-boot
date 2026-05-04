@@ -6,7 +6,7 @@
 
 Claude Code 위에서 도는 multi-agent 개발 하네스. 다른 AI 도구가 *능력* 을 더할 때, harness-boot 는 *방향* 을 만듭니다.
 
-[![plugin](https://img.shields.io/badge/plugin-v0.13.2-blue)](.claude-plugin/plugin.json)
+[![plugin](https://img.shields.io/badge/plugin-v0.14.0-blue)](.claude-plugin/plugin.json)
 [![tests](https://img.shields.io/badge/tests-467%20passing-brightgreen)](tests/parity)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
@@ -215,9 +215,11 @@ harness-boot/
 
 ## 현재 상태
 
-**v0.13.2** — 레포 루트 정리 (F-117). v0.13 TS-only 전환 이후 잔존하던 Python 설정 (`pytest.ini`, `requirements-dev.txt`) 제거. 동작 변화 없음.
+**v0.14.0** — `drive` 출시 (F-118 + F-119). 자율 루프 슬래시 명령 `/harness-boot:drive "<자연어 목표>"` 추가. *Goal* (여러 feature 를 묶는 컨테이너) 을 researcher → product-planner → feature-author 로 자동 분해한 뒤, 각 feature 의 gate cycle 까지 끝까지 운전합니다. **본질적으로 bounded**: BR-015 가 자가 `--hotfix-reason`, `git commit/push/tag`, 모든 shared-state mutation 을 금지. 루프는 9 가지 명시 조건 (commit boundary · retry threshold · drift error · blocked feature · wall-clock · iteration cap · network failure · STOP file · plan-phase approval) 중 하나가 트리거되면 즉시 *halt* 하여 사용자에게 yield. read-only `harness drive --status [G-N] [--all] [--json] [--watch]` 는 mtime 불변 (CQS, BR-012).
 
-직전 **v0.13.1** — `feature-author` skill 추가. "X 기능 구현해줘", "X 만들어줘" 같은 한국어 자연어 (또는 "draft a feature", "spec out X" 같은 영어) 에 자동 트리거되어 shape 감지 · project mode 별 AC 개수 · 양쪽 spec.yaml lockstep 안내까지 갖춘 `features[]` entry 한 번에 생성.
+직전 **v0.13.2** — 레포 루트 정리 (F-117). v0.13 TS-only 전환 이후 잔존하던 Python 설정 (`pytest.ini`, `requirements-dev.txt`) 제거. 동작 변화 없음.
+
+**v0.13.1** — `feature-author` skill 추가. "X 기능 구현해줘", "X 만들어줘" 같은 한국어 자연어 (또는 "draft a feature", "spec out X" 같은 영어) 에 자동 트리거되어 shape 감지 · project mode 별 AC 개수 · 양쪽 spec.yaml lockstep 안내까지 갖춘 `features[]` entry 한 번에 생성.
 
 - 변경 이력 — [CHANGELOG.md](CHANGELOG.md)
 - 개발자 가이드 — [CLAUDE.md](CLAUDE.md)

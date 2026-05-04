@@ -109,7 +109,7 @@ function buildProgram() {
     program
         .name('harness')
         .description('Multi-agent development harness — TS CLI for Claude Code plugin')
-        .version('0.13.2');
+        .version('0.14.0');
     // -----------------------------------------------------------------
     // work
     // -----------------------------------------------------------------
@@ -590,69 +590,243 @@ function buildProgram() {
         }
     });
     // -----------------------------------------------------------------
-    // drive — autonomous loop (v0.14.0 / F-118 — Stage 1 ships --status only)
+    // drive — autonomous loop (v0.14.0 — Stage 1 (F-118) Goal primitives;
+    // Stage 2 (F-119) Phase A/B/C autonomous flow)
     // -----------------------------------------------------------------
     program
         .command('drive')
-        .description('autonomous loop driver — Stage 1 (F-118) ships read-only --status')
-        .argument('[target]', 'goal id (G-NNN), feature id (F-NNN), or free-text goal — Stage 2 (F-119)')
+        .description('autonomous loop driver — natural-language goal → Phase A plan → Phase B execute → Phase C retro')
+        .argument('[target]', 'goal id (G-NNN), feature id (F-NNN), or free-text natural-language goal')
         .option('--harness-dir <dir>', 'path to .harness directory', './.harness')
         .option('--status', 'render the progress dashboard for one (or all) goal(s) — read-only')
         .option('--all', 'with --status: render every goal in the spec')
-        .option('--json', 'with --status: emit JSON instead of formatted text')
+        .option('--json', 'emit JSON output (status / dry-run / resume — machine consumable)')
         .option('--watch', 'with --status: re-render every <interval> seconds')
         .option('--interval <sec>', 'with --status --watch: refresh interval (default 2s)', '2')
-        .option('--resume', 'continue a paused drive run — Stage 2 (F-119)')
-        .option('--plan-only', 'run only Phase A (researcher → planner) — Stage 2 (F-119)')
-        .option('--auto-approve-brief', 'skip the researcher-approval halt — Stage 2 (F-119)')
-        .option('--auto-approve-all', 'skip every plan-phase halt — Stage 2 (F-119)')
-        .option('--max-iterations <n>', 'iteration cap — Stage 2 (F-119)')
-        .option('--max-hours <n>', 'wall-clock cap — Stage 2 (F-119)')
-        .option('--dry-run', 'print actions without executing — Stage 2 (F-119)')
-        .option('--abort <gid>', 'abort a running goal — Stage 2 (F-119)')
+        .option('--resume', 'continue Phase A or Phase B from the persisted checkpoint')
+        .option('--plan-only', 'run Phase A advances; halt before Phase B execute loop')
+        .option('--auto-approve-brief', 'skip the brief.md approval halt (#1 part 1)')
+        .option('--auto-approve-all', 'skip every plan-phase halt (brief + plan)')
+        .option('--max-iterations <n>', 'override Phase B iteration cap (default 50)')
+        .option('--max-hours <n>', 'override Phase B wall-clock cap (default 2h)')
+        .option('--max-retries <n>', 'override consecutive-fail cap before halt #3 (default 3)')
+        .option('--hard-step-limit <n>', 'hard ceiling on steps per drive invocation (default 100)')
+        .option('--dry-run', 'print the next action without executing it')
+        .option('--abort [gid]', 'clear the active drive checkpoint (active goal by default)')
         .action((target, options) => {
         const harnessDir = resolveHarnessDir(options['harnessDir']);
         if (!isDirectory(harnessDir)) {
             printError(`error: ${harnessDir} not found`);
             process.exit(2);
         }
-        // Stage-2 flags — bail out with a helpful message rather than silently
-        // running --status. The user typed something that won't ship until F-119.
-        const stage2Flag = options['resume'] ||
-            options['planOnly'] ||
-            options['autoApproveBrief'] ||
-            options['autoApproveAll'] ||
-            options['maxIterations'] ||
-            options['maxHours'] ||
-            options['dryRun'] ||
-            options['abort'];
-        if (stage2Flag) {
-            printError('drive: that flag is part of Stage 2 (F-119) — only --status, --all, --json, --watch land in v0.14.0 Stage 1.');
-            printError('       The Goal domain primitives are in place; the autonomous loop ships in the next release.');
-            process.exit(3);
-        }
-        // Free-text goal text → Stage 2.
-        if (typeof target === 'string' && !/^[FG]-\d+$/i.test(target)) {
-            printError('drive: free-text goal scaffolding is Stage 2 (F-119). For now, register the Goal manually in spec.yaml goals[] and use `harness drive --status`.');
-            process.exit(3);
-        }
-        // Either explicit goal id, no arg, or --status: every form maps to runDriveStatus.
-        // (Stage 1 contract: `harness drive` and `harness drive --status` are equivalent.)
+        const isStatus = Boolean(options['status']) ||
+            Boolean(options['watch']) ||
+            Boolean(options['all']) ||
+            // status is also the default when no argument and no Phase-A/B flag is supplied
+            (target === undefined &&
+                !options['resume'] &&
+                !options['planOnly'] &&
+                !options['dryRun'] &&
+                !options['abort']);
         const explicitGoal = typeof target === 'string' && /^G-\d+$/i.test(target) ? target : null;
-        // Lazy-import keeps the existing CLI hot path free of the drive
-        // module surface for users that never touch goals.
-        void import('../drive/statusCommand.js')
-            .then(({ runDriveStatus }) => runDriveStatus({
-            harnessDir,
-            goalId: explicitGoal,
-            all: Boolean(options['all']),
-            json: Boolean(options['json']),
-            watch: Boolean(options['watch']),
-            intervalSec: Number(options['interval'] ?? 2),
-        }))
-            .then((code) => {
-            if (typeof code === 'number' && code !== 0) {
-                process.exit(code);
+        const explicitFeature = typeof target === 'string' && /^F-\d+$/i.test(target) ? target : null;
+        void explicitFeature; // currently surfaced via dashboard / status; loop selects via checkpoint
+        const json = Boolean(options['json']);
+        const approvals = {
+            autoApproveBrief: Boolean(options['autoApproveBrief']),
+            autoApproveAll: Boolean(options['autoApproveAll']),
+        };
+        // ---- --status / --watch / --all + bare drive ----
+        if (isStatus) {
+            void import('../drive/statusCommand.js')
+                .then(({ runDriveStatus }) => runDriveStatus({
+                harnessDir,
+                goalId: explicitGoal,
+                all: Boolean(options['all']),
+                json,
+                watch: Boolean(options['watch']),
+                intervalSec: Number(options['interval'] ?? 2),
+            }))
+                .then((code) => {
+                if (typeof code === 'number' && code !== 0) {
+                    process.exit(code);
+                }
+            })
+                .catch((err) => {
+                printError(`drive: ${err.message}`);
+                process.exit(2);
+            });
+            return;
+        }
+        // ---- --abort ----
+        if (options['abort'] !== undefined) {
+            void import('../drive/checkpoint.js')
+                .then(({ clearCheckpoint, loadCheckpoint }) => {
+                const ck = loadCheckpoint(harnessDir);
+                const cleared = clearCheckpoint(harnessDir);
+                if (cleared) {
+                    const goalId = ck?.goal_id ?? '(unknown)';
+                    if (json) {
+                        printJson({ aborted: true, goal_id: goalId });
+                    }
+                    else {
+                        printHuman(`drive: aborted ${goalId}; checkpoint cleared.\n`);
+                    }
+                }
+                else {
+                    if (json) {
+                        printJson({ aborted: false, message: 'no active checkpoint' });
+                    }
+                    else {
+                        printHuman('drive: no active drive checkpoint to abort.\n');
+                    }
+                }
+            })
+                .catch((err) => {
+                printError(`drive: ${err.message}`);
+                process.exit(2);
+            });
+            return;
+        }
+        // ---- new free-text goal ----
+        const isFreeText = typeof target === 'string' && !explicitGoal && !explicitFeature;
+        if (isFreeText) {
+            void import('../drive/planPhase.js')
+                .then(({ startPhaseA }) => {
+                const r = startPhaseA({ harnessDir, title: target, approvals });
+                if (json) {
+                    printJson({
+                        goal_id: r.goalId,
+                        brief_path: r.briefPath,
+                        halt: { reason: r.halt.reason, message: r.halt.message },
+                    });
+                }
+                else {
+                    printHuman(`drive: goal ${r.goalId} created. researcher should write ${r.briefPath}.\n` +
+                        `${r.halt.message}\n`);
+                }
+            })
+                .catch((err) => {
+                printError(`drive: ${err.message}`);
+                process.exit(2);
+            });
+            return;
+        }
+        // ---- --resume / --plan-only / --dry-run ----
+        // All three load the checkpoint and decide the next action via planPhase / loop.
+        const planOnly = Boolean(options['planOnly']);
+        const dryRun = Boolean(options['dryRun']);
+        void import('../drive/checkpoint.js')
+            .then(async ({ loadCheckpoint, saveCheckpoint }) => {
+            const ck = loadCheckpoint(harnessDir);
+            if (ck === null) {
+                printError('drive: no active checkpoint. Start with `harness drive "<natural-language goal>"`.');
+                process.exit(3);
+                return;
+            }
+            // Override caps when the user supplied flags.
+            if (options['maxIterations'] !== undefined) {
+                ck.execute.max_iterations = Number(options['maxIterations']);
+            }
+            if (options['maxHours'] !== undefined) {
+                ck.execute.max_seconds = Math.round(Number(options['maxHours']) * 3600);
+            }
+            saveCheckpoint(harnessDir, ck);
+            // Phase A advance.
+            if (ck.phase === 'planning') {
+                const { advancePhaseA } = await import('../drive/planPhase.js');
+                const r = advancePhaseA(harnessDir, approvals);
+                if (r.kind === 'halt') {
+                    if (json) {
+                        printJson({
+                            phase: 'planning',
+                            halt: { reason: r.halt.reason, message: r.halt.message },
+                            brief_path: r.briefPath,
+                            plan_path: r.planPath,
+                        });
+                    }
+                    else {
+                        printHuman(`drive: ${r.halt.message}\n`);
+                    }
+                    return;
+                }
+                // phase_b_ready
+                if (planOnly) {
+                    if (json) {
+                        printJson({ phase: 'scaffolded', goal_id: r.goalId, feature_ids: r.featureIds });
+                    }
+                    else {
+                        printHuman(`drive: Phase A done. Goal ${r.goalId} scaffolded with ${r.featureIds.length} features. ` +
+                            `(--plan-only requested — stopping before Phase B execute loop.)\n`);
+                    }
+                    return;
+                }
+                // Fall through into Phase B.
+            }
+            // Phase B step / loop.
+            const { runDriveLoop, runDriveStep } = await import('../drive/loop.js');
+            if (dryRun) {
+                const step = runDriveStep(harnessDir, {
+                    harnessDir,
+                    maxRetries: options['maxRetries'] !== undefined ? Number(options['maxRetries']) : undefined,
+                });
+                const summary = {
+                    dry_run: true,
+                    proceed: step.proceed,
+                    feature_id: step.feature_id ?? null,
+                };
+                if (step.action !== undefined && step.action !== null) {
+                    summary.action = step.action.kind;
+                    if ('feature_id' in step.action) {
+                        summary.action_feature = step.action.feature_id;
+                    }
+                    if ('gate' in step.action) {
+                        summary.action_gate = step.action.gate;
+                    }
+                }
+                if (step.halt !== undefined) {
+                    summary.halt = { reason: step.halt.reason, message: step.halt.message };
+                }
+                if (json) {
+                    printJson(summary);
+                }
+                else {
+                    if (step.halt !== undefined) {
+                        printHuman(`drive [dry-run]: would halt — ${step.halt.message}\n`);
+                    }
+                    else if (step.action !== null && step.action !== undefined) {
+                        printHuman(`drive [dry-run]: next action = ${step.action.kind}\n`);
+                    }
+                    else {
+                        printHuman('drive [dry-run]: no action selected\n');
+                    }
+                }
+                return;
+            }
+            const r = runDriveLoop({
+                harnessDir,
+                maxRetries: options['maxRetries'] !== undefined ? Number(options['maxRetries']) : undefined,
+                hardIterationLimit: options['hardStepLimit'] !== undefined ? Number(options['hardStepLimit']) : 100,
+            });
+            const summary = {
+                proceed: r.proceed,
+                goal_done: r.goal_done ?? false,
+                feature_id: r.feature_id ?? null,
+            };
+            if (r.halt !== undefined) {
+                summary.halt = { reason: r.halt.reason, message: r.halt.message };
+            }
+            if (json) {
+                printJson(summary);
+            }
+            else if (r.goal_done) {
+                printHuman('drive: goal complete — Phase C retro generated.\n');
+            }
+            else if (r.halt !== undefined) {
+                printHuman(`drive: ${r.halt.message}\n`);
+            }
+            else {
+                printHuman('drive: step limit reached for this invocation; resume to continue.\n');
             }
         })
             .catch((err) => {

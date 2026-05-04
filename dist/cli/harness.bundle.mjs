@@ -3031,6 +3031,132 @@ var require_commander = __commonJS({
   }
 });
 
+// src/ceremonies/designReview.ts
+import { appendFileSync, mkdirSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join, relative } from "node:path";
+function reviewersFor(hasAudio) {
+  const out = [...CORE_REVIEWERS];
+  if (hasAudio) {
+    const idx = out.indexOf("a11y-auditor");
+    if (idx === -1) {
+      out.push(AUDIO_REVIEWER);
+    } else {
+      out.splice(idx, 0, AUDIO_REVIEWER);
+    }
+  }
+  return out;
+}
+function nowIso() {
+  const d = /* @__PURE__ */ new Date();
+  const yyyy = d.getUTCFullYear().toString().padStart(4, "0");
+  const mm = (d.getUTCMonth() + 1).toString().padStart(2, "0");
+  const dd = d.getUTCDate().toString().padStart(2, "0");
+  const hh = d.getUTCHours().toString().padStart(2, "0");
+  const mi = d.getUTCMinutes().toString().padStart(2, "0");
+  const ss = d.getUTCSeconds().toString().padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}Z`;
+}
+function rstrip(s) {
+  return s.replace(/\s+$/, "");
+}
+function pythonStyleJsonStringify(value) {
+  if (value === null) {
+    return "null";
+  }
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+  if (typeof value === "number") {
+    return JSON.stringify(value);
+  }
+  if (typeof value === "string") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((v) => pythonStyleJsonStringify(v)).join(", ")}]`;
+  }
+  if (typeof value === "object") {
+    const pairs = Object.entries(value).map(
+      ([k, v]) => `${JSON.stringify(k)}: ${pythonStyleJsonStringify(v)}`
+    );
+    return `{${pairs.join(", ")}}`;
+  }
+  throw new TypeError(`designReview: unsupported value type ${typeof value}.`);
+}
+function appendEvent(harnessDir, event) {
+  const logPath = join(harnessDir, "events.log");
+  mkdirSync(dirname(logPath), { recursive: true });
+  appendFileSync(logPath, `${pythonStyleJsonStringify(event)}
+`, "utf-8");
+}
+function template(featureId2, reviewers, timestamp) {
+  const lines = [];
+  lines.push(`# Design Review \u2014 ${featureId2}`);
+  lines.push("");
+  lines.push(`> \uC790\uB3D9 \uC0DD\uC131 \u2014 ${timestamp}`);
+  lines.push(">");
+  lines.push(
+    "> `scripts/design_review.py` \uAC00 \uC774 \uD15C\uD50C\uB9BF\uC744 \uB9CC\uB4E4\uACE0, orchestrator \uAC00 reviewer \uBCC4\uB85C `flows.md` \uC5D0 \uB300\uD55C concern \uC744 \uD55C \uBB38\uB2E8\uC529 \uC218\uC9D1 \u2192 \uB9C8\uC9C0\uB9C9 Decisions \uC139\uC158\uC740 orchestrator \uAC00 disposition \uD6C4 \uC791\uC131."
+  );
+  lines.push("");
+  lines.push(`## Reviewers (${reviewers.length})`);
+  lines.push("");
+  for (const r of reviewers) {
+    lines.push(`- \`@harness:${r}\``);
+  }
+  lines.push("");
+  lines.push("---");
+  lines.push("");
+  for (const r of reviewers) {
+    lines.push(`## ${r} concerns`);
+    lines.push("");
+    lines.push("<!-- orchestrator: \uC774 reviewer \uC758 Tier anchor \uAE30\uBC18 \uD55C \uBB38\uB2E8 concern -->");
+    lines.push("");
+    lines.push("_(pending)_");
+    lines.push("");
+  }
+  lines.push("## Decisions");
+  lines.push("");
+  lines.push(
+    "<!-- orchestrator: reviewer concern \uC744 \uC885\uD569\uD574 \uC218\uC6A9/\uC5F0\uAE30/\uAE30\uAC01 \uD310\uB2E8. 2\uD68C \uBC18\uBCF5 \uCDA9\uB3CC \uC2DC \uC0AC\uC6A9\uC790 escalate. -->"
+  );
+  lines.push("");
+  lines.push("_(pending)_");
+  lines.push("");
+  return `${rstrip(lines.join("\n"))}
+`;
+}
+function generateDesignReview(harnessDir, featureId2, options = {}) {
+  const hasAudio = options.hasAudio ?? false;
+  const timestamp = options.timestamp ?? nowIso();
+  const reviewers = reviewersFor(hasAudio);
+  const reviewDir = join(harnessDir, "_workspace", "design-review");
+  mkdirSync(reviewDir, { recursive: true });
+  const path = join(reviewDir, `${featureId2}.md`);
+  writeFileSync(path, template(featureId2, reviewers, timestamp), "utf-8");
+  appendEvent(harnessDir, {
+    ts: timestamp,
+    type: "design_review_opened",
+    feature: featureId2,
+    reviewers,
+    has_audio: hasAudio,
+    path: relative(harnessDir, path)
+  });
+  return path;
+}
+var CORE_REVIEWERS, AUDIO_REVIEWER;
+var init_designReview = __esm({
+  "src/ceremonies/designReview.ts"() {
+    "use strict";
+    CORE_REVIEWERS = [
+      "visual-designer",
+      "frontend-engineer",
+      "a11y-auditor"
+    ];
+    AUDIO_REVIEWER = "audio-designer";
+  }
+});
+
 // node_modules/yaml/dist/nodes/identity.js
 var require_identity = __commonJS({
   "node_modules/yaml/dist/nodes/identity.js"(exports) {
@@ -10333,6 +10459,685 @@ var require_dist = __commonJS({
   }
 });
 
+// src/core/routing.ts
+var ROUTING_SHAPES, PARALLEL_GROUPS;
+var init_routing = __esm({
+  "src/core/routing.ts"() {
+    "use strict";
+    ROUTING_SHAPES = {
+      "baseline-empty-vague": ["researcher", "product-planner"],
+      "ui_surface.present": [
+        "ux-architect",
+        "visual-designer",
+        "a11y-auditor",
+        "frontend-engineer",
+        "software-engineer"
+      ],
+      sensitive_or_auth: ["security-engineer", "reviewer"],
+      performance_budget: ["performance-engineer"],
+      pure_domain_logic: ["backend-engineer", "software-engineer"],
+      feature_completion: ["qa-engineer", "integrator", "tech-writer", "reviewer"]
+    };
+    PARALLEL_GROUPS = {
+      sensitive_or_auth: [["security-engineer", "reviewer"]],
+      "ui_surface.present": [["visual-designer", "audio-designer"]]
+    };
+  }
+});
+
+// src/ceremonies/kickoff.ts
+import { appendFileSync as appendFileSync2, mkdirSync as mkdirSync2, readFileSync, statSync as statSync2, writeFileSync as writeFileSync2 } from "node:fs";
+import { dirname as dirname2, join as join2, relative as relative2 } from "node:path";
+function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function asArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+function hasAudioFlag(feature) {
+  if (!isPlainObject(feature)) {
+    return false;
+  }
+  const ui = feature["ui_surface"];
+  if (!isPlainObject(ui)) {
+    return false;
+  }
+  return Boolean(ui["has_audio"]);
+}
+function touchesSensitiveEntity(feature, spec) {
+  if (!isPlainObject(spec) || !isPlainObject(feature)) {
+    return false;
+  }
+  const domain = isPlainObject(spec["domain"]) ? spec["domain"] : {};
+  const entities = asArray(domain["entities"]);
+  const sensitiveNames = [];
+  for (const e of entities) {
+    if (isPlainObject(e) && e["sensitive"] === true) {
+      const name = e["name"];
+      if (typeof name === "string" && name.length > 0) {
+        sensitiveNames.push(name.toLowerCase());
+      }
+    }
+  }
+  if (sensitiveNames.length === 0) {
+    return false;
+  }
+  const parts = [];
+  if (typeof feature["title"] === "string") {
+    parts.push(feature["title"]);
+  }
+  for (const m of asArray(feature["modules"])) {
+    if (typeof m === "string") {
+      parts.push(m);
+    }
+  }
+  for (const ac of asArray(feature["acceptance_criteria"])) {
+    if (typeof ac === "string") {
+      parts.push(ac);
+    }
+  }
+  const haystack = parts.join(" ").toLowerCase();
+  return sensitiveNames.some((name) => haystack.includes(name));
+}
+function detectShapes(feature, spec = null) {
+  if (!isPlainObject(feature)) {
+    return [];
+  }
+  const title = typeof feature["title"] === "string" ? feature["title"].trim() : "";
+  const ac = asArray(feature["acceptance_criteria"]);
+  const modules = asArray(feature["modules"]);
+  if (title.length === 0 && ac.length === 0 && modules.length === 0) {
+    return ["baseline-empty-vague"];
+  }
+  const shapes = [];
+  const ui = isPlainObject(feature["ui_surface"]) ? feature["ui_surface"] : {};
+  if (ui["present"] === true) {
+    shapes.push("ui_surface.present");
+  }
+  if (feature["performance_budget"] !== void 0 && feature["performance_budget"] !== null) {
+    shapes.push("performance_budget");
+  }
+  if (feature["sensitive"] === true) {
+    shapes.push("sensitive_or_auth");
+  } else if (touchesSensitiveEntity(feature, spec)) {
+    shapes.push("sensitive_or_auth");
+  }
+  if (shapes.length === 0) {
+    shapes.push("pure_domain_logic");
+  }
+  shapes.push("feature_completion");
+  return shapes;
+}
+function agentsForShapes(shapes, hasAudio = false) {
+  const out = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const shape of shapes) {
+    const agents = ROUTING_SHAPES[shape] ?? [];
+    for (const agent of agents) {
+      if (!seen.has(agent)) {
+        seen.add(agent);
+        out.push(agent);
+      }
+    }
+    if (shape === "ui_surface.present" && hasAudio && !seen.has("audio-designer")) {
+      seen.add("audio-designer");
+      const idx = out.indexOf("a11y-auditor");
+      if (idx === -1) {
+        out.push("audio-designer");
+      } else {
+        out.splice(idx, 0, "audio-designer");
+      }
+    }
+  }
+  return out;
+}
+function parallelGroupsForShapes(shapes, hasAudio = false) {
+  const groups = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const shape of shapes) {
+    const candidates = PARALLEL_GROUPS[shape] ?? [];
+    for (const group of candidates) {
+      const members = group.filter((m) => hasAudio || m !== "audio-designer");
+      if (members.length < 2) {
+        continue;
+      }
+      const key = members.join("|");
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      groups.push([...members]);
+    }
+  }
+  return groups;
+}
+function nowIso2() {
+  const d = /* @__PURE__ */ new Date();
+  const yyyy = d.getUTCFullYear().toString().padStart(4, "0");
+  const mm = (d.getUTCMonth() + 1).toString().padStart(2, "0");
+  const dd = d.getUTCDate().toString().padStart(2, "0");
+  const hh = d.getUTCHours().toString().padStart(2, "0");
+  const mi = d.getUTCMinutes().toString().padStart(2, "0");
+  const ss = d.getUTCSeconds().toString().padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}Z`;
+}
+function rstrip2(s) {
+  return s.replace(/\s+$/, "");
+}
+function isFile(path) {
+  try {
+    return statSync2(path).isFile();
+  } catch {
+    return false;
+  }
+}
+function pythonStyleJsonStringify2(value) {
+  if (value === null) {
+    return "null";
+  }
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+  if (typeof value === "number") {
+    return JSON.stringify(value);
+  }
+  if (typeof value === "string") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((v) => pythonStyleJsonStringify2(v)).join(", ")}]`;
+  }
+  if (typeof value === "object") {
+    const pairs = Object.entries(value).map(
+      ([k, v]) => `${JSON.stringify(k)}: ${pythonStyleJsonStringify2(v)}`
+    );
+    return `{${pairs.join(", ")}}`;
+  }
+  throw new TypeError(`kickoff: unsupported value type ${typeof value}.`);
+}
+function appendEvent2(harnessDir, event) {
+  const logPath = join2(harnessDir, "events.log");
+  mkdirSync2(dirname2(logPath), { recursive: true });
+  appendFileSync2(logPath, `${pythonStyleJsonStringify2(event)}
+`, "utf-8");
+}
+function renderStyleBlock(harnessDir, feature) {
+  const indexPath = join2(harnessDir, "area_index.yaml");
+  if (!isFile(indexPath)) {
+    return "";
+  }
+  let loaded;
+  try {
+    loaded = (0, import_yaml.parse)(readFileSync(indexPath, "utf-8"));
+  } catch {
+    return "";
+  }
+  const areas = isPlainObject(loaded) ? asArray(loaded["areas"]) : [];
+  if (!isPlainObject(feature)) {
+    return "";
+  }
+  const featureModules = /* @__PURE__ */ new Set();
+  for (const m of asArray(feature["modules"])) {
+    if (typeof m === "string") {
+      featureModules.add(m);
+    }
+  }
+  if (featureModules.size === 0) {
+    return "";
+  }
+  const matched = [];
+  for (const entry of areas) {
+    if (!isPlainObject(entry)) {
+      continue;
+    }
+    const entryModules = /* @__PURE__ */ new Set();
+    for (const m of asArray(entry["modules"])) {
+      if (typeof m === "string") {
+        entryModules.add(m);
+      }
+    }
+    for (const m of entryModules) {
+      if (featureModules.has(m)) {
+        matched.push(entry);
+        break;
+      }
+    }
+  }
+  if (matched.length === 0) {
+    return "";
+  }
+  const lines = [];
+  lines.push("## \uAE30\uC874 \uC2A4\uD0C0\uC77C \uCEE8\uD14D\uC2A4\uD2B8 (auto \xB7 F-037)");
+  lines.push("");
+  lines.push(
+    "> \uC5B4\uB460\uC774 \uAC77\uD78C \uC601\uC5ED. \uC544\uB798 chapter \uAC00 implementer / software-engineer / frontend-engineer \uC758 \uAE30\uBCF8 \uCEE8\uD14D\uC2A4\uD2B8."
+  );
+  lines.push("");
+  lines.push("### \uAD00\uB828 area chapter");
+  for (const entry of matched) {
+    const label = entry["label"] ?? entry["slug"] ?? "area";
+    const chapterPath = entry["chapter_path"] ?? "";
+    lines.push(`- [${label}](../../${chapterPath})`);
+  }
+  lines.push("");
+  return `${lines.join("\n")}
+`;
+}
+function template2(featureId2, agents, timestamp, mode, styleBlock) {
+  const isPrototype = mode === "prototype";
+  const bulletsPerAgent = isPrototype ? 1 : 3;
+  const guidance = isPrototype ? "\uC774 agent \uC758 \uAD00\uC810\uC5D0\uC11C \uAC00\uC7A5 \uD070 \uC6B0\uB824 1 \uC904." : "\uC774 agent \uC758 Tier anchor \uAE30\uBC18 3-bullet \uC6B0\uB824 \xB7 80 \uB2E8\uC5B4 \uC774\uB0B4";
+  const intro = isPrototype ? "\uD504\uB85C\uD1A0\uD0C0\uC785 \uBAA8\uB4DC \u2014 \uAC01 agent \uAC00 1 \uC904\uC529\uB9CC \uC6B0\uB824\uB97C \uC801\uB294\uB2E4." : "orchestrator \uAC00 \uAC01 agent \uB97C \uC18C\uD658\uD574 \uC139\uC158\uC744 \uCC44\uC6B4\uB2E4 (80 \uB2E8\uC5B4 \uB0B4 3 bullet). cross-role empathy \uC6A9.";
+  const lines = [];
+  lines.push(`# Kickoff \u2014 ${featureId2}`);
+  lines.push("");
+  lines.push(`> \uC790\uB3D9 \uC0DD\uC131 \u2014 ${timestamp} \xB7 mode: \`${mode}\``);
+  lines.push(">");
+  lines.push(`> \`scripts/kickoff.py\` \uAC00 \uC774 \uD15C\uD50C\uB9BF\uC744 \uB9CC\uB4E4\uACE0, ${intro}`);
+  lines.push("");
+  lines.push(`## \uCC38\uC5EC \uC5D0\uC774\uC804\uD2B8 (${agents.length})`);
+  lines.push("");
+  for (const a of agents) {
+    lines.push(`- \`@harness:${a}\``);
+  }
+  lines.push("");
+  if (styleBlock) {
+    lines.push(rstrip2(styleBlock));
+    lines.push("");
+  }
+  lines.push("---");
+  lines.push("");
+  for (const agent of agents) {
+    lines.push(`## ${agent} \uC758 \uAD00\uC810`);
+    lines.push("");
+    lines.push(`<!-- orchestrator: ${guidance} -->`);
+    lines.push("");
+    for (let i = 0; i < bulletsPerAgent; i++) {
+      lines.push("- ");
+    }
+    lines.push("");
+  }
+  return `${rstrip2(lines.join("\n"))}
+`;
+}
+function generateKickoff(harnessDir, featureId2, shapes, options = {}) {
+  const hasAudio = options.hasAudio ?? false;
+  const timestamp = options.timestamp ?? nowIso2();
+  const force = options.force ?? false;
+  const mode = options.mode ?? "product";
+  const styleBlock = options.styleBlock ?? "";
+  const agents = agentsForShapes(shapes, hasAudio);
+  if (agents.length === 0) {
+    throw new Error(
+      `no agents matched for shapes=${JSON.stringify([...shapes])}; check ROUTING_SHAPES`
+    );
+  }
+  const kickoffDir = join2(harnessDir, "_workspace", "kickoff");
+  mkdirSync2(kickoffDir, { recursive: true });
+  const kickoffPath = join2(kickoffDir, `${featureId2}.md`);
+  if (isFile(kickoffPath) && !force) {
+    return kickoffPath;
+  }
+  writeFileSync2(kickoffPath, template2(featureId2, agents, timestamp, mode, styleBlock), "utf-8");
+  appendEvent2(harnessDir, {
+    ts: timestamp,
+    type: "kickoff_started",
+    feature: featureId2,
+    shapes: [...shapes],
+    agents,
+    mode,
+    path: relative2(harnessDir, kickoffPath)
+  });
+  return kickoffPath;
+}
+var import_yaml;
+var init_kickoff = __esm({
+  "src/ceremonies/kickoff.ts"() {
+    "use strict";
+    import_yaml = __toESM(require_dist(), 1);
+    init_routing();
+  }
+});
+
+// src/ceremonies/retro.ts
+import { appendFileSync as appendFileSync3, mkdirSync as mkdirSync3, readFileSync as readFileSync2, statSync as statSync3, writeFileSync as writeFileSync3 } from "node:fs";
+import { dirname as dirname3, join as join3, relative as relative3 } from "node:path";
+function isPlainObject2(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function readEvents(harnessDir) {
+  const logPath = join3(harnessDir, "events.log");
+  let raw;
+  try {
+    raw = readFileSync2(logPath, "utf-8");
+  } catch {
+    return [];
+  }
+  const out = [];
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed.length === 0) {
+      continue;
+    }
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (isPlainObject2(parsed)) {
+        out.push(parsed);
+      }
+    } catch {
+      continue;
+    }
+  }
+  return out;
+}
+function analyze(events, featureId2) {
+  const relevant = events.filter((e) => e["feature"] === featureId2);
+  const gateEvents = relevant.filter((e) => e["type"] === "gate_recorded");
+  let firstGateFail = null;
+  for (const e of gateEvents) {
+    if (e["result"] === "fail") {
+      firstGateFail = e;
+      break;
+    }
+  }
+  const completed = relevant.some((e) => e["type"] === "feature_done");
+  const kickoffOpened = relevant.some((e) => e["type"] === "kickoff_started");
+  const designReviewOpened = relevant.some((e) => e["type"] === "design_review_opened");
+  const questionsOpened = relevant.filter((e) => e["type"] === "question_opened").length;
+  const questionsAnswered = relevant.filter((e) => e["type"] === "question_answered").length;
+  let archivedEvent = null;
+  for (const e of relevant) {
+    if (e["type"] === "feature_archived") {
+      archivedEvent = e;
+    }
+  }
+  return {
+    completed,
+    first_gate_fail: firstGateFail,
+    kickoff_opened: kickoffOpened,
+    design_review_opened: designReviewOpened,
+    questions_opened: questionsOpened,
+    questions_answered: questionsAnswered,
+    gate_events_total: gateEvents.length,
+    all_events_total: relevant.length,
+    archived: archivedEvent !== null,
+    archived_event: archivedEvent
+  };
+}
+function rstrip3(s) {
+  return s.replace(/\s+$/, "");
+}
+function nowIso3() {
+  const d = /* @__PURE__ */ new Date();
+  const yyyy = d.getUTCFullYear().toString().padStart(4, "0");
+  const mm = (d.getUTCMonth() + 1).toString().padStart(2, "0");
+  const dd = d.getUTCDate().toString().padStart(2, "0");
+  const hh = d.getUTCHours().toString().padStart(2, "0");
+  const mi = d.getUTCMinutes().toString().padStart(2, "0");
+  const ss = d.getUTCSeconds().toString().padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}Z`;
+}
+function isFile2(path) {
+  try {
+    return statSync3(path).isFile();
+  } catch {
+    return false;
+  }
+}
+function pythonStyleJsonStringify3(value) {
+  if (value === null) {
+    return "null";
+  }
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+  if (typeof value === "number") {
+    return JSON.stringify(value);
+  }
+  if (typeof value === "string") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((v) => pythonStyleJsonStringify3(v)).join(", ")}]`;
+  }
+  if (typeof value === "object") {
+    const pairs = Object.entries(value).map(
+      ([k, v]) => `${JSON.stringify(k)}: ${pythonStyleJsonStringify3(v)}`
+    );
+    return `{${pairs.join(", ")}}`;
+  }
+  throw new TypeError(`retro: unsupported value type ${typeof value}.`);
+}
+function appendEvent3(harnessDir, event) {
+  const logPath = join3(harnessDir, "events.log");
+  mkdirSync3(dirname3(logPath), { recursive: true });
+  appendFileSync3(logPath, `${pythonStyleJsonStringify3(event)}
+`, "utf-8");
+}
+function template3(featureId2, analysis, timestamp, mode) {
+  const isPrototype = mode === "prototype";
+  const fgf = analysis.first_gate_fail;
+  const fgfLine = fgf !== null ? `- ${fgf["gate"] ?? "?"} failed at ${fgf["ts"] ?? "?"}  (reason: ${fgf["note"] || fgf["reason"] || "?"})` : "- \uC5C6\uC74C (\uC804 gate \uCD5C\uCD08\uC5D0 pass)";
+  const intro = isPrototype ? "\uD504\uB85C\uD1A0\uD0C0\uC785 \uBAA8\uB4DC \u2014 \uBA38\uC2E0 \uC139\uC158\uB9CC \uC790\uB3D9 \uCC44\uC6C0. LLM \uBC18\uC131 \uC139\uC158\uC740 \uC0DD\uB7B5." : "`scripts/retro.py` \uAC00 events.log \uB97C \uBD84\uC11D\uD574 \uBA38\uC2E0 \uC139\uC158\uC744 \uCC44\uC6B0\uACE0, orchestrator \uAC00 reviewer \u2192 tech-writer \uC21C\uCC28\uB85C Reviewer Reflection \xB7 Copy Polish \uC139\uC158\uC744 \uC644\uC131\uD55C\uB2E4.";
+  const lines = [];
+  lines.push(`# Retrospective \u2014 ${featureId2}`);
+  lines.push("");
+  lines.push(`> \uC790\uB3D9 \uC0DD\uC131 \u2014 ${timestamp} \xB7 mode: \`${mode}\``);
+  lines.push(">");
+  lines.push(`> ${intro}`);
+  lines.push("");
+  lines.push("## What Shipped");
+  lines.push("");
+  if (analysis.completed) {
+    lines.push(`- ${featureId2} \u2014 complete \uC804\uC774 \uAC10\uC9C0.`);
+  } else {
+    lines.push(`- ${featureId2} \u2014 complete \uC774\uBCA4\uD2B8 \uBBF8\uAC10\uC9C0. \uC218\uB3D9 \uD655\uC778 \uD544\uC694.`);
+  }
+  lines.push("");
+  if (analysis.archived) {
+    const ev = analysis.archived_event ?? {};
+    const sb = ev["superseded_by"];
+    const reason = ev["reason"] ?? "(reason \uBBF8\uAE30\uB85D)";
+    const ts = ev["ts"] ?? "?";
+    lines.push("## Superseded By");
+    lines.push("");
+    if (typeof sb === "string" && sb.length > 0) {
+      lines.push(`- \uC774 \uD53C\uCC98\uB294 **${sb}** \uB85C \uB300\uCCB4\uB428 (${ts})`);
+    } else {
+      lines.push(
+        `- \uC774 \uD53C\uCC98\uB294 archived \uB428 (${ts}) \u2014 superseded_by \uBBF8\uC9C0\uC815 (deprecation only \xB7 \uB300\uCCB4 \uD53C\uCC98 \uC5C6\uC74C)`
+      );
+    }
+    lines.push(`- \uC0AC\uC720: ${reason}`);
+    lines.push("");
+    lines.push(
+      "<!-- F-028: feature_archived event \uC758 superseded_by/reason \uC790\uB3D9 \uCC44\uC6C0. \uC218\uB3D9 \uCD94\uAC00 \uCEE8\uD14D\uC2A4\uD2B8\uB294 \uC544\uB798\uC5D0 \uC790\uC720 \uAE30\uC220. -->"
+    );
+    lines.push("");
+  }
+  lines.push("## First Gate to Fail");
+  lines.push("");
+  lines.push(fgfLine);
+  lines.push("");
+  lines.push("## Ceremonies");
+  lines.push("");
+  lines.push(`- Kickoff opened: ${analysis.kickoff_opened ? "\u2705" : "\u274C"}`);
+  lines.push(
+    `- Design Review opened: ${analysis.design_review_opened ? "\u2705" : "\u274C (\uD574\uB2F9 \uD53C\uCC98\uC5D0 \uBBF8\uC2E4\uD589)"}`
+  );
+  lines.push(
+    `- Questions opened: ${analysis.questions_opened} \xB7 answered: ${analysis.questions_answered}`
+  );
+  lines.push("");
+  if (isPrototype) {
+    return `${rstrip3(lines.join("\n"))}
+`;
+  }
+  for (const heading of [
+    "Risks Materialized vs plan.md",
+    "Decisions Revised",
+    "Kickoff Predictions That Were Right / Wrong"
+  ]) {
+    lines.push(`## ${heading}`);
+    lines.push("");
+    lines.push(`<!-- orchestrator via reviewer: ${heading} \uC139\uC158 -->`);
+    lines.push("");
+    lines.push("_(pending)_");
+    lines.push("");
+  }
+  lines.push("## Reviewer Reflection");
+  lines.push("");
+  lines.push(
+    "<!-- orchestrator invokes @harness:reviewer to produce draft prose. reviewer \uB294 read-only (CQS) \u2014 draft \uD14D\uC2A4\uD2B8\uB9CC \uBC18\uD658. orchestrator \uAC00 \uC774 \uC139\uC158\uC5D0 write. -->"
+  );
+  lines.push("");
+  lines.push("_(pending)_");
+  lines.push("");
+  lines.push("## Copy Polish");
+  lines.push("");
+  lines.push(
+    "<!-- orchestrator invokes @harness:tech-writer to polish the Reviewer Reflection. tech-writer \uAC00 Write/Edit \uC73C\uB85C \uC9C1\uC811 \uC774 \uC139\uC158\uC744 \uB2E4\uB4EC\uC74C. -->"
+  );
+  lines.push("");
+  lines.push("_(pending)_");
+  lines.push("");
+  return `${rstrip3(lines.join("\n"))}
+`;
+}
+function generateRetro(harnessDir, featureId2, options = {}) {
+  const timestamp = options.timestamp ?? nowIso3();
+  const force = options.force ?? false;
+  const mode = options.mode ?? "product";
+  const retroDir = join3(harnessDir, "_workspace", "retro");
+  mkdirSync3(retroDir, { recursive: true });
+  const path = join3(retroDir, `${featureId2}.md`);
+  if (isFile2(path) && !force) {
+    return path;
+  }
+  const events = readEvents(harnessDir);
+  const analysis = analyze(events, featureId2);
+  writeFileSync3(path, template3(featureId2, analysis, timestamp, mode), "utf-8");
+  appendEvent3(harnessDir, {
+    ts: timestamp,
+    type: "feature_retro_written",
+    feature: featureId2,
+    mode,
+    analysis_summary: {
+      completed: analysis.completed,
+      first_gate_fail: analysis.first_gate_fail !== null ? analysis.first_gate_fail["gate"] : null,
+      questions_opened: analysis.questions_opened
+    },
+    path: relative3(harnessDir, path)
+  });
+  return path;
+}
+var init_retro = __esm({
+  "src/ceremonies/retro.ts"() {
+    "use strict";
+  }
+});
+
+// src/core/projectMode.ts
+function resolveMode(spec) {
+  if (spec === null || typeof spec !== "object" || Array.isArray(spec)) {
+    return DEFAULT_MODE;
+  }
+  const project = spec["project"];
+  if (project === null || typeof project !== "object" || Array.isArray(project)) {
+    return DEFAULT_MODE;
+  }
+  const mode = project["mode"];
+  if (typeof mode === "string" && VALID_MODES.has(mode)) {
+    return mode;
+  }
+  return DEFAULT_MODE;
+}
+var VALID_MODES, DEFAULT_MODE;
+var init_projectMode = __esm({
+  "src/core/projectMode.ts"() {
+    "use strict";
+    VALID_MODES = /* @__PURE__ */ new Set(["prototype", "product"]);
+    DEFAULT_MODE = "product";
+  }
+});
+
+// src/core/canonicalHash.ts
+import { createHash } from "node:crypto";
+function canonicalize(value) {
+  if (value === null) {
+    return null;
+  }
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      throw new TypeError(
+        `canonical_hash: non-finite number encountered (${String(value)}); Python equivalent uses allow_nan=False which raises ValueError.`
+      );
+    }
+    return value;
+  }
+  if (typeof value === "string" || typeof value === "boolean") {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => canonicalize(item));
+  }
+  if (typeof value === "object") {
+    const proto = Object.getPrototypeOf(value);
+    if (proto !== Object.prototype && proto !== null) {
+      throw new TypeError(
+        `canonical_hash: only plain objects are canonicalizable; received instance of ${value.constructor?.name ?? "unknown"}.`
+      );
+    }
+    const obj = value;
+    const sortedKeys = Object.keys(obj).sort();
+    const result = {};
+    for (const key of sortedKeys) {
+      result[key] = canonicalize(obj[key]);
+    }
+    return result;
+  }
+  throw new TypeError(
+    `canonical_hash: cannot serialize value of type ${typeof value}.`
+  );
+}
+function canonicalBytes(value) {
+  const sorted = canonicalize(value);
+  const json = JSON.stringify(sorted);
+  return Buffer.from(json, "utf-8");
+}
+function canonicalHash(value) {
+  return createHash("sha256").update(canonicalBytes(value)).digest("hex");
+}
+function subtreeHashes(spec) {
+  const result = {};
+  for (const key of SUBTREE_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(spec, key)) {
+      result[key] = canonicalHash(spec[key]);
+    }
+  }
+  return result;
+}
+function merkleRoot(subtrees) {
+  const entries = Object.entries(subtrees);
+  entries.sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+  const combined = entries.map(([key, hash]) => ({ key, hash }));
+  return canonicalHash(combined);
+}
+var SUBTREE_KEYS;
+var init_canonicalHash = __esm({
+  "src/core/canonicalHash.ts"() {
+    "use strict";
+    SUBTREE_KEYS = [
+      "project",
+      "domain",
+      "constraints",
+      "deliverable",
+      "features",
+      "metadata"
+    ];
+  }
+});
+
 // src/core/state.ts
 import { existsSync, mkdirSync as mkdirSync4, readFileSync as readFileSync4, statSync as statSync5, writeFileSync as writeFileSync4 } from "node:fs";
 import { dirname as dirname4, join as join5 } from "node:path";
@@ -10832,6 +11637,1364 @@ var init_state = __esm({
         return structuredClone(this.data);
       }
     };
+  }
+});
+
+// src/spec/includeExpander.ts
+import { readFileSync as readFileSync5, statSync as statSync6 } from "node:fs";
+import { isAbsolute, join as join6, relative as relative5, resolve as resolvePath } from "node:path";
+function isIncludeNode(value) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const obj = value;
+  const keys = Object.keys(obj);
+  return keys.length === 1 && keys[0] === "$include" && typeof obj["$include"] === "string";
+}
+function findIncludes(obj) {
+  const out = [];
+  walk(obj, [], null, out);
+  return out;
+}
+function walk(obj, path, parentKey, out) {
+  if (isIncludeNode(obj)) {
+    out.push({ path, target: obj.$include, parentKey });
+    return;
+  }
+  if (Array.isArray(obj)) {
+    obj.forEach((child, i) => walk(child, [...path, i], parentKey, out));
+    return;
+  }
+  if (obj !== null && typeof obj === "object") {
+    for (const [k, v] of Object.entries(obj)) {
+      walk(v, [...path, k], k, out);
+    }
+  }
+}
+function readChapter(chaptersDir, rel) {
+  if (isAbsolute(rel)) {
+    throw new IncludeError(`$include \uAC12\uC740 \uC808\uB300 \uACBD\uB85C\uC77C \uC218 \uC5C6\uC74C: ${rel}`);
+  }
+  let chaptersAbs;
+  try {
+    chaptersAbs = resolvePath(chaptersDir);
+  } catch {
+    chaptersAbs = chaptersDir;
+  }
+  const target = resolvePath(chaptersAbs, rel);
+  const relativeFromBase = relative5(chaptersAbs, target);
+  if (relativeFromBase === "" || relativeFromBase.startsWith("..") || isAbsolute(relativeFromBase)) {
+    throw new IncludeError(
+      `$include \uACBD\uB85C\uAC00 chapters \uB514\uB809\uD130\uB9AC\uB97C \uBC97\uC5B4\uB0A8: ${rel} \u2192 ${target}`
+    );
+  }
+  let isFile8;
+  try {
+    isFile8 = statSync6(target).isFile();
+  } catch {
+    throw new IncludeError(`$include \uB300\uC0C1 \uD30C\uC77C \uC5C6\uC74C: ${target}`);
+  }
+  if (!isFile8) {
+    throw new IncludeError(`$include \uB300\uC0C1 \uD30C\uC77C \uC5C6\uC74C: ${target}`);
+  }
+  try {
+    return readFileSync5(target, "utf-8");
+  } catch (err) {
+    throw new IncludeError(`$include \uD30C\uC77C \uC77D\uAE30 \uC2E4\uD328 (${target}): ${err.message}`);
+  }
+}
+function applyReplacements(obj, replacements) {
+  function inner(sub, currentPath) {
+    const key = pathKey(currentPath);
+    if (replacements.has(key)) {
+      return replacements.get(key);
+    }
+    if (Array.isArray(sub)) {
+      return sub.map((child, i) => inner(child, [...currentPath, i]));
+    }
+    if (sub !== null && typeof sub === "object") {
+      const out = {};
+      for (const [k, v] of Object.entries(sub)) {
+        out[k] = inner(v, [...currentPath, k]);
+      }
+      return out;
+    }
+    return sub;
+  }
+  return inner(obj, []);
+}
+function pathKey(path) {
+  return path.map((p) => typeof p === "number" ? `#${p}` : `.${p}`).join("");
+}
+function expand(spec, chaptersDir, options = {}) {
+  const strictLockedFields = options.strictLockedFields ?? true;
+  const includes = findIncludes(spec);
+  if (includes.length === 0) {
+    return spec;
+  }
+  const replacements = /* @__PURE__ */ new Map();
+  for (const item of includes) {
+    if (strictLockedFields && item.parentKey !== null && LOCKED_FIELD_NAMES.has(item.parentKey)) {
+      throw new IncludeError(
+        `\u{1F512} \uD544\uB4DC \`${item.parentKey}\` \uC5D0\uB294 $include \uB97C \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC74C (\uACBD\uB85C: ${item.path.join(".")}, target: ${item.target})`
+      );
+    }
+    const content = readChapter(chaptersDir, item.target);
+    replacements.set(pathKey(item.path), content);
+  }
+  return applyReplacements(spec, replacements);
+}
+var LOCKED_FIELD_NAMES, IncludeError;
+var init_includeExpander = __esm({
+  "src/spec/includeExpander.ts"() {
+    "use strict";
+    LOCKED_FIELD_NAMES = /* @__PURE__ */ new Set([
+      "id",
+      "version",
+      "name",
+      "type",
+      "status",
+      "priority",
+      "schema_version"
+    ]);
+    IncludeError = class extends Error {
+      constructor(message) {
+        super(message);
+        this.name = "IncludeError";
+      }
+    };
+  }
+});
+
+// src/check.ts
+import { createHash as createHash2 } from "node:crypto";
+import { readFileSync as readFileSync6, readdirSync as readdirSync2, statSync as statSync7 } from "node:fs";
+import { dirname as dirname5, isAbsolute as isAbsolute2, join as join7, relative as relative6, resolve as resolvePath2 } from "node:path";
+function isPlainObject5(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function asArray2(value) {
+  return Array.isArray(value) ? value : [];
+}
+function isFile3(path) {
+  try {
+    return statSync7(path).isFile();
+  } catch {
+    return false;
+  }
+}
+function isDirectory(path) {
+  try {
+    return statSync7(path).isDirectory();
+  } catch {
+    return false;
+  }
+}
+function fileSha256(path) {
+  return createHash2("sha256").update(readFileSync6(path)).digest("hex");
+}
+function loadYamlFile(path) {
+  if (!isFile3(path)) {
+    return null;
+  }
+  try {
+    const parsed = (0, import_yaml4.parse)(readFileSync6(path, "utf-8"));
+    return isPlainObject5(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+function walkFiles(root) {
+  const out = [];
+  let entries;
+  try {
+    entries = readdirSync2(root);
+  } catch {
+    return out;
+  }
+  for (const name of entries) {
+    const full = join7(root, name);
+    let stat;
+    try {
+      stat = statSync7(full);
+    } catch {
+      continue;
+    }
+    if (stat.isDirectory()) {
+      out.push(...walkFiles(full));
+    } else if (stat.isFile()) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+function checkGenerated(_harnessDir, harnessYaml) {
+  const findings = [];
+  if (harnessYaml === null) {
+    findings.push({
+      kind: "Generated",
+      path: "harness.yaml",
+      message: "harness.yaml \uBD80\uC7AC/\uB85C\uB4DC \uC2E4\uD328",
+      severity: "error"
+    });
+    return findings;
+  }
+  for (const key of ["version", "generation"]) {
+    if (!(key in harnessYaml)) {
+      findings.push({
+        kind: "Generated",
+        path: `harness.yaml::${key}`,
+        message: `\uD544\uC218 \uD0A4 \uB204\uB77D: ${key}`,
+        severity: "error"
+      });
+    }
+  }
+  return findings;
+}
+function checkDerived(harnessDir, harnessYaml) {
+  const findings = [];
+  const generation = isPlainObject5(harnessYaml["generation"]) ? harnessYaml["generation"] : {};
+  const derived = isPlainObject5(generation["derived_from"]) ? generation["derived_from"] : {};
+  const mapping = [
+    ["domain_md", "domain.md"],
+    ["architecture_yaml", "architecture.yaml"]
+  ];
+  for (const [key, filename] of mapping) {
+    const entry = isPlainObject5(derived[key]) ? derived[key] : {};
+    const expected = entry["output_hash"];
+    const path = join7(harnessDir, filename);
+    if (!isFile3(path)) {
+      if (typeof expected === "string" && expected.length > 0) {
+        findings.push({
+          kind: "Derived",
+          path: filename,
+          message: `${filename} \uAE30\uB85D\uB41C \uD574\uC2DC \uC788\uC73C\uB098 \uD30C\uC77C \uC5C6\uC74C`,
+          severity: "error"
+        });
+      }
+      continue;
+    }
+    if (typeof expected !== "string" || expected.length === 0) {
+      findings.push({
+        kind: "Derived",
+        path: filename,
+        message: `${filename} \uC874\uC7AC\uD558\uC9C0\uB9CC output_hash \uBBF8\uAE30\uB85D (sync \uD544\uC694)`,
+        severity: "warn"
+      });
+      continue;
+    }
+    const actual = fileSha256(path);
+    if (actual !== expected) {
+      findings.push({
+        kind: "Derived",
+        path: filename,
+        message: `${filename} \uD574\uC2DC \uBD88\uC77C\uCE58 (edit-wins \uAC10\uC9C0) \u2014 sync --force \uB85C \uC7AC\uC0DD\uC131 or \uC218\uB3D9 \uC218\uC815 reconcile \uD544\uC694`,
+        severity: "warn"
+      });
+    }
+  }
+  return findings;
+}
+function checkSpec(harnessDir, harnessYaml) {
+  const findings = [];
+  const specPath = join7(harnessDir, "spec.yaml");
+  if (!isFile3(specPath)) {
+    findings.push({
+      kind: "Spec",
+      path: "spec.yaml",
+      message: "spec.yaml \uBD80\uC7AC",
+      severity: "error"
+    });
+    return findings;
+  }
+  const generation = isPlainObject5(harnessYaml["generation"]) ? harnessYaml["generation"] : {};
+  const generatedFrom = isPlainObject5(generation["generated_from"]) ? generation["generated_from"] : {};
+  const expected = generatedFrom["spec_hash"];
+  if (typeof expected !== "string" || expected.length === 0) {
+    findings.push({
+      kind: "Spec",
+      path: "spec.yaml",
+      message: "harness.yaml \uC5D0 spec_hash \uBBF8\uAE30\uB85D (sync \uD544\uC694)",
+      severity: "warn"
+    });
+    return findings;
+  }
+  let parsed;
+  try {
+    parsed = (0, import_yaml4.parse)(readFileSync6(specPath, "utf-8"));
+  } catch {
+    parsed = {};
+  }
+  const actual = canonicalHash(parsed ?? {});
+  if (actual !== expected) {
+    findings.push({
+      kind: "Spec",
+      path: "spec.yaml",
+      message: `spec \uBCC0\uACBD \uAC10\uC9C0 \u2014 sync \uD544\uC694 (expected=${expected.slice(0, 12)}, actual=${actual.slice(0, 12)})`,
+      severity: "warn"
+    });
+  }
+  return findings;
+}
+function checkIncludes(harnessDir, harnessYaml) {
+  const findings = [];
+  const generation = isPlainObject5(harnessYaml["generation"]) ? harnessYaml["generation"] : {};
+  const recorded = asArray2(generation["include_sources"]).filter(
+    (x) => typeof x === "string"
+  );
+  const specPath = join7(harnessDir, "spec.yaml");
+  let current2 = [];
+  if (isFile3(specPath)) {
+    try {
+      const parsed = (0, import_yaml4.parse)(readFileSync6(specPath, "utf-8"));
+      if (isPlainObject5(parsed)) {
+        current2 = findIncludes(parsed).map((item) => item.target);
+      }
+    } catch {
+      current2 = [];
+    }
+  }
+  const recSet = new Set(recorded);
+  const curSet = new Set(current2);
+  const removed = [...recSet].filter((x) => !curSet.has(x)).sort();
+  const added = [...curSet].filter((x) => !recSet.has(x)).sort();
+  for (const item of added) {
+    findings.push({
+      kind: "Include",
+      path: item,
+      message: `spec \uC5D0 \uC2E0\uADDC $include \uAC10\uC9C0 (sync \uD544\uC694): ${item}`,
+      severity: "warn"
+    });
+  }
+  for (const item of removed) {
+    findings.push({
+      kind: "Include",
+      path: item,
+      message: `harness.yaml \uC5D0 \uAE30\uB85D\uB41C include \uAC00 spec \uC5D0\uC11C \uC0AC\uB77C\uC9D0: ${item}`,
+      severity: "warn"
+    });
+  }
+  const chaptersDir = join7(harnessDir, "chapters");
+  if (isDirectory(chaptersDir)) {
+    for (const target of current2) {
+      if (!isFile3(join7(chaptersDir, target))) {
+        findings.push({
+          kind: "Include",
+          path: target,
+          message: `$include \uD0C0\uAC9F \uD30C\uC77C \uC5C6\uC74C: chapters/${target}`,
+          severity: "error"
+        });
+      }
+    }
+  }
+  return findings;
+}
+function checkEvidence(harnessDir) {
+  const findings = [];
+  const statePath = join7(harnessDir, "state.yaml");
+  if (!isFile3(statePath)) {
+    return findings;
+  }
+  const state = State.load(harnessDir);
+  for (const f of state.data.features) {
+    if (!isPlainObject5(f)) {
+      continue;
+    }
+    if (f["status"] === "done" && (!Array.isArray(f["evidence"]) || f["evidence"].length === 0)) {
+      const fid = typeof f["id"] === "string" ? f["id"] : "?";
+      findings.push({
+        kind: "Evidence",
+        path: fid,
+        message: `\uD53C\uCC98 ${fid} \uAC00 done \uC774\uC9C0\uB9CC evidence \uBBF8\uAE30\uB85D (BR-004 \uAC00\uC774\uB4DC)`,
+        severity: "warn"
+      });
+    }
+  }
+  return findings;
+}
+function checkCode(harnessDir, spec, projectRoot = null) {
+  const findings = [];
+  const root = projectRoot ?? resolvePath2(harnessDir, "..");
+  const features = asArray2(spec["features"]);
+  for (const f of features) {
+    if (!isPlainObject5(f)) {
+      continue;
+    }
+    const fid = typeof f["id"] === "string" ? f["id"] : "?";
+    const modules = asArray2(f["modules"]);
+    for (const m of modules) {
+      if (!isPlainObject5(m)) {
+        continue;
+      }
+      const src = m["source"];
+      if (typeof src !== "string" || src.trim().length === 0) {
+        continue;
+      }
+      const target = resolvePath2(root, src);
+      if (!isFile3(target)) {
+        const name = typeof m["name"] === "string" ? m["name"] : "?";
+        findings.push({
+          kind: "Code",
+          path: `${fid}::${name}`,
+          message: `\uBAA8\uB4C8 '${name}' \uC758 source \uACBD\uB85C \uBD80\uC7AC: ${src}`,
+          severity: "error"
+        });
+      }
+    }
+  }
+  return findings;
+}
+function checkDoc(harnessDir, projectRoot = null) {
+  const findings = [];
+  const root = projectRoot ?? resolvePath2(harnessDir, "..");
+  const claudeMd = join7(root, "CLAUDE.md");
+  if (isFile3(claudeMd)) {
+    let text = "";
+    try {
+      text = readFileSync6(claudeMd, "utf-8");
+    } catch {
+      text = "";
+    }
+    let match;
+    CLAUDE_IMPORT_PATTERN.lastIndex = 0;
+    while ((match = CLAUDE_IMPORT_PATTERN.exec(text)) !== null) {
+      const rel = match[1].trim().replace(/[.,;:)]+$/, "");
+      if (!rel || rel.startsWith("http://") || rel.startsWith("https://")) {
+        continue;
+      }
+      const target = isAbsolute2(rel) ? rel : resolvePath2(root, rel);
+      try {
+        statSync7(target);
+      } catch {
+        findings.push({
+          kind: "Doc",
+          path: `CLAUDE.md::@${rel}`,
+          message: `CLAUDE.md @import \uD0C0\uAC9F \uBD80\uC7AC: ${rel}`,
+          severity: "warn"
+        });
+      }
+    }
+  }
+  for (const fname of ["domain.md", "architecture.yaml"]) {
+    const path = join7(harnessDir, fname);
+    if (isFile3(path)) {
+      try {
+        if (statSync7(path).size === 0) {
+          findings.push({
+            kind: "Doc",
+            path: fname,
+            message: `${fname} \uD30C\uC77C\uC774 \uBE44\uC5B4\uC788\uC74C \u2014 sync \uC7AC\uC0DD\uC131 \uD544\uC694`,
+            severity: "error"
+          });
+        }
+      } catch {
+      }
+    }
+  }
+  return findings;
+}
+function checkAnchor(spec) {
+  const findings = [];
+  const features = asArray2(spec["features"]);
+  const seen = /* @__PURE__ */ new Set();
+  const allIds = /* @__PURE__ */ new Set();
+  features.forEach((f, i) => {
+    if (!isPlainObject5(f)) {
+      findings.push({
+        kind: "Anchor",
+        path: `features[${i}]`,
+        message: "feature \uD56D\uBAA9\uC774 \uB9E4\uD551\uC774 \uC544\uB2D8",
+        severity: "error"
+      });
+      return;
+    }
+    const fid = f["id"];
+    if (typeof fid !== "string" || fid.length === 0) {
+      findings.push({
+        kind: "Anchor",
+        path: `features[${i}]`,
+        message: "feature id \uB204\uB77D",
+        severity: "error"
+      });
+      return;
+    }
+    if (!FEATURE_ID_PATTERN.test(fid)) {
+      findings.push({
+        kind: "Anchor",
+        path: fid,
+        message: `feature id \uAC00 F-NNN \uD328\uD134\uC774 \uC544\uB2D8 (got: '${fid}')`,
+        severity: "error"
+      });
+    }
+    if (seen.has(fid)) {
+      findings.push({
+        kind: "Anchor",
+        path: fid,
+        message: `\uC911\uBCF5 feature id: ${fid}`,
+        severity: "error"
+      });
+    }
+    seen.add(fid);
+    allIds.add(fid);
+  });
+  for (const f of features) {
+    if (!isPlainObject5(f)) {
+      continue;
+    }
+    const fid = typeof f["id"] === "string" ? f["id"] : "?";
+    const deps = f["depends_on"];
+    if (deps === void 0 || deps === null) {
+      continue;
+    }
+    if (!Array.isArray(deps)) {
+      findings.push({
+        kind: "Anchor",
+        path: fid,
+        message: "depends_on \uC774 \uBC30\uC5F4\uC774 \uC544\uB2D8",
+        severity: "error"
+      });
+      continue;
+    }
+    for (const dep of deps) {
+      if (typeof dep !== "string") {
+        findings.push({
+          kind: "Anchor",
+          path: fid,
+          message: `depends_on \uD56D\uBAA9\uC774 \uBB38\uC790\uC5F4 \uC544\uB2D8: ${JSON.stringify(dep)}`,
+          severity: "error"
+        });
+        continue;
+      }
+      if (!allIds.has(dep)) {
+        findings.push({
+          kind: "Anchor",
+          path: fid,
+          message: `depends_on \uC5D0 \uC874\uC7AC\uD558\uC9C0 \uC54A\uB294 \uD53C\uCC98 \uCC38\uC870: ${dep}`,
+          severity: "error"
+        });
+      }
+    }
+  }
+  findings.push(...checkFeatureSupersedes(features, allIds));
+  return findings;
+}
+function checkFeatureSupersedes(features, allIds) {
+  const findings = [];
+  const supersedesMap = /* @__PURE__ */ new Map();
+  for (const f of features) {
+    if (!isPlainObject5(f)) {
+      continue;
+    }
+    const fid = f["id"];
+    if (typeof fid !== "string" || fid.length === 0) {
+      continue;
+    }
+    const sup = f["supersedes"];
+    if (sup === void 0 || sup === null) {
+      supersedesMap.set(fid, []);
+    } else if (!Array.isArray(sup)) {
+      findings.push({
+        kind: "Anchor",
+        path: fid,
+        message: "supersedes \uAC00 \uBC30\uC5F4\uC774 \uC544\uB2D8",
+        severity: "error"
+      });
+      supersedesMap.set(fid, []);
+    } else {
+      const cleaned = [];
+      for (const target of sup) {
+        if (typeof target !== "string") {
+          findings.push({
+            kind: "Anchor",
+            path: fid,
+            message: `supersedes \uD56D\uBAA9\uC774 \uBB38\uC790\uC5F4 \uC544\uB2D8: ${JSON.stringify(target)}`,
+            severity: "error"
+          });
+          continue;
+        }
+        if (target === fid) {
+          findings.push({
+            kind: "Anchor",
+            path: fid,
+            message: `supersedes \uC5D0 \uC790\uAE30 \uC790\uC2E0 \uCC38\uC870 \uAE08\uC9C0: ${target}`,
+            severity: "error"
+          });
+          continue;
+        }
+        if (!allIds.has(target)) {
+          findings.push({
+            kind: "Anchor",
+            path: fid,
+            message: `supersedes \uC5D0 \uC874\uC7AC\uD558\uC9C0 \uC54A\uB294 \uD53C\uCC98 \uCC38\uC870: ${target}`,
+            severity: "error"
+          });
+          continue;
+        }
+        cleaned.push(target);
+      }
+      supersedesMap.set(fid, cleaned);
+    }
+    const sb = f["superseded_by"];
+    if (sb !== void 0 && sb !== null) {
+      if (typeof sb !== "string") {
+        findings.push({
+          kind: "Anchor",
+          path: fid,
+          message: `superseded_by \uAC00 \uBB38\uC790\uC5F4 \uC544\uB2D8: ${JSON.stringify(sb)}`,
+          severity: "error"
+        });
+      } else if (sb === fid) {
+        findings.push({
+          kind: "Anchor",
+          path: fid,
+          message: `superseded_by \uC5D0 \uC790\uAE30 \uC790\uC2E0 \uCC38\uC870 \uAE08\uC9C0: ${sb}`,
+          severity: "error"
+        });
+      } else if (!allIds.has(sb)) {
+        findings.push({
+          kind: "Anchor",
+          path: fid,
+          message: `superseded_by \uC5D0 \uC874\uC7AC\uD558\uC9C0 \uC54A\uB294 \uD53C\uCC98 \uCC38\uC870: ${sb}`,
+          severity: "error"
+        });
+      }
+    }
+  }
+  const WHITE = 0, GRAY = 1, BLACK = 2;
+  const color = /* @__PURE__ */ new Map();
+  for (const fid of supersedesMap.keys()) {
+    color.set(fid, WHITE);
+  }
+  const visit = (node, stack) => {
+    color.set(node, GRAY);
+    for (const nxt of supersedesMap.get(node) ?? []) {
+      const c = color.get(nxt);
+      if (c === GRAY) {
+        const cycle = [...stack, node, nxt];
+        findings.push({
+          kind: "Anchor",
+          path: node,
+          message: `supersedes \uC21C\uD658 \uAC10\uC9C0: ${cycle.join(" \u2192 ")}`,
+          severity: "error"
+        });
+        continue;
+      }
+      if (c === WHITE) {
+        visit(nxt, [...stack, node]);
+      }
+    }
+    color.set(node, BLACK);
+  };
+  for (const fid of supersedesMap.keys()) {
+    if (color.get(fid) === WHITE) {
+      visit(fid, []);
+    }
+  }
+  const byId = /* @__PURE__ */ new Map();
+  for (const f of features) {
+    if (isPlainObject5(f) && typeof f["id"] === "string") {
+      byId.set(f["id"], f);
+    }
+  }
+  for (const [fid, feat] of byId.entries()) {
+    const sb = feat["superseded_by"];
+    if (typeof sb !== "string" || !byId.has(sb)) {
+      continue;
+    }
+    const targetSup = asArray2(byId.get(sb)["supersedes"]);
+    if (!targetSup.includes(fid)) {
+      findings.push({
+        kind: "Anchor",
+        path: fid,
+        message: `${fid}.superseded_by=${sb} \uC774\uC9C0\uB9CC ${sb}.supersedes \uC5D0 ${fid} \uC5C6\uC74C \u2014 \uC591\uBC29\uD5A5 \uBD88\uC77C\uCE58`,
+        severity: "warn"
+      });
+    }
+  }
+  return findings;
+}
+function checkAdrSupersedes(spec) {
+  const findings = [];
+  const decisions = asArray2(spec["decisions"]);
+  if (decisions.length === 0) {
+    return findings;
+  }
+  const byId = /* @__PURE__ */ new Map();
+  for (const d of decisions) {
+    if (isPlainObject5(d) && typeof d["id"] === "string") {
+      byId.set(d["id"], d);
+    }
+  }
+  for (const d of decisions) {
+    if (!isPlainObject5(d)) {
+      continue;
+    }
+    const newId = typeof d["id"] === "string" ? d["id"] : "?";
+    const supersedes = asArray2(d["supersedes"]);
+    for (const target of supersedes) {
+      if (typeof target !== "string") {
+        continue;
+      }
+      const targetD = byId.get(target);
+      if (targetD === void 0) {
+        findings.push({
+          kind: "Adr",
+          path: newId,
+          message: `supersedes \uC5D0 \uC874\uC7AC\uD558\uC9C0 \uC54A\uB294 ADR \uCC38\uC870: ${target} (decisions[] \uC5D0 \uC5C6\uC74C)`,
+          severity: "warn"
+        });
+        continue;
+      }
+      const status = targetD["status"];
+      if (status !== "superseded") {
+        findings.push({
+          kind: "Adr",
+          path: target,
+          message: `${newId} \uAC00 ${target} \uB97C supersedes \uD558\uB098 ${target}.status=${JSON.stringify(status)} \u2014 'superseded' \uB85C \uAC31\uC2E0 \uD544\uC694`,
+          severity: "warn"
+        });
+      }
+    }
+  }
+  return findings;
+}
+function checkProtocol(harnessDir) {
+  const findings = [];
+  const protoDir = join7(harnessDir, "protocols");
+  if (!isDirectory(protoDir)) {
+    return findings;
+  }
+  let entries;
+  try {
+    entries = readdirSync2(protoDir).sort();
+  } catch {
+    return findings;
+  }
+  for (const name of entries) {
+    if (!name.endsWith(".md")) {
+      continue;
+    }
+    const md = join7(protoDir, name);
+    let text;
+    try {
+      text = readFileSync6(md, "utf-8");
+    } catch {
+      findings.push({
+        kind: "Protocol",
+        path: relative6(harnessDir, md),
+        message: "\uD30C\uC77C \uC77D\uAE30 \uC2E4\uD328",
+        severity: "error"
+      });
+      continue;
+    }
+    const match = PROTOCOL_FRONTMATTER.exec(text);
+    if (match === null) {
+      findings.push({
+        kind: "Protocol",
+        path: relative6(harnessDir, md),
+        message: "YAML frontmatter \uBD80\uC7AC \u2014 `---` \uB85C \uC2DC\uC791/\uC885\uB8CC\uB418\uB294 \uBE14\uB85D \uD544\uC694",
+        severity: "error"
+      });
+      continue;
+    }
+    let fm;
+    try {
+      fm = (0, import_yaml4.parse)(match[1]);
+    } catch (err) {
+      findings.push({
+        kind: "Protocol",
+        path: relative6(harnessDir, md),
+        message: `frontmatter YAML \uD30C\uC2F1 \uC2E4\uD328: ${err.message}`,
+        severity: "error"
+      });
+      continue;
+    }
+    if (!isPlainObject5(fm)) {
+      findings.push({
+        kind: "Protocol",
+        path: relative6(harnessDir, md),
+        message: "frontmatter \uAC00 mapping \uC774 \uC544\uB2D8",
+        severity: "error"
+      });
+      continue;
+    }
+    const pid = fm["protocol_id"];
+    if (typeof pid !== "string" || pid.length === 0) {
+      findings.push({
+        kind: "Protocol",
+        path: relative6(harnessDir, md),
+        message: "frontmatter.protocol_id \uB204\uB77D \uB610\uB294 \uBE48 \uAC12",
+        severity: "error"
+      });
+      continue;
+    }
+    const expected = name.replace(/\.md$/, "");
+    if (pid !== expected) {
+      findings.push({
+        kind: "Protocol",
+        path: relative6(harnessDir, md),
+        message: `protocol_id ('${pid}') \uAC00 \uD30C\uC77C\uBA85 stem ('${expected}') \uACFC \uBD88\uC77C\uCE58 \u2014 F-017 AC-2 \uC704\uBC18`,
+        severity: "error"
+      });
+    }
+  }
+  return findings;
+}
+function checkStale(harnessDir, spec, projectRoot = null) {
+  const findings = [];
+  const root = projectRoot ?? resolvePath2(harnessDir, "..");
+  const features = asArray2(spec["features"]);
+  const srcRoot = join7(root, "src");
+  if (!isDirectory(srcRoot)) {
+    return findings;
+  }
+  const srcFiles = walkFiles(srcRoot);
+  for (const f of features) {
+    if (!isPlainObject5(f)) {
+      continue;
+    }
+    if (f["status"] !== "done") {
+      continue;
+    }
+    if (f["superseded_by"]) {
+      continue;
+    }
+    const modules = asArray2(f["modules"]);
+    const declaredSources = [];
+    for (const m of modules) {
+      if (!isPlainObject5(m)) {
+        continue;
+      }
+      const src = m["source"];
+      if (typeof src !== "string" || src.trim().length === 0) {
+        continue;
+      }
+      const target = resolvePath2(root, src);
+      if (isFile3(target)) {
+        declaredSources.push(target);
+      }
+    }
+    if (declaredSources.length === 0) {
+      continue;
+    }
+    const fid = typeof f["id"] === "string" ? f["id"] : "?";
+    for (const target of declaredSources) {
+      const base = target.split(/[/\\]/).pop();
+      const stem = base.replace(/\.[^.]+$/, "");
+      let referenced = false;
+      for (const sf of srcFiles) {
+        if (sf === target) {
+          continue;
+        }
+        let text;
+        try {
+          text = readFileSync6(sf, "utf-8");
+        } catch {
+          continue;
+        }
+        if (text.includes(base)) {
+          referenced = true;
+          break;
+        }
+        if (text.includes(`/${stem}`) || text.includes(`"${stem}`) || text.includes(`'${stem}`)) {
+          referenced = true;
+          break;
+        }
+      }
+      if (!referenced) {
+        let relStr;
+        try {
+          relStr = relative6(root, target);
+        } catch {
+          relStr = base;
+        }
+        findings.push({
+          kind: "Stale",
+          path: `${fid}::${relStr}`,
+          message: `\uD53C\uCC98 ${fid} (status=done) \uC758 \uBAA8\uB4C8 ${relStr} \uAC00 src/ \uC5B4\uB514\uC5D0\uC11C\uB3C4 \uCC38\uC870\uB418\uC9C0 \uC54A\uC74C \u2014 \uC2E4\uC81C\uB85C \uC0AC\uC6A9\uB418\uC9C0 \uC54A\uB294 dead code \uAC70\uB098 archived/superseded_by \uCC98\uB9AC\uAC00 \uD544\uC694`,
+          severity: "warn"
+        });
+      }
+    }
+  }
+  return findings;
+}
+function checkAnchorIntegration(harnessDir, spec, projectRoot = null) {
+  const findings = [];
+  const root = projectRoot ?? resolvePath2(harnessDir, "..");
+  const features = asArray2(spec["features"]);
+  for (const f of features) {
+    if (!isPlainObject5(f)) {
+      continue;
+    }
+    if (f["status"] !== "done") {
+      continue;
+    }
+    if (f["superseded_by"]) {
+      continue;
+    }
+    const anchors = f["integration_anchor"];
+    if (!Array.isArray(anchors) || anchors.length === 0) {
+      continue;
+    }
+    const modules = asArray2(f["modules"]);
+    const declaredSources = [];
+    for (const m of modules) {
+      if (!isPlainObject5(m)) {
+        continue;
+      }
+      const src = m["source"];
+      if (typeof src !== "string" || src.trim().length === 0) {
+        continue;
+      }
+      const target = resolvePath2(root, src);
+      if (isFile3(target)) {
+        declaredSources.push(target);
+      }
+    }
+    if (declaredSources.length === 0) {
+      continue;
+    }
+    const fid = typeof f["id"] === "string" ? f["id"] : "?";
+    const anchorPaths = [];
+    for (const anchor of anchors) {
+      if (typeof anchor !== "string" || anchor.trim().length === 0) {
+        continue;
+      }
+      const ap = resolvePath2(root, anchor);
+      if (!isFile3(ap)) {
+        findings.push({
+          kind: "AnchorIntegration",
+          path: `${fid}::${anchor}`,
+          message: `\uD53C\uCC98 ${fid} \uC758 integration_anchor \uD30C\uC77C \uBD80\uC7AC: ${anchor}`,
+          severity: "error"
+        });
+        continue;
+      }
+      anchorPaths.push(ap);
+    }
+    if (anchorPaths.length === 0) {
+      continue;
+    }
+    const anchorRels = anchorPaths.map((p) => {
+      try {
+        return relative6(root, p);
+      } catch {
+        return p;
+      }
+    });
+    const anchorList = anchorRels.join(", ");
+    for (const target of declaredSources) {
+      const base = target.split(/[/\\]/).pop();
+      const stem = base.replace(/\.[^.]+$/, "");
+      let relStr;
+      try {
+        relStr = relative6(root, target);
+      } catch {
+        relStr = base;
+      }
+      let referenced = false;
+      for (const ap of anchorPaths) {
+        let text;
+        try {
+          text = readFileSync6(ap, "utf-8");
+        } catch {
+          continue;
+        }
+        if (text.includes(base)) {
+          referenced = true;
+          break;
+        }
+        if (text.includes(`/${stem}`) || text.includes(`"${stem}`) || text.includes(`'${stem}`)) {
+          referenced = true;
+          break;
+        }
+      }
+      if (!referenced) {
+        findings.push({
+          kind: "AnchorIntegration",
+          path: `${fid}::${relStr}`,
+          message: `\uD53C\uCC98 ${fid} (status=done) \uC758 \uBAA8\uB4C8 ${relStr} \uAC00 integration_anchor (${anchorList}) \uC5D0\uC11C \uCC38\uC870\uB418\uC9C0 \uC54A\uC74C \u2014 \uD1B5\uD569 wiring \uB204\uB77D \uAC00\uB2A5\uC131`,
+          severity: "warn"
+        });
+      }
+    }
+  }
+  return findings;
+}
+function checkSpecCoverage(harnessDir, _specYaml) {
+  const findings = [];
+  const covDir = join7(harnessDir, "_workspace", "coverage");
+  if (!isDirectory(covDir)) {
+    return findings;
+  }
+  let threshold = DEFAULT_COVERAGE_THRESHOLD;
+  const harnessYamlPath = join7(harnessDir, "harness.yaml");
+  if (isFile3(harnessYamlPath)) {
+    try {
+      const cfg = (0, import_yaml4.parse)(readFileSync6(harnessYamlPath, "utf-8"));
+      if (isPlainObject5(cfg)) {
+        const coverage = cfg["coverage"];
+        if (isPlainObject5(coverage)) {
+          const override = coverage["threshold"];
+          if (typeof override === "number") {
+            threshold = override;
+          } else if (typeof override === "string" && !Number.isNaN(Number(override))) {
+            threshold = Number(override);
+          }
+        }
+      }
+    } catch {
+      threshold = DEFAULT_COVERAGE_THRESHOLD;
+    }
+  }
+  let entries;
+  try {
+    entries = readdirSync2(covDir).sort();
+  } catch {
+    return findings;
+  }
+  for (const name of entries) {
+    if (!name.startsWith("F-") || !name.endsWith(".yaml")) {
+      continue;
+    }
+    const fpPath = join7(covDir, name);
+    let fp;
+    try {
+      fp = (0, import_yaml4.parse)(readFileSync6(fpPath, "utf-8"));
+    } catch {
+      continue;
+    }
+    if (!isPlainObject5(fp)) {
+      continue;
+    }
+    const fid = fp["feature_id"] ?? name.replace(/\.yaml$/, "");
+    const mismatches = asArray2(fp["mismatches"]);
+    for (const mismatch of mismatches) {
+      if (!isPlainObject5(mismatch)) {
+        continue;
+      }
+      const metric = typeof mismatch["metric"] === "string" ? mismatch["metric"] : "";
+      const descVal = Number(mismatch["description_value"] ?? 0);
+      const acVal = Number(mismatch["ac_value"] ?? 0);
+      if (Number.isNaN(descVal) || Number.isNaN(acVal) || descVal <= 0) {
+        continue;
+      }
+      const ratio = acVal / descVal;
+      if (ratio < threshold) {
+        findings.push({
+          kind: "Coverage",
+          path: `${fid}::quant.${metric}`,
+          message: `description claims ${descVal} ${metric} but AC accepts ${acVal} (ratio=${ratio.toFixed(2)}, threshold=${threshold.toFixed(2)}) \u2014 explicit carry-forward required (retro entry or --hotfix-reason)`,
+          severity: "error"
+        });
+      }
+    }
+  }
+  return findings;
+}
+function runCheck(harnessDir, projectRoot = null) {
+  const report = { findings: [], checked: [] };
+  const harnessYaml = loadYamlFile(join7(harnessDir, "harness.yaml"));
+  const specYaml = loadYamlFile(join7(harnessDir, "spec.yaml"));
+  report.findings.push(...checkGenerated(harnessDir, harnessYaml));
+  report.checked.push("Generated");
+  if (harnessYaml !== null) {
+    report.findings.push(...checkDerived(harnessDir, harnessYaml));
+    report.checked.push("Derived");
+    report.findings.push(...checkSpec(harnessDir, harnessYaml));
+    report.checked.push("Spec");
+    report.findings.push(...checkIncludes(harnessDir, harnessYaml));
+    report.checked.push("Include");
+  }
+  report.findings.push(...checkEvidence(harnessDir));
+  report.checked.push("Evidence");
+  if (specYaml !== null) {
+    report.findings.push(...checkCode(harnessDir, specYaml, projectRoot));
+    report.checked.push("Code");
+    report.findings.push(...checkAnchor(specYaml));
+    report.checked.push("Anchor");
+    report.findings.push(...checkAdrSupersedes(specYaml));
+    report.checked.push("Adr");
+    report.findings.push(...checkStale(harnessDir, specYaml, projectRoot));
+    report.checked.push("Stale");
+    report.findings.push(...checkAnchorIntegration(harnessDir, specYaml, projectRoot));
+    report.checked.push("AnchorIntegration");
+  }
+  report.findings.push(...checkDoc(harnessDir, projectRoot));
+  report.checked.push("Doc");
+  report.findings.push(...checkProtocol(harnessDir));
+  report.checked.push("Protocol");
+  report.findings.push(...checkSpecCoverage(harnessDir, specYaml));
+  report.checked.push("Coverage");
+  return report;
+}
+function runBlockingCheck(harnessDir, projectRoot = null) {
+  const report = { findings: [], checked: [] };
+  const specYaml = loadYamlFile(join7(harnessDir, "spec.yaml"));
+  if (specYaml !== null) {
+    report.findings.push(...checkCode(harnessDir, specYaml, projectRoot));
+    report.findings.push(...checkStale(harnessDir, specYaml, projectRoot));
+    report.findings.push(...checkAnchorIntegration(harnessDir, specYaml, projectRoot));
+  }
+  report.findings.push(...checkSpecCoverage(harnessDir, specYaml));
+  report.checked.push("Code", "Stale", "AnchorIntegration", "Coverage");
+  return report;
+}
+function formatHuman(report) {
+  const lines = ["\u{1F50D} /harness:check", ""];
+  lines.push(`Checked: ${report.checked.join(", ")}`);
+  lines.push("");
+  if (report.findings.length === 0) {
+    lines.push("\u2705 clean \u2014 drift \uC5C6\uC74C");
+    return `${lines.join("\n")}
+`;
+  }
+  lines.push(`Findings (${report.findings.length}):`);
+  for (const f of report.findings) {
+    const marker = f.severity === "error" ? "\u274C" : "\u26A0\uFE0F ";
+    lines.push(`  ${marker} [${f.kind}] ${f.path}: ${f.message}`);
+  }
+  void dirname5;
+  return `${lines.join("\n")}
+`;
+}
+var import_yaml4, FEATURE_ID_PATTERN, CLAUDE_IMPORT_PATTERN, PROTOCOL_FRONTMATTER, DEFAULT_COVERAGE_THRESHOLD;
+var init_check = __esm({
+  "src/check.ts"() {
+    "use strict";
+    import_yaml4 = __toESM(require_dist(), 1);
+    init_canonicalHash();
+    init_state();
+    init_includeExpander();
+    FEATURE_ID_PATTERN = /^F-\d+$/;
+    CLAUDE_IMPORT_PATTERN = /^@([^\s]+)/gm;
+    PROTOCOL_FRONTMATTER = /^---\s*\n([\s\S]*?)\n---/;
+    DEFAULT_COVERAGE_THRESHOLD = 0.8;
+  }
+});
+
+// src/core/gates.ts
+var STANDARD_GATES;
+var init_gates = __esm({
+  "src/core/gates.ts"() {
+    "use strict";
+    STANDARD_GATES = [
+      "gate_0",
+      "gate_1",
+      "gate_2",
+      "gate_3",
+      "gate_4",
+      "gate_5"
+    ];
+  }
+});
+
+// src/ui/intentPlanner.ts
+function isPlainObject9(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function asArray4(value) {
+  return Array.isArray(value) ? value : [];
+}
+function featureTitle2(fid, spec) {
+  if (!isPlainObject9(spec)) {
+    return fid;
+  }
+  for (const f of asArray4(spec["features"])) {
+    if (isPlainObject9(f) && f["id"] === fid) {
+      const title = f["name"] ?? f["title"];
+      if (typeof title === "string" && title.trim().length > 0) {
+        return title.trim();
+      }
+    }
+  }
+  return fid;
+}
+function hasRecentBlocker(evidence) {
+  if (!Array.isArray(evidence) || evidence.length === 0) {
+    return false;
+  }
+  const last = evidence[evidence.length - 1];
+  return isPlainObject9(last) && last["kind"] === "blocker";
+}
+function suggestionsForActive(feature, spec) {
+  const fid = typeof feature["id"] === "string" ? feature["id"] : "?";
+  const status = typeof feature["status"] === "string" ? feature["status"] : "planned";
+  const gates = isPlainObject9(feature["gates"]) ? feature["gates"] : {};
+  const evidence = asArray4(feature["evidence"]);
+  const title = featureTitle2(fid, spec);
+  if (status === "blocked" || hasRecentBlocker(evidence)) {
+    return [
+      { label: `\uCC28\uB2E8 \uD574\uACB0 \uC2DC\uB3C4: "${title}"`, action: "resolve_block", feature_id: fid },
+      { label: "\uB2E4\uB978 \uC791\uC5C5\uC73C\uB85C \uC804\uD658", action: "deactivate" }
+    ];
+  }
+  const failed = [];
+  for (const [name, g] of Object.entries(gates)) {
+    if (isPlainObject9(g) && g["last_result"] === "fail") {
+      failed.push(name);
+    }
+  }
+  if (failed.length > 0) {
+    const ordered = STANDARD_GATES2.filter((g) => failed.includes(g));
+    const first = ordered.length > 0 ? ordered[0] : [...failed].sort()[0];
+    return [
+      { label: `\uC2E4\uD328 \uC6D0\uC778 \uBD84\uC11D: ${first}`, action: "analyze_fail", feature_id: fid, gate: first },
+      { label: `${first} \uC7AC\uC2E4\uD589`, action: "run_gate", feature_id: fid, gate: first },
+      { label: "\uB2E4\uB978 \uC791\uC5C5\uC73C\uB85C \uC804\uD658", action: "deactivate" }
+    ];
+  }
+  let nextGate = null;
+  for (const gateName of STANDARD_GATES2) {
+    const g = gates[gateName];
+    const result = isPlainObject9(g) ? g["last_result"] : null;
+    if (result !== "pass") {
+      nextGate = gateName;
+      break;
+    }
+  }
+  const gate5 = gates["gate_5"];
+  const gate5Pass = isPlainObject9(gate5) && gate5["last_result"] === "pass";
+  if (gate5Pass && nextGate === null) {
+    if (evidence.length === 0) {
+      return [
+        { label: `\uADFC\uAC70 1 \uAC74 \uCD94\uAC00 ("${title}")`, action: "add_evidence", feature_id: fid },
+        { label: "\uB2E4\uB978 \uC791\uC5C5\uC73C\uB85C \uC804\uD658", action: "deactivate" }
+      ];
+    }
+    return [
+      { label: `\uC644\uB8CC \uCC98\uB9AC: "${title}"`, action: "complete", feature_id: fid },
+      { label: "\uB2E4\uB978 \uC791\uC5C5\uC73C\uB85C \uC804\uD658", action: "deactivate" }
+    ];
+  }
+  if (nextGate !== null) {
+    return [
+      { label: `\uAC80\uC99D \uC2E4\uD589: ${nextGate}`, action: "run_gate", feature_id: fid, gate: nextGate },
+      { label: "\uB2E4\uB978 \uC791\uC5C5\uC73C\uB85C \uC804\uD658", action: "deactivate" }
+    ];
+  }
+  return [{ label: "\uB2E4\uB978 \uC791\uC5C5\uC73C\uB85C \uC804\uD658", action: "deactivate" }];
+}
+function firstUnregisteredInSpec(features, spec) {
+  if (!isPlainObject9(spec)) {
+    return null;
+  }
+  const specFeatures = asArray4(spec["features"]);
+  if (specFeatures.length === 0) {
+    return null;
+  }
+  const registered = /* @__PURE__ */ new Set();
+  for (const f of features) {
+    if (isPlainObject9(f) && typeof f["id"] === "string") {
+      registered.add(f["id"]);
+    }
+  }
+  for (const f of specFeatures) {
+    if (!isPlainObject9(f)) {
+      continue;
+    }
+    const fid = f["id"];
+    if (typeof fid !== "string" || fid.length === 0) {
+      continue;
+    }
+    if (registered.has(fid)) {
+      continue;
+    }
+    if (f["status"] === "archived") {
+      continue;
+    }
+    if (f["superseded_by"]) {
+      continue;
+    }
+    return fid;
+  }
+  return null;
+}
+function suggestionsForIdle(features, spec) {
+  const inProgress = features.filter(
+    (f) => isPlainObject9(f) && f["status"] === "in_progress" && typeof f["id"] === "string"
+  );
+  const planned = features.filter(
+    (f) => isPlainObject9(f) && f["status"] === "planned" && typeof f["id"] === "string"
+  );
+  const out = [];
+  if (inProgress.length > 0) {
+    const fid = inProgress[0]["id"];
+    out.push({
+      label: `\uC774\uC5B4\uC11C \uC791\uC5C5: "${featureTitle2(fid, spec)}"`,
+      action: "resume",
+      feature_id: fid
+    });
+  }
+  if (planned.length > 0) {
+    const fid = planned[0]["id"];
+    out.push({
+      label: `\uB2E4\uC74C \uD53C\uCC98 \uC2DC\uC791: "${featureTitle2(fid, spec)}"`,
+      action: "start_feature",
+      feature_id: fid
+    });
+  } else {
+    const unregisteredFid = firstUnregisteredInSpec(features, spec);
+    if (unregisteredFid !== null) {
+      out.push({
+        label: `\uB2E4\uC74C \uD53C\uCC98 \uC2DC\uC791: "${featureTitle2(unregisteredFid, spec)}"`,
+        action: "start_feature",
+        feature_id: unregisteredFid
+      });
+    }
+  }
+  if (out.length === 0) {
+    out.push({ label: "\uC0C8 \uD53C\uCC98 \uB4F1\uB85D (spec.yaml \uD3B8\uC9D1)", action: "init_feature" });
+  }
+  return out;
+}
+function suggest(stateData, spec = null, options = {}) {
+  if (!isPlainObject9(stateData)) {
+    return [];
+  }
+  const session = isPlainObject9(stateData["session"]) ? stateData["session"] : {};
+  const activeId = session["active_feature_id"];
+  const features = asArray4(stateData["features"]);
+  const byId = /* @__PURE__ */ new Map();
+  for (const f of features) {
+    if (isPlainObject9(f) && typeof f["id"] === "string") {
+      byId.set(f["id"], f);
+    }
+  }
+  let out;
+  if (typeof activeId === "string" && byId.has(activeId)) {
+    out = suggestionsForActive(byId.get(activeId), spec);
+  } else {
+    out = suggestionsForIdle(features, spec);
+  }
+  const coverage = options.coverage;
+  if (coverage !== void 0 && coverage !== null && coverage < DEFAULT_COVERAGE_THRESHOLD3) {
+    const pct = Math.round(coverage * 100);
+    const thresholdPct = Math.round(DEFAULT_COVERAGE_THRESHOLD3 * 100);
+    out = [
+      {
+        label: `Review carry-forward debt \u2014 coverage ${pct}% < threshold ${thresholdPct}% (explicit carry to retro before complete)`,
+        action: "review_carry_forward"
+      },
+      ...out
+    ];
+  }
+  return out.slice(0, 3);
+}
+var STANDARD_GATES2, DEFAULT_COVERAGE_THRESHOLD3;
+var init_intentPlanner = __esm({
+  "src/ui/intentPlanner.ts"() {
+    "use strict";
+    STANDARD_GATES2 = [
+      "gate_0",
+      "gate_1",
+      "gate_2",
+      "gate_3",
+      "gate_4",
+      "gate_5"
+    ];
+    DEFAULT_COVERAGE_THRESHOLD3 = 0.8;
   }
 });
 
@@ -18428,3575 +20591,14 @@ var require_dist2 = __commonJS({
   }
 });
 
-// src/drive/goalStore.ts
-import { createHash as createHash4 } from "node:crypto";
-import { readFileSync as readFileSync15, writeFileSync as writeFileSync7 } from "node:fs";
-function isPlainObject13(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-function normalizeSlug(title) {
-  const ascii = title.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
-  if (ascii.length > 0 && /^[a-z0-9]/.test(ascii)) {
-    return ascii.length > MAX_SLUG_LENGTH ? ascii.slice(0, MAX_SLUG_LENGTH) : ascii;
-  }
-  const hash = createHash4("sha256").update(title, "utf8").digest("hex").slice(0, 8);
-  return `goal-${hash}`;
-}
-function readGoals(specPath) {
-  const raw = readFileSync15(specPath, "utf-8");
-  const doc = (0, import_yaml13.parse)(raw);
-  if (!isPlainObject13(doc)) {
-    return [];
-  }
-  const goals = doc.goals;
-  if (!Array.isArray(goals)) {
-    return [];
-  }
-  const out = [];
-  for (const g of goals) {
-    if (!isPlainObject13(g)) {
-      continue;
-    }
-    if (typeof g.id !== "string" || typeof g.title !== "string") {
-      continue;
-    }
-    const slug = typeof g.slug === "string" ? g.slug : normalizeSlug(g.title);
-    const featureIds = Array.isArray(g.feature_ids) ? g.feature_ids.filter((x) => typeof x === "string") : [];
-    out.push({
-      ...g,
-      id: g.id,
-      slug,
-      title: g.title,
-      feature_ids: featureIds
-    });
-  }
-  return out;
-}
-var import_yaml13, MAX_SLUG_LENGTH;
-var init_goalStore = __esm({
-  "src/drive/goalStore.ts"() {
-    "use strict";
-    import_yaml13 = __toESM(require_dist(), 1);
-    MAX_SLUG_LENGTH = 60;
-  }
-});
-
-// src/drive/progressRenderer.ts
-function isPlainObject14(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-function featureIcon(status, emoji) {
-  if (!emoji) {
-    const map2 = {
-      done: "[x]",
-      in_progress: "[>]",
-      planned: "[ ]",
-      blocked: "[!]",
-      archived: "[~]"
-    };
-    return map2[status] ?? "[ ]";
-  }
-  const map = {
-    done: "\u2705",
-    in_progress: "\u{1F535}",
-    planned: "\u26AA",
-    blocked: "\u26A0",
-    archived: "\u{1F5C4}"
-  };
-  return map[status] ?? "\u26AA";
-}
-function countGatesPassed2(feature) {
-  if (!isPlainObject14(feature.gates)) {
-    return 0;
-  }
-  let count = 0;
-  for (const g of STANDARD_GATES3) {
-    const entry = feature.gates[g];
-    if (isPlainObject14(entry) && entry.last_result === "pass") {
-      count += 1;
-    }
-  }
-  return count;
-}
-function countDeclaredEvidence2(feature) {
-  if (!Array.isArray(feature.evidence)) {
-    return 0;
-  }
-  let count = 0;
-  for (const ev of feature.evidence) {
-    if (!isPlainObject14(ev)) {
-      continue;
-    }
-    const kind = ev.kind;
-    if (typeof kind === "string" && (kind === "gate_run" || kind === "gate_auto_run")) {
-      continue;
-    }
-    count += 1;
-  }
-  return count;
-}
-function elapsedMinutes(startedAt, now) {
-  if (typeof startedAt !== "string" || startedAt.length === 0) {
-    return null;
-  }
-  const ms = Date.parse(startedAt);
-  if (Number.isNaN(ms)) {
-    return null;
-  }
-  const diff = now.getTime() - ms;
-  if (diff < 0) {
-    return 0;
-  }
-  return Math.round(diff / 6e4);
-}
-function elapsedMinutesFromSec(elapsed_sec) {
-  if (typeof elapsed_sec !== "number" || !Number.isFinite(elapsed_sec) || elapsed_sec < 0) {
-    return null;
-  }
-  return Math.round(elapsed_sec / 60);
-}
-function computePercentDone(features) {
-  if (features.length === 0) {
-    return 0;
-  }
-  let done = 0;
-  for (const f of features) {
-    if (f.status === "done") {
-      done += 1;
-    }
-  }
-  return Math.round(done / features.length * 100);
-}
-function inflightGateLabel(feature) {
-  if (feature.status !== "in_progress") {
-    return null;
-  }
-  for (const g of STANDARD_GATES3) {
-    const entry = feature.gates?.[g];
-    if (!isPlainObject14(entry)) {
-      return g;
-    }
-    if (entry.last_result !== "pass") {
-      return g;
-    }
-  }
-  return null;
-}
-function renderProgress(input, options = {}) {
-  const { goalSpec, goalRuntime, features } = input;
-  const emoji = options.emoji ?? true;
-  const now = options.now ?? /* @__PURE__ */ new Date();
-  const percentDone = computePercentDone(features);
-  const goalIcon = emoji ? "\u{1F4CA}" : "##";
-  const status = goalRuntime?.status ?? "planning";
-  const lines = [];
-  lines.push(`${goalIcon} Goal ${goalSpec.id}: ${goalSpec.title} (${percentDone}%) [${status}]`);
-  for (const f of features) {
-    const icon = featureIcon(f.status, emoji);
-    const passed = countGatesPassed2(f);
-    const declared = countDeclaredEvidence2(f);
-    const inflight = inflightGateLabel(f);
-    const elapsed = elapsedMinutes(f.started_at, now);
-    const parts = [];
-    parts.push(`${f.status}`);
-    if (inflight !== null) {
-      parts.push(`${inflight} running`);
-    } else if (passed > 0) {
-      parts.push(`${passed}/${STANDARD_GATES3.length} gates`);
-    }
-    if (declared > 0) {
-      parts.push(`${declared} evidence`);
-    }
-    if (elapsed !== null && f.status !== "planned") {
-      parts.push(`${elapsed}m`);
-    }
-    const fname = featureName(f);
-    lines.push(`  ${icon} ${f.id} ${fname} [${parts.join(" \xB7 ")}]`);
-  }
-  const activeFeature = features.find((f) => f.status === "in_progress") ?? null;
-  const iteration = goalRuntime?.iteration ?? 0;
-  const elapsedGoal = elapsedMinutesFromSec(goalRuntime?.elapsed_sec);
-  const lastHalt = goalRuntime?.last_halt_reason ?? null;
-  if (activeFeature !== null) {
-    const inflight = inflightGateLabel(activeFeature);
-    const phase = inflight !== null ? `${inflight} (running)` : "awaiting evidence";
-    const arrow = emoji ? "\u25B6" : ">";
-    const elapsedSegment = elapsedGoal !== null ? ` \xB7 ${elapsedGoal}m elapsed` : "";
-    const haltSegment = lastHalt !== null ? ` \xB7 last halt: ${lastHalt}` : "";
-    lines.push(
-      `${arrow} now: ${activeFeature.id} / ${phase} \xB7 iteration ${iteration}${elapsedSegment}${haltSegment}`
-    );
-  } else {
-    const arrow = emoji ? "\u25B6" : ">";
-    const elapsedSegment = elapsedGoal !== null ? ` \xB7 ${elapsedGoal}m elapsed` : "";
-    lines.push(`${arrow} now: idle \xB7 iteration ${iteration}${elapsedSegment}`);
-  }
-  return lines.join("\n");
-}
-function renderProgressJson(input, options = {}) {
-  const { goalSpec, goalRuntime, features } = input;
-  const now = options.now ?? /* @__PURE__ */ new Date();
-  const featuresJson = features.map((f) => ({
-    id: f.id,
-    status: f.status,
-    gates_passed: countGatesPassed2(f),
-    evidence_count: countDeclaredEvidence2(f),
-    elapsed_min: elapsedMinutes(f.started_at, now)
-  }));
-  return {
-    goal_id: goalSpec.id,
-    title: goalSpec.title,
-    status: goalRuntime?.status ?? "planning",
-    percent_done: computePercentDone(features),
-    features: featuresJson,
-    iteration: goalRuntime?.iteration ?? 0,
-    elapsed_min: elapsedMinutesFromSec(goalRuntime?.elapsed_sec),
-    last_halt_reason: goalRuntime?.last_halt_reason ?? null
-  };
-}
-function featureName(feature) {
-  const n = feature.name;
-  return typeof n === "string" && n.length > 0 ? n : "";
-}
-var STANDARD_GATES3;
-var init_progressRenderer = __esm({
-  "src/drive/progressRenderer.ts"() {
-    "use strict";
-    STANDARD_GATES3 = ["gate_0", "gate_1", "gate_2", "gate_3", "gate_5"];
-  }
-});
-
-// src/drive/statusCommand.ts
-var statusCommand_exports = {};
-__export(statusCommand_exports, {
-  composeStatusJson: () => composeStatusJson,
-  composeStatusText: () => composeStatusText,
-  runDriveStatus: () => runDriveStatus
-});
-import { existsSync as existsSync4, readFileSync as readFileSync16 } from "node:fs";
-import { join as join16 } from "node:path";
-function isPlainObject15(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-function readSpecFeatures(harnessDir) {
-  const path = join16(harnessDir, "spec.yaml");
-  if (!existsSync4(path)) {
-    return [];
-  }
-  const raw = readFileSync16(path, "utf-8");
-  const doc = (0, import_yaml14.parse)(raw);
-  if (!isPlainObject15(doc)) {
-    return [];
-  }
-  if (!Array.isArray(doc.features)) {
-    return [];
-  }
-  return doc.features.filter(isPlainObject15);
-}
-function enrichFeatures(runtimeFeatures, specFeatures) {
-  const nameById = /* @__PURE__ */ new Map();
-  for (const f of specFeatures) {
-    if (typeof f.id === "string" && typeof f.name === "string") {
-      nameById.set(f.id, f.name);
-    }
-  }
-  return runtimeFeatures.map((f) => {
-    const name = nameById.get(f.id);
-    return name === void 0 ? f : { ...f, name };
-  });
-}
-function resolveGoalFeatures(state, goalSpec, specFeatures) {
-  const runtimeById = /* @__PURE__ */ new Map();
-  for (const f of state.data.features ?? []) {
-    if (isPlainObject15(f) && typeof f.id === "string") {
-      runtimeById.set(f.id, f);
-    }
-  }
-  const out = [];
-  for (const fid of goalSpec.feature_ids) {
-    const existing = runtimeById.get(fid);
-    if (existing !== void 0) {
-      out.push(existing);
-      continue;
-    }
-    out.push({
-      id: fid,
-      status: "planned",
-      gates: {},
-      evidence: [],
-      started_at: null,
-      completed_at: null
-    });
-  }
-  return enrichFeatures(out, specFeatures);
-}
-function selectGoals(goals, state, options) {
-  if (options.all === true) {
-    return [...goals];
-  }
-  if (typeof options.goalId === "string" && options.goalId.length > 0) {
-    const found = goals.find((g) => g.id === options.goalId);
-    return found === void 0 ? [] : [found];
-  }
-  const active = state.activeGoalId();
-  if (active !== null) {
-    const found = goals.find((g) => g.id === active);
-    if (found !== void 0) {
-      return [found];
-    }
-  }
-  if (goals.length > 0) {
-    return [goals[goals.length - 1]];
-  }
-  return [];
-}
-function composeStatusText(goals, state, specFeatures, options) {
-  const selected = selectGoals(goals, state, options);
-  if (selected.length === 0) {
-    return 'no goals registered yet \u2014 drive --plan or /harness-boot:drive "<goal>" (stage 2 / F-119)';
-  }
-  const blocks = [];
-  for (const goalSpec of selected) {
-    const goalRuntime = state.getGoal(goalSpec.id);
-    const features = resolveGoalFeatures(state, goalSpec, specFeatures);
-    blocks.push(renderProgress({ goalSpec, goalRuntime, features }));
-  }
-  return blocks.join("\n\n");
-}
-function composeStatusJson(goals, state, specFeatures, options) {
-  const selected = selectGoals(goals, state, options);
-  const out = [];
-  for (const goalSpec of selected) {
-    const goalRuntime = state.getGoal(goalSpec.id);
-    const features = resolveGoalFeatures(state, goalSpec, specFeatures);
-    out.push(renderProgressJson({ goalSpec, goalRuntime, features }));
-  }
-  return { goals: out };
-}
-function sleep(ms) {
-  return new Promise((resolve2) => setTimeout(resolve2, ms));
-}
-async function runDriveStatus(options) {
-  const out = options.out ?? ((s) => process.stdout.write(s));
-  const harnessDir = options.harnessDir;
-  if (!existsSync4(harnessDir)) {
-    out(`drive --status: harness dir not found: ${harnessDir}
-`);
-    return 2;
-  }
-  const intervalSec = options.intervalSec ?? 2;
-  const watch = options.watch ?? false;
-  const renderOnce = () => {
-    const specPath = join16(harnessDir, "spec.yaml");
-    const goals = existsSync4(specPath) ? readGoals(specPath) : [];
-    const specFeatures = readSpecFeatures(harnessDir);
-    const state = State.load(harnessDir);
-    if (options.json === true) {
-      const payload = composeStatusJson(goals, state, specFeatures, options);
-      out(JSON.stringify(payload, null, 2) + "\n");
-    } else {
-      const text = composeStatusText(goals, state, specFeatures, options);
-      out(text + "\n");
-    }
-  };
-  if (!watch) {
-    renderOnce();
-    return 0;
-  }
-  while (true) {
-    if (options.json !== true) {
-      out("\x1B[2J\x1B[H");
-    }
-    renderOnce();
-    await sleep(intervalSec * 1e3);
-  }
-}
-var import_yaml14;
-var init_statusCommand = __esm({
-  "src/drive/statusCommand.ts"() {
-    "use strict";
-    import_yaml14 = __toESM(require_dist(), 1);
-    init_state();
-    init_goalStore();
-    init_progressRenderer();
-  }
-});
-
-// src/cli/harness.ts
-import { existsSync as existsSync5, statSync as statSync16 } from "node:fs";
-import { join as join17, resolve as resolvePath7 } from "node:path";
-
-// node_modules/commander/esm.mjs
-var import_index = __toESM(require_commander(), 1);
-var {
-  program,
-  createCommand,
-  createArgument,
-  createOption,
-  CommanderError,
-  InvalidArgumentError,
-  InvalidOptionArgumentError,
-  // deprecated old name
-  Command,
-  Argument,
-  Option,
-  Help
-} = import_index.default;
-
-// src/ceremonies/designReview.ts
-import { appendFileSync, mkdirSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
-var CORE_REVIEWERS = [
-  "visual-designer",
-  "frontend-engineer",
-  "a11y-auditor"
-];
-var AUDIO_REVIEWER = "audio-designer";
-function reviewersFor(hasAudio) {
-  const out = [...CORE_REVIEWERS];
-  if (hasAudio) {
-    const idx = out.indexOf("a11y-auditor");
-    if (idx === -1) {
-      out.push(AUDIO_REVIEWER);
-    } else {
-      out.splice(idx, 0, AUDIO_REVIEWER);
-    }
-  }
-  return out;
-}
-function nowIso() {
-  const d = /* @__PURE__ */ new Date();
-  const yyyy = d.getUTCFullYear().toString().padStart(4, "0");
-  const mm = (d.getUTCMonth() + 1).toString().padStart(2, "0");
-  const dd = d.getUTCDate().toString().padStart(2, "0");
-  const hh = d.getUTCHours().toString().padStart(2, "0");
-  const mi = d.getUTCMinutes().toString().padStart(2, "0");
-  const ss = d.getUTCSeconds().toString().padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}Z`;
-}
-function rstrip(s) {
-  return s.replace(/\s+$/, "");
-}
-function pythonStyleJsonStringify(value) {
-  if (value === null) {
-    return "null";
-  }
-  if (typeof value === "boolean") {
-    return value ? "true" : "false";
-  }
-  if (typeof value === "number") {
-    return JSON.stringify(value);
-  }
-  if (typeof value === "string") {
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map((v) => pythonStyleJsonStringify(v)).join(", ")}]`;
-  }
-  if (typeof value === "object") {
-    const pairs = Object.entries(value).map(
-      ([k, v]) => `${JSON.stringify(k)}: ${pythonStyleJsonStringify(v)}`
-    );
-    return `{${pairs.join(", ")}}`;
-  }
-  throw new TypeError(`designReview: unsupported value type ${typeof value}.`);
-}
-function appendEvent(harnessDir, event) {
-  const logPath = join(harnessDir, "events.log");
-  mkdirSync(dirname(logPath), { recursive: true });
-  appendFileSync(logPath, `${pythonStyleJsonStringify(event)}
-`, "utf-8");
-}
-function template(featureId2, reviewers, timestamp) {
-  const lines = [];
-  lines.push(`# Design Review \u2014 ${featureId2}`);
-  lines.push("");
-  lines.push(`> \uC790\uB3D9 \uC0DD\uC131 \u2014 ${timestamp}`);
-  lines.push(">");
-  lines.push(
-    "> `scripts/design_review.py` \uAC00 \uC774 \uD15C\uD50C\uB9BF\uC744 \uB9CC\uB4E4\uACE0, orchestrator \uAC00 reviewer \uBCC4\uB85C `flows.md` \uC5D0 \uB300\uD55C concern \uC744 \uD55C \uBB38\uB2E8\uC529 \uC218\uC9D1 \u2192 \uB9C8\uC9C0\uB9C9 Decisions \uC139\uC158\uC740 orchestrator \uAC00 disposition \uD6C4 \uC791\uC131."
-  );
-  lines.push("");
-  lines.push(`## Reviewers (${reviewers.length})`);
-  lines.push("");
-  for (const r of reviewers) {
-    lines.push(`- \`@harness:${r}\``);
-  }
-  lines.push("");
-  lines.push("---");
-  lines.push("");
-  for (const r of reviewers) {
-    lines.push(`## ${r} concerns`);
-    lines.push("");
-    lines.push("<!-- orchestrator: \uC774 reviewer \uC758 Tier anchor \uAE30\uBC18 \uD55C \uBB38\uB2E8 concern -->");
-    lines.push("");
-    lines.push("_(pending)_");
-    lines.push("");
-  }
-  lines.push("## Decisions");
-  lines.push("");
-  lines.push(
-    "<!-- orchestrator: reviewer concern \uC744 \uC885\uD569\uD574 \uC218\uC6A9/\uC5F0\uAE30/\uAE30\uAC01 \uD310\uB2E8. 2\uD68C \uBC18\uBCF5 \uCDA9\uB3CC \uC2DC \uC0AC\uC6A9\uC790 escalate. -->"
-  );
-  lines.push("");
-  lines.push("_(pending)_");
-  lines.push("");
-  return `${rstrip(lines.join("\n"))}
-`;
-}
-function generateDesignReview(harnessDir, featureId2, options = {}) {
-  const hasAudio = options.hasAudio ?? false;
-  const timestamp = options.timestamp ?? nowIso();
-  const reviewers = reviewersFor(hasAudio);
-  const reviewDir = join(harnessDir, "_workspace", "design-review");
-  mkdirSync(reviewDir, { recursive: true });
-  const path = join(reviewDir, `${featureId2}.md`);
-  writeFileSync(path, template(featureId2, reviewers, timestamp), "utf-8");
-  appendEvent(harnessDir, {
-    ts: timestamp,
-    type: "design_review_opened",
-    feature: featureId2,
-    reviewers,
-    has_audio: hasAudio,
-    path: relative(harnessDir, path)
-  });
-  return path;
-}
-
-// src/ceremonies/kickoff.ts
-var import_yaml = __toESM(require_dist(), 1);
-import { appendFileSync as appendFileSync2, mkdirSync as mkdirSync2, readFileSync, statSync as statSync2, writeFileSync as writeFileSync2 } from "node:fs";
-import { dirname as dirname2, join as join2, relative as relative2 } from "node:path";
-
-// src/core/routing.ts
-var ROUTING_SHAPES = {
-  "baseline-empty-vague": ["researcher", "product-planner"],
-  "ui_surface.present": [
-    "ux-architect",
-    "visual-designer",
-    "a11y-auditor",
-    "frontend-engineer",
-    "software-engineer"
-  ],
-  sensitive_or_auth: ["security-engineer", "reviewer"],
-  performance_budget: ["performance-engineer"],
-  pure_domain_logic: ["backend-engineer", "software-engineer"],
-  feature_completion: ["qa-engineer", "integrator", "tech-writer", "reviewer"]
-};
-var PARALLEL_GROUPS = {
-  sensitive_or_auth: [["security-engineer", "reviewer"]],
-  "ui_surface.present": [["visual-designer", "audio-designer"]]
-};
-
-// src/ceremonies/kickoff.ts
-function isPlainObject(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-function asArray(value) {
-  return Array.isArray(value) ? value : [];
-}
-function hasAudioFlag(feature) {
-  if (!isPlainObject(feature)) {
-    return false;
-  }
-  const ui = feature["ui_surface"];
-  if (!isPlainObject(ui)) {
-    return false;
-  }
-  return Boolean(ui["has_audio"]);
-}
-function touchesSensitiveEntity(feature, spec) {
-  if (!isPlainObject(spec) || !isPlainObject(feature)) {
-    return false;
-  }
-  const domain = isPlainObject(spec["domain"]) ? spec["domain"] : {};
-  const entities = asArray(domain["entities"]);
-  const sensitiveNames = [];
-  for (const e of entities) {
-    if (isPlainObject(e) && e["sensitive"] === true) {
-      const name = e["name"];
-      if (typeof name === "string" && name.length > 0) {
-        sensitiveNames.push(name.toLowerCase());
-      }
-    }
-  }
-  if (sensitiveNames.length === 0) {
-    return false;
-  }
-  const parts = [];
-  if (typeof feature["title"] === "string") {
-    parts.push(feature["title"]);
-  }
-  for (const m of asArray(feature["modules"])) {
-    if (typeof m === "string") {
-      parts.push(m);
-    }
-  }
-  for (const ac of asArray(feature["acceptance_criteria"])) {
-    if (typeof ac === "string") {
-      parts.push(ac);
-    }
-  }
-  const haystack = parts.join(" ").toLowerCase();
-  return sensitiveNames.some((name) => haystack.includes(name));
-}
-function detectShapes(feature, spec = null) {
-  if (!isPlainObject(feature)) {
-    return [];
-  }
-  const title = typeof feature["title"] === "string" ? feature["title"].trim() : "";
-  const ac = asArray(feature["acceptance_criteria"]);
-  const modules = asArray(feature["modules"]);
-  if (title.length === 0 && ac.length === 0 && modules.length === 0) {
-    return ["baseline-empty-vague"];
-  }
-  const shapes = [];
-  const ui = isPlainObject(feature["ui_surface"]) ? feature["ui_surface"] : {};
-  if (ui["present"] === true) {
-    shapes.push("ui_surface.present");
-  }
-  if (feature["performance_budget"] !== void 0 && feature["performance_budget"] !== null) {
-    shapes.push("performance_budget");
-  }
-  if (feature["sensitive"] === true) {
-    shapes.push("sensitive_or_auth");
-  } else if (touchesSensitiveEntity(feature, spec)) {
-    shapes.push("sensitive_or_auth");
-  }
-  if (shapes.length === 0) {
-    shapes.push("pure_domain_logic");
-  }
-  shapes.push("feature_completion");
-  return shapes;
-}
-function agentsForShapes(shapes, hasAudio = false) {
-  const out = [];
-  const seen = /* @__PURE__ */ new Set();
-  for (const shape of shapes) {
-    const agents = ROUTING_SHAPES[shape] ?? [];
-    for (const agent of agents) {
-      if (!seen.has(agent)) {
-        seen.add(agent);
-        out.push(agent);
-      }
-    }
-    if (shape === "ui_surface.present" && hasAudio && !seen.has("audio-designer")) {
-      seen.add("audio-designer");
-      const idx = out.indexOf("a11y-auditor");
-      if (idx === -1) {
-        out.push("audio-designer");
-      } else {
-        out.splice(idx, 0, "audio-designer");
-      }
-    }
-  }
-  return out;
-}
-function parallelGroupsForShapes(shapes, hasAudio = false) {
-  const groups = [];
-  const seen = /* @__PURE__ */ new Set();
-  for (const shape of shapes) {
-    const candidates = PARALLEL_GROUPS[shape] ?? [];
-    for (const group of candidates) {
-      const members = group.filter((m) => hasAudio || m !== "audio-designer");
-      if (members.length < 2) {
-        continue;
-      }
-      const key = members.join("|");
-      if (seen.has(key)) {
-        continue;
-      }
-      seen.add(key);
-      groups.push([...members]);
-    }
-  }
-  return groups;
-}
-function nowIso2() {
-  const d = /* @__PURE__ */ new Date();
-  const yyyy = d.getUTCFullYear().toString().padStart(4, "0");
-  const mm = (d.getUTCMonth() + 1).toString().padStart(2, "0");
-  const dd = d.getUTCDate().toString().padStart(2, "0");
-  const hh = d.getUTCHours().toString().padStart(2, "0");
-  const mi = d.getUTCMinutes().toString().padStart(2, "0");
-  const ss = d.getUTCSeconds().toString().padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}Z`;
-}
-function rstrip2(s) {
-  return s.replace(/\s+$/, "");
-}
-function isFile(path) {
-  try {
-    return statSync2(path).isFile();
-  } catch {
-    return false;
-  }
-}
-function pythonStyleJsonStringify2(value) {
-  if (value === null) {
-    return "null";
-  }
-  if (typeof value === "boolean") {
-    return value ? "true" : "false";
-  }
-  if (typeof value === "number") {
-    return JSON.stringify(value);
-  }
-  if (typeof value === "string") {
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map((v) => pythonStyleJsonStringify2(v)).join(", ")}]`;
-  }
-  if (typeof value === "object") {
-    const pairs = Object.entries(value).map(
-      ([k, v]) => `${JSON.stringify(k)}: ${pythonStyleJsonStringify2(v)}`
-    );
-    return `{${pairs.join(", ")}}`;
-  }
-  throw new TypeError(`kickoff: unsupported value type ${typeof value}.`);
-}
-function appendEvent2(harnessDir, event) {
-  const logPath = join2(harnessDir, "events.log");
-  mkdirSync2(dirname2(logPath), { recursive: true });
-  appendFileSync2(logPath, `${pythonStyleJsonStringify2(event)}
-`, "utf-8");
-}
-function renderStyleBlock(harnessDir, feature) {
-  const indexPath = join2(harnessDir, "area_index.yaml");
-  if (!isFile(indexPath)) {
-    return "";
-  }
-  let loaded;
-  try {
-    loaded = (0, import_yaml.parse)(readFileSync(indexPath, "utf-8"));
-  } catch {
-    return "";
-  }
-  const areas = isPlainObject(loaded) ? asArray(loaded["areas"]) : [];
-  if (!isPlainObject(feature)) {
-    return "";
-  }
-  const featureModules = /* @__PURE__ */ new Set();
-  for (const m of asArray(feature["modules"])) {
-    if (typeof m === "string") {
-      featureModules.add(m);
-    }
-  }
-  if (featureModules.size === 0) {
-    return "";
-  }
-  const matched = [];
-  for (const entry of areas) {
-    if (!isPlainObject(entry)) {
-      continue;
-    }
-    const entryModules = /* @__PURE__ */ new Set();
-    for (const m of asArray(entry["modules"])) {
-      if (typeof m === "string") {
-        entryModules.add(m);
-      }
-    }
-    for (const m of entryModules) {
-      if (featureModules.has(m)) {
-        matched.push(entry);
-        break;
-      }
-    }
-  }
-  if (matched.length === 0) {
-    return "";
-  }
-  const lines = [];
-  lines.push("## \uAE30\uC874 \uC2A4\uD0C0\uC77C \uCEE8\uD14D\uC2A4\uD2B8 (auto \xB7 F-037)");
-  lines.push("");
-  lines.push(
-    "> \uC5B4\uB460\uC774 \uAC77\uD78C \uC601\uC5ED. \uC544\uB798 chapter \uAC00 implementer / software-engineer / frontend-engineer \uC758 \uAE30\uBCF8 \uCEE8\uD14D\uC2A4\uD2B8."
-  );
-  lines.push("");
-  lines.push("### \uAD00\uB828 area chapter");
-  for (const entry of matched) {
-    const label = entry["label"] ?? entry["slug"] ?? "area";
-    const chapterPath = entry["chapter_path"] ?? "";
-    lines.push(`- [${label}](../../${chapterPath})`);
-  }
-  lines.push("");
-  return `${lines.join("\n")}
-`;
-}
-function template2(featureId2, agents, timestamp, mode, styleBlock) {
-  const isPrototype = mode === "prototype";
-  const bulletsPerAgent = isPrototype ? 1 : 3;
-  const guidance = isPrototype ? "\uC774 agent \uC758 \uAD00\uC810\uC5D0\uC11C \uAC00\uC7A5 \uD070 \uC6B0\uB824 1 \uC904." : "\uC774 agent \uC758 Tier anchor \uAE30\uBC18 3-bullet \uC6B0\uB824 \xB7 80 \uB2E8\uC5B4 \uC774\uB0B4";
-  const intro = isPrototype ? "\uD504\uB85C\uD1A0\uD0C0\uC785 \uBAA8\uB4DC \u2014 \uAC01 agent \uAC00 1 \uC904\uC529\uB9CC \uC6B0\uB824\uB97C \uC801\uB294\uB2E4." : "orchestrator \uAC00 \uAC01 agent \uB97C \uC18C\uD658\uD574 \uC139\uC158\uC744 \uCC44\uC6B4\uB2E4 (80 \uB2E8\uC5B4 \uB0B4 3 bullet). cross-role empathy \uC6A9.";
-  const lines = [];
-  lines.push(`# Kickoff \u2014 ${featureId2}`);
-  lines.push("");
-  lines.push(`> \uC790\uB3D9 \uC0DD\uC131 \u2014 ${timestamp} \xB7 mode: \`${mode}\``);
-  lines.push(">");
-  lines.push(`> \`scripts/kickoff.py\` \uAC00 \uC774 \uD15C\uD50C\uB9BF\uC744 \uB9CC\uB4E4\uACE0, ${intro}`);
-  lines.push("");
-  lines.push(`## \uCC38\uC5EC \uC5D0\uC774\uC804\uD2B8 (${agents.length})`);
-  lines.push("");
-  for (const a of agents) {
-    lines.push(`- \`@harness:${a}\``);
-  }
-  lines.push("");
-  if (styleBlock) {
-    lines.push(rstrip2(styleBlock));
-    lines.push("");
-  }
-  lines.push("---");
-  lines.push("");
-  for (const agent of agents) {
-    lines.push(`## ${agent} \uC758 \uAD00\uC810`);
-    lines.push("");
-    lines.push(`<!-- orchestrator: ${guidance} -->`);
-    lines.push("");
-    for (let i = 0; i < bulletsPerAgent; i++) {
-      lines.push("- ");
-    }
-    lines.push("");
-  }
-  return `${rstrip2(lines.join("\n"))}
-`;
-}
-function generateKickoff(harnessDir, featureId2, shapes, options = {}) {
-  const hasAudio = options.hasAudio ?? false;
-  const timestamp = options.timestamp ?? nowIso2();
-  const force = options.force ?? false;
-  const mode = options.mode ?? "product";
-  const styleBlock = options.styleBlock ?? "";
-  const agents = agentsForShapes(shapes, hasAudio);
-  if (agents.length === 0) {
-    throw new Error(
-      `no agents matched for shapes=${JSON.stringify([...shapes])}; check ROUTING_SHAPES`
-    );
-  }
-  const kickoffDir = join2(harnessDir, "_workspace", "kickoff");
-  mkdirSync2(kickoffDir, { recursive: true });
-  const kickoffPath = join2(kickoffDir, `${featureId2}.md`);
-  if (isFile(kickoffPath) && !force) {
-    return kickoffPath;
-  }
-  writeFileSync2(kickoffPath, template2(featureId2, agents, timestamp, mode, styleBlock), "utf-8");
-  appendEvent2(harnessDir, {
-    ts: timestamp,
-    type: "kickoff_started",
-    feature: featureId2,
-    shapes: [...shapes],
-    agents,
-    mode,
-    path: relative2(harnessDir, kickoffPath)
-  });
-  return kickoffPath;
-}
-
-// src/ceremonies/retro.ts
-import { appendFileSync as appendFileSync3, mkdirSync as mkdirSync3, readFileSync as readFileSync2, statSync as statSync3, writeFileSync as writeFileSync3 } from "node:fs";
-import { dirname as dirname3, join as join3, relative as relative3 } from "node:path";
-function isPlainObject2(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-function readEvents(harnessDir) {
-  const logPath = join3(harnessDir, "events.log");
-  let raw;
-  try {
-    raw = readFileSync2(logPath, "utf-8");
-  } catch {
-    return [];
-  }
-  const out = [];
-  for (const line of raw.split("\n")) {
-    const trimmed = line.trim();
-    if (trimmed.length === 0) {
-      continue;
-    }
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (isPlainObject2(parsed)) {
-        out.push(parsed);
-      }
-    } catch {
-      continue;
-    }
-  }
-  return out;
-}
-function analyze(events, featureId2) {
-  const relevant = events.filter((e) => e["feature"] === featureId2);
-  const gateEvents = relevant.filter((e) => e["type"] === "gate_recorded");
-  let firstGateFail = null;
-  for (const e of gateEvents) {
-    if (e["result"] === "fail") {
-      firstGateFail = e;
-      break;
-    }
-  }
-  const completed = relevant.some((e) => e["type"] === "feature_done");
-  const kickoffOpened = relevant.some((e) => e["type"] === "kickoff_started");
-  const designReviewOpened = relevant.some((e) => e["type"] === "design_review_opened");
-  const questionsOpened = relevant.filter((e) => e["type"] === "question_opened").length;
-  const questionsAnswered = relevant.filter((e) => e["type"] === "question_answered").length;
-  let archivedEvent = null;
-  for (const e of relevant) {
-    if (e["type"] === "feature_archived") {
-      archivedEvent = e;
-    }
-  }
-  return {
-    completed,
-    first_gate_fail: firstGateFail,
-    kickoff_opened: kickoffOpened,
-    design_review_opened: designReviewOpened,
-    questions_opened: questionsOpened,
-    questions_answered: questionsAnswered,
-    gate_events_total: gateEvents.length,
-    all_events_total: relevant.length,
-    archived: archivedEvent !== null,
-    archived_event: archivedEvent
-  };
-}
-function rstrip3(s) {
-  return s.replace(/\s+$/, "");
-}
-function nowIso3() {
-  const d = /* @__PURE__ */ new Date();
-  const yyyy = d.getUTCFullYear().toString().padStart(4, "0");
-  const mm = (d.getUTCMonth() + 1).toString().padStart(2, "0");
-  const dd = d.getUTCDate().toString().padStart(2, "0");
-  const hh = d.getUTCHours().toString().padStart(2, "0");
-  const mi = d.getUTCMinutes().toString().padStart(2, "0");
-  const ss = d.getUTCSeconds().toString().padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}Z`;
-}
-function isFile2(path) {
-  try {
-    return statSync3(path).isFile();
-  } catch {
-    return false;
-  }
-}
-function pythonStyleJsonStringify3(value) {
-  if (value === null) {
-    return "null";
-  }
-  if (typeof value === "boolean") {
-    return value ? "true" : "false";
-  }
-  if (typeof value === "number") {
-    return JSON.stringify(value);
-  }
-  if (typeof value === "string") {
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map((v) => pythonStyleJsonStringify3(v)).join(", ")}]`;
-  }
-  if (typeof value === "object") {
-    const pairs = Object.entries(value).map(
-      ([k, v]) => `${JSON.stringify(k)}: ${pythonStyleJsonStringify3(v)}`
-    );
-    return `{${pairs.join(", ")}}`;
-  }
-  throw new TypeError(`retro: unsupported value type ${typeof value}.`);
-}
-function appendEvent3(harnessDir, event) {
-  const logPath = join3(harnessDir, "events.log");
-  mkdirSync3(dirname3(logPath), { recursive: true });
-  appendFileSync3(logPath, `${pythonStyleJsonStringify3(event)}
-`, "utf-8");
-}
-function template3(featureId2, analysis, timestamp, mode) {
-  const isPrototype = mode === "prototype";
-  const fgf = analysis.first_gate_fail;
-  const fgfLine = fgf !== null ? `- ${fgf["gate"] ?? "?"} failed at ${fgf["ts"] ?? "?"}  (reason: ${fgf["note"] || fgf["reason"] || "?"})` : "- \uC5C6\uC74C (\uC804 gate \uCD5C\uCD08\uC5D0 pass)";
-  const intro = isPrototype ? "\uD504\uB85C\uD1A0\uD0C0\uC785 \uBAA8\uB4DC \u2014 \uBA38\uC2E0 \uC139\uC158\uB9CC \uC790\uB3D9 \uCC44\uC6C0. LLM \uBC18\uC131 \uC139\uC158\uC740 \uC0DD\uB7B5." : "`scripts/retro.py` \uAC00 events.log \uB97C \uBD84\uC11D\uD574 \uBA38\uC2E0 \uC139\uC158\uC744 \uCC44\uC6B0\uACE0, orchestrator \uAC00 reviewer \u2192 tech-writer \uC21C\uCC28\uB85C Reviewer Reflection \xB7 Copy Polish \uC139\uC158\uC744 \uC644\uC131\uD55C\uB2E4.";
-  const lines = [];
-  lines.push(`# Retrospective \u2014 ${featureId2}`);
-  lines.push("");
-  lines.push(`> \uC790\uB3D9 \uC0DD\uC131 \u2014 ${timestamp} \xB7 mode: \`${mode}\``);
-  lines.push(">");
-  lines.push(`> ${intro}`);
-  lines.push("");
-  lines.push("## What Shipped");
-  lines.push("");
-  if (analysis.completed) {
-    lines.push(`- ${featureId2} \u2014 complete \uC804\uC774 \uAC10\uC9C0.`);
-  } else {
-    lines.push(`- ${featureId2} \u2014 complete \uC774\uBCA4\uD2B8 \uBBF8\uAC10\uC9C0. \uC218\uB3D9 \uD655\uC778 \uD544\uC694.`);
-  }
-  lines.push("");
-  if (analysis.archived) {
-    const ev = analysis.archived_event ?? {};
-    const sb = ev["superseded_by"];
-    const reason = ev["reason"] ?? "(reason \uBBF8\uAE30\uB85D)";
-    const ts = ev["ts"] ?? "?";
-    lines.push("## Superseded By");
-    lines.push("");
-    if (typeof sb === "string" && sb.length > 0) {
-      lines.push(`- \uC774 \uD53C\uCC98\uB294 **${sb}** \uB85C \uB300\uCCB4\uB428 (${ts})`);
-    } else {
-      lines.push(
-        `- \uC774 \uD53C\uCC98\uB294 archived \uB428 (${ts}) \u2014 superseded_by \uBBF8\uC9C0\uC815 (deprecation only \xB7 \uB300\uCCB4 \uD53C\uCC98 \uC5C6\uC74C)`
-      );
-    }
-    lines.push(`- \uC0AC\uC720: ${reason}`);
-    lines.push("");
-    lines.push(
-      "<!-- F-028: feature_archived event \uC758 superseded_by/reason \uC790\uB3D9 \uCC44\uC6C0. \uC218\uB3D9 \uCD94\uAC00 \uCEE8\uD14D\uC2A4\uD2B8\uB294 \uC544\uB798\uC5D0 \uC790\uC720 \uAE30\uC220. -->"
-    );
-    lines.push("");
-  }
-  lines.push("## First Gate to Fail");
-  lines.push("");
-  lines.push(fgfLine);
-  lines.push("");
-  lines.push("## Ceremonies");
-  lines.push("");
-  lines.push(`- Kickoff opened: ${analysis.kickoff_opened ? "\u2705" : "\u274C"}`);
-  lines.push(
-    `- Design Review opened: ${analysis.design_review_opened ? "\u2705" : "\u274C (\uD574\uB2F9 \uD53C\uCC98\uC5D0 \uBBF8\uC2E4\uD589)"}`
-  );
-  lines.push(
-    `- Questions opened: ${analysis.questions_opened} \xB7 answered: ${analysis.questions_answered}`
-  );
-  lines.push("");
-  if (isPrototype) {
-    return `${rstrip3(lines.join("\n"))}
-`;
-  }
-  for (const heading of [
-    "Risks Materialized vs plan.md",
-    "Decisions Revised",
-    "Kickoff Predictions That Were Right / Wrong"
-  ]) {
-    lines.push(`## ${heading}`);
-    lines.push("");
-    lines.push(`<!-- orchestrator via reviewer: ${heading} \uC139\uC158 -->`);
-    lines.push("");
-    lines.push("_(pending)_");
-    lines.push("");
-  }
-  lines.push("## Reviewer Reflection");
-  lines.push("");
-  lines.push(
-    "<!-- orchestrator invokes @harness:reviewer to produce draft prose. reviewer \uB294 read-only (CQS) \u2014 draft \uD14D\uC2A4\uD2B8\uB9CC \uBC18\uD658. orchestrator \uAC00 \uC774 \uC139\uC158\uC5D0 write. -->"
-  );
-  lines.push("");
-  lines.push("_(pending)_");
-  lines.push("");
-  lines.push("## Copy Polish");
-  lines.push("");
-  lines.push(
-    "<!-- orchestrator invokes @harness:tech-writer to polish the Reviewer Reflection. tech-writer \uAC00 Write/Edit \uC73C\uB85C \uC9C1\uC811 \uC774 \uC139\uC158\uC744 \uB2E4\uB4EC\uC74C. -->"
-  );
-  lines.push("");
-  lines.push("_(pending)_");
-  lines.push("");
-  return `${rstrip3(lines.join("\n"))}
-`;
-}
-function generateRetro(harnessDir, featureId2, options = {}) {
-  const timestamp = options.timestamp ?? nowIso3();
-  const force = options.force ?? false;
-  const mode = options.mode ?? "product";
-  const retroDir = join3(harnessDir, "_workspace", "retro");
-  mkdirSync3(retroDir, { recursive: true });
-  const path = join3(retroDir, `${featureId2}.md`);
-  if (isFile2(path) && !force) {
-    return path;
-  }
-  const events = readEvents(harnessDir);
-  const analysis = analyze(events, featureId2);
-  writeFileSync3(path, template3(featureId2, analysis, timestamp, mode), "utf-8");
-  appendEvent3(harnessDir, {
-    ts: timestamp,
-    type: "feature_retro_written",
-    feature: featureId2,
-    mode,
-    analysis_summary: {
-      completed: analysis.completed,
-      first_gate_fail: analysis.first_gate_fail !== null ? analysis.first_gate_fail["gate"] : null,
-      questions_opened: analysis.questions_opened
-    },
-    path: relative3(harnessDir, path)
-  });
-  return path;
-}
-
-// src/ceremonies/inbox.ts
-var import_yaml2 = __toESM(require_dist(), 1);
-import { readFileSync as readFileSync3, readdirSync, statSync as statSync4 } from "node:fs";
-import { join as join4, relative as relative4 } from "node:path";
-var FILENAME_RE = /^(F-\d+)--([\w-]+)--([\w-]+)\.md$/;
-var ANSWER_HEADER_RE = /^##\s+Answer\b/m;
-var FRONTMATTER_RE = /^---\s*\n([\s\S]*?)\n---/;
-function isPlainObject3(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-function parseFrontmatter(text) {
-  const match = FRONTMATTER_RE.exec(text);
-  if (match === null) {
-    return {};
-  }
-  try {
-    const parsed = (0, import_yaml2.parse)(match[1]);
-    return isPlainObject3(parsed) ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-function scanInbox(harnessDir, featureId2 = null) {
-  const qDir = join4(harnessDir, "_workspace", "questions");
-  let entries;
-  try {
-    if (!statSync4(qDir).isDirectory()) {
-      return [];
-    }
-    entries = readdirSync(qDir).sort();
-  } catch {
-    return [];
-  }
-  const out = [];
-  for (const name of entries) {
-    const fullPath = join4(qDir, name);
-    try {
-      if (!statSync4(fullPath).isFile()) {
-        continue;
-      }
-    } catch {
-      continue;
-    }
-    const m = FILENAME_RE.exec(name);
-    if (m === null) {
-      continue;
-    }
-    const [, fid, fromAgent, toAgent] = m;
-    if (featureId2 !== null && fid !== featureId2) {
-      continue;
-    }
-    const body = readFileSync3(fullPath, "utf-8");
-    const fm = parseFrontmatter(body);
-    const hasAnswer = ANSWER_HEADER_RE.test(body);
-    out.push({
-      feature_id: fid,
-      from_agent: fromAgent,
-      to_agent: toAgent,
-      path: relative4(harnessDir, fullPath),
-      blocking: Boolean(fm["blocking"]),
-      has_answer: hasAnswer
-    });
-  }
-  return out;
-}
-function openQuestions(harnessDir, featureId2 = null) {
-  return scanInbox(harnessDir, featureId2).filter((q) => !q.has_answer);
-}
-
-// src/cli/harness.ts
-var import_yaml15 = __toESM(require_dist(), 1);
-import { readFileSync as readSpecFile, statSync as statSpecFile } from "node:fs";
-
-// src/core/projectMode.ts
-var VALID_MODES = /* @__PURE__ */ new Set(["prototype", "product"]);
-var DEFAULT_MODE = "product";
-function resolveMode(spec) {
-  if (spec === null || typeof spec !== "object" || Array.isArray(spec)) {
-    return DEFAULT_MODE;
-  }
-  const project = spec["project"];
-  if (project === null || typeof project !== "object" || Array.isArray(project)) {
-    return DEFAULT_MODE;
-  }
-  const mode = project["mode"];
-  if (typeof mode === "string" && VALID_MODES.has(mode)) {
-    return mode;
-  }
-  return DEFAULT_MODE;
-}
-
-// src/check.ts
-var import_yaml4 = __toESM(require_dist(), 1);
-import { createHash as createHash2 } from "node:crypto";
-import { readFileSync as readFileSync6, readdirSync as readdirSync2, statSync as statSync7 } from "node:fs";
-import { dirname as dirname5, isAbsolute as isAbsolute2, join as join7, relative as relative6, resolve as resolvePath2 } from "node:path";
-
-// src/core/canonicalHash.ts
-import { createHash } from "node:crypto";
-var SUBTREE_KEYS = [
-  "project",
-  "domain",
-  "constraints",
-  "deliverable",
-  "features",
-  "metadata"
-];
-function canonicalize(value) {
-  if (value === null) {
-    return null;
-  }
-  if (typeof value === "number") {
-    if (!Number.isFinite(value)) {
-      throw new TypeError(
-        `canonical_hash: non-finite number encountered (${String(value)}); Python equivalent uses allow_nan=False which raises ValueError.`
-      );
-    }
-    return value;
-  }
-  if (typeof value === "string" || typeof value === "boolean") {
-    return value;
-  }
-  if (Array.isArray(value)) {
-    return value.map((item) => canonicalize(item));
-  }
-  if (typeof value === "object") {
-    const proto = Object.getPrototypeOf(value);
-    if (proto !== Object.prototype && proto !== null) {
-      throw new TypeError(
-        `canonical_hash: only plain objects are canonicalizable; received instance of ${value.constructor?.name ?? "unknown"}.`
-      );
-    }
-    const obj = value;
-    const sortedKeys = Object.keys(obj).sort();
-    const result = {};
-    for (const key of sortedKeys) {
-      result[key] = canonicalize(obj[key]);
-    }
-    return result;
-  }
-  throw new TypeError(
-    `canonical_hash: cannot serialize value of type ${typeof value}.`
-  );
-}
-function canonicalBytes(value) {
-  const sorted = canonicalize(value);
-  const json = JSON.stringify(sorted);
-  return Buffer.from(json, "utf-8");
-}
-function canonicalHash(value) {
-  return createHash("sha256").update(canonicalBytes(value)).digest("hex");
-}
-function subtreeHashes(spec) {
-  const result = {};
-  for (const key of SUBTREE_KEYS) {
-    if (Object.prototype.hasOwnProperty.call(spec, key)) {
-      result[key] = canonicalHash(spec[key]);
-    }
-  }
-  return result;
-}
-function merkleRoot(subtrees) {
-  const entries = Object.entries(subtrees);
-  entries.sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
-  const combined = entries.map(([key, hash]) => ({ key, hash }));
-  return canonicalHash(combined);
-}
-
-// src/check.ts
-init_state();
-
-// src/spec/includeExpander.ts
-import { readFileSync as readFileSync5, statSync as statSync6 } from "node:fs";
-import { isAbsolute, join as join6, relative as relative5, resolve as resolvePath } from "node:path";
-var LOCKED_FIELD_NAMES = /* @__PURE__ */ new Set([
-  "id",
-  "version",
-  "name",
-  "type",
-  "status",
-  "priority",
-  "schema_version"
-]);
-var IncludeError = class extends Error {
-  constructor(message) {
-    super(message);
-    this.name = "IncludeError";
-  }
-};
-function isIncludeNode(value) {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    return false;
-  }
-  const obj = value;
-  const keys = Object.keys(obj);
-  return keys.length === 1 && keys[0] === "$include" && typeof obj["$include"] === "string";
-}
-function findIncludes(obj) {
-  const out = [];
-  walk(obj, [], null, out);
-  return out;
-}
-function walk(obj, path, parentKey, out) {
-  if (isIncludeNode(obj)) {
-    out.push({ path, target: obj.$include, parentKey });
-    return;
-  }
-  if (Array.isArray(obj)) {
-    obj.forEach((child, i) => walk(child, [...path, i], parentKey, out));
-    return;
-  }
-  if (obj !== null && typeof obj === "object") {
-    for (const [k, v] of Object.entries(obj)) {
-      walk(v, [...path, k], k, out);
-    }
-  }
-}
-function readChapter(chaptersDir, rel) {
-  if (isAbsolute(rel)) {
-    throw new IncludeError(`$include \uAC12\uC740 \uC808\uB300 \uACBD\uB85C\uC77C \uC218 \uC5C6\uC74C: ${rel}`);
-  }
-  let chaptersAbs;
-  try {
-    chaptersAbs = resolvePath(chaptersDir);
-  } catch {
-    chaptersAbs = chaptersDir;
-  }
-  const target = resolvePath(chaptersAbs, rel);
-  const relativeFromBase = relative5(chaptersAbs, target);
-  if (relativeFromBase === "" || relativeFromBase.startsWith("..") || isAbsolute(relativeFromBase)) {
-    throw new IncludeError(
-      `$include \uACBD\uB85C\uAC00 chapters \uB514\uB809\uD130\uB9AC\uB97C \uBC97\uC5B4\uB0A8: ${rel} \u2192 ${target}`
-    );
-  }
-  let isFile8;
-  try {
-    isFile8 = statSync6(target).isFile();
-  } catch {
-    throw new IncludeError(`$include \uB300\uC0C1 \uD30C\uC77C \uC5C6\uC74C: ${target}`);
-  }
-  if (!isFile8) {
-    throw new IncludeError(`$include \uB300\uC0C1 \uD30C\uC77C \uC5C6\uC74C: ${target}`);
-  }
-  try {
-    return readFileSync5(target, "utf-8");
-  } catch (err) {
-    throw new IncludeError(`$include \uD30C\uC77C \uC77D\uAE30 \uC2E4\uD328 (${target}): ${err.message}`);
-  }
-}
-function applyReplacements(obj, replacements) {
-  function inner(sub, currentPath) {
-    const key = pathKey(currentPath);
-    if (replacements.has(key)) {
-      return replacements.get(key);
-    }
-    if (Array.isArray(sub)) {
-      return sub.map((child, i) => inner(child, [...currentPath, i]));
-    }
-    if (sub !== null && typeof sub === "object") {
-      const out = {};
-      for (const [k, v] of Object.entries(sub)) {
-        out[k] = inner(v, [...currentPath, k]);
-      }
-      return out;
-    }
-    return sub;
-  }
-  return inner(obj, []);
-}
-function pathKey(path) {
-  return path.map((p) => typeof p === "number" ? `#${p}` : `.${p}`).join("");
-}
-function expand(spec, chaptersDir, options = {}) {
-  const strictLockedFields = options.strictLockedFields ?? true;
-  const includes = findIncludes(spec);
-  if (includes.length === 0) {
-    return spec;
-  }
-  const replacements = /* @__PURE__ */ new Map();
-  for (const item of includes) {
-    if (strictLockedFields && item.parentKey !== null && LOCKED_FIELD_NAMES.has(item.parentKey)) {
-      throw new IncludeError(
-        `\u{1F512} \uD544\uB4DC \`${item.parentKey}\` \uC5D0\uB294 $include \uB97C \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC74C (\uACBD\uB85C: ${item.path.join(".")}, target: ${item.target})`
-      );
-    }
-    const content = readChapter(chaptersDir, item.target);
-    replacements.set(pathKey(item.path), content);
-  }
-  return applyReplacements(spec, replacements);
-}
-
-// src/check.ts
-var FEATURE_ID_PATTERN = /^F-\d+$/;
-var CLAUDE_IMPORT_PATTERN = /^@([^\s]+)/gm;
-var PROTOCOL_FRONTMATTER = /^---\s*\n([\s\S]*?)\n---/;
-var DEFAULT_COVERAGE_THRESHOLD = 0.8;
-function isPlainObject5(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-function asArray2(value) {
-  return Array.isArray(value) ? value : [];
-}
-function isFile3(path) {
-  try {
-    return statSync7(path).isFile();
-  } catch {
-    return false;
-  }
-}
-function isDirectory(path) {
-  try {
-    return statSync7(path).isDirectory();
-  } catch {
-    return false;
-  }
-}
-function fileSha256(path) {
-  return createHash2("sha256").update(readFileSync6(path)).digest("hex");
-}
-function loadYamlFile(path) {
-  if (!isFile3(path)) {
-    return null;
-  }
-  try {
-    const parsed = (0, import_yaml4.parse)(readFileSync6(path, "utf-8"));
-    return isPlainObject5(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-function walkFiles(root) {
-  const out = [];
-  let entries;
-  try {
-    entries = readdirSync2(root);
-  } catch {
-    return out;
-  }
-  for (const name of entries) {
-    const full = join7(root, name);
-    let stat;
-    try {
-      stat = statSync7(full);
-    } catch {
-      continue;
-    }
-    if (stat.isDirectory()) {
-      out.push(...walkFiles(full));
-    } else if (stat.isFile()) {
-      out.push(full);
-    }
-  }
-  return out;
-}
-function checkGenerated(_harnessDir, harnessYaml) {
-  const findings = [];
-  if (harnessYaml === null) {
-    findings.push({
-      kind: "Generated",
-      path: "harness.yaml",
-      message: "harness.yaml \uBD80\uC7AC/\uB85C\uB4DC \uC2E4\uD328",
-      severity: "error"
-    });
-    return findings;
-  }
-  for (const key of ["version", "generation"]) {
-    if (!(key in harnessYaml)) {
-      findings.push({
-        kind: "Generated",
-        path: `harness.yaml::${key}`,
-        message: `\uD544\uC218 \uD0A4 \uB204\uB77D: ${key}`,
-        severity: "error"
-      });
-    }
-  }
-  return findings;
-}
-function checkDerived(harnessDir, harnessYaml) {
-  const findings = [];
-  const generation = isPlainObject5(harnessYaml["generation"]) ? harnessYaml["generation"] : {};
-  const derived = isPlainObject5(generation["derived_from"]) ? generation["derived_from"] : {};
-  const mapping = [
-    ["domain_md", "domain.md"],
-    ["architecture_yaml", "architecture.yaml"]
-  ];
-  for (const [key, filename] of mapping) {
-    const entry = isPlainObject5(derived[key]) ? derived[key] : {};
-    const expected = entry["output_hash"];
-    const path = join7(harnessDir, filename);
-    if (!isFile3(path)) {
-      if (typeof expected === "string" && expected.length > 0) {
-        findings.push({
-          kind: "Derived",
-          path: filename,
-          message: `${filename} \uAE30\uB85D\uB41C \uD574\uC2DC \uC788\uC73C\uB098 \uD30C\uC77C \uC5C6\uC74C`,
-          severity: "error"
-        });
-      }
-      continue;
-    }
-    if (typeof expected !== "string" || expected.length === 0) {
-      findings.push({
-        kind: "Derived",
-        path: filename,
-        message: `${filename} \uC874\uC7AC\uD558\uC9C0\uB9CC output_hash \uBBF8\uAE30\uB85D (sync \uD544\uC694)`,
-        severity: "warn"
-      });
-      continue;
-    }
-    const actual = fileSha256(path);
-    if (actual !== expected) {
-      findings.push({
-        kind: "Derived",
-        path: filename,
-        message: `${filename} \uD574\uC2DC \uBD88\uC77C\uCE58 (edit-wins \uAC10\uC9C0) \u2014 sync --force \uB85C \uC7AC\uC0DD\uC131 or \uC218\uB3D9 \uC218\uC815 reconcile \uD544\uC694`,
-        severity: "warn"
-      });
-    }
-  }
-  return findings;
-}
-function checkSpec(harnessDir, harnessYaml) {
-  const findings = [];
-  const specPath = join7(harnessDir, "spec.yaml");
-  if (!isFile3(specPath)) {
-    findings.push({
-      kind: "Spec",
-      path: "spec.yaml",
-      message: "spec.yaml \uBD80\uC7AC",
-      severity: "error"
-    });
-    return findings;
-  }
-  const generation = isPlainObject5(harnessYaml["generation"]) ? harnessYaml["generation"] : {};
-  const generatedFrom = isPlainObject5(generation["generated_from"]) ? generation["generated_from"] : {};
-  const expected = generatedFrom["spec_hash"];
-  if (typeof expected !== "string" || expected.length === 0) {
-    findings.push({
-      kind: "Spec",
-      path: "spec.yaml",
-      message: "harness.yaml \uC5D0 spec_hash \uBBF8\uAE30\uB85D (sync \uD544\uC694)",
-      severity: "warn"
-    });
-    return findings;
-  }
-  let parsed;
-  try {
-    parsed = (0, import_yaml4.parse)(readFileSync6(specPath, "utf-8"));
-  } catch {
-    parsed = {};
-  }
-  const actual = canonicalHash(parsed ?? {});
-  if (actual !== expected) {
-    findings.push({
-      kind: "Spec",
-      path: "spec.yaml",
-      message: `spec \uBCC0\uACBD \uAC10\uC9C0 \u2014 sync \uD544\uC694 (expected=${expected.slice(0, 12)}, actual=${actual.slice(0, 12)})`,
-      severity: "warn"
-    });
-  }
-  return findings;
-}
-function checkIncludes(harnessDir, harnessYaml) {
-  const findings = [];
-  const generation = isPlainObject5(harnessYaml["generation"]) ? harnessYaml["generation"] : {};
-  const recorded = asArray2(generation["include_sources"]).filter(
-    (x) => typeof x === "string"
-  );
-  const specPath = join7(harnessDir, "spec.yaml");
-  let current2 = [];
-  if (isFile3(specPath)) {
-    try {
-      const parsed = (0, import_yaml4.parse)(readFileSync6(specPath, "utf-8"));
-      if (isPlainObject5(parsed)) {
-        current2 = findIncludes(parsed).map((item) => item.target);
-      }
-    } catch {
-      current2 = [];
-    }
-  }
-  const recSet = new Set(recorded);
-  const curSet = new Set(current2);
-  const removed = [...recSet].filter((x) => !curSet.has(x)).sort();
-  const added = [...curSet].filter((x) => !recSet.has(x)).sort();
-  for (const item of added) {
-    findings.push({
-      kind: "Include",
-      path: item,
-      message: `spec \uC5D0 \uC2E0\uADDC $include \uAC10\uC9C0 (sync \uD544\uC694): ${item}`,
-      severity: "warn"
-    });
-  }
-  for (const item of removed) {
-    findings.push({
-      kind: "Include",
-      path: item,
-      message: `harness.yaml \uC5D0 \uAE30\uB85D\uB41C include \uAC00 spec \uC5D0\uC11C \uC0AC\uB77C\uC9D0: ${item}`,
-      severity: "warn"
-    });
-  }
-  const chaptersDir = join7(harnessDir, "chapters");
-  if (isDirectory(chaptersDir)) {
-    for (const target of current2) {
-      if (!isFile3(join7(chaptersDir, target))) {
-        findings.push({
-          kind: "Include",
-          path: target,
-          message: `$include \uD0C0\uAC9F \uD30C\uC77C \uC5C6\uC74C: chapters/${target}`,
-          severity: "error"
-        });
-      }
-    }
-  }
-  return findings;
-}
-function checkEvidence(harnessDir) {
-  const findings = [];
-  const statePath = join7(harnessDir, "state.yaml");
-  if (!isFile3(statePath)) {
-    return findings;
-  }
-  const state = State.load(harnessDir);
-  for (const f of state.data.features) {
-    if (!isPlainObject5(f)) {
-      continue;
-    }
-    if (f["status"] === "done" && (!Array.isArray(f["evidence"]) || f["evidence"].length === 0)) {
-      const fid = typeof f["id"] === "string" ? f["id"] : "?";
-      findings.push({
-        kind: "Evidence",
-        path: fid,
-        message: `\uD53C\uCC98 ${fid} \uAC00 done \uC774\uC9C0\uB9CC evidence \uBBF8\uAE30\uB85D (BR-004 \uAC00\uC774\uB4DC)`,
-        severity: "warn"
-      });
-    }
-  }
-  return findings;
-}
-function checkCode(harnessDir, spec, projectRoot = null) {
-  const findings = [];
-  const root = projectRoot ?? resolvePath2(harnessDir, "..");
-  const features = asArray2(spec["features"]);
-  for (const f of features) {
-    if (!isPlainObject5(f)) {
-      continue;
-    }
-    const fid = typeof f["id"] === "string" ? f["id"] : "?";
-    const modules = asArray2(f["modules"]);
-    for (const m of modules) {
-      if (!isPlainObject5(m)) {
-        continue;
-      }
-      const src = m["source"];
-      if (typeof src !== "string" || src.trim().length === 0) {
-        continue;
-      }
-      const target = resolvePath2(root, src);
-      if (!isFile3(target)) {
-        const name = typeof m["name"] === "string" ? m["name"] : "?";
-        findings.push({
-          kind: "Code",
-          path: `${fid}::${name}`,
-          message: `\uBAA8\uB4C8 '${name}' \uC758 source \uACBD\uB85C \uBD80\uC7AC: ${src}`,
-          severity: "error"
-        });
-      }
-    }
-  }
-  return findings;
-}
-function checkDoc(harnessDir, projectRoot = null) {
-  const findings = [];
-  const root = projectRoot ?? resolvePath2(harnessDir, "..");
-  const claudeMd = join7(root, "CLAUDE.md");
-  if (isFile3(claudeMd)) {
-    let text = "";
-    try {
-      text = readFileSync6(claudeMd, "utf-8");
-    } catch {
-      text = "";
-    }
-    let match;
-    CLAUDE_IMPORT_PATTERN.lastIndex = 0;
-    while ((match = CLAUDE_IMPORT_PATTERN.exec(text)) !== null) {
-      const rel = match[1].trim().replace(/[.,;:)]+$/, "");
-      if (!rel || rel.startsWith("http://") || rel.startsWith("https://")) {
-        continue;
-      }
-      const target = isAbsolute2(rel) ? rel : resolvePath2(root, rel);
-      try {
-        statSync7(target);
-      } catch {
-        findings.push({
-          kind: "Doc",
-          path: `CLAUDE.md::@${rel}`,
-          message: `CLAUDE.md @import \uD0C0\uAC9F \uBD80\uC7AC: ${rel}`,
-          severity: "warn"
-        });
-      }
-    }
-  }
-  for (const fname of ["domain.md", "architecture.yaml"]) {
-    const path = join7(harnessDir, fname);
-    if (isFile3(path)) {
-      try {
-        if (statSync7(path).size === 0) {
-          findings.push({
-            kind: "Doc",
-            path: fname,
-            message: `${fname} \uD30C\uC77C\uC774 \uBE44\uC5B4\uC788\uC74C \u2014 sync \uC7AC\uC0DD\uC131 \uD544\uC694`,
-            severity: "error"
-          });
-        }
-      } catch {
-      }
-    }
-  }
-  return findings;
-}
-function checkAnchor(spec) {
-  const findings = [];
-  const features = asArray2(spec["features"]);
-  const seen = /* @__PURE__ */ new Set();
-  const allIds = /* @__PURE__ */ new Set();
-  features.forEach((f, i) => {
-    if (!isPlainObject5(f)) {
-      findings.push({
-        kind: "Anchor",
-        path: `features[${i}]`,
-        message: "feature \uD56D\uBAA9\uC774 \uB9E4\uD551\uC774 \uC544\uB2D8",
-        severity: "error"
-      });
-      return;
-    }
-    const fid = f["id"];
-    if (typeof fid !== "string" || fid.length === 0) {
-      findings.push({
-        kind: "Anchor",
-        path: `features[${i}]`,
-        message: "feature id \uB204\uB77D",
-        severity: "error"
-      });
-      return;
-    }
-    if (!FEATURE_ID_PATTERN.test(fid)) {
-      findings.push({
-        kind: "Anchor",
-        path: fid,
-        message: `feature id \uAC00 F-NNN \uD328\uD134\uC774 \uC544\uB2D8 (got: '${fid}')`,
-        severity: "error"
-      });
-    }
-    if (seen.has(fid)) {
-      findings.push({
-        kind: "Anchor",
-        path: fid,
-        message: `\uC911\uBCF5 feature id: ${fid}`,
-        severity: "error"
-      });
-    }
-    seen.add(fid);
-    allIds.add(fid);
-  });
-  for (const f of features) {
-    if (!isPlainObject5(f)) {
-      continue;
-    }
-    const fid = typeof f["id"] === "string" ? f["id"] : "?";
-    const deps = f["depends_on"];
-    if (deps === void 0 || deps === null) {
-      continue;
-    }
-    if (!Array.isArray(deps)) {
-      findings.push({
-        kind: "Anchor",
-        path: fid,
-        message: "depends_on \uC774 \uBC30\uC5F4\uC774 \uC544\uB2D8",
-        severity: "error"
-      });
-      continue;
-    }
-    for (const dep of deps) {
-      if (typeof dep !== "string") {
-        findings.push({
-          kind: "Anchor",
-          path: fid,
-          message: `depends_on \uD56D\uBAA9\uC774 \uBB38\uC790\uC5F4 \uC544\uB2D8: ${JSON.stringify(dep)}`,
-          severity: "error"
-        });
-        continue;
-      }
-      if (!allIds.has(dep)) {
-        findings.push({
-          kind: "Anchor",
-          path: fid,
-          message: `depends_on \uC5D0 \uC874\uC7AC\uD558\uC9C0 \uC54A\uB294 \uD53C\uCC98 \uCC38\uC870: ${dep}`,
-          severity: "error"
-        });
-      }
-    }
-  }
-  findings.push(...checkFeatureSupersedes(features, allIds));
-  return findings;
-}
-function checkFeatureSupersedes(features, allIds) {
-  const findings = [];
-  const supersedesMap = /* @__PURE__ */ new Map();
-  for (const f of features) {
-    if (!isPlainObject5(f)) {
-      continue;
-    }
-    const fid = f["id"];
-    if (typeof fid !== "string" || fid.length === 0) {
-      continue;
-    }
-    const sup = f["supersedes"];
-    if (sup === void 0 || sup === null) {
-      supersedesMap.set(fid, []);
-    } else if (!Array.isArray(sup)) {
-      findings.push({
-        kind: "Anchor",
-        path: fid,
-        message: "supersedes \uAC00 \uBC30\uC5F4\uC774 \uC544\uB2D8",
-        severity: "error"
-      });
-      supersedesMap.set(fid, []);
-    } else {
-      const cleaned = [];
-      for (const target of sup) {
-        if (typeof target !== "string") {
-          findings.push({
-            kind: "Anchor",
-            path: fid,
-            message: `supersedes \uD56D\uBAA9\uC774 \uBB38\uC790\uC5F4 \uC544\uB2D8: ${JSON.stringify(target)}`,
-            severity: "error"
-          });
-          continue;
-        }
-        if (target === fid) {
-          findings.push({
-            kind: "Anchor",
-            path: fid,
-            message: `supersedes \uC5D0 \uC790\uAE30 \uC790\uC2E0 \uCC38\uC870 \uAE08\uC9C0: ${target}`,
-            severity: "error"
-          });
-          continue;
-        }
-        if (!allIds.has(target)) {
-          findings.push({
-            kind: "Anchor",
-            path: fid,
-            message: `supersedes \uC5D0 \uC874\uC7AC\uD558\uC9C0 \uC54A\uB294 \uD53C\uCC98 \uCC38\uC870: ${target}`,
-            severity: "error"
-          });
-          continue;
-        }
-        cleaned.push(target);
-      }
-      supersedesMap.set(fid, cleaned);
-    }
-    const sb = f["superseded_by"];
-    if (sb !== void 0 && sb !== null) {
-      if (typeof sb !== "string") {
-        findings.push({
-          kind: "Anchor",
-          path: fid,
-          message: `superseded_by \uAC00 \uBB38\uC790\uC5F4 \uC544\uB2D8: ${JSON.stringify(sb)}`,
-          severity: "error"
-        });
-      } else if (sb === fid) {
-        findings.push({
-          kind: "Anchor",
-          path: fid,
-          message: `superseded_by \uC5D0 \uC790\uAE30 \uC790\uC2E0 \uCC38\uC870 \uAE08\uC9C0: ${sb}`,
-          severity: "error"
-        });
-      } else if (!allIds.has(sb)) {
-        findings.push({
-          kind: "Anchor",
-          path: fid,
-          message: `superseded_by \uC5D0 \uC874\uC7AC\uD558\uC9C0 \uC54A\uB294 \uD53C\uCC98 \uCC38\uC870: ${sb}`,
-          severity: "error"
-        });
-      }
-    }
-  }
-  const WHITE = 0, GRAY = 1, BLACK = 2;
-  const color = /* @__PURE__ */ new Map();
-  for (const fid of supersedesMap.keys()) {
-    color.set(fid, WHITE);
-  }
-  const visit = (node, stack) => {
-    color.set(node, GRAY);
-    for (const nxt of supersedesMap.get(node) ?? []) {
-      const c = color.get(nxt);
-      if (c === GRAY) {
-        const cycle = [...stack, node, nxt];
-        findings.push({
-          kind: "Anchor",
-          path: node,
-          message: `supersedes \uC21C\uD658 \uAC10\uC9C0: ${cycle.join(" \u2192 ")}`,
-          severity: "error"
-        });
-        continue;
-      }
-      if (c === WHITE) {
-        visit(nxt, [...stack, node]);
-      }
-    }
-    color.set(node, BLACK);
-  };
-  for (const fid of supersedesMap.keys()) {
-    if (color.get(fid) === WHITE) {
-      visit(fid, []);
-    }
-  }
-  const byId = /* @__PURE__ */ new Map();
-  for (const f of features) {
-    if (isPlainObject5(f) && typeof f["id"] === "string") {
-      byId.set(f["id"], f);
-    }
-  }
-  for (const [fid, feat] of byId.entries()) {
-    const sb = feat["superseded_by"];
-    if (typeof sb !== "string" || !byId.has(sb)) {
-      continue;
-    }
-    const targetSup = asArray2(byId.get(sb)["supersedes"]);
-    if (!targetSup.includes(fid)) {
-      findings.push({
-        kind: "Anchor",
-        path: fid,
-        message: `${fid}.superseded_by=${sb} \uC774\uC9C0\uB9CC ${sb}.supersedes \uC5D0 ${fid} \uC5C6\uC74C \u2014 \uC591\uBC29\uD5A5 \uBD88\uC77C\uCE58`,
-        severity: "warn"
-      });
-    }
-  }
-  return findings;
-}
-function checkAdrSupersedes(spec) {
-  const findings = [];
-  const decisions = asArray2(spec["decisions"]);
-  if (decisions.length === 0) {
-    return findings;
-  }
-  const byId = /* @__PURE__ */ new Map();
-  for (const d of decisions) {
-    if (isPlainObject5(d) && typeof d["id"] === "string") {
-      byId.set(d["id"], d);
-    }
-  }
-  for (const d of decisions) {
-    if (!isPlainObject5(d)) {
-      continue;
-    }
-    const newId = typeof d["id"] === "string" ? d["id"] : "?";
-    const supersedes = asArray2(d["supersedes"]);
-    for (const target of supersedes) {
-      if (typeof target !== "string") {
-        continue;
-      }
-      const targetD = byId.get(target);
-      if (targetD === void 0) {
-        findings.push({
-          kind: "Adr",
-          path: newId,
-          message: `supersedes \uC5D0 \uC874\uC7AC\uD558\uC9C0 \uC54A\uB294 ADR \uCC38\uC870: ${target} (decisions[] \uC5D0 \uC5C6\uC74C)`,
-          severity: "warn"
-        });
-        continue;
-      }
-      const status = targetD["status"];
-      if (status !== "superseded") {
-        findings.push({
-          kind: "Adr",
-          path: target,
-          message: `${newId} \uAC00 ${target} \uB97C supersedes \uD558\uB098 ${target}.status=${JSON.stringify(status)} \u2014 'superseded' \uB85C \uAC31\uC2E0 \uD544\uC694`,
-          severity: "warn"
-        });
-      }
-    }
-  }
-  return findings;
-}
-function checkProtocol(harnessDir) {
-  const findings = [];
-  const protoDir = join7(harnessDir, "protocols");
-  if (!isDirectory(protoDir)) {
-    return findings;
-  }
-  let entries;
-  try {
-    entries = readdirSync2(protoDir).sort();
-  } catch {
-    return findings;
-  }
-  for (const name of entries) {
-    if (!name.endsWith(".md")) {
-      continue;
-    }
-    const md = join7(protoDir, name);
-    let text;
-    try {
-      text = readFileSync6(md, "utf-8");
-    } catch {
-      findings.push({
-        kind: "Protocol",
-        path: relative6(harnessDir, md),
-        message: "\uD30C\uC77C \uC77D\uAE30 \uC2E4\uD328",
-        severity: "error"
-      });
-      continue;
-    }
-    const match = PROTOCOL_FRONTMATTER.exec(text);
-    if (match === null) {
-      findings.push({
-        kind: "Protocol",
-        path: relative6(harnessDir, md),
-        message: "YAML frontmatter \uBD80\uC7AC \u2014 `---` \uB85C \uC2DC\uC791/\uC885\uB8CC\uB418\uB294 \uBE14\uB85D \uD544\uC694",
-        severity: "error"
-      });
-      continue;
-    }
-    let fm;
-    try {
-      fm = (0, import_yaml4.parse)(match[1]);
-    } catch (err) {
-      findings.push({
-        kind: "Protocol",
-        path: relative6(harnessDir, md),
-        message: `frontmatter YAML \uD30C\uC2F1 \uC2E4\uD328: ${err.message}`,
-        severity: "error"
-      });
-      continue;
-    }
-    if (!isPlainObject5(fm)) {
-      findings.push({
-        kind: "Protocol",
-        path: relative6(harnessDir, md),
-        message: "frontmatter \uAC00 mapping \uC774 \uC544\uB2D8",
-        severity: "error"
-      });
-      continue;
-    }
-    const pid = fm["protocol_id"];
-    if (typeof pid !== "string" || pid.length === 0) {
-      findings.push({
-        kind: "Protocol",
-        path: relative6(harnessDir, md),
-        message: "frontmatter.protocol_id \uB204\uB77D \uB610\uB294 \uBE48 \uAC12",
-        severity: "error"
-      });
-      continue;
-    }
-    const expected = name.replace(/\.md$/, "");
-    if (pid !== expected) {
-      findings.push({
-        kind: "Protocol",
-        path: relative6(harnessDir, md),
-        message: `protocol_id ('${pid}') \uAC00 \uD30C\uC77C\uBA85 stem ('${expected}') \uACFC \uBD88\uC77C\uCE58 \u2014 F-017 AC-2 \uC704\uBC18`,
-        severity: "error"
-      });
-    }
-  }
-  return findings;
-}
-function checkStale(harnessDir, spec, projectRoot = null) {
-  const findings = [];
-  const root = projectRoot ?? resolvePath2(harnessDir, "..");
-  const features = asArray2(spec["features"]);
-  const srcRoot = join7(root, "src");
-  if (!isDirectory(srcRoot)) {
-    return findings;
-  }
-  const srcFiles = walkFiles(srcRoot);
-  for (const f of features) {
-    if (!isPlainObject5(f)) {
-      continue;
-    }
-    if (f["status"] !== "done") {
-      continue;
-    }
-    if (f["superseded_by"]) {
-      continue;
-    }
-    const modules = asArray2(f["modules"]);
-    const declaredSources = [];
-    for (const m of modules) {
-      if (!isPlainObject5(m)) {
-        continue;
-      }
-      const src = m["source"];
-      if (typeof src !== "string" || src.trim().length === 0) {
-        continue;
-      }
-      const target = resolvePath2(root, src);
-      if (isFile3(target)) {
-        declaredSources.push(target);
-      }
-    }
-    if (declaredSources.length === 0) {
-      continue;
-    }
-    const fid = typeof f["id"] === "string" ? f["id"] : "?";
-    for (const target of declaredSources) {
-      const base = target.split(/[/\\]/).pop();
-      const stem = base.replace(/\.[^.]+$/, "");
-      let referenced = false;
-      for (const sf of srcFiles) {
-        if (sf === target) {
-          continue;
-        }
-        let text;
-        try {
-          text = readFileSync6(sf, "utf-8");
-        } catch {
-          continue;
-        }
-        if (text.includes(base)) {
-          referenced = true;
-          break;
-        }
-        if (text.includes(`/${stem}`) || text.includes(`"${stem}`) || text.includes(`'${stem}`)) {
-          referenced = true;
-          break;
-        }
-      }
-      if (!referenced) {
-        let relStr;
-        try {
-          relStr = relative6(root, target);
-        } catch {
-          relStr = base;
-        }
-        findings.push({
-          kind: "Stale",
-          path: `${fid}::${relStr}`,
-          message: `\uD53C\uCC98 ${fid} (status=done) \uC758 \uBAA8\uB4C8 ${relStr} \uAC00 src/ \uC5B4\uB514\uC5D0\uC11C\uB3C4 \uCC38\uC870\uB418\uC9C0 \uC54A\uC74C \u2014 \uC2E4\uC81C\uB85C \uC0AC\uC6A9\uB418\uC9C0 \uC54A\uB294 dead code \uAC70\uB098 archived/superseded_by \uCC98\uB9AC\uAC00 \uD544\uC694`,
-          severity: "warn"
-        });
-      }
-    }
-  }
-  return findings;
-}
-function checkAnchorIntegration(harnessDir, spec, projectRoot = null) {
-  const findings = [];
-  const root = projectRoot ?? resolvePath2(harnessDir, "..");
-  const features = asArray2(spec["features"]);
-  for (const f of features) {
-    if (!isPlainObject5(f)) {
-      continue;
-    }
-    if (f["status"] !== "done") {
-      continue;
-    }
-    if (f["superseded_by"]) {
-      continue;
-    }
-    const anchors = f["integration_anchor"];
-    if (!Array.isArray(anchors) || anchors.length === 0) {
-      continue;
-    }
-    const modules = asArray2(f["modules"]);
-    const declaredSources = [];
-    for (const m of modules) {
-      if (!isPlainObject5(m)) {
-        continue;
-      }
-      const src = m["source"];
-      if (typeof src !== "string" || src.trim().length === 0) {
-        continue;
-      }
-      const target = resolvePath2(root, src);
-      if (isFile3(target)) {
-        declaredSources.push(target);
-      }
-    }
-    if (declaredSources.length === 0) {
-      continue;
-    }
-    const fid = typeof f["id"] === "string" ? f["id"] : "?";
-    const anchorPaths = [];
-    for (const anchor of anchors) {
-      if (typeof anchor !== "string" || anchor.trim().length === 0) {
-        continue;
-      }
-      const ap = resolvePath2(root, anchor);
-      if (!isFile3(ap)) {
-        findings.push({
-          kind: "AnchorIntegration",
-          path: `${fid}::${anchor}`,
-          message: `\uD53C\uCC98 ${fid} \uC758 integration_anchor \uD30C\uC77C \uBD80\uC7AC: ${anchor}`,
-          severity: "error"
-        });
-        continue;
-      }
-      anchorPaths.push(ap);
-    }
-    if (anchorPaths.length === 0) {
-      continue;
-    }
-    const anchorRels = anchorPaths.map((p) => {
-      try {
-        return relative6(root, p);
-      } catch {
-        return p;
-      }
-    });
-    const anchorList = anchorRels.join(", ");
-    for (const target of declaredSources) {
-      const base = target.split(/[/\\]/).pop();
-      const stem = base.replace(/\.[^.]+$/, "");
-      let relStr;
-      try {
-        relStr = relative6(root, target);
-      } catch {
-        relStr = base;
-      }
-      let referenced = false;
-      for (const ap of anchorPaths) {
-        let text;
-        try {
-          text = readFileSync6(ap, "utf-8");
-        } catch {
-          continue;
-        }
-        if (text.includes(base)) {
-          referenced = true;
-          break;
-        }
-        if (text.includes(`/${stem}`) || text.includes(`"${stem}`) || text.includes(`'${stem}`)) {
-          referenced = true;
-          break;
-        }
-      }
-      if (!referenced) {
-        findings.push({
-          kind: "AnchorIntegration",
-          path: `${fid}::${relStr}`,
-          message: `\uD53C\uCC98 ${fid} (status=done) \uC758 \uBAA8\uB4C8 ${relStr} \uAC00 integration_anchor (${anchorList}) \uC5D0\uC11C \uCC38\uC870\uB418\uC9C0 \uC54A\uC74C \u2014 \uD1B5\uD569 wiring \uB204\uB77D \uAC00\uB2A5\uC131`,
-          severity: "warn"
-        });
-      }
-    }
-  }
-  return findings;
-}
-function checkSpecCoverage(harnessDir, _specYaml) {
-  const findings = [];
-  const covDir = join7(harnessDir, "_workspace", "coverage");
-  if (!isDirectory(covDir)) {
-    return findings;
-  }
-  let threshold = DEFAULT_COVERAGE_THRESHOLD;
-  const harnessYamlPath = join7(harnessDir, "harness.yaml");
-  if (isFile3(harnessYamlPath)) {
-    try {
-      const cfg = (0, import_yaml4.parse)(readFileSync6(harnessYamlPath, "utf-8"));
-      if (isPlainObject5(cfg)) {
-        const coverage = cfg["coverage"];
-        if (isPlainObject5(coverage)) {
-          const override = coverage["threshold"];
-          if (typeof override === "number") {
-            threshold = override;
-          } else if (typeof override === "string" && !Number.isNaN(Number(override))) {
-            threshold = Number(override);
-          }
-        }
-      }
-    } catch {
-      threshold = DEFAULT_COVERAGE_THRESHOLD;
-    }
-  }
-  let entries;
-  try {
-    entries = readdirSync2(covDir).sort();
-  } catch {
-    return findings;
-  }
-  for (const name of entries) {
-    if (!name.startsWith("F-") || !name.endsWith(".yaml")) {
-      continue;
-    }
-    const fpPath = join7(covDir, name);
-    let fp;
-    try {
-      fp = (0, import_yaml4.parse)(readFileSync6(fpPath, "utf-8"));
-    } catch {
-      continue;
-    }
-    if (!isPlainObject5(fp)) {
-      continue;
-    }
-    const fid = fp["feature_id"] ?? name.replace(/\.yaml$/, "");
-    const mismatches = asArray2(fp["mismatches"]);
-    for (const mismatch of mismatches) {
-      if (!isPlainObject5(mismatch)) {
-        continue;
-      }
-      const metric = typeof mismatch["metric"] === "string" ? mismatch["metric"] : "";
-      const descVal = Number(mismatch["description_value"] ?? 0);
-      const acVal = Number(mismatch["ac_value"] ?? 0);
-      if (Number.isNaN(descVal) || Number.isNaN(acVal) || descVal <= 0) {
-        continue;
-      }
-      const ratio = acVal / descVal;
-      if (ratio < threshold) {
-        findings.push({
-          kind: "Coverage",
-          path: `${fid}::quant.${metric}`,
-          message: `description claims ${descVal} ${metric} but AC accepts ${acVal} (ratio=${ratio.toFixed(2)}, threshold=${threshold.toFixed(2)}) \u2014 explicit carry-forward required (retro entry or --hotfix-reason)`,
-          severity: "error"
-        });
-      }
-    }
-  }
-  return findings;
-}
-function runCheck(harnessDir, projectRoot = null) {
-  const report = { findings: [], checked: [] };
-  const harnessYaml = loadYamlFile(join7(harnessDir, "harness.yaml"));
-  const specYaml = loadYamlFile(join7(harnessDir, "spec.yaml"));
-  report.findings.push(...checkGenerated(harnessDir, harnessYaml));
-  report.checked.push("Generated");
-  if (harnessYaml !== null) {
-    report.findings.push(...checkDerived(harnessDir, harnessYaml));
-    report.checked.push("Derived");
-    report.findings.push(...checkSpec(harnessDir, harnessYaml));
-    report.checked.push("Spec");
-    report.findings.push(...checkIncludes(harnessDir, harnessYaml));
-    report.checked.push("Include");
-  }
-  report.findings.push(...checkEvidence(harnessDir));
-  report.checked.push("Evidence");
-  if (specYaml !== null) {
-    report.findings.push(...checkCode(harnessDir, specYaml, projectRoot));
-    report.checked.push("Code");
-    report.findings.push(...checkAnchor(specYaml));
-    report.checked.push("Anchor");
-    report.findings.push(...checkAdrSupersedes(specYaml));
-    report.checked.push("Adr");
-    report.findings.push(...checkStale(harnessDir, specYaml, projectRoot));
-    report.checked.push("Stale");
-    report.findings.push(...checkAnchorIntegration(harnessDir, specYaml, projectRoot));
-    report.checked.push("AnchorIntegration");
-  }
-  report.findings.push(...checkDoc(harnessDir, projectRoot));
-  report.checked.push("Doc");
-  report.findings.push(...checkProtocol(harnessDir));
-  report.checked.push("Protocol");
-  report.findings.push(...checkSpecCoverage(harnessDir, specYaml));
-  report.checked.push("Coverage");
-  return report;
-}
-function runBlockingCheck(harnessDir, projectRoot = null) {
-  const report = { findings: [], checked: [] };
-  const specYaml = loadYamlFile(join7(harnessDir, "spec.yaml"));
-  if (specYaml !== null) {
-    report.findings.push(...checkCode(harnessDir, specYaml, projectRoot));
-    report.findings.push(...checkStale(harnessDir, specYaml, projectRoot));
-    report.findings.push(...checkAnchorIntegration(harnessDir, specYaml, projectRoot));
-  }
-  report.findings.push(...checkSpecCoverage(harnessDir, specYaml));
-  report.checked.push("Code", "Stale", "AnchorIntegration", "Coverage");
-  return report;
-}
-function formatHuman(report) {
-  const lines = ["\u{1F50D} /harness:check", ""];
-  lines.push(`Checked: ${report.checked.join(", ")}`);
-  lines.push("");
-  if (report.findings.length === 0) {
-    lines.push("\u2705 clean \u2014 drift \uC5C6\uC74C");
-    return `${lines.join("\n")}
-`;
-  }
-  lines.push(`Findings (${report.findings.length}):`);
-  for (const f of report.findings) {
-    const marker = f.severity === "error" ? "\u274C" : "\u26A0\uFE0F ";
-    lines.push(`  ${marker} [${f.kind}] ${f.path}: ${f.message}`);
-  }
-  void dirname5;
-  return `${lines.join("\n")}
-`;
-}
-
-// src/events.ts
-function parseTs2(ts) {
-  if (typeof ts !== "string" || ts.length === 0) {
-    return null;
-  }
-  const ms = Date.parse(ts);
-  if (Number.isNaN(ms)) {
-    return null;
-  }
-  return new Date(ms);
-}
-function isPlainObject6(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-function filterEvents(events, options = {}) {
-  const sinceDt = options.since ? parseTs2(options.since) : null;
-  const out = [];
-  for (const ev of events) {
-    if (options.kind && ev["type"] !== options.kind) {
-      continue;
-    }
-    if (options.feature) {
-      let fid = ev["feature"] ?? ev["feature_id"];
-      if ((fid === void 0 || fid === null) && isPlainObject6(ev["payload"])) {
-        fid = ev["payload"]["feature"];
-      }
-      if (fid !== options.feature) {
-        continue;
-      }
-    }
-    if (sinceDt !== null) {
-      const evDt = parseTs2(ev["ts"]);
-      if (evDt === null || evDt.getTime() < sinceDt.getTime()) {
-        continue;
-      }
-    }
-    out.push(ev);
-  }
-  return out;
-}
-function formatHuman2(events) {
-  if (events.length === 0) {
-    return "(no matching events)\n";
-  }
-  const lines = [`\u{1F4DC} /harness:events (${events.length} events)`, ""];
-  for (const ev of events) {
-    const ts = typeof ev["ts"] === "string" ? ev["ts"] : "?";
-    const typ = typeof ev["type"] === "string" ? ev["type"] : "?";
-    const extras = [];
-    for (const key of ["feature", "feature_id", "spec_hash", "phase", "reason"]) {
-      if (key in ev) {
-        let val = ev[key];
-        if (key === "spec_hash" && typeof val === "string") {
-          val = val.slice(0, 12);
-        }
-        extras.push(`${key}=${val}`);
-      }
-    }
-    const extrasStr = extras.join(" \xB7 ");
-    lines.push(`  ${ts}  ${typ}${extrasStr ? `  (${extrasStr})` : ""}`);
-  }
-  return `${lines.join("\n")}
-`;
-}
-
-// src/core/eventLog.ts
-import { appendFileSync as appendFileSync4, readdirSync as readdirSync3, readFileSync as readFileSync7, statSync as statSync8, writeFileSync as writeFileSync5 } from "node:fs";
-import { join as join8 } from "node:path";
-var ROTATED_FILENAME_RE = /^events\.log\.(\d{6})$/;
-var ROTATABLE_TS_RE = /^(\d{4})-(\d{2})/;
-var UNPARSEABLE_TS_SENTINEL = "\uFFFF";
-function readJsonLines(path) {
-  let raw;
-  try {
-    raw = readFileSync7(path, "utf-8");
-  } catch (err) {
-    if (err.code === "ENOENT") {
-      return [];
-    }
-    throw err;
-  }
-  const out = [];
-  for (const line of raw.split("\n")) {
-    const trimmed = line.trim();
-    if (trimmed.length === 0) {
-      continue;
-    }
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
-        out.push(parsed);
-      }
-    } catch {
-      continue;
-    }
-  }
-  return out;
-}
-function rotatedPaths(harnessDir) {
-  let entries;
-  try {
-    entries = readdirSync3(harnessDir);
-  } catch (err) {
-    if (err.code === "ENOENT") {
-      return [];
-    }
-    throw err;
-  }
-  const matched = [];
-  for (const name of entries) {
-    const m = ROTATED_FILENAME_RE.exec(name);
-    if (!m) {
-      continue;
-    }
-    const fullPath = join8(harnessDir, name);
-    try {
-      if (!statSync8(fullPath).isFile()) {
-        continue;
-      }
-    } catch {
-      continue;
-    }
-    matched.push([m[1], fullPath]);
-  }
-  matched.sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
-  return matched.map(([, path]) => path);
-}
-function eventSortKey(ev) {
-  const ts = ev.ts;
-  if (typeof ts === "string" && ROTATABLE_TS_RE.test(ts)) {
-    return [ts, 0];
-  }
-  return [UNPARSEABLE_TS_SENTINEL, 0];
-}
-function* readEvents2(harnessDir) {
-  const buffer = [];
-  for (const path of rotatedPaths(harnessDir)) {
-    buffer.push(...readJsonLines(path));
-  }
-  buffer.push(...readJsonLines(join8(harnessDir, "events.log")));
-  buffer.sort((a, b) => {
-    const [ka, ta] = eventSortKey(a);
-    const [kb, tb] = eventSortKey(b);
-    if (ka < kb) {
-      return -1;
-    }
-    if (ka > kb) {
-      return 1;
-    }
-    return ta - tb;
-  });
-  yield* buffer;
-}
-
-// src/metrics.ts
-var PERIOD_RE = /^\s*(\d+)\s*([smhdw])\s*$/i;
-var PERIOD_UNIT_SEC = {
-  s: 1,
-  m: 60,
-  h: 3600,
-  d: 86400,
-  w: 604800
-};
-function parsePeriod(text) {
-  const match = PERIOD_RE.exec(text);
-  if (match === null) {
-    throw new Error(`invalid period: '${text}' (expected e.g. 7d, 24h, 30m)`);
-  }
-  const n = Number(match[1]);
-  const unit = match[2].toLowerCase();
-  return n * PERIOD_UNIT_SEC[unit] * 1e3;
-}
-function isPlainObject7(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-function parseTs3(ts) {
-  if (typeof ts !== "string" || ts.length === 0) {
-    return null;
-  }
-  const ms = Date.parse(ts);
-  if (Number.isNaN(ms)) {
-    return null;
-  }
-  return new Date(ms);
-}
-function featureId(ev) {
-  let fid = ev["feature"] ?? ev["feature_id"];
-  if ((fid === void 0 || fid === null) && isPlainObject7(ev["payload"])) {
-    fid = ev["payload"]["feature"];
-  }
-  return typeof fid === "string" ? fid : null;
-}
-function median(values) {
-  if (values.length === 0) {
-    return 0;
-  }
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  if (sorted.length % 2 === 1) {
-    return sorted[mid];
-  }
-  return (sorted[mid - 1] + sorted[mid]) / 2;
-}
-function round3(value) {
-  return Math.round(value * 1e3) / 1e3;
-}
-function isoZ(date) {
-  return date.toISOString().replace(/\.\d{3}Z$/, "Z");
-}
-function aggregate(events, options = {}) {
-  const report = {
-    window: {
-      start: options.windowStart ? isoZ(options.windowStart) : null,
-      end: options.windowEnd ? isoZ(options.windowEnd) : null,
-      period: options.periodLabel ?? null
-    },
-    total_events: 0,
-    event_types: {},
-    features: { activated: 0, done: 0, blocked: 0 },
-    lead_time_sec: { count: 0, min: null, median: null, mean: null, max: null },
-    gate_stats: {},
-    drift_incidents: 0
-  };
-  const activatedLast = /* @__PURE__ */ new Map();
-  const doneFirst = /* @__PURE__ */ new Map();
-  for (const ev of events) {
-    report.total_events += 1;
-    const typ = typeof ev["type"] === "string" ? ev["type"] : "?";
-    report.event_types[typ] = (report.event_types[typ] ?? 0) + 1;
-    if (typ === "sync_failed") {
-      report.drift_incidents += 1;
-    } else if (typ === "feature_activated") {
-      report.features.activated += 1;
-      const fid = featureId(ev);
-      const dt = parseTs3(ev["ts"]);
-      if (fid !== null && dt !== null) {
-        activatedLast.set(fid, dt);
-      }
-    } else if (typ === "feature_blocked") {
-      report.features.blocked += 1;
-    } else if (typ === "feature_done") {
-      report.features.done += 1;
-      const fid = featureId(ev);
-      const dt = parseTs3(ev["ts"]);
-      if (fid !== null && dt !== null && !doneFirst.has(fid)) {
-        doneFirst.set(fid, dt);
-      }
-    } else if (typ === "gate_recorded" || typ === "gate_auto_run") {
-      const gate = ev["gate"];
-      if (typeof gate !== "string") {
-        continue;
-      }
-      const result = ev["result"];
-      const bucket = report.gate_stats[gate] ?? (report.gate_stats[gate] = {
-        pass: 0,
-        fail: 0,
-        skipped: 0,
-        other: 0,
-        pass_rate: 0
-      });
-      if (result === "pass" || result === "fail" || result === "skipped") {
-        bucket[result] += 1;
-      } else {
-        bucket.other += 1;
-      }
-    }
-  }
-  const deltas = [];
-  for (const [fid, doneDt] of doneFirst.entries()) {
-    const actDt = activatedLast.get(fid);
-    if (actDt && doneDt.getTime() >= actDt.getTime()) {
-      deltas.push((doneDt.getTime() - actDt.getTime()) / 1e3);
-    }
-  }
-  if (deltas.length > 0) {
-    report.lead_time_sec.count = deltas.length;
-    report.lead_time_sec.min = round3(Math.min(...deltas));
-    report.lead_time_sec.max = round3(Math.max(...deltas));
-    report.lead_time_sec.median = round3(median(deltas));
-    report.lead_time_sec.mean = round3(deltas.reduce((acc, d) => acc + d, 0) / deltas.length);
-  }
-  for (const bucket of Object.values(report.gate_stats)) {
-    const denom = bucket.pass + bucket.fail;
-    bucket.pass_rate = denom > 0 ? round3(bucket.pass / denom) : 0;
-  }
-  return report;
-}
-function compute(harnessDir, options = {}) {
-  const allEvents = [...readEvents2(harnessDir)];
-  let windowStart = null;
-  let windowEnd = null;
-  let periodLabel = null;
-  if (options.since) {
-    const dt = parseTs3(options.since);
-    if (dt === null) {
-      throw new Error(`invalid since timestamp: '${options.since}'`);
-    }
-    windowStart = dt;
-  } else if (options.period) {
-    const ms = parsePeriod(options.period);
-    const base = options.now ?? /* @__PURE__ */ new Date();
-    windowEnd = base;
-    windowStart = new Date(base.getTime() - ms);
-    periodLabel = options.period;
-  }
-  let filtered;
-  if (windowStart !== null) {
-    const startMs = windowStart.getTime();
-    const endMs = windowEnd?.getTime() ?? Number.POSITIVE_INFINITY;
-    filtered = allEvents.filter((ev) => {
-      const dt = parseTs3(ev["ts"]);
-      if (dt === null) {
-        return false;
-      }
-      const t2 = dt.getTime();
-      return t2 >= startMs && t2 <= endMs;
-    });
-  } else {
-    filtered = allEvents;
-  }
-  return aggregate(filtered, { windowStart, windowEnd, periodLabel });
-}
-function fmtSec(value) {
-  if (value === null) {
-    return "\u2014";
-  }
-  if (value >= 86400) {
-    return `${(value / 86400).toFixed(2)}d`;
-  }
-  if (value >= 3600) {
-    return `${(value / 3600).toFixed(2)}h`;
-  }
-  if (value >= 60) {
-    return `${(value / 60).toFixed(2)}m`;
-  }
-  return `${value.toFixed(1)}s`;
-}
-function pad(s, width) {
-  return s.length >= width ? s : s + " ".repeat(width - s.length);
-}
-function padLeft(s, width) {
-  return s.length >= width ? s : " ".repeat(width - s.length) + s;
-}
-function formatHuman3(report) {
-  const lines = ["\u{1F4CA} /harness:metrics", ""];
-  const win = report.window;
-  if (win.period) {
-    lines.push(`Window: last ${win.period} (${win.start} \u2192 now)`);
-  } else if (win.start) {
-    lines.push(`Window: since ${win.start}`);
-  } else {
-    lines.push("Window: all time");
-  }
-  lines.push("");
-  lines.push(`Total events: ${report.total_events}`);
-  if (Object.keys(report.event_types).length > 0) {
-    lines.push("  by type:");
-    for (const [t2, n] of Object.entries(report.event_types).sort()) {
-      lines.push(`    ${pad(t2, 20)} ${n}`);
-    }
-  }
-  lines.push("");
-  const f = report.features;
-  lines.push(`Features: ${f.done} done \xB7 ${f.activated} activated \xB7 ${f.blocked} blocked`);
-  const lt = report.lead_time_sec;
-  if (lt.count > 0) {
-    lines.push(
-      `Lead time (n=${lt.count}): min ${fmtSec(lt.min)} \xB7 median ${fmtSec(lt.median)} \xB7 mean ${fmtSec(lt.mean)} \xB7 max ${fmtSec(lt.max)}`
-    );
-  } else {
-    lines.push("Lead time: (no completed feature cycles in window)");
-  }
-  lines.push("");
-  if (Object.keys(report.gate_stats).length > 0) {
-    lines.push("Gate stats:");
-    lines.push(`  ${pad("gate", 8)} ${padLeft("pass", 5)} ${padLeft("fail", 5)} ${padLeft("skip", 5)}   rate`);
-    for (const [gate, b] of Object.entries(report.gate_stats).sort()) {
-      const rate = b.pass + b.fail > 0 ? `${(b.pass_rate * 100).toFixed(1)}%` : "\u2014";
-      lines.push(
-        `  ${pad(gate, 8)} ${padLeft(String(b.pass), 5)} ${padLeft(String(b.fail), 5)} ${padLeft(String(b.skipped), 5)}   ${rate}`
-      );
-    }
-  } else {
-    lines.push("Gate stats: (no gate events in window)");
-  }
-  lines.push("");
-  return `${lines.join("\n").replace(/\s+$/, "")}
-`;
-}
-
-// src/ui/dashboard.ts
-var import_yaml5 = __toESM(require_dist(), 1);
-import { readFileSync as readFileSync8, statSync as statSync9 } from "node:fs";
-import { join as join9 } from "node:path";
-
-// src/core/gates.ts
-var STANDARD_GATES = [
-  "gate_0",
-  "gate_1",
-  "gate_2",
-  "gate_3",
-  "gate_4",
-  "gate_5"
-];
-
-// src/ui/dashboardConfig.ts
-var DEFAULT_MAX_OTHER = 5;
-var DEFAULT_MAX_PENDING = 5;
-var DEFAULT_MAX_UNREGISTERED = 5;
-function envInt(name, defaultValue) {
-  const raw = process.env[name];
-  if (raw === void 0) {
-    return defaultValue;
-  }
-  const value = Number(raw);
-  if (!Number.isInteger(value) || value <= 0) {
-    return defaultValue;
-  }
-  return value;
-}
-function maxOtherList() {
-  return envInt("HARNESS_DASHBOARD_MAX_OTHER", DEFAULT_MAX_OTHER);
-}
-function maxPendingList() {
-  return envInt("HARNESS_DASHBOARD_MAX_PENDING", DEFAULT_MAX_PENDING);
-}
-function maxUnregisteredList() {
-  return envInt("HARNESS_DASHBOARD_MAX_UNREGISTERED", DEFAULT_MAX_UNREGISTERED);
-}
-
-// src/ui/lang.ts
-var SUPPORTED = /* @__PURE__ */ new Set(["en", "ko"]);
-var KOREAN_HINTS = ["ko", "kor", "KR"];
-function asObject(value) {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-  return value;
-}
-function resolveLang(spec = null) {
-  const envValue = process.env["HARNESS_LANG"];
-  if (envValue && SUPPORTED.has(envValue)) {
-    return envValue;
-  }
-  const specObj = asObject(spec);
-  if (specObj !== null) {
-    const project = asObject(specObj["project"]);
-    if (project !== null) {
-      const specLang = project["language"];
-      if (typeof specLang === "string" && SUPPORTED.has(specLang)) {
-        return specLang;
-      }
-    }
-  }
-  for (const key of ["LC_ALL", "LANG"]) {
-    const locale = process.env[key] ?? "";
-    if (KOREAN_HINTS.some((hint) => locale.includes(hint))) {
-      return "ko";
-    }
-    if (locale.length > 0 && locale.toLowerCase().includes("en")) {
-      return "en";
-    }
-  }
-  return "en";
-}
-
-// src/ui/messages.ts
-var EN = {
-  status: "status",
-  passed: "passed",
-  failed: "failed",
-  evidence: "evidence: {n} entries",
-  routed_agents: "routed agents",
-  agent_chain: "agent chain",
-  in_progress: "in progress",
-  done: "done",
-  planned: "planned",
-  blocked: "blocked",
-  archived: "archived",
-  gate_pass: "gate {name}: pass",
-  gate_fail: "gate {name}: fail",
-  iron_law_block: "cannot complete yet \u2014 {declared}/{required} evidence entries declared. Add more with --evidence.",
-  walking_skeleton: "walking skeleton",
-  active_feature: 'working on: "{title}"',
-  progress_line: "  progress: {passed}/{total} gates passed \xB7 {evidence} evidence entries",
-  blocker_line: "  blocker: {note}",
-  dashboard_title: "harness-boot",
-  no_active: "no active feature.",
-  all_done: "all features complete \u2014 {n} done.",
-  next_actions: "next actions:",
-  enter_hint: "Enter = {n} (recommended)",
-  init_starting: "scaffolding .harness/ ...",
-  init_done: "scaffolding complete.",
-  in_progress_others: "in progress (others):",
-  pending_label: "pending:",
-  on_hold_label: "on hold:",
-  next_candidates: "next candidates (spec-defined \xB7 not started, {n}):",
-  more_after_truncate: "  \u2026 and {n} more (see spec.yaml)",
-  no_features: "no features yet.",
-  no_active_no_pending: "nothing in progress or pending.",
-  recommended_marker: "(recommended)"
-};
-var KO = {
-  status: "\uC0C1\uD0DC",
-  passed: "\uD1B5\uACFC",
-  failed: "\uC2E4\uD328",
-  evidence: "\uADFC\uAC70: {n} \uAC1C",
-  routed_agents: "\uB77C\uC6B0\uD305\uB41C \uD300",
-  agent_chain: "\uC5D0\uC774\uC804\uD2B8 \uCCB4\uC778",
-  in_progress: "\uC9C4\uD589 \uC911",
-  done: "\uC644\uB8CC",
-  planned: "\uC608\uC815",
-  blocked: "\uCC28\uB2E8",
-  archived: "\uBCF4\uAD00",
-  gate_pass: "\uAC80\uC99D {name}: \uD1B5\uACFC",
-  gate_fail: "\uAC80\uC99D {name}: \uC2E4\uD328",
-  iron_law_block: "\uC544\uC9C1 \uC644\uB8CC\uD560 \uC218 \uC5C6\uC5B4\uC694 \u2014 \uADFC\uAC70\uAC00 {declared}/{required} \uAC1C\uC785\uB2C8\uB2E4. --evidence \uB85C \uB354 \uCD94\uAC00\uD558\uC138\uC694.",
-  walking_skeleton: "\uAE30\uBCF8 \uACE8\uACA9",
-  active_feature: '\uC791\uC5C5 \uC911: "{title}"',
-  progress_line: "  \uC9C4\uD589: \uAC80\uC99D {passed}/{total} \uD1B5\uACFC \xB7 \uADFC\uAC70 {evidence} \uAC1C",
-  blocker_line: "  \uCC28\uB2E8: {note}",
-  dashboard_title: "harness-boot",
-  no_active: "\uD604\uC7AC \uC791\uC5C5 \uC911\uC778 \uD53C\uCC98 \uC5C6\uC74C.",
-  all_done: "\uBAA8\uB4E0 \uD53C\uCC98 \uC644\uB8CC \u2014 \uC644\uB8CC {n} \uAC1C.",
-  next_actions: "\uB2E4\uC74C \uD560 \uC77C:",
-  enter_hint: "Enter = {n} (\uCD94\uCC9C)",
-  init_starting: ".harness/ \uACE8\uACA9 \uC0DD\uC131 \uC911 ...",
-  init_done: "\uACE8\uACA9 \uC0DD\uC131 \uC644\uB8CC.",
-  in_progress_others: "\uC9C4\uD589 \uC911 (\uB2E4\uB978):",
-  pending_label: "\uB300\uAE30:",
-  on_hold_label: "\uBCF4\uB958:",
-  next_candidates: "\uB2E4\uC74C \uD6C4\uBCF4 (spec \uC815\uC758 \xB7 \uBBF8\uC2DC\uC791, {n} \uAC1C):",
-  more_after_truncate: "  \u2026 \uC678 {n} \uAC1C (spec.yaml \uCC38\uC870)",
-  no_features: "\uC544\uC9C1 \uD53C\uCC98\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.",
-  no_active_no_pending: "\uC9C4\uD589 \uC911 \xB7 \uB300\uAE30 \uD53C\uCC98 \uC5C6\uC74C.",
-  recommended_marker: "(\uCD94\uCC9C)"
-};
-var CATALOGS = { en: EN, ko: KO };
-var REQUIRED_KEYS = Object.keys(EN);
-function t(key, lang = "en", fmt = {}) {
-  let catalog = CATALOGS[lang] ?? EN;
-  if (!(key in catalog)) {
-    if (!(key in EN)) {
-      throw new Error(`unknown message key: '${key}'`);
-    }
-    catalog = EN;
-  }
-  let template4 = catalog[key];
-  if (Object.keys(fmt).length === 0) {
-    return template4;
-  }
-  for (const [k, v] of Object.entries(fmt)) {
-    template4 = template4.split(`{${k}}`).join(String(v));
-  }
-  return template4;
-}
-
-// src/ui/render.ts
-var PARALLEL_TOKEN = " \u2225 ";
-var SEQUENCE_TOKEN = " \u2192 ";
-var COMMA_JOIN = ", ";
-function renderAgentChain(agents, groups, options = {}) {
-  const parallelToken = options.parallelToken ?? PARALLEL_TOKEN;
-  const sequenceToken = options.sequenceToken ?? SEQUENCE_TOKEN;
-  const commaJoin = options.commaJoin ?? COMMA_JOIN;
-  if (groups.length === 0) {
-    return agents.join(commaJoin);
-  }
-  const groupSets = groups.map((g) => new Set(g));
-  const parts = [];
-  let i = 0;
-  while (i < agents.length) {
-    const member = agents[i];
-    const matched = groupSets.find((gs) => gs.has(member)) ?? null;
-    if (matched === null) {
-      parts.push(member);
-      i++;
-      continue;
-    }
-    const block2 = [];
-    while (i < agents.length && matched.has(agents[i])) {
-      block2.push(agents[i]);
-      i++;
-    }
-    if (block2.length >= 2) {
-      parts.push(`(${block2.join(parallelToken).trim()})`);
-    } else {
-      parts.push(block2[0]);
-    }
-  }
-  return parts.join(sequenceToken).trim();
-}
-
-// src/ui/dashboard.ts
-var DEFAULT_COVERAGE_THRESHOLD2 = 0.8;
-var DEBT_ALERT_THRESHOLD = 5;
-function isPlainObject8(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-function asArray3(value) {
-  return Array.isArray(value) ? value : [];
-}
-function isFile4(path) {
-  try {
-    return statSync9(path).isFile();
-  } catch {
-    return false;
-  }
-}
-function loadCoverage(harnessDir, fid) {
-  if (harnessDir === null) {
-    return [null, []];
-  }
-  const fpPath = join9(harnessDir, "_workspace", "coverage", `${fid}.yaml`);
-  if (!isFile4(fpPath)) {
-    return [null, []];
-  }
-  let fp;
-  try {
-    fp = (0, import_yaml5.parse)(readFileSync8(fpPath, "utf-8"));
-  } catch {
-    return [null, []];
-  }
-  if (!isPlainObject8(fp)) {
-    return [null, []];
-  }
-  const mismatches = asArray3(fp["mismatches"]);
-  if (mismatches.length === 0) {
-    return [1, []];
-  }
-  const ratios = [];
-  const detailed = [];
-  for (const m of mismatches) {
-    if (!isPlainObject8(m)) {
-      continue;
-    }
-    const desc = Number(m["description_value"] ?? 0);
-    const ac = Number(m["ac_value"] ?? 0);
-    if (Number.isNaN(desc) || Number.isNaN(ac) || desc <= 0) {
-      continue;
-    }
-    ratios.push(ac / desc);
-    detailed.push({ metric: typeof m["metric"] === "string" ? m["metric"] : "", ac, desc });
-  }
-  if (ratios.length === 0) {
-    return [null, []];
-  }
-  const mean = ratios.reduce((acc, r) => acc + r, 0) / ratios.length;
-  return [mean, detailed];
-}
-function formatCoverageLine(coverage, detailed) {
-  const pct = Math.round(coverage * 100);
-  const parts = detailed.map((d) => `${d.ac}/${d.desc} ${d.metric}`);
-  const detail = parts.join(", ");
-  return detail.length > 0 ? `  coverage: ${pct}% (${detail})` : `  coverage: ${pct}%`;
-}
-function featureTitle(fid, spec) {
-  if (!isPlainObject8(spec)) {
-    return fid;
-  }
-  for (const f of asArray3(spec["features"])) {
-    if (isPlainObject8(f) && f["id"] === fid) {
-      const title = f["name"] ?? f["title"];
-      if (typeof title === "string" && title.trim().length > 0) {
-        return title.trim();
-      }
-    }
-  }
-  return fid;
-}
-function countGatesPassed(gates) {
-  let count = 0;
-  for (const g of STANDARD_GATES) {
-    const entry = gates[g];
-    if (isPlainObject8(entry) && entry["last_result"] === "pass") {
-      count++;
-    }
-  }
-  return count;
-}
-function latestBlockerNote(feature) {
-  const evidence = asArray3(feature["evidence"]);
-  for (let i = evidence.length - 1; i >= 0; i--) {
-    const ev = evidence[i];
-    if (!isPlainObject8(ev)) {
-      continue;
-    }
-    if (ev["kind"] === "blocker") {
-      const summary = ev["summary"];
-      return typeof summary === "string" && summary.trim().length > 0 ? summary.trim() : null;
-    }
-    return null;
-  }
-  return null;
-}
-function resolveAgentChain(fid, spec) {
-  if (!isPlainObject8(spec)) {
-    return { agents: [], groups: [] };
-  }
-  const features = asArray3(spec["features"]);
-  const feature = features.find((f) => isPlainObject8(f) && f["id"] === fid);
-  if (!isPlainObject8(feature)) {
-    return { agents: [], groups: [] };
-  }
-  try {
-    const shapes = detectShapes(feature, spec);
-    if (shapes.length === 0) {
-      return { agents: [], groups: [] };
-    }
-    const audio = hasAudioFlag(feature);
-    return {
-      agents: agentsForShapes(shapes, audio),
-      groups: parallelGroupsForShapes(shapes, audio)
-    };
-  } catch {
-    return { agents: [], groups: [] };
-  }
-}
-function renderActiveBlock(feature, spec, lang, harnessDir) {
-  const fid = typeof feature["id"] === "string" ? feature["id"] : "?";
-  const title = featureTitle(fid, spec);
-  const gates = isPlainObject8(feature["gates"]) ? feature["gates"] : {};
-  const passed = countGatesPassed(gates);
-  const evidenceCount = asArray3(feature["evidence"]).length;
-  const lines = [t("active_feature", lang, { title })];
-  lines.push(
-    t("progress_line", lang, {
-      passed,
-      total: STANDARD_GATES.length,
-      evidence: evidenceCount
-    })
-  );
-  const [coverage, detailed] = loadCoverage(harnessDir, fid);
-  if (coverage !== null && coverage < 1) {
-    lines.push(formatCoverageLine(coverage, detailed));
-  }
-  const blocker = latestBlockerNote(feature);
-  if (blocker !== null) {
-    lines.push(t("blocker_line", lang, { note: blocker }));
-  }
-  const { agents, groups } = resolveAgentChain(fid, spec);
-  if (agents.length > 0) {
-    lines.push(`  ${t("agent_chain", lang)}: ${renderAgentChain(agents, groups)}`);
-  }
-  return lines;
-}
-function renderCoverageDebt(features, harnessDir, threshold, _lang) {
-  if (harnessDir === null) {
-    return [];
-  }
-  const withMismatches = [];
-  const belowThreshold = [];
-  for (const f of features) {
-    if (!isPlainObject8(f)) {
-      continue;
-    }
-    const fid = f["id"];
-    if (typeof fid !== "string") {
-      continue;
-    }
-    const [coverage] = loadCoverage(harnessDir, fid);
-    if (coverage === null || coverage >= 1) {
-      continue;
-    }
-    withMismatches.push(fid);
-    if (coverage < threshold) {
-      belowThreshold.push(fid);
-    }
-  }
-  if (withMismatches.length === 0) {
-    return [];
-  }
-  const block2 = [];
-  if (belowThreshold.length > DEBT_ALERT_THRESHOLD) {
-    block2.push("\u26A0 Coverage debt high \u2014 review carry-forward before next feature");
-  }
-  block2.push(
-    `Coverage debt: ${withMismatches.length} features with mismatches (${belowThreshold.length} below threshold ${threshold.toFixed(2)})`
-  );
-  return block2;
-}
-function renderOtherInProgress(features, activeId, spec, lang) {
-  const others = [];
-  for (const f of features) {
-    if (isPlainObject8(f) && f["status"] === "in_progress" && f["id"] !== activeId) {
-      others.push(f);
-    }
-  }
-  if (others.length === 0) {
-    return [];
-  }
-  const lines = [t("in_progress_others", lang)];
-  for (const f of others.slice(0, maxOtherList())) {
-    const fid = typeof f["id"] === "string" ? f["id"] : "?";
-    lines.push(`  "${featureTitle(fid, spec)}"`);
-  }
-  return lines;
-}
-function renderPending(features, spec, lang) {
-  const pending = [];
-  for (const f of features) {
-    if (isPlainObject8(f) && f["status"] === "planned") {
-      pending.push(f);
-    }
-  }
-  if (pending.length === 0) {
-    return [];
-  }
-  const titles = pending.slice(0, maxPendingList()).map((f) => {
-    const fid = typeof f["id"] === "string" ? f["id"] : "?";
-    return `"${featureTitle(fid, spec)}"`;
-  });
-  return [`${t("pending_label", lang)} ${titles.join(" \xB7 ")}`];
-}
-function renderUnregistered(stateFeatures, spec, lang) {
-  if (!isPlainObject8(spec)) {
-    return { lines: [], total: 0 };
-  }
-  const specFeatures = asArray3(spec["features"]);
-  if (specFeatures.length === 0) {
-    return { lines: [], total: 0 };
-  }
-  const registered = /* @__PURE__ */ new Set();
-  for (const f of stateFeatures) {
-    if (isPlainObject8(f) && typeof f["id"] === "string") {
-      registered.add(f["id"]);
-    }
-  }
-  const candidates = [];
-  for (const f of specFeatures) {
-    if (!isPlainObject8(f)) {
-      continue;
-    }
-    const fid = f["id"];
-    if (typeof fid !== "string" || fid.length === 0) {
-      continue;
-    }
-    if (registered.has(fid)) {
-      continue;
-    }
-    if (f["status"] === "archived") {
-      continue;
-    }
-    if (f["superseded_by"]) {
-      continue;
-    }
-    if (f["archived_at"]) {
-      continue;
-    }
-    candidates.push(f);
-  }
-  if (candidates.length === 0) {
-    return { lines: [], total: 0 };
-  }
-  const max = maxUnregisteredList();
-  const titles = candidates.slice(0, max).map((f) => {
-    const fid = typeof f["id"] === "string" ? f["id"] : "?";
-    return `"${featureTitle(fid, spec)}"`;
-  });
-  const header = t("next_candidates", lang, { n: candidates.length });
-  const lines = [header, `  ${titles.join(" \xB7 ")}`];
-  if (candidates.length > max) {
-    lines.push(t("more_after_truncate", lang, { n: candidates.length - max }));
-  }
-  return { lines, total: candidates.length };
-}
-function renderBlocked(features, activeId, spec, lang) {
-  const blocked = [];
-  for (const f of features) {
-    if (isPlainObject8(f) && f["status"] === "blocked" && f["id"] !== activeId) {
-      blocked.push(f);
-    }
-  }
-  if (blocked.length === 0) {
-    return [];
-  }
-  const titles = blocked.slice(0, maxOtherList()).map((f) => {
-    const fid = typeof f["id"] === "string" ? f["id"] : "?";
-    return `"${featureTitle(fid, spec)}"`;
-  });
-  return [`${t("on_hold_label", lang)} ${titles.join(" \xB7 ")}`];
-}
-function renderSuggestions(suggestions, lang) {
-  if (suggestions.length === 0) {
-    return [];
-  }
-  const lines = [t("next_actions", lang)];
-  const markerText = t("recommended_marker", lang);
-  suggestions.forEach((s, i) => {
-    const idx = i + 1;
-    const marker = idx === 1 ? ` ${markerText}` : "";
-    lines.push(`  (${idx}) ${s.label}${marker}`);
-  });
-  lines.push("");
-  lines.push(t("enter_hint", lang, { n: 1 }));
-  return lines;
-}
-function render(stateData, spec, suggestions, options = {}) {
-  const lang = options.lang ?? resolveLang(spec);
-  const harnessDir = options.harnessDir ?? null;
-  const sections = [];
-  sections.push([`\u{1F4CA} ${t("dashboard_title", lang)}`]);
-  const features = isPlainObject8(stateData) ? asArray3(stateData["features"]) : [];
-  const session = isPlainObject8(stateData) && isPlainObject8(stateData["session"]) ? stateData["session"] : null;
-  const activeId = session !== null && typeof session["active_feature_id"] === "string" ? session["active_feature_id"] : null;
-  const byId = /* @__PURE__ */ new Map();
-  for (const f of features) {
-    if (isPlainObject8(f) && typeof f["id"] === "string") {
-      byId.set(f["id"], f);
-    }
-  }
-  if (activeId !== null && byId.has(activeId)) {
-    sections.push(renderActiveBlock(byId.get(activeId), spec, lang, harnessDir));
-  }
-  const otherBlock = renderOtherInProgress(features, activeId, spec, lang);
-  if (otherBlock.length > 0) {
-    sections.push(otherBlock);
-  }
-  const blockedBlock = renderBlocked(features, activeId, spec, lang);
-  if (blockedBlock.length > 0) {
-    sections.push(blockedBlock);
-  }
-  const pendingBlock = renderPending(features, spec, lang);
-  if (pendingBlock.length > 0) {
-    sections.push(pendingBlock);
-  }
-  const { lines: unregisteredBlock, total: unregisteredCount } = renderUnregistered(features, spec, lang);
-  if (unregisteredBlock.length > 0) {
-    sections.push(unregisteredBlock);
-  }
-  const debtBlock = renderCoverageDebt(features, harnessDir, DEFAULT_COVERAGE_THRESHOLD2, lang);
-  if (debtBlock.length > 0) {
-    sections.push(debtBlock);
-  }
-  if (byId.size === 0 && features.length === 0 && unregisteredCount === 0) {
-    sections.push([t("no_features", lang)]);
-  } else if ((activeId === null || !byId.has(activeId)) && otherBlock.length === 0 && blockedBlock.length === 0 && pendingBlock.length === 0 && unregisteredBlock.length === 0) {
-    let doneCount = 0;
-    for (const f of features) {
-      if (isPlainObject8(f) && f["status"] === "done") {
-        doneCount++;
-      }
-    }
-    if (doneCount > 0) {
-      sections.push([t("all_done", lang, { n: doneCount })]);
-    } else {
-      sections.push([t("no_active_no_pending", lang)]);
-    }
-  }
-  const suggestionBlock = renderSuggestions(suggestions, lang);
-  if (suggestionBlock.length > 0) {
-    sections.push(suggestionBlock);
-  }
-  const joined = sections.map((b) => b.join("\n")).join("\n\n");
-  return `${joined.replace(/\s+$/, "")}
-`;
-}
-
-// src/ui/intentPlanner.ts
-var STANDARD_GATES2 = [
-  "gate_0",
-  "gate_1",
-  "gate_2",
-  "gate_3",
-  "gate_4",
-  "gate_5"
-];
-var DEFAULT_COVERAGE_THRESHOLD3 = 0.8;
-function isPlainObject9(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-function asArray4(value) {
-  return Array.isArray(value) ? value : [];
-}
-function featureTitle2(fid, spec) {
-  if (!isPlainObject9(spec)) {
-    return fid;
-  }
-  for (const f of asArray4(spec["features"])) {
-    if (isPlainObject9(f) && f["id"] === fid) {
-      const title = f["name"] ?? f["title"];
-      if (typeof title === "string" && title.trim().length > 0) {
-        return title.trim();
-      }
-    }
-  }
-  return fid;
-}
-function hasRecentBlocker(evidence) {
-  if (!Array.isArray(evidence) || evidence.length === 0) {
-    return false;
-  }
-  const last = evidence[evidence.length - 1];
-  return isPlainObject9(last) && last["kind"] === "blocker";
-}
-function suggestionsForActive(feature, spec) {
-  const fid = typeof feature["id"] === "string" ? feature["id"] : "?";
-  const status = typeof feature["status"] === "string" ? feature["status"] : "planned";
-  const gates = isPlainObject9(feature["gates"]) ? feature["gates"] : {};
-  const evidence = asArray4(feature["evidence"]);
-  const title = featureTitle2(fid, spec);
-  if (status === "blocked" || hasRecentBlocker(evidence)) {
-    return [
-      { label: `\uCC28\uB2E8 \uD574\uACB0 \uC2DC\uB3C4: "${title}"`, action: "resolve_block", feature_id: fid },
-      { label: "\uB2E4\uB978 \uC791\uC5C5\uC73C\uB85C \uC804\uD658", action: "deactivate" }
-    ];
-  }
-  const failed = [];
-  for (const [name, g] of Object.entries(gates)) {
-    if (isPlainObject9(g) && g["last_result"] === "fail") {
-      failed.push(name);
-    }
-  }
-  if (failed.length > 0) {
-    const ordered = STANDARD_GATES2.filter((g) => failed.includes(g));
-    const first = ordered.length > 0 ? ordered[0] : [...failed].sort()[0];
-    return [
-      { label: `\uC2E4\uD328 \uC6D0\uC778 \uBD84\uC11D: ${first}`, action: "analyze_fail", feature_id: fid, gate: first },
-      { label: `${first} \uC7AC\uC2E4\uD589`, action: "run_gate", feature_id: fid, gate: first },
-      { label: "\uB2E4\uB978 \uC791\uC5C5\uC73C\uB85C \uC804\uD658", action: "deactivate" }
-    ];
-  }
-  let nextGate = null;
-  for (const gateName of STANDARD_GATES2) {
-    const g = gates[gateName];
-    const result = isPlainObject9(g) ? g["last_result"] : null;
-    if (result !== "pass") {
-      nextGate = gateName;
-      break;
-    }
-  }
-  const gate5 = gates["gate_5"];
-  const gate5Pass = isPlainObject9(gate5) && gate5["last_result"] === "pass";
-  if (gate5Pass && nextGate === null) {
-    if (evidence.length === 0) {
-      return [
-        { label: `\uADFC\uAC70 1 \uAC74 \uCD94\uAC00 ("${title}")`, action: "add_evidence", feature_id: fid },
-        { label: "\uB2E4\uB978 \uC791\uC5C5\uC73C\uB85C \uC804\uD658", action: "deactivate" }
-      ];
-    }
-    return [
-      { label: `\uC644\uB8CC \uCC98\uB9AC: "${title}"`, action: "complete", feature_id: fid },
-      { label: "\uB2E4\uB978 \uC791\uC5C5\uC73C\uB85C \uC804\uD658", action: "deactivate" }
-    ];
-  }
-  if (nextGate !== null) {
-    return [
-      { label: `\uAC80\uC99D \uC2E4\uD589: ${nextGate}`, action: "run_gate", feature_id: fid, gate: nextGate },
-      { label: "\uB2E4\uB978 \uC791\uC5C5\uC73C\uB85C \uC804\uD658", action: "deactivate" }
-    ];
-  }
-  return [{ label: "\uB2E4\uB978 \uC791\uC5C5\uC73C\uB85C \uC804\uD658", action: "deactivate" }];
-}
-function firstUnregisteredInSpec(features, spec) {
-  if (!isPlainObject9(spec)) {
-    return null;
-  }
-  const specFeatures = asArray4(spec["features"]);
-  if (specFeatures.length === 0) {
-    return null;
-  }
-  const registered = /* @__PURE__ */ new Set();
-  for (const f of features) {
-    if (isPlainObject9(f) && typeof f["id"] === "string") {
-      registered.add(f["id"]);
-    }
-  }
-  for (const f of specFeatures) {
-    if (!isPlainObject9(f)) {
-      continue;
-    }
-    const fid = f["id"];
-    if (typeof fid !== "string" || fid.length === 0) {
-      continue;
-    }
-    if (registered.has(fid)) {
-      continue;
-    }
-    if (f["status"] === "archived") {
-      continue;
-    }
-    if (f["superseded_by"]) {
-      continue;
-    }
-    return fid;
-  }
-  return null;
-}
-function suggestionsForIdle(features, spec) {
-  const inProgress = features.filter(
-    (f) => isPlainObject9(f) && f["status"] === "in_progress" && typeof f["id"] === "string"
-  );
-  const planned = features.filter(
-    (f) => isPlainObject9(f) && f["status"] === "planned" && typeof f["id"] === "string"
-  );
-  const out = [];
-  if (inProgress.length > 0) {
-    const fid = inProgress[0]["id"];
-    out.push({
-      label: `\uC774\uC5B4\uC11C \uC791\uC5C5: "${featureTitle2(fid, spec)}"`,
-      action: "resume",
-      feature_id: fid
-    });
-  }
-  if (planned.length > 0) {
-    const fid = planned[0]["id"];
-    out.push({
-      label: `\uB2E4\uC74C \uD53C\uCC98 \uC2DC\uC791: "${featureTitle2(fid, spec)}"`,
-      action: "start_feature",
-      feature_id: fid
-    });
-  } else {
-    const unregisteredFid = firstUnregisteredInSpec(features, spec);
-    if (unregisteredFid !== null) {
-      out.push({
-        label: `\uB2E4\uC74C \uD53C\uCC98 \uC2DC\uC791: "${featureTitle2(unregisteredFid, spec)}"`,
-        action: "start_feature",
-        feature_id: unregisteredFid
-      });
-    }
-  }
-  if (out.length === 0) {
-    out.push({ label: "\uC0C8 \uD53C\uCC98 \uB4F1\uB85D (spec.yaml \uD3B8\uC9D1)", action: "init_feature" });
-  }
-  return out;
-}
-function suggest(stateData, spec = null, options = {}) {
-  if (!isPlainObject9(stateData)) {
-    return [];
-  }
-  const session = isPlainObject9(stateData["session"]) ? stateData["session"] : {};
-  const activeId = session["active_feature_id"];
-  const features = asArray4(stateData["features"]);
-  const byId = /* @__PURE__ */ new Map();
-  for (const f of features) {
-    if (isPlainObject9(f) && typeof f["id"] === "string") {
-      byId.set(f["id"], f);
-    }
-  }
-  let out;
-  if (typeof activeId === "string" && byId.has(activeId)) {
-    out = suggestionsForActive(byId.get(activeId), spec);
-  } else {
-    out = suggestionsForIdle(features, spec);
-  }
-  const coverage = options.coverage;
-  if (coverage !== void 0 && coverage !== null && coverage < DEFAULT_COVERAGE_THRESHOLD3) {
-    const pct = Math.round(coverage * 100);
-    const thresholdPct = Math.round(DEFAULT_COVERAGE_THRESHOLD3 * 100);
-    out = [
-      {
-        label: `Review carry-forward debt \u2014 coverage ${pct}% < threshold ${thresholdPct}% (explicit carry to retro before complete)`,
-        action: "review_carry_forward"
-      },
-      ...out
-    ];
-  }
-  return out.slice(0, 3);
-}
-
 // src/spec/validate.ts
-var import__ = __toESM(require__(), 1);
-var import_ajv_formats = __toESM(require_dist2(), 1);
-var import_yaml6 = __toESM(require_dist(), 1);
 import { readFileSync as readFileSync9, statSync as statSync10 } from "node:fs";
 import { dirname as dirname6, join as join10, resolve as resolvePath3 } from "node:path";
 import { fileURLToPath } from "node:url";
-var Ajv2020Ctor = import__.default.default ?? import__.default;
-var addFormats = import_ajv_formats.default.default ?? import_ajv_formats.default;
-var __filename = fileURLToPath(import.meta.url);
-var __dirname = dirname6(__filename);
-var SpecValidationError = class extends Error {
-  path;
-  reason;
-  constructor(message, path = [], reason = "") {
-    super(message);
-    this.name = "SpecValidationError";
-    this.path = path;
-    this.reason = reason;
-  }
-};
 function defaultSchemaPath() {
   const repoRoot = resolvePath3(__dirname, "..", "..");
   return join10(repoRoot, "docs", "schemas", "spec.schema.json");
 }
-var ajvCache = null;
 function getValidator(schemaPath) {
   const stat = statSync10(schemaPath);
   const mtime = stat.mtimeMs;
@@ -22093,189 +20695,35 @@ function validate(spec, schemaPath = null) {
     first.keyword
   );
 }
-
-// src/cli/harness.ts
-init_state();
-
-// src/status.ts
-var import_yaml7 = __toESM(require_dist(), 1);
-init_state();
-import { readFileSync as readFileSync10, statSync as statSync11 } from "node:fs";
-import { join as join11 } from "node:path";
-function isPlainObject10(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-function loadHarnessYaml(harnessDir) {
-  const path = join11(harnessDir, "harness.yaml");
-  try {
-    if (!statSync11(path).isFile()) {
-      return {};
-    }
-  } catch {
-    return {};
-  }
-  const raw = readFileSync10(path, "utf-8");
-  const parsed = (0, import_yaml7.parse)(raw);
-  return isPlainObject10(parsed) ? parsed : {};
-}
-function tailEvents(harnessDir, n = 1) {
-  const path = join11(harnessDir, "events.log");
-  try {
-    if (!statSync11(path).isFile()) {
-      return [];
-    }
-  } catch {
-    return [];
-  }
-  const raw = readFileSync10(path, "utf-8");
-  const lines = raw.split("\n").filter((line) => line.trim().length > 0);
-  const tail2 = lines.slice(-n);
-  const out = [];
-  for (const line of tail2) {
-    try {
-      const parsed = JSON.parse(line);
-      if (isPlainObject10(parsed)) {
-        out.push(parsed);
+var import__, import_ajv_formats, import_yaml6, Ajv2020Ctor, addFormats, __filename, __dirname, SpecValidationError, ajvCache;
+var init_validate = __esm({
+  "src/spec/validate.ts"() {
+    "use strict";
+    import__ = __toESM(require__(), 1);
+    import_ajv_formats = __toESM(require_dist2(), 1);
+    import_yaml6 = __toESM(require_dist(), 1);
+    Ajv2020Ctor = import__.default.default ?? import__.default;
+    addFormats = import_ajv_formats.default.default ?? import_ajv_formats.default;
+    __filename = fileURLToPath(import.meta.url);
+    __dirname = dirname6(__filename);
+    SpecValidationError = class extends Error {
+      path;
+      reason;
+      constructor(message, path = [], reason = "") {
+        super(message);
+        this.name = "SpecValidationError";
+        this.path = path;
+        this.reason = reason;
       }
-    } catch {
-      continue;
-    }
+    };
+    ajvCache = null;
   }
-  return out;
-}
-function buildReport(harnessDir, options = {}) {
-  const featureFilter = options.featureFilter ?? null;
-  const state = State.load(harnessDir);
-  const harnessYaml = loadHarnessYaml(harnessDir);
-  const generation = isPlainObject10(harnessYaml["generation"]) ? harnessYaml["generation"] : {};
-  const driftStatus = typeof generation["drift_status"] === "string" ? generation["drift_status"] : "unknown";
-  const recentEvents = tailEvents(harnessDir, 5);
-  let lastSync = null;
-  for (let i = recentEvents.length - 1; i >= 0; i--) {
-    const ev = recentEvents[i];
-    if (ev["type"] === "sync_completed") {
-      const ts = typeof ev["ts"] === "string" ? ev["ts"] : null;
-      const specHash = typeof ev["spec_hash"] === "string" ? ev["spec_hash"].slice(0, 12) : "";
-      const pluginVersion2 = typeof ev["plugin_version"] === "string" ? ev["plugin_version"] : null;
-      lastSync = { ts, spec_hash: specHash, plugin_version: pluginVersion2 };
-      break;
-    }
-  }
-  const counts = state.featureCounts();
-  const featuresSummary = [];
-  for (const f of state.data.features) {
-    if (!isPlainObject10(f)) {
-      continue;
-    }
-    const fid = typeof f["id"] === "string" ? f["id"] : "?";
-    if (featureFilter !== null && fid !== featureFilter) {
-      continue;
-    }
-    const gates = isPlainObject10(f["gates"]) ? f["gates"] : {};
-    const passed = [];
-    const failed = [];
-    for (const [g, v] of Object.entries(gates)) {
-      if (!isPlainObject10(v)) {
-        continue;
-      }
-      const result = v["last_result"];
-      if (result === "pass") {
-        passed.push(g);
-      } else if (result === "fail") {
-        failed.push(g);
-      }
-    }
-    featuresSummary.push({
-      id: fid,
-      status: typeof f["status"] === "string" ? f["status"] : "planned",
-      started_at: typeof f["started_at"] === "string" ? f["started_at"] : null,
-      completed_at: typeof f["completed_at"] === "string" ? f["completed_at"] : null,
-      gates_passed: passed,
-      gates_failed: failed,
-      evidence_count: Array.isArray(f["evidence"]) ? f["evidence"].length : 0
-    });
-  }
-  const activeFid = state.data.session.active_feature_id;
-  const activeFeature = typeof activeFid === "string" ? featuresSummary.find((f) => f.id === activeFid) ?? null : null;
-  return {
-    session: { ...state.data.session },
-    counts,
-    drift_status: driftStatus,
-    last_sync: lastSync,
-    features_summary: featuresSummary,
-    active_feature: activeFeature
-  };
-}
-function rstrip4(s) {
-  return s.replace(/\s+$/, "");
-}
-function pad2(s, width) {
-  return s.length >= width ? s : s + " ".repeat(width - s.length);
-}
-function formatHuman4(report) {
-  const lines = ["\u{1F4CB} /harness:status", ""];
-  const s = report.session;
-  lines.push("Session");
-  lines.push(`  started_at         ${s.started_at ?? "\u2014"}`);
-  lines.push(`  last_command       ${s.last_command || "\u2014"}`);
-  lines.push(`  last_gate_passed   ${s.last_gate_passed ?? "\u2014"}`);
-  lines.push(`  active_feature_id  ${s.active_feature_id ?? "\u2014"}`);
-  lines.push("");
-  const c = report.counts;
-  const total = Object.values(c).reduce((acc, n) => acc + n, 0);
-  lines.push(`Features (${total})`);
-  for (const [st, n] of Object.entries(c)) {
-    if (n > 0) {
-      lines.push(`  ${pad2(st, 12)} ${n}`);
-    }
-  }
-  lines.push("");
-  lines.push(`Drift status: ${report.drift_status}`);
-  lines.push("");
-  if (report.last_sync !== null) {
-    const ls = report.last_sync;
-    lines.push(
-      `Last sync: ${ls.ts ?? ""} \xB7 spec_hash=${ls.spec_hash} \xB7 plugin=${ls.plugin_version ?? ""}`
-    );
-    lines.push("");
-  }
-  if (report.active_feature !== null) {
-    const af = report.active_feature;
-    lines.push(`Active feature: ${af.id} [${af.status}]`);
-    if (af.gates_passed.length > 0) {
-      lines.push(`  gates passed: ${af.gates_passed.join(", ")}`);
-    }
-    if (af.gates_failed.length > 0) {
-      lines.push(`  gates failed: ${af.gates_failed.join(", ")}`);
-    }
-    lines.push(`  evidence: ${af.evidence_count} entries`);
-    lines.push("");
-  }
-  return `${rstrip4(lines.join("\n"))}
-`;
-}
-
-// src/cli/harness.ts
-var import_yaml16 = __toESM(require_dist(), 1);
-import { readFileSync as readFileSync17 } from "node:fs";
-
-// src/sync.ts
-var import_yaml10 = __toESM(require_dist(), 1);
-import { createHash as createHash3 } from "node:crypto";
-import { appendFileSync as appendFileSync5, mkdirSync as mkdirSync5, readFileSync as readFileSync12, statSync as statSync13, writeFileSync as writeFileSync6 } from "node:fs";
-import { dirname as dirname7, join as join13, resolve as resolvePath5 } from "node:path";
-import { fileURLToPath as fileURLToPath2 } from "node:url";
+});
 
 // src/core/pluginRoot.ts
 import { existsSync as existsSync2, readFileSync as readFileSync11, realpathSync, statSync as statSync12 } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter as pathDelimiter, join as join12, resolve as resolvePath4 } from "node:path";
-var PluginRootError = class extends Error {
-  constructor(message) {
-    super(message);
-    this.name = "PluginRootError";
-  }
-};
 function loadPluginJson(root) {
   const manifest = join12(root, ".claude-plugin", "plugin.json");
   try {
@@ -22475,9 +20923,20 @@ function resolve(pluginName = "harness") {
     `\uD50C\uB7EC\uADF8\uC778 '${pluginName}' \uB8E8\uD2B8 \uD574\uC11D \uC2E4\uD328 \u2014 attempts: ${attempts.join(", ")}`
   );
 }
+var PluginRootError;
+var init_pluginRoot = __esm({
+  "src/core/pluginRoot.ts"() {
+    "use strict";
+    PluginRootError = class extends Error {
+      constructor(message) {
+        super(message);
+        this.name = "PluginRootError";
+      }
+    };
+  }
+});
 
 // src/render/architecture.ts
-var import_yaml8 = __toESM(require_dist(), 1);
 function asArray5(value) {
   return Array.isArray(value) ? value : [];
 }
@@ -22614,9 +21073,15 @@ function render2(spec, options = {}) {
     lineWidth: 0
   });
 }
+var import_yaml8;
+var init_architecture = __esm({
+  "src/render/architecture.ts"() {
+    "use strict";
+    import_yaml8 = __toESM(require_dist(), 1);
+  }
+});
 
 // src/render/domain.ts
-var import_yaml9 = __toESM(require_dist(), 1);
 function getPath(d, path, defaultValue = null) {
   let cur = d;
   for (const part of path.split(".")) {
@@ -22983,10 +21448,19 @@ function stringifyValue(value) {
   }
   return String(value);
 }
+var import_yaml9;
+var init_domain = __esm({
+  "src/render/domain.ts"() {
+    "use strict";
+    import_yaml9 = __toESM(require_dist(), 1);
+  }
+});
 
 // src/sync.ts
-var __filename2 = fileURLToPath2(import.meta.url);
-var __dirname2 = dirname7(__filename2);
+import { createHash as createHash3 } from "node:crypto";
+import { appendFileSync as appendFileSync5, mkdirSync as mkdirSync5, readFileSync as readFileSync12, statSync as statSync13, writeFileSync as writeFileSync6 } from "node:fs";
+import { dirname as dirname7, join as join13, resolve as resolvePath5 } from "node:path";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
 function nowIso7() {
   const d = /* @__PURE__ */ new Date();
   const yyyy = d.getUTCFullYear().toString().padStart(4, "0");
@@ -23305,20 +21779,26 @@ function tryInitialSync(harnessDir) {
     return { ok: false, reason: `${cls}: ${msg}` };
   }
 }
-
-// src/work.ts
-var import_yaml12 = __toESM(require_dist(), 1);
-import { appendFileSync as appendFileSync6, mkdirSync as mkdirSync6, readFileSync as readFileSync14, statSync as statSync15 } from "node:fs";
-import { dirname as dirname8, join as join15, resolve as resolvePath6 } from "node:path";
-import { spawnSync as spawnSync2 } from "node:child_process";
-init_state();
+var import_yaml10, __filename2, __dirname2;
+var init_sync = __esm({
+  "src/sync.ts"() {
+    "use strict";
+    import_yaml10 = __toESM(require_dist(), 1);
+    init_canonicalHash();
+    init_pluginRoot();
+    init_includeExpander();
+    init_validate();
+    init_architecture();
+    init_domain();
+    __filename2 = fileURLToPath2(import.meta.url);
+    __dirname2 = dirname7(__filename2);
+  }
+});
 
 // src/gate/runner.ts
-var import_yaml11 = __toESM(require_dist(), 1);
 import { spawnSync } from "node:child_process";
 import { existsSync as existsSync3, readFileSync as readFileSync13, readdirSync as readdirSync4, statSync as statSync14 } from "node:fs";
 import { delimiter as pathDelimiter2, join as join14, sep as pathSep } from "node:path";
-var DEFAULT_TIMEOUT_SEC = 300;
 function which(bin) {
   const pathEnv = process.env["PATH"] ?? "";
   for (const entry of pathEnv.split(pathDelimiter2)) {
@@ -23617,18 +22097,6 @@ function detectGate4Command(projectRoot) {
   }
   return ["sh", "-c", "git diff --quiet && git diff --cached --quiet"];
 }
-var PW_CONFIG_NAMES = [
-  "playwright.config.ts",
-  "playwright.config.js",
-  "playwright.config.mjs",
-  "playwright.config.cjs"
-];
-var CY_CONFIG_NAMES = [
-  "cypress.config.ts",
-  "cypress.config.js",
-  "cypress.config.mjs",
-  "cypress.config.cjs"
-];
 function playwrightCommand(projectRoot) {
   for (const name of PW_CONFIG_NAMES) {
     if (isFile6(join14(projectRoot, name))) {
@@ -23956,28 +22424,35 @@ function runGate(gate, projectRoot, options = {}) {
       );
   }
 }
+var import_yaml11, DEFAULT_TIMEOUT_SEC, PW_CONFIG_NAMES, CY_CONFIG_NAMES;
+var init_runner = __esm({
+  "src/gate/runner.ts"() {
+    "use strict";
+    import_yaml11 = __toESM(require_dist(), 1);
+    DEFAULT_TIMEOUT_SEC = 300;
+    PW_CONFIG_NAMES = [
+      "playwright.config.ts",
+      "playwright.config.js",
+      "playwright.config.mjs",
+      "playwright.config.cjs"
+    ];
+    CY_CONFIG_NAMES = [
+      "cypress.config.ts",
+      "cypress.config.js",
+      "cypress.config.mjs",
+      "cypress.config.cjs"
+    ];
+  }
+});
 
 // src/work.ts
-var GATE_FRIENDLY = {
-  gate_0: "tests",
-  gate_1: "type check",
-  gate_2: "lint",
-  gate_3: "coverage",
-  gate_4: "commit check",
-  gate_5: "smoke run",
-  gate_perf: "performance"
-};
+import { appendFileSync as appendFileSync6, mkdirSync as mkdirSync6, readFileSync as readFileSync14, statSync as statSync15 } from "node:fs";
+import { dirname as dirname8, join as join15, resolve as resolvePath6 } from "node:path";
+import { spawnSync as spawnSync2 } from "node:child_process";
 function friendlyGate(gateName) {
   const label = GATE_FRIENDLY[gateName];
   return label ? `${label} (${gateName})` : gateName;
 }
-var IRON_LAW_REQUIRED = { prototype: 1, product: 3 };
-var BLOCKING_DRIFT_KINDS = /* @__PURE__ */ new Set([
-  "Code",
-  "Stale",
-  "AnchorIntegration",
-  "Coverage"
-]);
 function isPlainObject12(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -24671,8 +23146,2854 @@ function runAndRecordGate(harnessDir, fid, gateName, options = {}) {
   res.message = `${friendlyGate(gateName)} ${runResult.result.toUpperCase()}` + (runResult.reason ? ` \u2014 ${runResult.reason}` : "");
   return res;
 }
+var import_yaml12, GATE_FRIENDLY, IRON_LAW_REQUIRED, BLOCKING_DRIFT_KINDS;
+var init_work = __esm({
+  "src/work.ts"() {
+    "use strict";
+    import_yaml12 = __toESM(require_dist(), 1);
+    init_check();
+    init_gates();
+    init_projectMode();
+    init_state();
+    init_designReview();
+    init_kickoff();
+    init_retro();
+    init_runner();
+    init_sync();
+    GATE_FRIENDLY = {
+      gate_0: "tests",
+      gate_1: "type check",
+      gate_2: "lint",
+      gate_3: "coverage",
+      gate_4: "commit check",
+      gate_5: "smoke run",
+      gate_perf: "performance"
+    };
+    IRON_LAW_REQUIRED = { prototype: 1, product: 3 };
+    BLOCKING_DRIFT_KINDS = /* @__PURE__ */ new Set([
+      "Code",
+      "Stale",
+      "AnchorIntegration",
+      "Coverage"
+    ]);
+  }
+});
+
+// src/drive/goalStore.ts
+import { createHash as createHash4 } from "node:crypto";
+import { readFileSync as readFileSync15, writeFileSync as writeFileSync7 } from "node:fs";
+function nowIso9(now = /* @__PURE__ */ new Date()) {
+  const yyyy = now.getUTCFullYear().toString().padStart(4, "0");
+  const mm = (now.getUTCMonth() + 1).toString().padStart(2, "0");
+  const dd = now.getUTCDate().toString().padStart(2, "0");
+  const hh = now.getUTCHours().toString().padStart(2, "0");
+  const mi = now.getUTCMinutes().toString().padStart(2, "0");
+  const ss = now.getUTCSeconds().toString().padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}Z`;
+}
+function isPlainObject13(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function nextGoalId(existing) {
+  let max = 0;
+  for (const id of existing) {
+    const m = /^G-(\d+)$/.exec(id);
+    if (m === null) {
+      continue;
+    }
+    const n = Number.parseInt(m[1] ?? "0", 10);
+    if (Number.isFinite(n) && n > max) {
+      max = n;
+    }
+  }
+  const next = max + 1;
+  return `G-${next.toString().padStart(3, "0")}`;
+}
+function normalizeSlug(title) {
+  const ascii = title.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
+  if (ascii.length > 0 && /^[a-z0-9]/.test(ascii)) {
+    return ascii.length > MAX_SLUG_LENGTH ? ascii.slice(0, MAX_SLUG_LENGTH) : ascii;
+  }
+  const hash = createHash4("sha256").update(title, "utf8").digest("hex").slice(0, 8);
+  return `goal-${hash}`;
+}
+function readGoals(specPath) {
+  const raw = readFileSync15(specPath, "utf-8");
+  const doc = (0, import_yaml13.parse)(raw);
+  if (!isPlainObject13(doc)) {
+    return [];
+  }
+  const goals = doc.goals;
+  if (!Array.isArray(goals)) {
+    return [];
+  }
+  const out = [];
+  for (const g of goals) {
+    if (!isPlainObject13(g)) {
+      continue;
+    }
+    if (typeof g.id !== "string" || typeof g.title !== "string") {
+      continue;
+    }
+    const slug = typeof g.slug === "string" ? g.slug : normalizeSlug(g.title);
+    const featureIds = Array.isArray(g.feature_ids) ? g.feature_ids.filter((x) => typeof x === "string") : [];
+    out.push({
+      ...g,
+      id: g.id,
+      slug,
+      title: g.title,
+      feature_ids: featureIds
+    });
+  }
+  return out;
+}
+function createGoal(input, existingIds) {
+  const id = nextGoalId(existingIds);
+  const slug = normalizeSlug(input.title);
+  const goal = {
+    id,
+    slug,
+    title: input.title,
+    feature_ids: [...input.feature_ids ?? []],
+    created_at: nowIso9(input.now),
+    archived_at: null,
+    archive_reason: null
+  };
+  if (typeof input.description === "string" && input.description.length > 0) {
+    goal.description = input.description;
+  }
+  return goal;
+}
+var import_yaml13, MAX_SLUG_LENGTH;
+var init_goalStore = __esm({
+  "src/drive/goalStore.ts"() {
+    "use strict";
+    import_yaml13 = __toESM(require_dist(), 1);
+    MAX_SLUG_LENGTH = 60;
+  }
+});
+
+// src/drive/progressRenderer.ts
+function isPlainObject14(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function featureIcon(status, emoji) {
+  if (!emoji) {
+    const map2 = {
+      done: "[x]",
+      in_progress: "[>]",
+      planned: "[ ]",
+      blocked: "[!]",
+      archived: "[~]"
+    };
+    return map2[status] ?? "[ ]";
+  }
+  const map = {
+    done: "\u2705",
+    in_progress: "\u{1F535}",
+    planned: "\u26AA",
+    blocked: "\u26A0",
+    archived: "\u{1F5C4}"
+  };
+  return map[status] ?? "\u26AA";
+}
+function countGatesPassed2(feature) {
+  if (!isPlainObject14(feature.gates)) {
+    return 0;
+  }
+  let count = 0;
+  for (const g of STANDARD_GATES3) {
+    const entry = feature.gates[g];
+    if (isPlainObject14(entry) && entry.last_result === "pass") {
+      count += 1;
+    }
+  }
+  return count;
+}
+function countDeclaredEvidence2(feature) {
+  if (!Array.isArray(feature.evidence)) {
+    return 0;
+  }
+  let count = 0;
+  for (const ev of feature.evidence) {
+    if (!isPlainObject14(ev)) {
+      continue;
+    }
+    const kind = ev.kind;
+    if (typeof kind === "string" && (kind === "gate_run" || kind === "gate_auto_run")) {
+      continue;
+    }
+    count += 1;
+  }
+  return count;
+}
+function elapsedMinutes(startedAt, now) {
+  if (typeof startedAt !== "string" || startedAt.length === 0) {
+    return null;
+  }
+  const ms = Date.parse(startedAt);
+  if (Number.isNaN(ms)) {
+    return null;
+  }
+  const diff = now.getTime() - ms;
+  if (diff < 0) {
+    return 0;
+  }
+  return Math.round(diff / 6e4);
+}
+function elapsedMinutesFromSec(elapsed_sec) {
+  if (typeof elapsed_sec !== "number" || !Number.isFinite(elapsed_sec) || elapsed_sec < 0) {
+    return null;
+  }
+  return Math.round(elapsed_sec / 60);
+}
+function computePercentDone(features) {
+  if (features.length === 0) {
+    return 0;
+  }
+  let done = 0;
+  for (const f of features) {
+    if (f.status === "done") {
+      done += 1;
+    }
+  }
+  return Math.round(done / features.length * 100);
+}
+function inflightGateLabel(feature) {
+  if (feature.status !== "in_progress") {
+    return null;
+  }
+  for (const g of STANDARD_GATES3) {
+    const entry = feature.gates?.[g];
+    if (!isPlainObject14(entry)) {
+      return g;
+    }
+    if (entry.last_result !== "pass") {
+      return g;
+    }
+  }
+  return null;
+}
+function renderProgress(input, options = {}) {
+  const { goalSpec, goalRuntime, features } = input;
+  const emoji = options.emoji ?? true;
+  const now = options.now ?? /* @__PURE__ */ new Date();
+  const percentDone = computePercentDone(features);
+  const goalIcon = emoji ? "\u{1F4CA}" : "##";
+  const status = goalRuntime?.status ?? "planning";
+  const lines = [];
+  lines.push(`${goalIcon} Goal ${goalSpec.id}: ${goalSpec.title} (${percentDone}%) [${status}]`);
+  for (const f of features) {
+    const icon = featureIcon(f.status, emoji);
+    const passed = countGatesPassed2(f);
+    const declared = countDeclaredEvidence2(f);
+    const inflight = inflightGateLabel(f);
+    const elapsed = elapsedMinutes(f.started_at, now);
+    const parts = [];
+    parts.push(`${f.status}`);
+    if (inflight !== null) {
+      parts.push(`${inflight} running`);
+    } else if (passed > 0) {
+      parts.push(`${passed}/${STANDARD_GATES3.length} gates`);
+    }
+    if (declared > 0) {
+      parts.push(`${declared} evidence`);
+    }
+    if (elapsed !== null && f.status !== "planned") {
+      parts.push(`${elapsed}m`);
+    }
+    const fname = featureName(f);
+    lines.push(`  ${icon} ${f.id} ${fname} [${parts.join(" \xB7 ")}]`);
+  }
+  const activeFeature = features.find((f) => f.status === "in_progress") ?? null;
+  const iteration = goalRuntime?.iteration ?? 0;
+  const elapsedGoal = elapsedMinutesFromSec(goalRuntime?.elapsed_sec);
+  const lastHalt = goalRuntime?.last_halt_reason ?? null;
+  if (activeFeature !== null) {
+    const inflight = inflightGateLabel(activeFeature);
+    const phase = inflight !== null ? `${inflight} (running)` : "awaiting evidence";
+    const arrow = emoji ? "\u25B6" : ">";
+    const elapsedSegment = elapsedGoal !== null ? ` \xB7 ${elapsedGoal}m elapsed` : "";
+    const haltSegment = lastHalt !== null ? ` \xB7 last halt: ${lastHalt}` : "";
+    lines.push(
+      `${arrow} now: ${activeFeature.id} / ${phase} \xB7 iteration ${iteration}${elapsedSegment}${haltSegment}`
+    );
+  } else {
+    const arrow = emoji ? "\u25B6" : ">";
+    const elapsedSegment = elapsedGoal !== null ? ` \xB7 ${elapsedGoal}m elapsed` : "";
+    lines.push(`${arrow} now: idle \xB7 iteration ${iteration}${elapsedSegment}`);
+  }
+  return lines.join("\n");
+}
+function renderProgressJson(input, options = {}) {
+  const { goalSpec, goalRuntime, features } = input;
+  const now = options.now ?? /* @__PURE__ */ new Date();
+  const featuresJson = features.map((f) => ({
+    id: f.id,
+    status: f.status,
+    gates_passed: countGatesPassed2(f),
+    evidence_count: countDeclaredEvidence2(f),
+    elapsed_min: elapsedMinutes(f.started_at, now)
+  }));
+  return {
+    goal_id: goalSpec.id,
+    title: goalSpec.title,
+    status: goalRuntime?.status ?? "planning",
+    percent_done: computePercentDone(features),
+    features: featuresJson,
+    iteration: goalRuntime?.iteration ?? 0,
+    elapsed_min: elapsedMinutesFromSec(goalRuntime?.elapsed_sec),
+    last_halt_reason: goalRuntime?.last_halt_reason ?? null
+  };
+}
+function featureName(feature) {
+  const n = feature.name;
+  return typeof n === "string" && n.length > 0 ? n : "";
+}
+var STANDARD_GATES3;
+var init_progressRenderer = __esm({
+  "src/drive/progressRenderer.ts"() {
+    "use strict";
+    STANDARD_GATES3 = ["gate_0", "gate_1", "gate_2", "gate_3", "gate_5"];
+  }
+});
+
+// src/drive/statusCommand.ts
+var statusCommand_exports = {};
+__export(statusCommand_exports, {
+  composeStatusJson: () => composeStatusJson,
+  composeStatusText: () => composeStatusText,
+  runDriveStatus: () => runDriveStatus
+});
+import { existsSync as existsSync4, readFileSync as readFileSync16 } from "node:fs";
+import { join as join16 } from "node:path";
+function isPlainObject15(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function readSpecFeatures(harnessDir) {
+  const path = join16(harnessDir, "spec.yaml");
+  if (!existsSync4(path)) {
+    return [];
+  }
+  const raw = readFileSync16(path, "utf-8");
+  const doc = (0, import_yaml14.parse)(raw);
+  if (!isPlainObject15(doc)) {
+    return [];
+  }
+  if (!Array.isArray(doc.features)) {
+    return [];
+  }
+  return doc.features.filter(isPlainObject15);
+}
+function enrichFeatures(runtimeFeatures, specFeatures) {
+  const nameById = /* @__PURE__ */ new Map();
+  for (const f of specFeatures) {
+    if (typeof f.id === "string" && typeof f.name === "string") {
+      nameById.set(f.id, f.name);
+    }
+  }
+  return runtimeFeatures.map((f) => {
+    const name = nameById.get(f.id);
+    return name === void 0 ? f : { ...f, name };
+  });
+}
+function resolveGoalFeatures(state, goalSpec, specFeatures) {
+  const runtimeById = /* @__PURE__ */ new Map();
+  for (const f of state.data.features ?? []) {
+    if (isPlainObject15(f) && typeof f.id === "string") {
+      runtimeById.set(f.id, f);
+    }
+  }
+  const out = [];
+  for (const fid of goalSpec.feature_ids) {
+    const existing = runtimeById.get(fid);
+    if (existing !== void 0) {
+      out.push(existing);
+      continue;
+    }
+    out.push({
+      id: fid,
+      status: "planned",
+      gates: {},
+      evidence: [],
+      started_at: null,
+      completed_at: null
+    });
+  }
+  return enrichFeatures(out, specFeatures);
+}
+function selectGoals(goals, state, options) {
+  if (options.all === true) {
+    return [...goals];
+  }
+  if (typeof options.goalId === "string" && options.goalId.length > 0) {
+    const found = goals.find((g) => g.id === options.goalId);
+    return found === void 0 ? [] : [found];
+  }
+  const active = state.activeGoalId();
+  if (active !== null) {
+    const found = goals.find((g) => g.id === active);
+    if (found !== void 0) {
+      return [found];
+    }
+  }
+  if (goals.length > 0) {
+    return [goals[goals.length - 1]];
+  }
+  return [];
+}
+function composeStatusText(goals, state, specFeatures, options) {
+  const selected = selectGoals(goals, state, options);
+  if (selected.length === 0) {
+    return 'no goals registered yet \u2014 drive --plan or /harness-boot:drive "<goal>" (stage 2 / F-119)';
+  }
+  const blocks = [];
+  for (const goalSpec of selected) {
+    const goalRuntime = state.getGoal(goalSpec.id);
+    const features = resolveGoalFeatures(state, goalSpec, specFeatures);
+    blocks.push(renderProgress({ goalSpec, goalRuntime, features }));
+  }
+  return blocks.join("\n\n");
+}
+function composeStatusJson(goals, state, specFeatures, options) {
+  const selected = selectGoals(goals, state, options);
+  const out = [];
+  for (const goalSpec of selected) {
+    const goalRuntime = state.getGoal(goalSpec.id);
+    const features = resolveGoalFeatures(state, goalSpec, specFeatures);
+    out.push(renderProgressJson({ goalSpec, goalRuntime, features }));
+  }
+  return { goals: out };
+}
+function sleep(ms) {
+  return new Promise((resolve2) => setTimeout(resolve2, ms));
+}
+async function runDriveStatus(options) {
+  const out = options.out ?? ((s) => process.stdout.write(s));
+  const harnessDir = options.harnessDir;
+  if (!existsSync4(harnessDir)) {
+    out(`drive --status: harness dir not found: ${harnessDir}
+`);
+    return 2;
+  }
+  const intervalSec = options.intervalSec ?? 2;
+  const watch = options.watch ?? false;
+  const renderOnce = () => {
+    const specPath = join16(harnessDir, "spec.yaml");
+    const goals = existsSync4(specPath) ? readGoals(specPath) : [];
+    const specFeatures = readSpecFeatures(harnessDir);
+    const state = State.load(harnessDir);
+    if (options.json === true) {
+      const payload = composeStatusJson(goals, state, specFeatures, options);
+      out(JSON.stringify(payload, null, 2) + "\n");
+    } else {
+      const text = composeStatusText(goals, state, specFeatures, options);
+      out(text + "\n");
+    }
+  };
+  if (!watch) {
+    renderOnce();
+    return 0;
+  }
+  while (true) {
+    if (options.json !== true) {
+      out("\x1B[2J\x1B[H");
+    }
+    renderOnce();
+    await sleep(intervalSec * 1e3);
+  }
+}
+var import_yaml14;
+var init_statusCommand = __esm({
+  "src/drive/statusCommand.ts"() {
+    "use strict";
+    import_yaml14 = __toESM(require_dist(), 1);
+    init_state();
+    init_goalStore();
+    init_progressRenderer();
+  }
+});
+
+// src/drive/checkpoint.ts
+var checkpoint_exports = {};
+__export(checkpoint_exports, {
+  DEFAULT_MAX_ITERATIONS: () => DEFAULT_MAX_ITERATIONS,
+  DEFAULT_MAX_SECONDS: () => DEFAULT_MAX_SECONDS,
+  appendProgress: () => appendProgress,
+  checkpointPath: () => checkpointPath,
+  clearCheckpoint: () => clearCheckpoint,
+  defaultCheckpoint: () => defaultCheckpoint,
+  goalArtifactDir: () => goalArtifactDir,
+  loadCheckpoint: () => loadCheckpoint,
+  progressLogPath: () => progressLogPath,
+  saveCheckpoint: () => saveCheckpoint,
+  stopFileExists: () => stopFileExists,
+  stopFilePath: () => stopFilePath
+});
+import { appendFileSync as appendFileSync7, existsSync as existsSync5, mkdirSync as mkdirSync7, readFileSync as readFileSync17, statSync as statSync16, writeFileSync as writeFileSync8 } from "node:fs";
+import { dirname as dirname9, join as join17 } from "node:path";
+function isPlainObject16(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function nowIso10(now = /* @__PURE__ */ new Date()) {
+  const yyyy = now.getUTCFullYear().toString().padStart(4, "0");
+  const mm = (now.getUTCMonth() + 1).toString().padStart(2, "0");
+  const dd = now.getUTCDate().toString().padStart(2, "0");
+  const hh = now.getUTCHours().toString().padStart(2, "0");
+  const mi = now.getUTCMinutes().toString().padStart(2, "0");
+  const ss = now.getUTCSeconds().toString().padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}Z`;
+}
+function checkpointPath(harnessDir) {
+  return join17(harnessDir, "_workspace", "drive", "run.yaml");
+}
+function progressLogPath(harnessDir) {
+  return join17(harnessDir, "_workspace", "drive", "progress.log");
+}
+function stopFilePath(harnessDir) {
+  return join17(harnessDir, "_workspace", "drive", "STOP");
+}
+function goalArtifactDir(harnessDir, goalId) {
+  return join17(harnessDir, "_workspace", "drive", "goals", goalId);
+}
+function defaultCheckpoint(goalId, now = /* @__PURE__ */ new Date()) {
+  const ts = nowIso10(now);
+  return {
+    goal_id: goalId,
+    phase: "planning",
+    plan: {
+      brief_path: "",
+      brief_approved: false,
+      plan_path: "",
+      plan_approved: false,
+      scaffolded_features: []
+    },
+    execute: {
+      started_at: null,
+      iteration: 0,
+      elapsed_sec: 0,
+      active_feature: null,
+      retry_counts: {},
+      max_iterations: DEFAULT_MAX_ITERATIONS,
+      max_seconds: DEFAULT_MAX_SECONDS
+    },
+    last_halt: null,
+    created_at: ts,
+    updated_at: ts
+  };
+}
+function loadCheckpoint(harnessDir) {
+  const path = checkpointPath(harnessDir);
+  if (!existsSync5(path)) {
+    return null;
+  }
+  let raw;
+  try {
+    raw = readFileSync17(path, "utf-8");
+  } catch {
+    return null;
+  }
+  const parsed = (0, import_yaml15.parse)(raw);
+  if (!isPlainObject16(parsed)) {
+    return null;
+  }
+  if (typeof parsed.goal_id !== "string" || parsed.goal_id.length === 0) {
+    return null;
+  }
+  const seed = defaultCheckpoint(parsed.goal_id);
+  const merged = {
+    ...seed,
+    ...parsed
+  };
+  if (!isPlainObject16(merged.plan)) {
+    merged.plan = seed.plan;
+  } else {
+    merged.plan = { ...seed.plan, ...merged.plan };
+  }
+  if (!isPlainObject16(merged.execute)) {
+    merged.execute = seed.execute;
+  } else {
+    merged.execute = { ...seed.execute, ...merged.execute };
+  }
+  if (!isPlainObject16(merged.last_halt) && merged.last_halt !== null) {
+    merged.last_halt = null;
+  }
+  return merged;
+}
+function saveCheckpoint(harnessDir, checkpoint, now = /* @__PURE__ */ new Date()) {
+  const path = checkpointPath(harnessDir);
+  mkdirSync7(dirname9(path), { recursive: true });
+  const out = { ...checkpoint, updated_at: nowIso10(now) };
+  const text = (0, import_yaml15.stringify)(out, {
+    sortMapEntries: false,
+    indentSeq: false,
+    lineWidth: 0
+  });
+  writeFileSync8(path, text, "utf-8");
+}
+function clearCheckpoint(harnessDir) {
+  const path = checkpointPath(harnessDir);
+  if (!existsSync5(path)) {
+    return false;
+  }
+  try {
+    statSync16(path);
+  } catch {
+    return false;
+  }
+  const { rmSync } = __require("node:fs");
+  rmSync(path, { force: true });
+  return true;
+}
+function appendProgress(harnessDir, line) {
+  const path = progressLogPath(harnessDir);
+  mkdirSync7(dirname9(path), { recursive: true });
+  const ending = line.endsWith("\n") ? "" : "\n";
+  appendFileSync7(path, line + ending, "utf-8");
+}
+function stopFileExists(harnessDir) {
+  return existsSync5(stopFilePath(harnessDir));
+}
+var import_yaml15, DEFAULT_MAX_ITERATIONS, DEFAULT_MAX_SECONDS;
+var init_checkpoint = __esm({
+  "src/drive/checkpoint.ts"() {
+    "use strict";
+    import_yaml15 = __toESM(require_dist(), 1);
+    DEFAULT_MAX_ITERATIONS = 50;
+    DEFAULT_MAX_SECONDS = 7200;
+  }
+});
+
+// src/drive/halt.ts
+import { appendFileSync as appendFileSync8, mkdirSync as mkdirSync8 } from "node:fs";
+import { dirname as dirname10, join as join18 } from "node:path";
+function isPlainObject17(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function nowIso11(now = /* @__PURE__ */ new Date()) {
+  const yyyy = now.getUTCFullYear().toString().padStart(4, "0");
+  const mm = (now.getUTCMonth() + 1).toString().padStart(2, "0");
+  const dd = now.getUTCDate().toString().padStart(2, "0");
+  const hh = now.getUTCHours().toString().padStart(2, "0");
+  const mi = now.getUTCMinutes().toString().padStart(2, "0");
+  const ss = now.getUTCSeconds().toString().padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}Z`;
+}
+function appendEvent6(harnessDir, event) {
+  const logPath = join18(harnessDir, "events.log");
+  mkdirSync8(dirname10(logPath), { recursive: true });
+  const json = JSON.stringify(event);
+  appendFileSync8(logPath, `${json}
+`, "utf-8");
+}
+function emitHalt(harnessDir, reason, message, context = {}) {
+  const ts = nowIso11(context.now);
+  const index = HALT_REASON_INDEX[reason];
+  const ck = loadCheckpoint(harnessDir);
+  if (ck !== null) {
+    ck.last_halt = { reason, message, ts };
+    if (typeof context.iteration === "number") {
+      ck.execute.iteration = context.iteration;
+    }
+    if (typeof context.feature_id === "string") {
+      ck.execute.active_feature = context.feature_id;
+    }
+    saveCheckpoint(harnessDir, ck, context.now);
+  }
+  const featureSegment = typeof context.feature_id === "string" ? ` \xB7 ${context.feature_id}` : "";
+  const gateSegment = typeof context.gate === "string" ? ` \xB7 ${context.gate}` : "";
+  appendProgress(
+    harnessDir,
+    `${ts} HALT #${index.n} ${index.tag}${featureSegment}${gateSegment}: ${message}`
+  );
+  const event = {
+    ts,
+    type: "drive_halted",
+    reason,
+    halt_n: index.n,
+    halt_tag: index.tag,
+    message
+  };
+  if (ck !== null) {
+    event.goal_id = ck.goal_id;
+  } else if (typeof context.goal_id === "string") {
+    event.goal_id = context.goal_id;
+  }
+  if (typeof context.feature_id === "string") {
+    event.feature_id = context.feature_id;
+  }
+  if (typeof context.gate === "string") {
+    event.gate = context.gate;
+  }
+  if (Array.isArray(context.findings)) {
+    event.findings_count = context.findings.length;
+  }
+  if (typeof context.iteration === "number") {
+    event.iteration = context.iteration;
+  }
+  for (const [key, value] of Object.entries(context)) {
+    if (key in event || key === "now" || key === "findings") {
+      continue;
+    }
+    if (value === null || typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      event[key] = value;
+    } else if (isPlainObject17(value) || Array.isArray(value)) {
+      try {
+        event[key] = JSON.parse(JSON.stringify(value));
+      } catch {
+      }
+    }
+  }
+  appendEvent6(harnessDir, event);
+  return { reason, message, ts, index };
+}
+var HALT_REASON_INDEX;
+var init_halt = __esm({
+  "src/drive/halt.ts"() {
+    "use strict";
+    init_checkpoint();
+    HALT_REASON_INDEX = {
+      plan_phase_approval: { n: 1, tag: "plan-phase approval" },
+      commit_boundary: { n: 2, tag: "gate_4 commit boundary" },
+      retry_threshold: { n: 3, tag: "gate retry threshold" },
+      drift_severity_error: { n: 4, tag: "severity=error drift" },
+      feature_blocked: { n: 5, tag: "feature blocked" },
+      wall_clock: { n: 6, tag: "wall-clock cap" },
+      iteration_cap: { n: 7, tag: "iteration cap" },
+      network_failure: { n: 8, tag: "network failure" },
+      stop_file: { n: 9, tag: "STOP file" },
+      manual: { n: 0, tag: "manual" }
+    };
+  }
+});
+
+// src/drive/planPhase.ts
+var planPhase_exports = {};
+__export(planPhase_exports, {
+  advancePhaseA: () => advancePhaseA,
+  briefPathFor: () => briefPathFor,
+  planPathFor: () => planPathFor,
+  readGoalContext: () => readGoalContext,
+  startPhaseA: () => startPhaseA
+});
+import { existsSync as existsSync6, mkdirSync as mkdirSync9, readFileSync as readFileSync18 } from "node:fs";
+import { join as join19 } from "node:path";
+function briefPathFor(harnessDir, goalId) {
+  return join19(goalArtifactDir(harnessDir, goalId), "brief.md");
+}
+function planPathFor(harnessDir, goalId) {
+  return join19(goalArtifactDir(harnessDir, goalId), "plan.md");
+}
+function readGoalFromSpec(harnessDir, goalId) {
+  const specPath = join19(harnessDir, "spec.yaml");
+  if (!existsSync6(specPath)) {
+    return null;
+  }
+  const goals = readGoals(specPath);
+  return goals.find((g) => g.id === goalId) ?? null;
+}
+function allocateGoalId(harnessDir) {
+  const specPath = join19(harnessDir, "spec.yaml");
+  const specIds = existsSync6(specPath) ? readGoals(specPath).map((g) => g.id) : [];
+  const state = State.load(harnessDir);
+  const stateIds = state.goals().map((g) => g.id);
+  const union = Array.from(/* @__PURE__ */ new Set([...specIds, ...stateIds]));
+  return nextGoalId(union);
+}
+function startPhaseA(input) {
+  const { harnessDir, title, now } = input;
+  if (!title || title.trim().length === 0) {
+    throw new Error("drive plan: goal title is required");
+  }
+  const goalId = allocateGoalId(harnessDir);
+  const state = State.load(harnessDir);
+  state.ensureGoal(goalId);
+  state.setGoalStatus(goalId, "planning");
+  state.setActiveGoal(goalId);
+  state.save();
+  const goalSpec = createGoal({ title, now }, [goalId]);
+  goalSpec.id = goalId;
+  const ck = defaultCheckpoint(goalId, now);
+  ck.plan.brief_path = briefPathFor(harnessDir, goalId);
+  ck.plan.plan_path = planPathFor(harnessDir, goalId);
+  saveCheckpoint(harnessDir, ck, now);
+  mkdirSync9(goalArtifactDir(harnessDir, goalId), { recursive: true });
+  const halt = emitHalt(
+    harnessDir,
+    "plan_phase_approval",
+    `researcher must compose ${ck.plan.brief_path} for goal "${goalSpec.title}". After approval, run \`harness drive --resume\`.`,
+    { goal_id: goalId, now }
+  );
+  return { goalId, briefPath: ck.plan.brief_path, checkpoint: ck, halt };
+}
+function advancePhaseA(harnessDir, approvals = {}, now = /* @__PURE__ */ new Date()) {
+  const ck = loadCheckpoint(harnessDir);
+  if (ck === null) {
+    return {
+      kind: "halt",
+      halt: emitHalt(
+        harnessDir,
+        "manual",
+        'no drive checkpoint found \u2014 run `harness drive "<goal>"` first.',
+        { now }
+      )
+    };
+  }
+  if (ck.phase !== "planning") {
+    return {
+      kind: "halt",
+      halt: emitHalt(
+        harnessDir,
+        "manual",
+        `phase ${ck.phase} is past Phase A \u2014 use --resume for the execute loop.`,
+        { goal_id: ck.goal_id, now }
+      )
+    };
+  }
+  if (!existsSync6(ck.plan.brief_path)) {
+    return {
+      kind: "halt",
+      briefPath: ck.plan.brief_path,
+      halt: emitHalt(
+        harnessDir,
+        "plan_phase_approval",
+        `researcher's brief is missing at ${ck.plan.brief_path}. Have the researcher agent write it, then resume.`,
+        { goal_id: ck.goal_id, now }
+      )
+    };
+  }
+  if (!ck.plan.brief_approved) {
+    if (!approvals.autoApproveBrief && !approvals.autoApproveAll) {
+      ck.plan.brief_approved = true;
+      saveCheckpoint(harnessDir, ck, now);
+      return {
+        kind: "halt",
+        briefPath: ck.plan.brief_path,
+        halt: emitHalt(
+          harnessDir,
+          "plan_phase_approval",
+          `brief.md is present at ${ck.plan.brief_path}. Review, then resume to dispatch product-planner.`,
+          { goal_id: ck.goal_id, now }
+        )
+      };
+    }
+    ck.plan.brief_approved = true;
+    saveCheckpoint(harnessDir, ck, now);
+  }
+  if (!existsSync6(ck.plan.plan_path)) {
+    return {
+      kind: "halt",
+      briefPath: ck.plan.brief_path,
+      planPath: ck.plan.plan_path,
+      halt: emitHalt(
+        harnessDir,
+        "plan_phase_approval",
+        `product-planner's plan is missing at ${ck.plan.plan_path}. Have the planner agent write it, then resume.`,
+        { goal_id: ck.goal_id, now }
+      )
+    };
+  }
+  if (!ck.plan.plan_approved) {
+    if (!approvals.autoApproveAll) {
+      ck.plan.plan_approved = true;
+      saveCheckpoint(harnessDir, ck, now);
+      return {
+        kind: "halt",
+        briefPath: ck.plan.brief_path,
+        planPath: ck.plan.plan_path,
+        halt: emitHalt(
+          harnessDir,
+          "plan_phase_approval",
+          `plan.md is present at ${ck.plan.plan_path}. Review, then resume to dispatch feature-author for the scaffolding.`,
+          { goal_id: ck.goal_id, now }
+        )
+      };
+    }
+    ck.plan.plan_approved = true;
+    saveCheckpoint(harnessDir, ck, now);
+  }
+  const goal = readGoalFromSpec(harnessDir, ck.goal_id);
+  const scaffolded = goal !== null ? [...goal.feature_ids] : [];
+  if (scaffolded.length === 0) {
+    return {
+      kind: "halt",
+      briefPath: ck.plan.brief_path,
+      planPath: ck.plan.plan_path,
+      halt: emitHalt(
+        harnessDir,
+        "plan_phase_approval",
+        `feature-author has not scaffolded any features for ${ck.goal_id} yet. Author the features into both spec.yaml mirrors with feature-author, then resume.`,
+        { goal_id: ck.goal_id, now }
+      )
+    };
+  }
+  ck.plan.scaffolded_features = scaffolded;
+  ck.phase = "scaffolded";
+  saveCheckpoint(harnessDir, ck, now);
+  const state = State.load(harnessDir);
+  state.setGoalStatus(ck.goal_id, "scaffolded");
+  for (const fid of scaffolded) {
+    state.setGoalFeatureProgress(ck.goal_id, fid, "planned");
+  }
+  state.save();
+  return { kind: "phase_b_ready", goalId: ck.goal_id, featureIds: scaffolded };
+}
+function readGoalContext(harnessDir, goalId) {
+  const goal = readGoalFromSpec(harnessDir, goalId);
+  if (goal !== null) {
+    const out = { title: goal.title };
+    if (typeof goal.description === "string" && goal.description.length > 0) {
+      out.description = goal.description;
+    }
+    return out;
+  }
+  const ck = loadCheckpoint(harnessDir);
+  if (ck === null || ck.goal_id !== goalId) {
+    return null;
+  }
+  if (existsSync6(ck.plan.brief_path)) {
+    const text = readFileSync18(ck.plan.brief_path, "utf-8");
+    const heading = /^#\s+(.+)$/m.exec(text);
+    if (heading !== null) {
+      return { title: heading[1] ?? goalId };
+    }
+  }
+  return null;
+}
+var init_planPhase = __esm({
+  "src/drive/planPhase.ts"() {
+    "use strict";
+    init_state();
+    init_goalStore();
+    init_checkpoint();
+    init_halt();
+  }
+});
+
+// src/drive/executor.ts
+function mapSuggestion(suggestion) {
+  const action = suggestion.action;
+  const label = suggestion.label;
+  switch (action) {
+    case "run_gate": {
+      const fid = suggestion.feature_id ?? null;
+      const gate = suggestion.gate ?? null;
+      if (typeof fid !== "string" || typeof gate !== "string") {
+        return {
+          kind: "halt",
+          reason: "manual",
+          message: `intentPlanner returned run_gate without feature_id or gate (label: ${label})`
+        };
+      }
+      return { kind: "run_gate", feature_id: fid, gate, label };
+    }
+    case "complete": {
+      const fid = suggestion.feature_id ?? null;
+      if (typeof fid !== "string") {
+        return {
+          kind: "halt",
+          reason: "manual",
+          message: `intentPlanner returned complete without feature_id (label: ${label})`
+        };
+      }
+      return { kind: "complete", feature_id: fid, label };
+    }
+    case "start_feature": {
+      const fid = suggestion.feature_id ?? null;
+      if (typeof fid !== "string") {
+        return {
+          kind: "halt",
+          reason: "manual",
+          message: `intentPlanner returned start_feature without feature_id (label: ${label})`
+        };
+      }
+      return { kind: "activate", feature_id: fid, label };
+    }
+    // BR-015 (a) — drive cannot manufacture declared evidence on the
+    // user's behalf. add_evidence is a *signal* from the planner that
+    // the Iron Law floor isn't met yet; the loop must yield.
+    case "add_evidence":
+      return {
+        kind: "halt",
+        reason: "manual",
+        message: 'declared evidence required (BR-015 \u2014 drive does not self-issue evidence). add an evidence row with `harness work F-N --evidence "..."` then resume.',
+        feature_id: suggestion.feature_id ?? null
+      };
+    // Coverage carry-forward — surface a human review halt.
+    case "review_carry_forward":
+      return {
+        kind: "halt",
+        reason: "manual",
+        message: "coverage threshold not met \u2014 review and acknowledge before continuing.",
+        feature_id: suggestion.feature_id ?? null
+      };
+    // Block resolution and failure analysis are LLM-or-human territory.
+    case "analyze_fail":
+    case "resolve_block":
+      return { kind: "llm_required", suggestion };
+    // Spec changes (init_feature) live in Phase A, not Phase B.
+    case "init_feature":
+      return {
+        kind: "halt",
+        reason: "manual",
+        message: "spec.yaml change required \u2014 return to Phase A (drive --plan-only) or use feature-author to register the new feature."
+      };
+    // No-op signals from the planner.
+    case "resume":
+    case "deactivate":
+      return {
+        kind: "halt",
+        reason: "manual",
+        message: `planner suggested ${action}; drive yields to the user.`
+      };
+    default:
+      return {
+        kind: "halt",
+        reason: "manual",
+        message: `unknown planner action: ${String(action)}`
+      };
+  }
+}
+function executeAction(harnessDir, action, hooks = {}) {
+  const runGateImpl = hooks.runGate ?? runAndRecordGate;
+  const completeImpl = hooks.complete ?? complete;
+  const activateImpl = hooks.activate ?? activate;
+  switch (action.kind) {
+    case "run_gate": {
+      const work = runGateImpl(harnessDir, action.feature_id, action.gate);
+      const failed = Array.isArray(work.gates_failed) && work.gates_failed.includes(action.gate);
+      if (failed) {
+        return {
+          action,
+          proceed: true,
+          // surface the fail to the loop, retry-counter increments
+          work
+        };
+      }
+      return { action, proceed: true, work };
+    }
+    case "complete": {
+      const work = completeImpl(harnessDir, action.feature_id, { hotfixReason: null });
+      if (work.action === "completed") {
+        return { action, proceed: true, work };
+      }
+      return {
+        action,
+        proceed: false,
+        work,
+        halt: {
+          reason: "manual",
+          message: work.message || "Iron Law not satisfied \u2014 drive cannot self-issue --hotfix-reason (BR-015)."
+        }
+      };
+    }
+    case "activate": {
+      const work = activateImpl(harnessDir, action.feature_id);
+      return { action, proceed: true, work };
+    }
+    case "halt":
+      return {
+        action,
+        proceed: false,
+        halt: { reason: action.reason, message: action.message }
+      };
+    case "llm_required":
+      return {
+        action,
+        proceed: false,
+        halt: {
+          reason: "manual",
+          message: `${action.suggestion.action} requires user/LLM judgment \u2014 yielding (label: ${action.suggestion.label}).`
+        }
+      };
+    default: {
+      const _exhaustive = action;
+      void _exhaustive;
+      return {
+        action: { kind: "halt", reason: "manual", message: "unreachable executor branch" },
+        proceed: false
+      };
+    }
+  }
+}
+var init_executor = __esm({
+  "src/drive/executor.ts"() {
+    "use strict";
+    init_work();
+  }
+});
+
+// src/drive/goalRetro.ts
+import { appendFileSync as appendFileSync9, existsSync as existsSync7, mkdirSync as mkdirSync10, readFileSync as readFileSync19, writeFileSync as writeFileSync9 } from "node:fs";
+import { dirname as dirname11, join as join20 } from "node:path";
+function goalRetroPath(harnessDir, goalId) {
+  return join20(goalArtifactDir(harnessDir, goalId), "retro.md");
+}
+function isPlainObject18(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function nowIso12(now = /* @__PURE__ */ new Date()) {
+  const yyyy = now.getUTCFullYear().toString().padStart(4, "0");
+  const mm = (now.getUTCMonth() + 1).toString().padStart(2, "0");
+  const dd = now.getUTCDate().toString().padStart(2, "0");
+  const hh = now.getUTCHours().toString().padStart(2, "0");
+  const mi = now.getUTCMinutes().toString().padStart(2, "0");
+  const ss = now.getUTCSeconds().toString().padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}Z`;
+}
+function firstGateToFail(feature) {
+  const order = ["gate_0", "gate_1", "gate_2", "gate_3", "gate_4", "gate_5"];
+  if (!isPlainObject18(feature.gates)) {
+    return null;
+  }
+  for (const g of order) {
+    const entry = feature.gates[g];
+    if (isPlainObject18(entry) && entry.last_result === "fail") {
+      return g;
+    }
+  }
+  return null;
+}
+function countHaltsFromProgressLog(harnessDir) {
+  const path = progressLogPath(harnessDir);
+  if (!existsSync7(path)) {
+    return { total: 0, perReason: {} };
+  }
+  const text = readFileSync19(path, "utf-8");
+  const counts = {};
+  let total = 0;
+  for (const line of text.split("\n")) {
+    const m = /HALT #(\d+) (\S+)/.exec(line);
+    if (m === null) {
+      continue;
+    }
+    const tag = `#${m[1]} ${m[2]}`;
+    counts[tag] = (counts[tag] ?? 0) + 1;
+    total += 1;
+  }
+  return { total, perReason: counts };
+}
+function featureRetroPreview(harnessDir, fid) {
+  const path = join20(harnessDir, "_workspace", "retro", `${fid}.md`);
+  if (!existsSync7(path)) {
+    return null;
+  }
+  const text = readFileSync19(path, "utf-8");
+  const lines = text.split("\n").slice(0, 5);
+  return lines.join("\n").trim();
+}
+function appendEvent7(harnessDir, event) {
+  const logPath = join20(harnessDir, "events.log");
+  mkdirSync10(dirname11(logPath), { recursive: true });
+  appendFileSync9(logPath, `${JSON.stringify(event)}
+`, "utf-8");
+}
+function composeRetro(goalSpec, features, halts, iteration, elapsedSec, startedAt, completedAt, harnessDir) {
+  const lines = [];
+  lines.push(`# Goal Retro \u2014 ${goalSpec.id} \xB7 ${goalSpec.title}`);
+  lines.push("");
+  lines.push(`> auto-generated by drive's Phase C. Edit the LLM sections below; machine sections regenerate on \`--retro\`.`);
+  lines.push("");
+  lines.push("## Goal summary");
+  lines.push("");
+  lines.push(`- **Slug**: ${goalSpec.slug}`);
+  lines.push(`- **Started at**: ${startedAt ?? "unknown"}`);
+  lines.push(`- **Completed at**: ${completedAt ?? "unknown"}`);
+  lines.push(`- **Iterations**: ${iteration}`);
+  lines.push(`- **Elapsed (sec)**: ${elapsedSec}`);
+  lines.push(`- **Features (${features.length})**: ${features.map((f) => f.id).join(", ")}`);
+  lines.push("");
+  lines.push("## Feature breakdown");
+  lines.push("");
+  lines.push("| Feature | Status | First gate to fail | Started | Completed |");
+  lines.push("|---|---|---|---|---|");
+  for (const f of features) {
+    const ff = firstGateToFail(f) ?? "\u2014";
+    const started = (f.started_at ?? "").toString() || "\u2014";
+    const completed = (f.completed_at ?? "").toString() || "\u2014";
+    lines.push(`| ${f.id} | ${f.status} | ${ff} | ${started} | ${completed} |`);
+  }
+  lines.push("");
+  let anyPreview = false;
+  for (const f of features) {
+    const preview = featureRetroPreview(harnessDir, f.id);
+    if (preview === null) {
+      continue;
+    }
+    if (!anyPreview) {
+      lines.push("### Per-feature retro previews");
+      lines.push("");
+      anyPreview = true;
+    }
+    lines.push(`**${f.id}** (head 5 lines of \`_workspace/retro/${f.id}.md\`):`);
+    lines.push("");
+    lines.push("```");
+    lines.push(preview);
+    lines.push("```");
+    lines.push("");
+  }
+  lines.push("## Halt log");
+  lines.push("");
+  if (halts.total === 0) {
+    lines.push("No halts during this goal \u2014 the loop ran clean.");
+  } else {
+    lines.push(`Total halts: **${halts.total}**`);
+    lines.push("");
+    lines.push("| Reason | Count |");
+    lines.push("|---|---|");
+    const sorted = Object.entries(halts.perReason).sort(([a], [b]) => a.localeCompare(b));
+    for (const [reason, count] of sorted) {
+      lines.push(`| ${reason} | ${count} |`);
+    }
+  }
+  lines.push("");
+  lines.push("## Reviewer Reflection");
+  lines.push("");
+  lines.push("_(pending \u2014 reviewer agent fills this in)_");
+  lines.push("");
+  lines.push("Suggested prompts:");
+  lines.push("- What surprised you about how this goal unfolded?");
+  lines.push("- Which halts were avoidable; which were structural?");
+  lines.push("- One thing this goal would have benefitted from doing differently.");
+  lines.push("");
+  lines.push("## Copy Polish");
+  lines.push("");
+  lines.push("_(pending \u2014 tech-writer agent polishes the prose above)_");
+  lines.push("");
+  return lines.join("\n");
+}
+function generateGoalRetro(harnessDir, goalId, options = {}) {
+  const path = goalRetroPath(harnessDir, goalId);
+  const force = options.force ?? false;
+  if (existsSync7(path) && !force) {
+    return { path, created: false, feature_count: 0, halt_count: 0 };
+  }
+  const specPath = join20(harnessDir, "spec.yaml");
+  const goals = existsSync7(specPath) ? readGoals(specPath) : [];
+  const goalSpec = goals.find((g) => g.id === goalId);
+  if (goalSpec === void 0) {
+    throw new Error(`drive goalRetro: ${goalId} not found in spec.yaml`);
+  }
+  const state = State.load(harnessDir);
+  const features = [];
+  for (const fid of goalSpec.feature_ids) {
+    const f = state.getFeature(fid);
+    if (f !== null) {
+      features.push(f);
+    }
+  }
+  const ck = loadCheckpoint(harnessDir);
+  const iteration = ck?.execute.iteration ?? 0;
+  const elapsedSec = ck?.execute.elapsed_sec ?? 0;
+  const startedAt = ck?.execute.started_at ?? null;
+  const completedAt = state.getGoal(goalId)?.completed_at ?? null;
+  const halts = countHaltsFromProgressLog(harnessDir);
+  const text = composeRetro(
+    goalSpec,
+    features,
+    halts,
+    iteration,
+    elapsedSec,
+    startedAt,
+    completedAt,
+    harnessDir
+  );
+  mkdirSync10(dirname11(path), { recursive: true });
+  writeFileSync9(path, text, "utf-8");
+  appendEvent7(harnessDir, {
+    ts: nowIso12(options.now),
+    type: "goal_retro_written",
+    goal_id: goalId,
+    feature_count: features.length,
+    halt_count: halts.total
+  });
+  return {
+    path,
+    created: true,
+    feature_count: features.length,
+    halt_count: halts.total
+  };
+}
+var init_goalRetro = __esm({
+  "src/drive/goalRetro.ts"() {
+    "use strict";
+    init_state();
+    init_checkpoint();
+    init_goalStore();
+  }
+});
+
+// src/drive/loop.ts
+var loop_exports = {};
+__export(loop_exports, {
+  DEFAULT_MAX_RETRIES: () => DEFAULT_MAX_RETRIES,
+  runDriveLoop: () => runDriveLoop,
+  runDriveStep: () => runDriveStep
+});
+import { execFileSync } from "node:child_process";
+import { existsSync as existsSync8, readFileSync as readFileSync20 } from "node:fs";
+import { dirname as dirname12, join as join21 } from "node:path";
+function nowIso13(now) {
+  const yyyy = now.getUTCFullYear().toString().padStart(4, "0");
+  const mm = (now.getUTCMonth() + 1).toString().padStart(2, "0");
+  const dd = now.getUTCDate().toString().padStart(2, "0");
+  const hh = now.getUTCHours().toString().padStart(2, "0");
+  const mi = now.getUTCMinutes().toString().padStart(2, "0");
+  const ss = now.getUTCSeconds().toString().padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}Z`;
+}
+function isPlainObject19(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function workingTreeDirty2(projectRoot) {
+  try {
+    const out = execFileSync("git", ["status", "--porcelain=v1"], {
+      cwd: projectRoot,
+      stdio: ["ignore", "pipe", "ignore"],
+      encoding: "utf-8"
+    });
+    if (out.trim().length === 0) {
+      return false;
+    }
+    const lines = out.split("\n").filter((l) => l.trim().length > 0);
+    for (const line of lines) {
+      const path = line.slice(3);
+      if (path.startsWith(".harness/state.yaml") || path.startsWith(".harness/_workspace/") || path === "CHANGELOG.md") {
+        continue;
+      }
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+function pickActiveFeature(ck, state) {
+  for (const fid of ck.plan.scaffolded_features) {
+    const feature = state.getFeature(fid);
+    if (feature === null) {
+      continue;
+    }
+    if (feature.status === "in_progress") {
+      return { fid, status: "in_progress" };
+    }
+  }
+  for (const fid of ck.plan.scaffolded_features) {
+    const feature = state.getFeature(fid);
+    if (feature === null) {
+      return { fid, status: "planned" };
+    }
+    if (feature.status === "planned") {
+      return { fid, status: "planned" };
+    }
+  }
+  for (const fid of ck.plan.scaffolded_features) {
+    const feature = state.getFeature(fid);
+    if (feature !== null && feature.status === "blocked") {
+      return { fid, status: "blocked" };
+    }
+  }
+  return null;
+}
+function allFeaturesDone(ck, state) {
+  if (ck.plan.scaffolded_features.length === 0) {
+    return false;
+  }
+  for (const fid of ck.plan.scaffolded_features) {
+    const feature = state.getFeature(fid);
+    if (feature === null || feature.status !== "done") {
+      return false;
+    }
+  }
+  return true;
+}
+function loadSpecForPlanner(harnessDir) {
+  const path = join21(harnessDir, "spec.yaml");
+  if (!existsSync8(path)) {
+    return null;
+  }
+  try {
+    return (0, import_yaml16.parse)(readFileSync20(path, "utf-8"));
+  } catch {
+    return null;
+  }
+}
+function chooseSuggestion(suggestions) {
+  return suggestions.length === 0 ? null : suggestions[0] ?? null;
+}
+function bumpRetryCounter(ck, fid, gate, failed) {
+  if (!isPlainObject19(ck.execute.retry_counts[fid])) {
+    ck.execute.retry_counts[fid] = {};
+  }
+  const map = ck.execute.retry_counts[fid];
+  if (!failed) {
+    map[gate] = 0;
+    return 0;
+  }
+  const next = (map[gate] ?? 0) + 1;
+  map[gate] = next;
+  return next;
+}
+function statusOf(feature) {
+  return feature === null ? "planned" : feature.status;
+}
+function runDriveStep(harnessDir, options) {
+  const now = options.now ? options.now() : /* @__PURE__ */ new Date();
+  const maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
+  let ck = loadCheckpoint(harnessDir);
+  if (ck === null) {
+    return {
+      proceed: false,
+      halt: emitHalt(harnessDir, "manual", 'no drive checkpoint \u2014 run `harness drive "<goal>"` first.')
+    };
+  }
+  if (stopFileExists(harnessDir)) {
+    return {
+      proceed: false,
+      halt: emitHalt(harnessDir, "stop_file", "STOP file present \u2014 drive halted.", {
+        goal_id: ck.goal_id,
+        iteration: ck.execute.iteration,
+        now
+      })
+    };
+  }
+  if (ck.execute.iteration >= ck.execute.max_iterations) {
+    return {
+      proceed: false,
+      halt: emitHalt(
+        harnessDir,
+        "iteration_cap",
+        `iteration cap ${ck.execute.max_iterations} reached.`,
+        { goal_id: ck.goal_id, iteration: ck.execute.iteration, now }
+      )
+    };
+  }
+  const startedAt = ck.execute.started_at;
+  if (typeof startedAt === "string" && startedAt.length > 0) {
+    const startMs = Date.parse(startedAt);
+    if (!Number.isNaN(startMs)) {
+      const elapsed = Math.floor((now.getTime() - startMs) / 1e3);
+      if (elapsed >= ck.execute.max_seconds) {
+        return {
+          proceed: false,
+          halt: emitHalt(
+            harnessDir,
+            "wall_clock",
+            `wall-clock cap ${ck.execute.max_seconds}s reached (${elapsed}s elapsed).`,
+            { goal_id: ck.goal_id, iteration: ck.execute.iteration, now }
+          )
+        };
+      }
+    }
+  } else {
+    ck.execute.started_at = nowIso13(now);
+  }
+  const stateGoalCheck = State.load(harnessDir);
+  if (allFeaturesDone(ck, stateGoalCheck)) {
+    if (ck.phase !== "done") {
+      try {
+        generateGoalRetro(harnessDir, ck.goal_id, { now });
+      } catch {
+      }
+      ck.phase = "done";
+      stateGoalCheck.setGoalStatus(ck.goal_id, "done");
+      stateGoalCheck.save();
+      saveCheckpoint(harnessDir, ck, now);
+    }
+    return { proceed: false, goal_done: true };
+  }
+  const active = pickActiveFeature(ck, stateGoalCheck);
+  if (active === null) {
+    return {
+      proceed: false,
+      halt: emitHalt(harnessDir, "manual", "no active feature in goal \u2014 please inspect spec.yaml.")
+    };
+  }
+  const activeFeature = stateGoalCheck.getFeature(active.fid);
+  if (statusOf(activeFeature) === "blocked") {
+    return {
+      proceed: false,
+      halt: emitHalt(
+        harnessDir,
+        "feature_blocked",
+        `${active.fid} is blocked \u2014 unblock then resume.`,
+        { goal_id: ck.goal_id, feature_id: active.fid, iteration: ck.execute.iteration, now }
+      )
+    };
+  }
+  if (activeFeature !== null && countDeclaredEvidence3(activeFeature) >= 1) {
+    const gate5 = activeFeature.gates["gate_5"];
+    if (isPlainObject19(gate5) && gate5.last_result === "pass") {
+      const projectRoot = dirname12(harnessDir);
+      if (workingTreeDirty2(projectRoot)) {
+        return {
+          proceed: false,
+          halt: emitHalt(
+            harnessDir,
+            "commit_boundary",
+            `${active.fid} is ready to complete \u2014 review changes and \`git commit\`, then resume.`,
+            {
+              goal_id: ck.goal_id,
+              feature_id: active.fid,
+              iteration: ck.execute.iteration,
+              now
+            }
+          )
+        };
+      }
+    }
+  }
+  const spec = loadSpecForPlanner(harnessDir);
+  const stateForPlanner = State.load(harnessDir);
+  if (stateForPlanner.data.session.active_feature_id !== active.fid) {
+    stateForPlanner.setActive(active.fid);
+    stateForPlanner.save();
+  }
+  const suggestions = suggest(stateForPlanner.data, spec);
+  const chosen = chooseSuggestion(suggestions);
+  if (chosen === null) {
+    return {
+      proceed: false,
+      halt: emitHalt(
+        harnessDir,
+        "manual",
+        `intentPlanner returned no suggestion for ${active.fid} \u2014 inspect state.yaml.`,
+        { goal_id: ck.goal_id, feature_id: active.fid, now }
+      )
+    };
+  }
+  const mapped = mapSuggestion(chosen);
+  const executed = executeAction(harnessDir, mapped, options.executorHooks);
+  if (mapped.kind === "run_gate" && executed.work !== void 0) {
+    const failed = Array.isArray(executed.work.gates_failed) && executed.work.gates_failed.includes(mapped.gate);
+    const count = bumpRetryCounter(ck, mapped.feature_id, mapped.gate, failed);
+    if (count >= maxRetries) {
+      ck.execute.iteration += 1;
+      saveCheckpoint(harnessDir, ck, now);
+      return {
+        proceed: false,
+        action: mapped,
+        executor: executed,
+        feature_id: mapped.feature_id,
+        halt: emitHalt(
+          harnessDir,
+          "retry_threshold",
+          `${mapped.gate} on ${mapped.feature_id} failed ${count} times in a row \u2014 yielding.`,
+          {
+            goal_id: ck.goal_id,
+            feature_id: mapped.feature_id,
+            gate: mapped.gate,
+            iteration: ck.execute.iteration,
+            now
+          }
+        )
+      };
+    }
+  }
+  ck.execute.iteration += 1;
+  ck.execute.active_feature = active.fid;
+  ck = recomputeElapsed(ck, now);
+  saveCheckpoint(harnessDir, ck, now);
+  const stateAfter = State.load(harnessDir);
+  for (const fid of ck.plan.scaffolded_features) {
+    const f = stateAfter.getFeature(fid);
+    stateAfter.setGoalFeatureProgress(ck.goal_id, fid, statusOf(f));
+  }
+  if (ck.phase !== "executing") {
+    ck.phase = "executing";
+    stateAfter.setGoalStatus(ck.goal_id, "executing");
+    saveCheckpoint(harnessDir, ck, now);
+  }
+  stateAfter.save();
+  return {
+    proceed: executed.proceed,
+    action: mapped,
+    executor: executed,
+    feature_id: active.fid,
+    halt: executed.halt ? emitHalt(harnessDir, executed.halt.reason, executed.halt.message, {
+      goal_id: ck.goal_id,
+      feature_id: active.fid,
+      iteration: ck.execute.iteration,
+      now
+    }) : void 0
+  };
+}
+function runDriveLoop(options) {
+  const hardLimit = options.hardIterationLimit ?? Number.POSITIVE_INFINITY;
+  let last = { proceed: true };
+  let count = 0;
+  while (last.proceed && count < hardLimit) {
+    last = runDriveStep(options.harnessDir, options);
+    count += 1;
+    if (last.goal_done) {
+      return last;
+    }
+  }
+  return last;
+}
+function recomputeElapsed(ck, now) {
+  if (typeof ck.execute.started_at !== "string") {
+    return ck;
+  }
+  const startMs = Date.parse(ck.execute.started_at);
+  if (Number.isNaN(startMs)) {
+    return ck;
+  }
+  const elapsed = Math.max(0, Math.floor((now.getTime() - startMs) / 1e3));
+  ck.execute.elapsed_sec = elapsed;
+  return ck;
+}
+function countDeclaredEvidence3(feature) {
+  if (!Array.isArray(feature.evidence)) {
+    return 0;
+  }
+  let count = 0;
+  for (const ev of feature.evidence) {
+    if (!isPlainObject19(ev)) {
+      continue;
+    }
+    const kind = ev.kind;
+    if (typeof kind === "string" && (kind === "gate_run" || kind === "gate_auto_run")) {
+      continue;
+    }
+    count += 1;
+  }
+  return count;
+}
+var import_yaml16, DEFAULT_MAX_RETRIES;
+var init_loop = __esm({
+  "src/drive/loop.ts"() {
+    "use strict";
+    import_yaml16 = __toESM(require_dist(), 1);
+    init_state();
+    init_intentPlanner();
+    init_checkpoint();
+    init_halt();
+    init_executor();
+    init_goalRetro();
+    DEFAULT_MAX_RETRIES = 3;
+  }
+});
 
 // src/cli/harness.ts
+import { existsSync as existsSync9, statSync as statSync17 } from "node:fs";
+import { join as join22, resolve as resolvePath7 } from "node:path";
+
+// node_modules/commander/esm.mjs
+var import_index = __toESM(require_commander(), 1);
+var {
+  program,
+  createCommand,
+  createArgument,
+  createOption,
+  CommanderError,
+  InvalidArgumentError,
+  InvalidOptionArgumentError,
+  // deprecated old name
+  Command,
+  Argument,
+  Option,
+  Help
+} = import_index.default;
+
+// src/cli/harness.ts
+init_designReview();
+init_kickoff();
+init_retro();
+
+// src/ceremonies/inbox.ts
+var import_yaml2 = __toESM(require_dist(), 1);
+import { readFileSync as readFileSync3, readdirSync, statSync as statSync4 } from "node:fs";
+import { join as join4, relative as relative4 } from "node:path";
+var FILENAME_RE = /^(F-\d+)--([\w-]+)--([\w-]+)\.md$/;
+var ANSWER_HEADER_RE = /^##\s+Answer\b/m;
+var FRONTMATTER_RE = /^---\s*\n([\s\S]*?)\n---/;
+function isPlainObject3(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function parseFrontmatter(text) {
+  const match = FRONTMATTER_RE.exec(text);
+  if (match === null) {
+    return {};
+  }
+  try {
+    const parsed = (0, import_yaml2.parse)(match[1]);
+    return isPlainObject3(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+function scanInbox(harnessDir, featureId2 = null) {
+  const qDir = join4(harnessDir, "_workspace", "questions");
+  let entries;
+  try {
+    if (!statSync4(qDir).isDirectory()) {
+      return [];
+    }
+    entries = readdirSync(qDir).sort();
+  } catch {
+    return [];
+  }
+  const out = [];
+  for (const name of entries) {
+    const fullPath = join4(qDir, name);
+    try {
+      if (!statSync4(fullPath).isFile()) {
+        continue;
+      }
+    } catch {
+      continue;
+    }
+    const m = FILENAME_RE.exec(name);
+    if (m === null) {
+      continue;
+    }
+    const [, fid, fromAgent, toAgent] = m;
+    if (featureId2 !== null && fid !== featureId2) {
+      continue;
+    }
+    const body = readFileSync3(fullPath, "utf-8");
+    const fm = parseFrontmatter(body);
+    const hasAnswer = ANSWER_HEADER_RE.test(body);
+    out.push({
+      feature_id: fid,
+      from_agent: fromAgent,
+      to_agent: toAgent,
+      path: relative4(harnessDir, fullPath),
+      blocking: Boolean(fm["blocking"]),
+      has_answer: hasAnswer
+    });
+  }
+  return out;
+}
+function openQuestions(harnessDir, featureId2 = null) {
+  return scanInbox(harnessDir, featureId2).filter((q) => !q.has_answer);
+}
+
+// src/cli/harness.ts
+var import_yaml17 = __toESM(require_dist(), 1);
+init_projectMode();
+init_check();
+import { readFileSync as readSpecFile, statSync as statSpecFile } from "node:fs";
+
+// src/events.ts
+function parseTs2(ts) {
+  if (typeof ts !== "string" || ts.length === 0) {
+    return null;
+  }
+  const ms = Date.parse(ts);
+  if (Number.isNaN(ms)) {
+    return null;
+  }
+  return new Date(ms);
+}
+function isPlainObject6(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function filterEvents(events, options = {}) {
+  const sinceDt = options.since ? parseTs2(options.since) : null;
+  const out = [];
+  for (const ev of events) {
+    if (options.kind && ev["type"] !== options.kind) {
+      continue;
+    }
+    if (options.feature) {
+      let fid = ev["feature"] ?? ev["feature_id"];
+      if ((fid === void 0 || fid === null) && isPlainObject6(ev["payload"])) {
+        fid = ev["payload"]["feature"];
+      }
+      if (fid !== options.feature) {
+        continue;
+      }
+    }
+    if (sinceDt !== null) {
+      const evDt = parseTs2(ev["ts"]);
+      if (evDt === null || evDt.getTime() < sinceDt.getTime()) {
+        continue;
+      }
+    }
+    out.push(ev);
+  }
+  return out;
+}
+function formatHuman2(events) {
+  if (events.length === 0) {
+    return "(no matching events)\n";
+  }
+  const lines = [`\u{1F4DC} /harness:events (${events.length} events)`, ""];
+  for (const ev of events) {
+    const ts = typeof ev["ts"] === "string" ? ev["ts"] : "?";
+    const typ = typeof ev["type"] === "string" ? ev["type"] : "?";
+    const extras = [];
+    for (const key of ["feature", "feature_id", "spec_hash", "phase", "reason"]) {
+      if (key in ev) {
+        let val = ev[key];
+        if (key === "spec_hash" && typeof val === "string") {
+          val = val.slice(0, 12);
+        }
+        extras.push(`${key}=${val}`);
+      }
+    }
+    const extrasStr = extras.join(" \xB7 ");
+    lines.push(`  ${ts}  ${typ}${extrasStr ? `  (${extrasStr})` : ""}`);
+  }
+  return `${lines.join("\n")}
+`;
+}
+
+// src/core/eventLog.ts
+import { appendFileSync as appendFileSync4, readdirSync as readdirSync3, readFileSync as readFileSync7, statSync as statSync8, writeFileSync as writeFileSync5 } from "node:fs";
+import { join as join8 } from "node:path";
+var ROTATED_FILENAME_RE = /^events\.log\.(\d{6})$/;
+var ROTATABLE_TS_RE = /^(\d{4})-(\d{2})/;
+var UNPARSEABLE_TS_SENTINEL = "\uFFFF";
+function readJsonLines(path) {
+  let raw;
+  try {
+    raw = readFileSync7(path, "utf-8");
+  } catch (err) {
+    if (err.code === "ENOENT") {
+      return [];
+    }
+    throw err;
+  }
+  const out = [];
+  for (const line of raw.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed.length === 0) {
+      continue;
+    }
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
+        out.push(parsed);
+      }
+    } catch {
+      continue;
+    }
+  }
+  return out;
+}
+function rotatedPaths(harnessDir) {
+  let entries;
+  try {
+    entries = readdirSync3(harnessDir);
+  } catch (err) {
+    if (err.code === "ENOENT") {
+      return [];
+    }
+    throw err;
+  }
+  const matched = [];
+  for (const name of entries) {
+    const m = ROTATED_FILENAME_RE.exec(name);
+    if (!m) {
+      continue;
+    }
+    const fullPath = join8(harnessDir, name);
+    try {
+      if (!statSync8(fullPath).isFile()) {
+        continue;
+      }
+    } catch {
+      continue;
+    }
+    matched.push([m[1], fullPath]);
+  }
+  matched.sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+  return matched.map(([, path]) => path);
+}
+function eventSortKey(ev) {
+  const ts = ev.ts;
+  if (typeof ts === "string" && ROTATABLE_TS_RE.test(ts)) {
+    return [ts, 0];
+  }
+  return [UNPARSEABLE_TS_SENTINEL, 0];
+}
+function* readEvents2(harnessDir) {
+  const buffer = [];
+  for (const path of rotatedPaths(harnessDir)) {
+    buffer.push(...readJsonLines(path));
+  }
+  buffer.push(...readJsonLines(join8(harnessDir, "events.log")));
+  buffer.sort((a, b) => {
+    const [ka, ta] = eventSortKey(a);
+    const [kb, tb] = eventSortKey(b);
+    if (ka < kb) {
+      return -1;
+    }
+    if (ka > kb) {
+      return 1;
+    }
+    return ta - tb;
+  });
+  yield* buffer;
+}
+
+// src/metrics.ts
+var PERIOD_RE = /^\s*(\d+)\s*([smhdw])\s*$/i;
+var PERIOD_UNIT_SEC = {
+  s: 1,
+  m: 60,
+  h: 3600,
+  d: 86400,
+  w: 604800
+};
+function parsePeriod(text) {
+  const match = PERIOD_RE.exec(text);
+  if (match === null) {
+    throw new Error(`invalid period: '${text}' (expected e.g. 7d, 24h, 30m)`);
+  }
+  const n = Number(match[1]);
+  const unit = match[2].toLowerCase();
+  return n * PERIOD_UNIT_SEC[unit] * 1e3;
+}
+function isPlainObject7(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function parseTs3(ts) {
+  if (typeof ts !== "string" || ts.length === 0) {
+    return null;
+  }
+  const ms = Date.parse(ts);
+  if (Number.isNaN(ms)) {
+    return null;
+  }
+  return new Date(ms);
+}
+function featureId(ev) {
+  let fid = ev["feature"] ?? ev["feature_id"];
+  if ((fid === void 0 || fid === null) && isPlainObject7(ev["payload"])) {
+    fid = ev["payload"]["feature"];
+  }
+  return typeof fid === "string" ? fid : null;
+}
+function median(values) {
+  if (values.length === 0) {
+    return 0;
+  }
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 1) {
+    return sorted[mid];
+  }
+  return (sorted[mid - 1] + sorted[mid]) / 2;
+}
+function round3(value) {
+  return Math.round(value * 1e3) / 1e3;
+}
+function isoZ(date) {
+  return date.toISOString().replace(/\.\d{3}Z$/, "Z");
+}
+function aggregate(events, options = {}) {
+  const report = {
+    window: {
+      start: options.windowStart ? isoZ(options.windowStart) : null,
+      end: options.windowEnd ? isoZ(options.windowEnd) : null,
+      period: options.periodLabel ?? null
+    },
+    total_events: 0,
+    event_types: {},
+    features: { activated: 0, done: 0, blocked: 0 },
+    lead_time_sec: { count: 0, min: null, median: null, mean: null, max: null },
+    gate_stats: {},
+    drift_incidents: 0
+  };
+  const activatedLast = /* @__PURE__ */ new Map();
+  const doneFirst = /* @__PURE__ */ new Map();
+  for (const ev of events) {
+    report.total_events += 1;
+    const typ = typeof ev["type"] === "string" ? ev["type"] : "?";
+    report.event_types[typ] = (report.event_types[typ] ?? 0) + 1;
+    if (typ === "sync_failed") {
+      report.drift_incidents += 1;
+    } else if (typ === "feature_activated") {
+      report.features.activated += 1;
+      const fid = featureId(ev);
+      const dt = parseTs3(ev["ts"]);
+      if (fid !== null && dt !== null) {
+        activatedLast.set(fid, dt);
+      }
+    } else if (typ === "feature_blocked") {
+      report.features.blocked += 1;
+    } else if (typ === "feature_done") {
+      report.features.done += 1;
+      const fid = featureId(ev);
+      const dt = parseTs3(ev["ts"]);
+      if (fid !== null && dt !== null && !doneFirst.has(fid)) {
+        doneFirst.set(fid, dt);
+      }
+    } else if (typ === "gate_recorded" || typ === "gate_auto_run") {
+      const gate = ev["gate"];
+      if (typeof gate !== "string") {
+        continue;
+      }
+      const result = ev["result"];
+      const bucket = report.gate_stats[gate] ?? (report.gate_stats[gate] = {
+        pass: 0,
+        fail: 0,
+        skipped: 0,
+        other: 0,
+        pass_rate: 0
+      });
+      if (result === "pass" || result === "fail" || result === "skipped") {
+        bucket[result] += 1;
+      } else {
+        bucket.other += 1;
+      }
+    }
+  }
+  const deltas = [];
+  for (const [fid, doneDt] of doneFirst.entries()) {
+    const actDt = activatedLast.get(fid);
+    if (actDt && doneDt.getTime() >= actDt.getTime()) {
+      deltas.push((doneDt.getTime() - actDt.getTime()) / 1e3);
+    }
+  }
+  if (deltas.length > 0) {
+    report.lead_time_sec.count = deltas.length;
+    report.lead_time_sec.min = round3(Math.min(...deltas));
+    report.lead_time_sec.max = round3(Math.max(...deltas));
+    report.lead_time_sec.median = round3(median(deltas));
+    report.lead_time_sec.mean = round3(deltas.reduce((acc, d) => acc + d, 0) / deltas.length);
+  }
+  for (const bucket of Object.values(report.gate_stats)) {
+    const denom = bucket.pass + bucket.fail;
+    bucket.pass_rate = denom > 0 ? round3(bucket.pass / denom) : 0;
+  }
+  return report;
+}
+function compute(harnessDir, options = {}) {
+  const allEvents = [...readEvents2(harnessDir)];
+  let windowStart = null;
+  let windowEnd = null;
+  let periodLabel = null;
+  if (options.since) {
+    const dt = parseTs3(options.since);
+    if (dt === null) {
+      throw new Error(`invalid since timestamp: '${options.since}'`);
+    }
+    windowStart = dt;
+  } else if (options.period) {
+    const ms = parsePeriod(options.period);
+    const base = options.now ?? /* @__PURE__ */ new Date();
+    windowEnd = base;
+    windowStart = new Date(base.getTime() - ms);
+    periodLabel = options.period;
+  }
+  let filtered;
+  if (windowStart !== null) {
+    const startMs = windowStart.getTime();
+    const endMs = windowEnd?.getTime() ?? Number.POSITIVE_INFINITY;
+    filtered = allEvents.filter((ev) => {
+      const dt = parseTs3(ev["ts"]);
+      if (dt === null) {
+        return false;
+      }
+      const t2 = dt.getTime();
+      return t2 >= startMs && t2 <= endMs;
+    });
+  } else {
+    filtered = allEvents;
+  }
+  return aggregate(filtered, { windowStart, windowEnd, periodLabel });
+}
+function fmtSec(value) {
+  if (value === null) {
+    return "\u2014";
+  }
+  if (value >= 86400) {
+    return `${(value / 86400).toFixed(2)}d`;
+  }
+  if (value >= 3600) {
+    return `${(value / 3600).toFixed(2)}h`;
+  }
+  if (value >= 60) {
+    return `${(value / 60).toFixed(2)}m`;
+  }
+  return `${value.toFixed(1)}s`;
+}
+function pad(s, width) {
+  return s.length >= width ? s : s + " ".repeat(width - s.length);
+}
+function padLeft(s, width) {
+  return s.length >= width ? s : " ".repeat(width - s.length) + s;
+}
+function formatHuman3(report) {
+  const lines = ["\u{1F4CA} /harness:metrics", ""];
+  const win = report.window;
+  if (win.period) {
+    lines.push(`Window: last ${win.period} (${win.start} \u2192 now)`);
+  } else if (win.start) {
+    lines.push(`Window: since ${win.start}`);
+  } else {
+    lines.push("Window: all time");
+  }
+  lines.push("");
+  lines.push(`Total events: ${report.total_events}`);
+  if (Object.keys(report.event_types).length > 0) {
+    lines.push("  by type:");
+    for (const [t2, n] of Object.entries(report.event_types).sort()) {
+      lines.push(`    ${pad(t2, 20)} ${n}`);
+    }
+  }
+  lines.push("");
+  const f = report.features;
+  lines.push(`Features: ${f.done} done \xB7 ${f.activated} activated \xB7 ${f.blocked} blocked`);
+  const lt = report.lead_time_sec;
+  if (lt.count > 0) {
+    lines.push(
+      `Lead time (n=${lt.count}): min ${fmtSec(lt.min)} \xB7 median ${fmtSec(lt.median)} \xB7 mean ${fmtSec(lt.mean)} \xB7 max ${fmtSec(lt.max)}`
+    );
+  } else {
+    lines.push("Lead time: (no completed feature cycles in window)");
+  }
+  lines.push("");
+  if (Object.keys(report.gate_stats).length > 0) {
+    lines.push("Gate stats:");
+    lines.push(`  ${pad("gate", 8)} ${padLeft("pass", 5)} ${padLeft("fail", 5)} ${padLeft("skip", 5)}   rate`);
+    for (const [gate, b] of Object.entries(report.gate_stats).sort()) {
+      const rate = b.pass + b.fail > 0 ? `${(b.pass_rate * 100).toFixed(1)}%` : "\u2014";
+      lines.push(
+        `  ${pad(gate, 8)} ${padLeft(String(b.pass), 5)} ${padLeft(String(b.fail), 5)} ${padLeft(String(b.skipped), 5)}   ${rate}`
+      );
+    }
+  } else {
+    lines.push("Gate stats: (no gate events in window)");
+  }
+  lines.push("");
+  return `${lines.join("\n").replace(/\s+$/, "")}
+`;
+}
+
+// src/ui/dashboard.ts
+var import_yaml5 = __toESM(require_dist(), 1);
+init_gates();
+init_kickoff();
+import { readFileSync as readFileSync8, statSync as statSync9 } from "node:fs";
+import { join as join9 } from "node:path";
+
+// src/ui/dashboardConfig.ts
+var DEFAULT_MAX_OTHER = 5;
+var DEFAULT_MAX_PENDING = 5;
+var DEFAULT_MAX_UNREGISTERED = 5;
+function envInt(name, defaultValue) {
+  const raw = process.env[name];
+  if (raw === void 0) {
+    return defaultValue;
+  }
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value <= 0) {
+    return defaultValue;
+  }
+  return value;
+}
+function maxOtherList() {
+  return envInt("HARNESS_DASHBOARD_MAX_OTHER", DEFAULT_MAX_OTHER);
+}
+function maxPendingList() {
+  return envInt("HARNESS_DASHBOARD_MAX_PENDING", DEFAULT_MAX_PENDING);
+}
+function maxUnregisteredList() {
+  return envInt("HARNESS_DASHBOARD_MAX_UNREGISTERED", DEFAULT_MAX_UNREGISTERED);
+}
+
+// src/ui/lang.ts
+var SUPPORTED = /* @__PURE__ */ new Set(["en", "ko"]);
+var KOREAN_HINTS = ["ko", "kor", "KR"];
+function asObject(value) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value;
+}
+function resolveLang(spec = null) {
+  const envValue = process.env["HARNESS_LANG"];
+  if (envValue && SUPPORTED.has(envValue)) {
+    return envValue;
+  }
+  const specObj = asObject(spec);
+  if (specObj !== null) {
+    const project = asObject(specObj["project"]);
+    if (project !== null) {
+      const specLang = project["language"];
+      if (typeof specLang === "string" && SUPPORTED.has(specLang)) {
+        return specLang;
+      }
+    }
+  }
+  for (const key of ["LC_ALL", "LANG"]) {
+    const locale = process.env[key] ?? "";
+    if (KOREAN_HINTS.some((hint) => locale.includes(hint))) {
+      return "ko";
+    }
+    if (locale.length > 0 && locale.toLowerCase().includes("en")) {
+      return "en";
+    }
+  }
+  return "en";
+}
+
+// src/ui/messages.ts
+var EN = {
+  status: "status",
+  passed: "passed",
+  failed: "failed",
+  evidence: "evidence: {n} entries",
+  routed_agents: "routed agents",
+  agent_chain: "agent chain",
+  in_progress: "in progress",
+  done: "done",
+  planned: "planned",
+  blocked: "blocked",
+  archived: "archived",
+  gate_pass: "gate {name}: pass",
+  gate_fail: "gate {name}: fail",
+  iron_law_block: "cannot complete yet \u2014 {declared}/{required} evidence entries declared. Add more with --evidence.",
+  walking_skeleton: "walking skeleton",
+  active_feature: 'working on: "{title}"',
+  progress_line: "  progress: {passed}/{total} gates passed \xB7 {evidence} evidence entries",
+  blocker_line: "  blocker: {note}",
+  dashboard_title: "harness-boot",
+  no_active: "no active feature.",
+  all_done: "all features complete \u2014 {n} done.",
+  next_actions: "next actions:",
+  enter_hint: "Enter = {n} (recommended)",
+  init_starting: "scaffolding .harness/ ...",
+  init_done: "scaffolding complete.",
+  in_progress_others: "in progress (others):",
+  pending_label: "pending:",
+  on_hold_label: "on hold:",
+  next_candidates: "next candidates (spec-defined \xB7 not started, {n}):",
+  more_after_truncate: "  \u2026 and {n} more (see spec.yaml)",
+  no_features: "no features yet.",
+  no_active_no_pending: "nothing in progress or pending.",
+  recommended_marker: "(recommended)"
+};
+var KO = {
+  status: "\uC0C1\uD0DC",
+  passed: "\uD1B5\uACFC",
+  failed: "\uC2E4\uD328",
+  evidence: "\uADFC\uAC70: {n} \uAC1C",
+  routed_agents: "\uB77C\uC6B0\uD305\uB41C \uD300",
+  agent_chain: "\uC5D0\uC774\uC804\uD2B8 \uCCB4\uC778",
+  in_progress: "\uC9C4\uD589 \uC911",
+  done: "\uC644\uB8CC",
+  planned: "\uC608\uC815",
+  blocked: "\uCC28\uB2E8",
+  archived: "\uBCF4\uAD00",
+  gate_pass: "\uAC80\uC99D {name}: \uD1B5\uACFC",
+  gate_fail: "\uAC80\uC99D {name}: \uC2E4\uD328",
+  iron_law_block: "\uC544\uC9C1 \uC644\uB8CC\uD560 \uC218 \uC5C6\uC5B4\uC694 \u2014 \uADFC\uAC70\uAC00 {declared}/{required} \uAC1C\uC785\uB2C8\uB2E4. --evidence \uB85C \uB354 \uCD94\uAC00\uD558\uC138\uC694.",
+  walking_skeleton: "\uAE30\uBCF8 \uACE8\uACA9",
+  active_feature: '\uC791\uC5C5 \uC911: "{title}"',
+  progress_line: "  \uC9C4\uD589: \uAC80\uC99D {passed}/{total} \uD1B5\uACFC \xB7 \uADFC\uAC70 {evidence} \uAC1C",
+  blocker_line: "  \uCC28\uB2E8: {note}",
+  dashboard_title: "harness-boot",
+  no_active: "\uD604\uC7AC \uC791\uC5C5 \uC911\uC778 \uD53C\uCC98 \uC5C6\uC74C.",
+  all_done: "\uBAA8\uB4E0 \uD53C\uCC98 \uC644\uB8CC \u2014 \uC644\uB8CC {n} \uAC1C.",
+  next_actions: "\uB2E4\uC74C \uD560 \uC77C:",
+  enter_hint: "Enter = {n} (\uCD94\uCC9C)",
+  init_starting: ".harness/ \uACE8\uACA9 \uC0DD\uC131 \uC911 ...",
+  init_done: "\uACE8\uACA9 \uC0DD\uC131 \uC644\uB8CC.",
+  in_progress_others: "\uC9C4\uD589 \uC911 (\uB2E4\uB978):",
+  pending_label: "\uB300\uAE30:",
+  on_hold_label: "\uBCF4\uB958:",
+  next_candidates: "\uB2E4\uC74C \uD6C4\uBCF4 (spec \uC815\uC758 \xB7 \uBBF8\uC2DC\uC791, {n} \uAC1C):",
+  more_after_truncate: "  \u2026 \uC678 {n} \uAC1C (spec.yaml \uCC38\uC870)",
+  no_features: "\uC544\uC9C1 \uD53C\uCC98\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  no_active_no_pending: "\uC9C4\uD589 \uC911 \xB7 \uB300\uAE30 \uD53C\uCC98 \uC5C6\uC74C.",
+  recommended_marker: "(\uCD94\uCC9C)"
+};
+var CATALOGS = { en: EN, ko: KO };
+var REQUIRED_KEYS = Object.keys(EN);
+function t(key, lang = "en", fmt = {}) {
+  let catalog = CATALOGS[lang] ?? EN;
+  if (!(key in catalog)) {
+    if (!(key in EN)) {
+      throw new Error(`unknown message key: '${key}'`);
+    }
+    catalog = EN;
+  }
+  let template4 = catalog[key];
+  if (Object.keys(fmt).length === 0) {
+    return template4;
+  }
+  for (const [k, v] of Object.entries(fmt)) {
+    template4 = template4.split(`{${k}}`).join(String(v));
+  }
+  return template4;
+}
+
+// src/ui/render.ts
+var PARALLEL_TOKEN = " \u2225 ";
+var SEQUENCE_TOKEN = " \u2192 ";
+var COMMA_JOIN = ", ";
+function renderAgentChain(agents, groups, options = {}) {
+  const parallelToken = options.parallelToken ?? PARALLEL_TOKEN;
+  const sequenceToken = options.sequenceToken ?? SEQUENCE_TOKEN;
+  const commaJoin = options.commaJoin ?? COMMA_JOIN;
+  if (groups.length === 0) {
+    return agents.join(commaJoin);
+  }
+  const groupSets = groups.map((g) => new Set(g));
+  const parts = [];
+  let i = 0;
+  while (i < agents.length) {
+    const member = agents[i];
+    const matched = groupSets.find((gs) => gs.has(member)) ?? null;
+    if (matched === null) {
+      parts.push(member);
+      i++;
+      continue;
+    }
+    const block2 = [];
+    while (i < agents.length && matched.has(agents[i])) {
+      block2.push(agents[i]);
+      i++;
+    }
+    if (block2.length >= 2) {
+      parts.push(`(${block2.join(parallelToken).trim()})`);
+    } else {
+      parts.push(block2[0]);
+    }
+  }
+  return parts.join(sequenceToken).trim();
+}
+
+// src/ui/dashboard.ts
+var DEFAULT_COVERAGE_THRESHOLD2 = 0.8;
+var DEBT_ALERT_THRESHOLD = 5;
+function isPlainObject8(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function asArray3(value) {
+  return Array.isArray(value) ? value : [];
+}
+function isFile4(path) {
+  try {
+    return statSync9(path).isFile();
+  } catch {
+    return false;
+  }
+}
+function loadCoverage(harnessDir, fid) {
+  if (harnessDir === null) {
+    return [null, []];
+  }
+  const fpPath = join9(harnessDir, "_workspace", "coverage", `${fid}.yaml`);
+  if (!isFile4(fpPath)) {
+    return [null, []];
+  }
+  let fp;
+  try {
+    fp = (0, import_yaml5.parse)(readFileSync8(fpPath, "utf-8"));
+  } catch {
+    return [null, []];
+  }
+  if (!isPlainObject8(fp)) {
+    return [null, []];
+  }
+  const mismatches = asArray3(fp["mismatches"]);
+  if (mismatches.length === 0) {
+    return [1, []];
+  }
+  const ratios = [];
+  const detailed = [];
+  for (const m of mismatches) {
+    if (!isPlainObject8(m)) {
+      continue;
+    }
+    const desc = Number(m["description_value"] ?? 0);
+    const ac = Number(m["ac_value"] ?? 0);
+    if (Number.isNaN(desc) || Number.isNaN(ac) || desc <= 0) {
+      continue;
+    }
+    ratios.push(ac / desc);
+    detailed.push({ metric: typeof m["metric"] === "string" ? m["metric"] : "", ac, desc });
+  }
+  if (ratios.length === 0) {
+    return [null, []];
+  }
+  const mean = ratios.reduce((acc, r) => acc + r, 0) / ratios.length;
+  return [mean, detailed];
+}
+function formatCoverageLine(coverage, detailed) {
+  const pct = Math.round(coverage * 100);
+  const parts = detailed.map((d) => `${d.ac}/${d.desc} ${d.metric}`);
+  const detail = parts.join(", ");
+  return detail.length > 0 ? `  coverage: ${pct}% (${detail})` : `  coverage: ${pct}%`;
+}
+function featureTitle(fid, spec) {
+  if (!isPlainObject8(spec)) {
+    return fid;
+  }
+  for (const f of asArray3(spec["features"])) {
+    if (isPlainObject8(f) && f["id"] === fid) {
+      const title = f["name"] ?? f["title"];
+      if (typeof title === "string" && title.trim().length > 0) {
+        return title.trim();
+      }
+    }
+  }
+  return fid;
+}
+function countGatesPassed(gates) {
+  let count = 0;
+  for (const g of STANDARD_GATES) {
+    const entry = gates[g];
+    if (isPlainObject8(entry) && entry["last_result"] === "pass") {
+      count++;
+    }
+  }
+  return count;
+}
+function latestBlockerNote(feature) {
+  const evidence = asArray3(feature["evidence"]);
+  for (let i = evidence.length - 1; i >= 0; i--) {
+    const ev = evidence[i];
+    if (!isPlainObject8(ev)) {
+      continue;
+    }
+    if (ev["kind"] === "blocker") {
+      const summary = ev["summary"];
+      return typeof summary === "string" && summary.trim().length > 0 ? summary.trim() : null;
+    }
+    return null;
+  }
+  return null;
+}
+function resolveAgentChain(fid, spec) {
+  if (!isPlainObject8(spec)) {
+    return { agents: [], groups: [] };
+  }
+  const features = asArray3(spec["features"]);
+  const feature = features.find((f) => isPlainObject8(f) && f["id"] === fid);
+  if (!isPlainObject8(feature)) {
+    return { agents: [], groups: [] };
+  }
+  try {
+    const shapes = detectShapes(feature, spec);
+    if (shapes.length === 0) {
+      return { agents: [], groups: [] };
+    }
+    const audio = hasAudioFlag(feature);
+    return {
+      agents: agentsForShapes(shapes, audio),
+      groups: parallelGroupsForShapes(shapes, audio)
+    };
+  } catch {
+    return { agents: [], groups: [] };
+  }
+}
+function renderActiveBlock(feature, spec, lang, harnessDir) {
+  const fid = typeof feature["id"] === "string" ? feature["id"] : "?";
+  const title = featureTitle(fid, spec);
+  const gates = isPlainObject8(feature["gates"]) ? feature["gates"] : {};
+  const passed = countGatesPassed(gates);
+  const evidenceCount = asArray3(feature["evidence"]).length;
+  const lines = [t("active_feature", lang, { title })];
+  lines.push(
+    t("progress_line", lang, {
+      passed,
+      total: STANDARD_GATES.length,
+      evidence: evidenceCount
+    })
+  );
+  const [coverage, detailed] = loadCoverage(harnessDir, fid);
+  if (coverage !== null && coverage < 1) {
+    lines.push(formatCoverageLine(coverage, detailed));
+  }
+  const blocker = latestBlockerNote(feature);
+  if (blocker !== null) {
+    lines.push(t("blocker_line", lang, { note: blocker }));
+  }
+  const { agents, groups } = resolveAgentChain(fid, spec);
+  if (agents.length > 0) {
+    lines.push(`  ${t("agent_chain", lang)}: ${renderAgentChain(agents, groups)}`);
+  }
+  return lines;
+}
+function renderCoverageDebt(features, harnessDir, threshold, _lang) {
+  if (harnessDir === null) {
+    return [];
+  }
+  const withMismatches = [];
+  const belowThreshold = [];
+  for (const f of features) {
+    if (!isPlainObject8(f)) {
+      continue;
+    }
+    const fid = f["id"];
+    if (typeof fid !== "string") {
+      continue;
+    }
+    const [coverage] = loadCoverage(harnessDir, fid);
+    if (coverage === null || coverage >= 1) {
+      continue;
+    }
+    withMismatches.push(fid);
+    if (coverage < threshold) {
+      belowThreshold.push(fid);
+    }
+  }
+  if (withMismatches.length === 0) {
+    return [];
+  }
+  const block2 = [];
+  if (belowThreshold.length > DEBT_ALERT_THRESHOLD) {
+    block2.push("\u26A0 Coverage debt high \u2014 review carry-forward before next feature");
+  }
+  block2.push(
+    `Coverage debt: ${withMismatches.length} features with mismatches (${belowThreshold.length} below threshold ${threshold.toFixed(2)})`
+  );
+  return block2;
+}
+function renderOtherInProgress(features, activeId, spec, lang) {
+  const others = [];
+  for (const f of features) {
+    if (isPlainObject8(f) && f["status"] === "in_progress" && f["id"] !== activeId) {
+      others.push(f);
+    }
+  }
+  if (others.length === 0) {
+    return [];
+  }
+  const lines = [t("in_progress_others", lang)];
+  for (const f of others.slice(0, maxOtherList())) {
+    const fid = typeof f["id"] === "string" ? f["id"] : "?";
+    lines.push(`  "${featureTitle(fid, spec)}"`);
+  }
+  return lines;
+}
+function renderPending(features, spec, lang) {
+  const pending = [];
+  for (const f of features) {
+    if (isPlainObject8(f) && f["status"] === "planned") {
+      pending.push(f);
+    }
+  }
+  if (pending.length === 0) {
+    return [];
+  }
+  const titles = pending.slice(0, maxPendingList()).map((f) => {
+    const fid = typeof f["id"] === "string" ? f["id"] : "?";
+    return `"${featureTitle(fid, spec)}"`;
+  });
+  return [`${t("pending_label", lang)} ${titles.join(" \xB7 ")}`];
+}
+function renderUnregistered(stateFeatures, spec, lang) {
+  if (!isPlainObject8(spec)) {
+    return { lines: [], total: 0 };
+  }
+  const specFeatures = asArray3(spec["features"]);
+  if (specFeatures.length === 0) {
+    return { lines: [], total: 0 };
+  }
+  const registered = /* @__PURE__ */ new Set();
+  for (const f of stateFeatures) {
+    if (isPlainObject8(f) && typeof f["id"] === "string") {
+      registered.add(f["id"]);
+    }
+  }
+  const candidates = [];
+  for (const f of specFeatures) {
+    if (!isPlainObject8(f)) {
+      continue;
+    }
+    const fid = f["id"];
+    if (typeof fid !== "string" || fid.length === 0) {
+      continue;
+    }
+    if (registered.has(fid)) {
+      continue;
+    }
+    if (f["status"] === "archived") {
+      continue;
+    }
+    if (f["superseded_by"]) {
+      continue;
+    }
+    if (f["archived_at"]) {
+      continue;
+    }
+    candidates.push(f);
+  }
+  if (candidates.length === 0) {
+    return { lines: [], total: 0 };
+  }
+  const max = maxUnregisteredList();
+  const titles = candidates.slice(0, max).map((f) => {
+    const fid = typeof f["id"] === "string" ? f["id"] : "?";
+    return `"${featureTitle(fid, spec)}"`;
+  });
+  const header = t("next_candidates", lang, { n: candidates.length });
+  const lines = [header, `  ${titles.join(" \xB7 ")}`];
+  if (candidates.length > max) {
+    lines.push(t("more_after_truncate", lang, { n: candidates.length - max }));
+  }
+  return { lines, total: candidates.length };
+}
+function renderBlocked(features, activeId, spec, lang) {
+  const blocked = [];
+  for (const f of features) {
+    if (isPlainObject8(f) && f["status"] === "blocked" && f["id"] !== activeId) {
+      blocked.push(f);
+    }
+  }
+  if (blocked.length === 0) {
+    return [];
+  }
+  const titles = blocked.slice(0, maxOtherList()).map((f) => {
+    const fid = typeof f["id"] === "string" ? f["id"] : "?";
+    return `"${featureTitle(fid, spec)}"`;
+  });
+  return [`${t("on_hold_label", lang)} ${titles.join(" \xB7 ")}`];
+}
+function renderSuggestions(suggestions, lang) {
+  if (suggestions.length === 0) {
+    return [];
+  }
+  const lines = [t("next_actions", lang)];
+  const markerText = t("recommended_marker", lang);
+  suggestions.forEach((s, i) => {
+    const idx = i + 1;
+    const marker = idx === 1 ? ` ${markerText}` : "";
+    lines.push(`  (${idx}) ${s.label}${marker}`);
+  });
+  lines.push("");
+  lines.push(t("enter_hint", lang, { n: 1 }));
+  return lines;
+}
+function render(stateData, spec, suggestions, options = {}) {
+  const lang = options.lang ?? resolveLang(spec);
+  const harnessDir = options.harnessDir ?? null;
+  const sections = [];
+  sections.push([`\u{1F4CA} ${t("dashboard_title", lang)}`]);
+  const features = isPlainObject8(stateData) ? asArray3(stateData["features"]) : [];
+  const session = isPlainObject8(stateData) && isPlainObject8(stateData["session"]) ? stateData["session"] : null;
+  const activeId = session !== null && typeof session["active_feature_id"] === "string" ? session["active_feature_id"] : null;
+  const byId = /* @__PURE__ */ new Map();
+  for (const f of features) {
+    if (isPlainObject8(f) && typeof f["id"] === "string") {
+      byId.set(f["id"], f);
+    }
+  }
+  if (activeId !== null && byId.has(activeId)) {
+    sections.push(renderActiveBlock(byId.get(activeId), spec, lang, harnessDir));
+  }
+  const otherBlock = renderOtherInProgress(features, activeId, spec, lang);
+  if (otherBlock.length > 0) {
+    sections.push(otherBlock);
+  }
+  const blockedBlock = renderBlocked(features, activeId, spec, lang);
+  if (blockedBlock.length > 0) {
+    sections.push(blockedBlock);
+  }
+  const pendingBlock = renderPending(features, spec, lang);
+  if (pendingBlock.length > 0) {
+    sections.push(pendingBlock);
+  }
+  const { lines: unregisteredBlock, total: unregisteredCount } = renderUnregistered(features, spec, lang);
+  if (unregisteredBlock.length > 0) {
+    sections.push(unregisteredBlock);
+  }
+  const debtBlock = renderCoverageDebt(features, harnessDir, DEFAULT_COVERAGE_THRESHOLD2, lang);
+  if (debtBlock.length > 0) {
+    sections.push(debtBlock);
+  }
+  if (byId.size === 0 && features.length === 0 && unregisteredCount === 0) {
+    sections.push([t("no_features", lang)]);
+  } else if ((activeId === null || !byId.has(activeId)) && otherBlock.length === 0 && blockedBlock.length === 0 && pendingBlock.length === 0 && unregisteredBlock.length === 0) {
+    let doneCount = 0;
+    for (const f of features) {
+      if (isPlainObject8(f) && f["status"] === "done") {
+        doneCount++;
+      }
+    }
+    if (doneCount > 0) {
+      sections.push([t("all_done", lang, { n: doneCount })]);
+    } else {
+      sections.push([t("no_active_no_pending", lang)]);
+    }
+  }
+  const suggestionBlock = renderSuggestions(suggestions, lang);
+  if (suggestionBlock.length > 0) {
+    sections.push(suggestionBlock);
+  }
+  const joined = sections.map((b) => b.join("\n")).join("\n\n");
+  return `${joined.replace(/\s+$/, "")}
+`;
+}
+
+// src/cli/harness.ts
+init_intentPlanner();
+init_validate();
+init_state();
+
+// src/status.ts
+var import_yaml7 = __toESM(require_dist(), 1);
+init_state();
+import { readFileSync as readFileSync10, statSync as statSync11 } from "node:fs";
+import { join as join11 } from "node:path";
+function isPlainObject10(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function loadHarnessYaml(harnessDir) {
+  const path = join11(harnessDir, "harness.yaml");
+  try {
+    if (!statSync11(path).isFile()) {
+      return {};
+    }
+  } catch {
+    return {};
+  }
+  const raw = readFileSync10(path, "utf-8");
+  const parsed = (0, import_yaml7.parse)(raw);
+  return isPlainObject10(parsed) ? parsed : {};
+}
+function tailEvents(harnessDir, n = 1) {
+  const path = join11(harnessDir, "events.log");
+  try {
+    if (!statSync11(path).isFile()) {
+      return [];
+    }
+  } catch {
+    return [];
+  }
+  const raw = readFileSync10(path, "utf-8");
+  const lines = raw.split("\n").filter((line) => line.trim().length > 0);
+  const tail2 = lines.slice(-n);
+  const out = [];
+  for (const line of tail2) {
+    try {
+      const parsed = JSON.parse(line);
+      if (isPlainObject10(parsed)) {
+        out.push(parsed);
+      }
+    } catch {
+      continue;
+    }
+  }
+  return out;
+}
+function buildReport(harnessDir, options = {}) {
+  const featureFilter = options.featureFilter ?? null;
+  const state = State.load(harnessDir);
+  const harnessYaml = loadHarnessYaml(harnessDir);
+  const generation = isPlainObject10(harnessYaml["generation"]) ? harnessYaml["generation"] : {};
+  const driftStatus = typeof generation["drift_status"] === "string" ? generation["drift_status"] : "unknown";
+  const recentEvents = tailEvents(harnessDir, 5);
+  let lastSync = null;
+  for (let i = recentEvents.length - 1; i >= 0; i--) {
+    const ev = recentEvents[i];
+    if (ev["type"] === "sync_completed") {
+      const ts = typeof ev["ts"] === "string" ? ev["ts"] : null;
+      const specHash = typeof ev["spec_hash"] === "string" ? ev["spec_hash"].slice(0, 12) : "";
+      const pluginVersion2 = typeof ev["plugin_version"] === "string" ? ev["plugin_version"] : null;
+      lastSync = { ts, spec_hash: specHash, plugin_version: pluginVersion2 };
+      break;
+    }
+  }
+  const counts = state.featureCounts();
+  const featuresSummary = [];
+  for (const f of state.data.features) {
+    if (!isPlainObject10(f)) {
+      continue;
+    }
+    const fid = typeof f["id"] === "string" ? f["id"] : "?";
+    if (featureFilter !== null && fid !== featureFilter) {
+      continue;
+    }
+    const gates = isPlainObject10(f["gates"]) ? f["gates"] : {};
+    const passed = [];
+    const failed = [];
+    for (const [g, v] of Object.entries(gates)) {
+      if (!isPlainObject10(v)) {
+        continue;
+      }
+      const result = v["last_result"];
+      if (result === "pass") {
+        passed.push(g);
+      } else if (result === "fail") {
+        failed.push(g);
+      }
+    }
+    featuresSummary.push({
+      id: fid,
+      status: typeof f["status"] === "string" ? f["status"] : "planned",
+      started_at: typeof f["started_at"] === "string" ? f["started_at"] : null,
+      completed_at: typeof f["completed_at"] === "string" ? f["completed_at"] : null,
+      gates_passed: passed,
+      gates_failed: failed,
+      evidence_count: Array.isArray(f["evidence"]) ? f["evidence"].length : 0
+    });
+  }
+  const activeFid = state.data.session.active_feature_id;
+  const activeFeature = typeof activeFid === "string" ? featuresSummary.find((f) => f.id === activeFid) ?? null : null;
+  return {
+    session: { ...state.data.session },
+    counts,
+    drift_status: driftStatus,
+    last_sync: lastSync,
+    features_summary: featuresSummary,
+    active_feature: activeFeature
+  };
+}
+function rstrip4(s) {
+  return s.replace(/\s+$/, "");
+}
+function pad2(s, width) {
+  return s.length >= width ? s : s + " ".repeat(width - s.length);
+}
+function formatHuman4(report) {
+  const lines = ["\u{1F4CB} /harness:status", ""];
+  const s = report.session;
+  lines.push("Session");
+  lines.push(`  started_at         ${s.started_at ?? "\u2014"}`);
+  lines.push(`  last_command       ${s.last_command || "\u2014"}`);
+  lines.push(`  last_gate_passed   ${s.last_gate_passed ?? "\u2014"}`);
+  lines.push(`  active_feature_id  ${s.active_feature_id ?? "\u2014"}`);
+  lines.push("");
+  const c = report.counts;
+  const total = Object.values(c).reduce((acc, n) => acc + n, 0);
+  lines.push(`Features (${total})`);
+  for (const [st, n] of Object.entries(c)) {
+    if (n > 0) {
+      lines.push(`  ${pad2(st, 12)} ${n}`);
+    }
+  }
+  lines.push("");
+  lines.push(`Drift status: ${report.drift_status}`);
+  lines.push("");
+  if (report.last_sync !== null) {
+    const ls = report.last_sync;
+    lines.push(
+      `Last sync: ${ls.ts ?? ""} \xB7 spec_hash=${ls.spec_hash} \xB7 plugin=${ls.plugin_version ?? ""}`
+    );
+    lines.push("");
+  }
+  if (report.active_feature !== null) {
+    const af = report.active_feature;
+    lines.push(`Active feature: ${af.id} [${af.status}]`);
+    if (af.gates_passed.length > 0) {
+      lines.push(`  gates passed: ${af.gates_passed.join(", ")}`);
+    }
+    if (af.gates_failed.length > 0) {
+      lines.push(`  gates failed: ${af.gates_failed.join(", ")}`);
+    }
+    lines.push(`  evidence: ${af.evidence_count} entries`);
+    lines.push("");
+  }
+  return `${rstrip4(lines.join("\n"))}
+`;
+}
+
+// src/cli/harness.ts
+var import_yaml18 = __toESM(require_dist(), 1);
+init_sync();
+init_work();
+import { readFileSync as readFileSync21 } from "node:fs";
 function printHuman(text) {
   process.stdout.write(text);
 }
@@ -24686,13 +26007,13 @@ function printError(message) {
 }
 function isDirectory4(path) {
   try {
-    return statSync16(path).isDirectory();
+    return statSync17(path).isDirectory();
   } catch {
     return false;
   }
 }
 function resolveHarnessDir(opt) {
-  return resolvePath7(opt ?? join17(process.cwd(), ".harness"));
+  return resolvePath7(opt ?? join22(process.cwd(), ".harness"));
 }
 function workResultToJson(r) {
   return {
@@ -24739,7 +26060,7 @@ function emitWork(result, json) {
 }
 function buildProgram() {
   const program2 = new Command();
-  program2.name("harness").description("Multi-agent development harness \u2014 TS CLI for Claude Code plugin").version("0.13.2");
+  program2.name("harness").description("Multi-agent development harness \u2014 TS CLI for Claude Code plugin").version("0.14.0");
   const work = program2.command("work").description("feature lifecycle (activate / gate / evidence / complete / dashboard)").argument("[feature]", "feature id (e.g. F-001) \u2014 omitted invokes the dashboard").option("--harness-dir <dir>", "path to .harness directory", "./.harness").option("--current", "show the active feature (read-only)").option("--gate <name> <result>", "record a gate result manually (legacy 2-arg form)").option("--run-gate <name>", "auto-run a gate via the gate runner and record the result").option("--project-root <dir>", "cwd for --run-gate (default: harness-dir parent)").option("--override-command <cmd>", "override gate command (space-separated)").option("--timeout <sec>", "timeout for --run-gate", "300").option("--note <text>", "note for --gate", "").option("--evidence <summary>", "add an evidence row with this summary").option("--kind <kind>", "kind for --evidence or --block", "generic").option("--block <reason>", "mark feature as blocked with this reason").option("--complete", "transition to done (Iron Law applies)").option("--hotfix-reason <reason>", "override Iron Law evidence floor with audited reason").option("--archive", "transition done \u2192 archived").option("--superseded-by <fid>", "feature id replacing this archived feature").option("--reason <text>", "archive reason").option("--deactivate", "clear session.active_feature_id only").option("--remove <fid>", "remove a non-done feature from state.yaml").option("--kickoff", "force-regenerate the kickoff template (idempotency override)").option("--design-review", "force-regenerate the design-review template").option("--retro", "force-regenerate the retro template").option("--no-fog", "skip the F-037 fog-clear auto-wire on activate").option("--json", "emit JSON instead of human-readable text").action((feature, options) => {
     const harnessDir = resolveHarnessDir(options["harnessDir"]);
     const json = Boolean(options["json"]);
@@ -24773,11 +26094,11 @@ function buildProgram() {
     }
     if (!feature) {
       const state = State.load(harnessDir);
-      const specPath = join17(harnessDir, "spec.yaml");
+      const specPath = join22(harnessDir, "spec.yaml");
       let spec = null;
       try {
-        if (existsSync5(specPath)) {
-          spec = (0, import_yaml16.parse)(readFileSync17(specPath, "utf-8"));
+        if (existsSync9(specPath)) {
+          spec = (0, import_yaml18.parse)(readFileSync21(specPath, "utf-8"));
         }
       } catch {
         spec = null;
@@ -24802,10 +26123,10 @@ function buildProgram() {
     }
     const fid = feature;
     function loadSpecOrNull() {
-      const specPath = join17(harnessDir, "spec.yaml");
+      const specPath = join22(harnessDir, "spec.yaml");
       try {
         if (statSpecFile(specPath).isFile()) {
-          return (0, import_yaml15.parse)(readSpecFile(specPath, "utf-8"));
+          return (0, import_yaml17.parse)(readSpecFile(specPath, "utf-8"));
         }
       } catch {
         return null;
@@ -25110,39 +26431,197 @@ function buildProgram() {
       }
     }
   });
-  program2.command("drive").description("autonomous loop driver \u2014 Stage 1 (F-118) ships read-only --status").argument("[target]", "goal id (G-NNN), feature id (F-NNN), or free-text goal \u2014 Stage 2 (F-119)").option("--harness-dir <dir>", "path to .harness directory", "./.harness").option("--status", "render the progress dashboard for one (or all) goal(s) \u2014 read-only").option("--all", "with --status: render every goal in the spec").option("--json", "with --status: emit JSON instead of formatted text").option("--watch", "with --status: re-render every <interval> seconds").option("--interval <sec>", "with --status --watch: refresh interval (default 2s)", "2").option("--resume", "continue a paused drive run \u2014 Stage 2 (F-119)").option("--plan-only", "run only Phase A (researcher \u2192 planner) \u2014 Stage 2 (F-119)").option("--auto-approve-brief", "skip the researcher-approval halt \u2014 Stage 2 (F-119)").option("--auto-approve-all", "skip every plan-phase halt \u2014 Stage 2 (F-119)").option("--max-iterations <n>", "iteration cap \u2014 Stage 2 (F-119)").option("--max-hours <n>", "wall-clock cap \u2014 Stage 2 (F-119)").option("--dry-run", "print actions without executing \u2014 Stage 2 (F-119)").option("--abort <gid>", "abort a running goal \u2014 Stage 2 (F-119)").action((target, options) => {
+  program2.command("drive").description("autonomous loop driver \u2014 natural-language goal \u2192 Phase A plan \u2192 Phase B execute \u2192 Phase C retro").argument("[target]", "goal id (G-NNN), feature id (F-NNN), or free-text natural-language goal").option("--harness-dir <dir>", "path to .harness directory", "./.harness").option("--status", "render the progress dashboard for one (or all) goal(s) \u2014 read-only").option("--all", "with --status: render every goal in the spec").option("--json", "emit JSON output (status / dry-run / resume \u2014 machine consumable)").option("--watch", "with --status: re-render every <interval> seconds").option("--interval <sec>", "with --status --watch: refresh interval (default 2s)", "2").option("--resume", "continue Phase A or Phase B from the persisted checkpoint").option("--plan-only", "run Phase A advances; halt before Phase B execute loop").option("--auto-approve-brief", "skip the brief.md approval halt (#1 part 1)").option("--auto-approve-all", "skip every plan-phase halt (brief + plan)").option("--max-iterations <n>", "override Phase B iteration cap (default 50)").option("--max-hours <n>", "override Phase B wall-clock cap (default 2h)").option("--max-retries <n>", "override consecutive-fail cap before halt #3 (default 3)").option("--hard-step-limit <n>", "hard ceiling on steps per drive invocation (default 100)").option("--dry-run", "print the next action without executing it").option("--abort [gid]", "clear the active drive checkpoint (active goal by default)").action((target, options) => {
     const harnessDir = resolveHarnessDir(options["harnessDir"]);
     if (!isDirectory4(harnessDir)) {
       printError(`error: ${harnessDir} not found`);
       process.exit(2);
     }
-    const stage2Flag = options["resume"] || options["planOnly"] || options["autoApproveBrief"] || options["autoApproveAll"] || options["maxIterations"] || options["maxHours"] || options["dryRun"] || options["abort"];
-    if (stage2Flag) {
-      printError(
-        "drive: that flag is part of Stage 2 (F-119) \u2014 only --status, --all, --json, --watch land in v0.14.0 Stage 1."
-      );
-      printError("       The Goal domain primitives are in place; the autonomous loop ships in the next release.");
-      process.exit(3);
-    }
-    if (typeof target === "string" && !/^[FG]-\d+$/i.test(target)) {
-      printError(
-        "drive: free-text goal scaffolding is Stage 2 (F-119). For now, register the Goal manually in spec.yaml goals[] and use `harness drive --status`."
-      );
-      process.exit(3);
-    }
+    const isStatus = Boolean(options["status"]) || Boolean(options["watch"]) || Boolean(options["all"]) || // status is also the default when no argument and no Phase-A/B flag is supplied
+    target === void 0 && !options["resume"] && !options["planOnly"] && !options["dryRun"] && !options["abort"];
     const explicitGoal = typeof target === "string" && /^G-\d+$/i.test(target) ? target : null;
-    void Promise.resolve().then(() => (init_statusCommand(), statusCommand_exports)).then(
-      ({ runDriveStatus: runDriveStatus2 }) => runDriveStatus2({
+    const explicitFeature = typeof target === "string" && /^F-\d+$/i.test(target) ? target : null;
+    void explicitFeature;
+    const json = Boolean(options["json"]);
+    const approvals = {
+      autoApproveBrief: Boolean(options["autoApproveBrief"]),
+      autoApproveAll: Boolean(options["autoApproveAll"])
+    };
+    if (isStatus) {
+      void Promise.resolve().then(() => (init_statusCommand(), statusCommand_exports)).then(
+        ({ runDriveStatus: runDriveStatus2 }) => runDriveStatus2({
+          harnessDir,
+          goalId: explicitGoal,
+          all: Boolean(options["all"]),
+          json,
+          watch: Boolean(options["watch"]),
+          intervalSec: Number(options["interval"] ?? 2)
+        })
+      ).then((code) => {
+        if (typeof code === "number" && code !== 0) {
+          process.exit(code);
+        }
+      }).catch((err) => {
+        printError(`drive: ${err.message}`);
+        process.exit(2);
+      });
+      return;
+    }
+    if (options["abort"] !== void 0) {
+      void Promise.resolve().then(() => (init_checkpoint(), checkpoint_exports)).then(({ clearCheckpoint: clearCheckpoint2, loadCheckpoint: loadCheckpoint2 }) => {
+        const ck = loadCheckpoint2(harnessDir);
+        const cleared = clearCheckpoint2(harnessDir);
+        if (cleared) {
+          const goalId = ck?.goal_id ?? "(unknown)";
+          if (json) {
+            printJson({ aborted: true, goal_id: goalId });
+          } else {
+            printHuman(`drive: aborted ${goalId}; checkpoint cleared.
+`);
+          }
+        } else {
+          if (json) {
+            printJson({ aborted: false, message: "no active checkpoint" });
+          } else {
+            printHuman("drive: no active drive checkpoint to abort.\n");
+          }
+        }
+      }).catch((err) => {
+        printError(`drive: ${err.message}`);
+        process.exit(2);
+      });
+      return;
+    }
+    const isFreeText = typeof target === "string" && !explicitGoal && !explicitFeature;
+    if (isFreeText) {
+      void Promise.resolve().then(() => (init_planPhase(), planPhase_exports)).then(({ startPhaseA: startPhaseA2 }) => {
+        const r = startPhaseA2({ harnessDir, title: target, approvals });
+        if (json) {
+          printJson({
+            goal_id: r.goalId,
+            brief_path: r.briefPath,
+            halt: { reason: r.halt.reason, message: r.halt.message }
+          });
+        } else {
+          printHuman(
+            `drive: goal ${r.goalId} created. researcher should write ${r.briefPath}.
+${r.halt.message}
+`
+          );
+        }
+      }).catch((err) => {
+        printError(`drive: ${err.message}`);
+        process.exit(2);
+      });
+      return;
+    }
+    const planOnly = Boolean(options["planOnly"]);
+    const dryRun = Boolean(options["dryRun"]);
+    void Promise.resolve().then(() => (init_checkpoint(), checkpoint_exports)).then(async ({ loadCheckpoint: loadCheckpoint2, saveCheckpoint: saveCheckpoint2 }) => {
+      const ck = loadCheckpoint2(harnessDir);
+      if (ck === null) {
+        printError(
+          'drive: no active checkpoint. Start with `harness drive "<natural-language goal>"`.'
+        );
+        process.exit(3);
+        return;
+      }
+      if (options["maxIterations"] !== void 0) {
+        ck.execute.max_iterations = Number(options["maxIterations"]);
+      }
+      if (options["maxHours"] !== void 0) {
+        ck.execute.max_seconds = Math.round(Number(options["maxHours"]) * 3600);
+      }
+      saveCheckpoint2(harnessDir, ck);
+      if (ck.phase === "planning") {
+        const { advancePhaseA: advancePhaseA2 } = await Promise.resolve().then(() => (init_planPhase(), planPhase_exports));
+        const r2 = advancePhaseA2(harnessDir, approvals);
+        if (r2.kind === "halt") {
+          if (json) {
+            printJson({
+              phase: "planning",
+              halt: { reason: r2.halt.reason, message: r2.halt.message },
+              brief_path: r2.briefPath,
+              plan_path: r2.planPath
+            });
+          } else {
+            printHuman(`drive: ${r2.halt.message}
+`);
+          }
+          return;
+        }
+        if (planOnly) {
+          if (json) {
+            printJson({ phase: "scaffolded", goal_id: r2.goalId, feature_ids: r2.featureIds });
+          } else {
+            printHuman(
+              `drive: Phase A done. Goal ${r2.goalId} scaffolded with ${r2.featureIds.length} features. (--plan-only requested \u2014 stopping before Phase B execute loop.)
+`
+            );
+          }
+          return;
+        }
+      }
+      const { runDriveLoop: runDriveLoop2, runDriveStep: runDriveStep2 } = await Promise.resolve().then(() => (init_loop(), loop_exports));
+      if (dryRun) {
+        const step = runDriveStep2(harnessDir, {
+          harnessDir,
+          maxRetries: options["maxRetries"] !== void 0 ? Number(options["maxRetries"]) : void 0
+        });
+        const summary2 = {
+          dry_run: true,
+          proceed: step.proceed,
+          feature_id: step.feature_id ?? null
+        };
+        if (step.action !== void 0 && step.action !== null) {
+          summary2.action = step.action.kind;
+          if ("feature_id" in step.action) {
+            summary2.action_feature = step.action.feature_id;
+          }
+          if ("gate" in step.action) {
+            summary2.action_gate = step.action.gate;
+          }
+        }
+        if (step.halt !== void 0) {
+          summary2.halt = { reason: step.halt.reason, message: step.halt.message };
+        }
+        if (json) {
+          printJson(summary2);
+        } else {
+          if (step.halt !== void 0) {
+            printHuman(`drive [dry-run]: would halt \u2014 ${step.halt.message}
+`);
+          } else if (step.action !== null && step.action !== void 0) {
+            printHuman(`drive [dry-run]: next action = ${step.action.kind}
+`);
+          } else {
+            printHuman("drive [dry-run]: no action selected\n");
+          }
+        }
+        return;
+      }
+      const r = runDriveLoop2({
         harnessDir,
-        goalId: explicitGoal,
-        all: Boolean(options["all"]),
-        json: Boolean(options["json"]),
-        watch: Boolean(options["watch"]),
-        intervalSec: Number(options["interval"] ?? 2)
-      })
-    ).then((code) => {
-      if (typeof code === "number" && code !== 0) {
-        process.exit(code);
+        maxRetries: options["maxRetries"] !== void 0 ? Number(options["maxRetries"]) : void 0,
+        hardIterationLimit: options["hardStepLimit"] !== void 0 ? Number(options["hardStepLimit"]) : 100
+      });
+      const summary = {
+        proceed: r.proceed,
+        goal_done: r.goal_done ?? false,
+        feature_id: r.feature_id ?? null
+      };
+      if (r.halt !== void 0) {
+        summary.halt = { reason: r.halt.reason, message: r.halt.message };
+      }
+      if (json) {
+        printJson(summary);
+      } else if (r.goal_done) {
+        printHuman("drive: goal complete \u2014 Phase C retro generated.\n");
+      } else if (r.halt !== void 0) {
+        printHuman(`drive: ${r.halt.message}
+`);
+      } else {
+        printHuman("drive: step limit reached for this invocation; resume to continue.\n");
       }
     }).catch((err) => {
       printError(`drive: ${err.message}`);
