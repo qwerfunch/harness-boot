@@ -91,7 +91,14 @@ function seedCheckpoint(harnessDir: string, opts: {features: string[]; ck?: Part
   const ck = defaultCheckpoint('G-001', new Date('2026-05-04T10:00:00Z'));
   ck.phase = 'executing';
   ck.plan.scaffolded_features = opts.features;
-  ck.execute.started_at = '2026-05-04T10:00:00Z';
+  // F-122 — `started_at` must be dynamic ("just started"). A hardcoded
+  // ISO literal turns the fixture into a 24h time bomb: `defaultCheckpoint`
+  // ships `max_seconds = 7200`, so once real wall-clock outruns that
+  // window the wall_clock halt #6 fires first and masks the halt the
+  // test was actually asserting. Cases that need to assert wall_clock
+  // override both this field AND `now:` explicitly (see the halt #6
+  // test). Regression-guard test below pins this behaviour.
+  ck.execute.started_at = new Date().toISOString();
   if (opts.ck !== undefined) {
     Object.assign(ck, opts.ck);
   }
@@ -122,6 +129,22 @@ describe('drive/loop — runDriveStep halt detection', () => {
     const r = runDriveStep(harnessDir, {harnessDir});
     expect(r.proceed).toBe(false);
     expect(r.halt?.reason).toBe('stop_file');
+  });
+
+  // F-122 — guards against the v0.14.0 fixture bug where
+  // seedCheckpoint hardcoded `started_at = '2026-05-04T10:00:00Z'`,
+  // which combined with `defaultCheckpoint.max_seconds = 7200` to
+  // make wall_clock halt #6 fire 24h after the test was authored,
+  // masking every other halt-detection assertion. Pinning the default
+  // as dynamic catches anyone who tries to revert the fix.
+  it('seedCheckpoint default started_at is dynamic (no time-bomb regression)', () => {
+    const ck = loadCheckpoint(harnessDir);
+    expect(ck).not.toBeNull();
+    const startedAt = ck!.execute.started_at;
+    expect(typeof startedAt).toBe('string');
+    const ageMs = Date.now() - Date.parse(startedAt!);
+    expect(ageMs).toBeLessThan(60_000); // within 1 minute of "now"
+    expect(ageMs).toBeGreaterThanOrEqual(0); // not in the future
   });
 
   it('halt #7 — iteration cap reached', () => {
