@@ -2473,7 +2473,7 @@ features:
   started_at: 2026-05-04T03:38:04Z
   completed_at: 2026-05-04T03:40:10Z
 - id: F-121
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -2515,9 +2515,9 @@ features:
     kind: test
     summary: "L-001 template summary added · L-003 gate_0 cargo+go probes · L-002 halt #10 gate_no_progress wired — 8 new tests, 621/621 green, self_check OK"
   started_at: 2026-05-04T05:41:51Z
-  completed_at: null
+  completed_at: 2026-05-04T05:50:12Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-121
   last_gate_passed: gate_5
-  active_feature_id: F-121
+  active_feature_id: null
