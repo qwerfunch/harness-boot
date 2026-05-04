@@ -25,6 +25,7 @@ Thumbs.db
 # Node toolchain
 node_modules/
 coverage/
+.nyc_output/
 .vitest-cache/
 
 # Python toolchain
