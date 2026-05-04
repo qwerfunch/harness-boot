@@ -212,6 +212,8 @@ harness-boot/
 
 ## Status
 
+**v0.14.3** — Stability + cleanup batch (F-122 → F-128). `tests/parity/driveLoopAndPlan.test.ts` time-bomb fixed (F-122) so CI on every downstream fork stays green; CLAUDE.md brought back in sync (F-123) and refactored into stable / semi-static sigil / volatile-pointer layers so future drift is structurally prevented (F-124); the pre-cutover Python footprint (`legacy/scripts/`, `tests/unit`, `tests/integration`, `tests/scale` — ~28 k lines combined) evicted from git tracking, working trees preserved locally (F-125 + F-126); `hooks/pre-commit-phase2.sh` now short-circuits during git's own merge / cherry-pick / revert / rebase finalizers so conflict-resolution commits no longer require `HARNESS_BYPASS_PRE_COMMIT=1` (F-127). Zero capability addition, zero behaviour change; v0.14.2 installs are functionally identical.
+
 **v0.14.0** — `drive` ships (F-118 + F-119). New autonomous-loop slash command `/harness-boot:drive "<natural-language goal>"` that scaffolds a *Goal* (a container that groups N features) via researcher → product-planner → feature-author and then runs every feature's gate cycle to completion. **Bounded by design**: BR-015 forbids self-issued `--hotfix-reason`, `git commit/push/tag`, and any shared-state mutation; the loop *halts* on 9 enumerated conditions (commit boundary, retry threshold, drift error, blocked feature, wall-clock, iteration cap, network failure, STOP file, plan-phase approval) and yields back to the user. Read-only `harness drive --status [G-N] [--all] [--json] [--watch]` is mtime-invariant (CQS, BR-012).
 
 Previously: **v0.13.2** — Repo root cleanup (F-117): dead Python config (`pytest.ini`, `requirements-dev.txt`) removed after the v0.13 TS-only cutover. No behavior change.

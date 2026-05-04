@@ -20,25 +20,34 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [0.14.3] — 2026-05-05
 
-**driveLoopAndPlan.test.ts seedCheckpoint time-bomb fix (F-122).**
+**Stability + cleanup batch (F-122 → F-128).** Six already-merged features bundled into one tagged release: a test-fixture time-bomb fix, the project's own CLAUDE.md staleness refresh + information-architecture refactor, retirement of the pre-cutover Python footprint from git tracking, and a pre-commit hook short-circuit for git's own merge / cherry-pick / revert / rebase finalizers.
 
-Discovered while running the v0.14.2 work-vs-drive verification cycle on 2026-05-05. Six halt-detection cases in `tests/parity/driveLoopAndPlan.test.ts` started failing 24h after F-119 (drive Stage 2) was authored. Root cause: the test fixture `seedCheckpoint()` hardcoded `started_at = '2026-05-04T10:00:00Z'`, and `defaultCheckpoint.max_seconds = 7200` (2h). Once real wall-clock outran the 2h window, drive's `wall_clock` halt #6 fired before any other halt the test was actually asserting (#5 blocked, #3 retry_threshold, #10 gate_no_progress, retry-vs-stagnation priority, goal completion).
-
-Production code (`src/drive/loop.ts:303-323` wall_clock check) is correct — only the test fixture failed to isolate time. The fix flips the default `started_at` to `new Date().toISOString()` (dynamic, "drive that just started"), and a regression-guard `it()` block pins the dynamic-default behaviour so the next person who tries to revert is caught at test time rather than 24h later.
-
-Patch-only — zero production code changes, zero schema/behaviour changes. Users do not need to update; the existing v0.14.2 install is functionally identical. The release exists so CI on every downstream fork stays green.
+Zero capability addition, zero behaviour change for users — every downstream install on v0.14.2 is functionally identical. The release exists to (1) restore green CI on every downstream fork (F-122), (2) eliminate the structural drift that caused CLAUDE.md to fall three minor versions behind the actual code (F-123 + F-124), (3) shrink the repo by ~28k lines of post-cutover Python that no longer participates in the runtime (F-125 + F-126), and (4) close the F-034 hook friction the maintainer hit during F-123's own conflict resolution (F-127).
 
 ### Fixed
 
-- **F-122** — `tests/parity/driveLoopAndPlan.test.ts` `seedCheckpoint()` default `started_at` becomes dynamic (`new Date().toISOString()`) instead of the hardcoded `'2026-05-04T10:00:00Z'` literal. The wall_clock self-test (`halt #6 — wall-clock cap reached`) keeps passing because it overrides both `started_at` and `now:` explicitly. New regression-guard test `seedCheckpoint default started_at is dynamic` asserts the fix is preserved.
+- **F-122** — `tests/parity/driveLoopAndPlan.test.ts` `seedCheckpoint()` default `started_at` becomes dynamic (`new Date().toISOString()`) instead of the hardcoded `'2026-05-04T10:00:00Z'` literal. Six halt-detection cases (#5 blocked, #3 retry_threshold, #10 gate_no_progress ×2, retry-vs-stagnation priority, goal completion) had begun firing `wall_clock` halt #6 first as soon as real time outran the 2h `max_seconds` window. The wall_clock self-test (`halt #6 — wall-clock cap reached`) keeps passing because it overrides both `started_at` and `now:` explicitly. New regression-guard `it()` block asserts the dynamic default is preserved so anyone who tries to hardcode again is caught at test time, not 24 h later.
+- **F-127** — `hooks/pre-commit-phase2.sh` adds a new Branch 3 that exits 0 silently when git is mid-operation (`.git/MERGE_HEAD`, `.git/CHERRY_PICK_HEAD`, `.git/REVERT_HEAD`, `.git/rebase-merge/`, or `.git/rebase-apply/`). Detection uses `git rev-parse --git-dir` so non-default `GIT_DIR` setups (worktrees, detached) work too. The Iron Law discipline still applies to user-driven feature commits; it now correctly steps aside for git's own conflict-resolution finalizers, eliminating the `HARNESS_BYPASS_PRE_COMMIT=1` workaround that F-123's PR conflict resolution hit.
+
+### Changed
+
+- **F-123** — `CLAUDE.md` brought back in sync with the actual code: drift catalogue corrected from 12 to **13 kinds** (the v0.12.0 `Coverage` detector was missing from the list); F-048 wire-integrity blocking set updated from 3 to **4 kinds** (`Code · Stale · AnchorIntegration · Coverage`); release / tag / HEAD references advanced from v0.11.1 (three minor versions stale) to v0.14.x. `harness sync` was run alongside to repair the spec-hash drift `harness check` had been reporting.
+- **F-124** — `CLAUDE.md` information architecture refactored into three layers. **L1 stable narrative** (vision, BR, working rules) stays as-is. **L2 semi-static facts** (drift kind count, blocking-set size) are now wrapped in `<!-- harness:fact key=X value=V source=Y -->` sigil regions so a future content-drift detector can validate them against the cited code SSoT. **L3 volatile data** (release version, main HEAD, tag range, recent-commit cluster, in-flight branches, in-progress F-IDs) is **evicted from CLAUDE.md** entirely and replaced by one-line pointers to its native SSoT (`plugin.json`, `CHANGELOG.md`, `git`, `.harness/state.yaml`). §5 'Recent commit context' — 100 % redundant with this CHANGELOG — collapses from a 50-line release narrative to a single pointer paragraph. Net effect: CLAUDE.md drops from 258 → 202 lines (22 % reduction), and the per-release update burden falls to zero outside sigil values. A companion memory entry `feedback_claude_md_release_ritual.md` documents the L1/L2/L3 rule so the discipline survives across chat sessions.
+
+### Removed
+
+- **F-125** — `legacy/scripts/` (72 git-tracked files, ~13 k lines, ~1.5 MB) evicted from the index via `git rm --cached -r`. The directory was retained as a tracked archive after the v0.13.0 cutover under the policy "keep until external dogfood signals zero regressions"; cosmic-suika and logcat-on dogfood across v0.13.x and v0.14.x have surfaced no Python-vs-TypeScript regression that required the archive. `.gitignore` already listed `legacy/` (line 44), so the working-tree copy stays intact on the maintainer's machine; only the git index entries are removed. CLAUDE.md §2 / §3 / §7 call-sites updated accordingly.
+- **F-126** — `tests/unit/` (69 files), `tests/integration/` (5 files), and `tests/scale/` (2 files) — the last operational Python footprint, all quarantined since the v0.13.0 cutover — evicted via the same `git rm --cached -r` mechanism. `.gitignore` grows a three-line block under the existing `legacy/` entry. The TS parity suite under `tests/parity/` (~620 vitest tests) is unchanged and remains the operational test surface. **Out of scope (deliberately preserved)**: `tests/parity/fixtures/**/generate_fixtures.py` (3 fixture *generators*, not tests) and `tests/fixtures/brownfield-repos/python-fastapi/src/app/models.py` (Python file that *is* the fixture content for fog-clear scenario tests).
 
 ### Verification
 
 - `npm run typecheck` clean
 - `npm run lint` clean
-- `npm test` — **622/622** (was 615/621 with 6 fails on 2026-05-05 before this patch; 621/621 on the day of authorship 2026-05-04)
-- `bash self_check.sh` 5/5 OK
-- F-122 completed via `node bin/harness work F-122 --harness-dir .harness --complete` on `fix/v0.14.3-driveloop-test-time-isolation`
+- `npm test` — **622/622 PASS**
+- `bash self_check.sh` — 5/5 OK
+- `harness check --harness-dir .harness` — clean (13/13 detector)
+- `harness validate .harness/spec.yaml` — valid
+- F-122 completed on `fix/v0.14.3-driveloop-test-time-isolation` (PR #53), F-123 + F-124 on `feat/v0.14.3-claude-md-refresh` (PR #54), F-125 + F-126 on `feat/v0.14.4-legacy-git-eviction` (PR #55), F-127 on `feat/v0.14.4-pre-commit-merge-fix` (PR #56), F-128 release prep on `chore/v0.14.3-release-prep`. All merged into `develop` then fast-forwarded into `main` for the v0.14.3 tag.
 
 ## [0.14.2] — 2026-05-04
 
