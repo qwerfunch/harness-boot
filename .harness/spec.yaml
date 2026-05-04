@@ -4839,6 +4839,68 @@ features:
       - "AC-12: F-126 mirrored on both spec.yaml copies; `diff -q` clean."
       - "AC-13: F-126 completed via the harness CLI cycle on `feat/v0.14.4-legacy-git-eviction` (bundled with F-125 in the same PR — both evict pre-cutover Python footprints with the same rationale)."
 
+  - id: "F-127"
+    name: "F-034 pre-commit hook short-circuits during merge / cherry-pick / revert / rebase"
+    type: "fix"
+    description: |
+      Forty-fourth cycle. Direct fix for the friction logged in
+      `.harness/_workspace/issues-log.md` on 2026-05-04T17:15Z during
+      F-123's PR #54 conflict resolution. The F-034 pre-commit hook
+      (`hooks/pre-commit-phase2.sh`) rejects any commit that has
+      non-whitelisted staged files when `state.yaml.session.active_feature_id`
+      is empty. The discipline is correct for new feature work, but it
+      misfires on git's own special operations:
+
+        - **Merge commits**: after `git merge` resolves a conflict and
+          re-stages the merged paths, the user runs `git commit` to
+          finalize. The merged content was already vetted in the
+          incoming branch's feature cycle, but `active_feature_id` has
+          typically been cleared by an earlier `--complete` -> the
+          hook rejects.
+        - **Cherry-pick** and **revert**: same pattern — git stages
+          content from a different commit; no in-flight feature
+          cycle in the current branch's state.
+        - **Rebase**: ditto, especially during `git rebase --continue`.
+
+      Symptom F-123 hit: after merging origin/develop into
+      feat/v0.14.3-claude-md-refresh to resolve a conflict, the
+      finalizing commit was rejected; the workaround was
+      `HARNESS_BYPASS_PRE_COMMIT=1 git commit`, recorded as a one-line
+      friction entry.
+
+      Fix: insert one new branch in `hooks/pre-commit-phase2.sh`
+      between Branch 2 (env bypass) and Branch 3 (whitelist check) —
+      if any of `.git/MERGE_HEAD`, `.git/CHERRY_PICK_HEAD`,
+      `.git/REVERT_HEAD`, `.git/rebase-merge/`, or `.git/rebase-apply/`
+      exists, exit 0 silently. Git's special-operation flags are the
+      authoritative signal that the commit is not user-driven feature
+      work; the discipline does not apply.
+
+      Documentation:
+        - `hooks/pre-commit-phase2.sh` header comment grows the
+          new branch (now 6 branches, was 5).
+        - `.harness/_workspace/issues-log.md` entry for the F-034
+          merge-commit gap gains a `Resolution:` line citing F-127
+          (per the F-027 return convention).
+        - `CLAUDE.md` §8 'Open' list entry for the same friction is
+          removed (it is now closed).
+
+      Patch-only — no schema, no behaviour beyond hook logic, no BR
+      changes.
+
+    test_strategy: "smoke"
+    acceptance_criteria:
+      - "AC-1: `hooks/pre-commit-phase2.sh` adds a new branch (call it Branch 2.5) that exits 0 silently when any of `.git/MERGE_HEAD`, `.git/CHERRY_PICK_HEAD`, `.git/REVERT_HEAD`, `.git/rebase-merge/`, `.git/rebase-apply/` exists."
+      - "AC-2: The new branch precedes the whitelist check (Branch 3) so merge commits with non-whitelisted staged paths still pass without active_feature_id."
+      - "AC-3: The header comment block enumerates the new branch (six branches total, ordered consistently with the implementation)."
+      - "AC-4: Manual smoke check: with `state.yaml.session.active_feature_id` empty and a touch file at `.git/MERGE_HEAD`, a staged non-whitelisted file does not trigger the rejection message. Recorded in evidence."
+      - "AC-5: `.harness/_workspace/issues-log.md` entry titled 'F-034 pre-commit hook rejects merge commits' grows a `Resolution:` line citing F-127 + this commit, per the F-027 / cosmic-suika I-001 return convention."
+      - "AC-6: `CLAUDE.md` §8 'Open' bullet for F-034 merge-commit gap removed (the friction is now closed)."
+      - "AC-7: `bash self_check.sh` returns 5/5 OK (the hook script change does not break commands/*.md preamble or any other step)."
+      - "AC-8: `npm test` returns 622/622 PASS (no test reads pre-commit-phase2.sh; this is a pure ops-tooling fix)."
+      - "AC-9: F-127 mirrored on both spec.yaml copies; `diff -q` clean."
+      - "AC-10: F-127 completed via the harness CLI cycle on `feat/v0.14.4-pre-commit-merge-fix`. Targets the next patch release in the v0.14.x family."
+
 # v0.14.0 — Drive autonomous loop containers (filled in Stage 2 / F-119).
 # Each Goal groups N features under one user-supplied natural-language
 # objective. The runtime state mirror lives in state.yaml goals[].

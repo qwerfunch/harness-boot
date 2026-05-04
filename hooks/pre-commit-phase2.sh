@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# pre-commit-phase2.sh — F-034 (v0.10.9)
+# pre-commit-phase2.sh — F-034 (v0.10.9, F-127 fix)
 #
 # Auto-enforces Phase 2 dogfood discipline. Follows F-026.
 # At git commit time: if there are staged code changes but no active
@@ -7,15 +7,19 @@
 # through work.py" rule used to depend on human discipline; this hook
 # moves it to the tooling.
 #
-# Five branches, in this order:
+# Six branches, in this order:
 #   1. .harness/state.yaml absent → silent exit 0 (project doesn't use Phase 2).
 #   2. HARNESS_BYPASS_PRE_COMMIT=1 env → exit 0 (true emergencies; --no-verify
 #      is the git-standard equivalent).
-#   3. Staged set is whitelist-only (chore commits) → exit 0.
+#   3. Git is in a special operation (merge / cherry-pick / revert / rebase) →
+#      exit 0 (F-127). The staged content originates from a different commit
+#      that already had its own feature cycle; the discipline does not apply
+#      to git's own conflict-resolution finalizers.
+#   4. Staged set is whitelist-only (chore commits) → exit 0.
 #      Whitelist: .harness/state.yaml · .harness/_workspace/* · CHANGELOG.md
-#   4. Non-whitelisted staged + no active feature → exit 1 with four bypass
+#   5. Non-whitelisted staged + no active feature → exit 1 with four bypass
 #      options on stderr.
-#   5. Non-whitelisted staged + active feature present → exit 0.
+#   6. Non-whitelisted staged + active feature present → exit 0.
 #
 # Install: copy this file to .git/hooks/pre-commit and chmod +x it.
 
@@ -29,6 +33,27 @@ if [ "${HARNESS_BYPASS_PRE_COMMIT:-}" = "1" ]; then
     exit 0
 fi
 
+# Branch 3 (F-127): git special-operation short-circuit.
+# When git itself is mid-operation, the staged content is not user-driven
+# feature work — it's the resolution of a merge / cherry-pick / revert /
+# rebase from a different commit that already had its own audit trail.
+# Forcing an active_feature_id here would either reject legitimate finalizers
+# or push the user to HARNESS_BYPASS_PRE_COMMIT, which defeats the discipline
+# audit. Detection markers (any one suffices):
+#   .git/MERGE_HEAD          — `git merge` in progress
+#   .git/CHERRY_PICK_HEAD    — `git cherry-pick` in progress
+#   .git/REVERT_HEAD         — `git revert` in progress
+#   .git/rebase-merge/       — `git rebase` (merge backend) in progress
+#   .git/rebase-apply/       — `git rebase` (apply backend, e.g. --apply) in progress
+GIT_DIR="$(git rev-parse --git-dir 2>/dev/null || echo .git)"
+if [ -f "$GIT_DIR/MERGE_HEAD" ] \
+    || [ -f "$GIT_DIR/CHERRY_PICK_HEAD" ] \
+    || [ -f "$GIT_DIR/REVERT_HEAD" ] \
+    || [ -d "$GIT_DIR/rebase-merge" ] \
+    || [ -d "$GIT_DIR/rebase-apply" ]; then
+    exit 0
+fi
+
 # Staged files (added/modified; deletions excluded — delete-only commits are
 # common enough that we let git handle them on its own).
 STAGED="$(git diff --cached --name-only --diff-filter=AM 2>/dev/null || true)"
@@ -36,7 +61,7 @@ STAGED="$(git diff --cached --name-only --diff-filter=AM 2>/dev/null || true)"
 # Empty staged → pass (git itself will reject the commit).
 [ -z "$STAGED" ] && exit 0
 
-# Branch 3: whitelist check.
+# Branch 4: whitelist check.
 ALL_WHITELISTED=1
 while IFS= read -r f; do
     [ -z "$f" ] && continue
@@ -52,7 +77,7 @@ if [ "$ALL_WHITELISTED" = "1" ]; then
     exit 0
 fi
 
-# Branches 4/5: active feature check via the harness CLI.
+# Branches 5/6: active feature check via the harness CLI.
 ACTIVE="$(node -e '
 const yaml = require("yaml");
 const fs = require("fs");

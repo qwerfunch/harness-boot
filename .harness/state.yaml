@@ -2730,8 +2730,52 @@ features:
     summary: "F-126 Python test eviction verified: git ls-files tests/unit | wc -l = 0 (was 69), tests/integration = 0 (was 5), tests/scale = 0 (was 2). Working tree preserved (find tests/unit tests/integration tests/scale -type f = 231 files including pycache). tests/parity/fixtures/**/generate_fixtures.py (3) + tests/fixtures/brownfield-repos/python-fastapi/.../models.py (1) preserved as helper/fixture (not tests). .gitignore L43-49 grew block for tests/unit + tests/integration + tests/scale alongside legacy/. CLAUDE.md L30 (Scaling preparedness) updated to note Python benchmark retired with TS port queued; L66 (Python tests quarantined line) removed; L109 reference-map row removed. self_check 5/5 PASS, npm test 622/622 PASS (TS parity unaffected), harness check clean, harness validate clean."
   started_at: 2026-05-04T17:52:40Z
   completed_at: 2026-05-04T17:55:03Z
+- id: F-127
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-04T18:07:45Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-04T18:07:46Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-04T18:07:48Z
+      note: "cmd: npm run lint"
+    gate_3:
+      last_result: pass
+      ts: 2026-05-04T18:07:50Z
+      note: "cmd: npx nyc npm test"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-04T18:07:51Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-04T18:07:45Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.4s) · cmd: npm test"
+  - ts: 2026-05-04T18:07:46Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.8s) · cmd: npm run typecheck"
+  - ts: 2026-05-04T18:07:48Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.3s) · cmd: npm run lint"
+  - ts: 2026-05-04T18:07:50Z
+    kind: gate_run
+    summary: "Gate gate_3 pass (2.4s) · cmd: npx nyc npm test"
+  - ts: 2026-05-04T18:07:51Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.5s) · cmd: bash self_check.sh"
+  - ts: 2026-05-04T18:08:05Z
+    kind: manual_check
+    summary: "F-127 hot-fix verified: (1) New Branch 3 added to hooks/pre-commit-phase2.sh inserting between env-bypass and whitelist; checks for .git/MERGE_HEAD / CHERRY_PICK_HEAD / REVERT_HEAD / rebase-merge / rebase-apply via git rev-parse --git-dir for non-default git dirs. (2) Manual smoke: with active_feature_id empty (simulated by setup) + .git/MERGE_HEAD touch + non-whitelisted staged file → hook exits 0 (was 1 before patch). (3) Header comment block updated from 5 branches to 6, with the new branch documented at position 3. (4) issues-log.md F-034 friction entry grew Resolution line citing F-127 + commit, per cosmic-suika I-001 return convention. (5) CLAUDE.md §8 'Open' bullet for the same friction removed (now closed). self_check 5/5 PASS, npm test 622/622 PASS, harness check clean, harness validate clean."
+  started_at: 2026-05-04T18:05:29Z
+  completed_at: 2026-05-04T18:08:37Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-126
+  last_command: /harness:work F-127
   last_gate_passed: gate_5
   active_feature_id: null
