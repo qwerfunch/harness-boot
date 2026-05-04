@@ -2687,7 +2687,7 @@ features:
   started_at: 2026-05-04T17:45:11Z
   completed_at: 2026-05-04T17:47:27Z
 - id: F-126
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -2729,9 +2729,9 @@ features:
     kind: manual_check
     summary: "F-126 Python test eviction verified: git ls-files tests/unit | wc -l = 0 (was 69), tests/integration = 0 (was 5), tests/scale = 0 (was 2). Working tree preserved (find tests/unit tests/integration tests/scale -type f = 231 files including pycache). tests/parity/fixtures/**/generate_fixtures.py (3) + tests/fixtures/brownfield-repos/python-fastapi/.../models.py (1) preserved as helper/fixture (not tests). .gitignore L43-49 grew block for tests/unit + tests/integration + tests/scale alongside legacy/. CLAUDE.md L30 (Scaling preparedness) updated to note Python benchmark retired with TS port queued; L66 (Python tests quarantined line) removed; L109 reference-map row removed. self_check 5/5 PASS, npm test 622/622 PASS (TS parity unaffected), harness check clean, harness validate clean."
   started_at: 2026-05-04T17:52:40Z
-  completed_at: null
+  completed_at: 2026-05-04T17:55:03Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-126
   last_gate_passed: gate_5
-  active_feature_id: F-126
+  active_feature_id: null
