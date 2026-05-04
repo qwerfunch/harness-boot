@@ -2340,8 +2340,52 @@ features:
     summary: "Repo root cleanup verified: pytest.ini · requirements-dev.txt removed (git rm); .pytest_cache/ deleted locally; CLAUDE.md §3 layout no longer references requirements-dev.txt; full regression typecheck+lint clean · parity 497/497 · self_check 5/5 — all PASS post-cleanup."
   started_at: 2026-04-29T15:48:13Z
   completed_at: 2026-04-29T15:49:12Z
+- id: F-118
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-04T02:00:09Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-04T02:00:13Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-04T02:00:14Z
+      note: "cmd: npm run lint"
+    gate_3:
+      last_result: pass
+      ts: 2026-05-04T02:00:20Z
+      note: "cmd: npx nyc npm test"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-04T02:00:24Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-04T02:00:09Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.2s) · cmd: npm test"
+  - ts: 2026-05-04T02:00:13Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.8s) · cmd: npm run typecheck"
+  - ts: 2026-05-04T02:00:14Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.2s) · cmd: npm run lint"
+  - ts: 2026-05-04T02:00:20Z
+    kind: gate_run
+    summary: "Gate gate_3 pass (6.1s) · cmd: npx nyc npm test"
+  - ts: 2026-05-04T02:00:24Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.5s) · cmd: bash self_check.sh"
+  - ts: 2026-05-04T02:00:33Z
+    kind: test
+    summary: "F-118 Stage 1 ships Goal domain primitives + drive --status: 61 new unit tests pass, all 558 total tests green, npm typecheck/lint/build/self_check 5/5 OK, drive --status renders empty-goals state correctly, --resume rejected with stage-2 message, --json schema stable. Existing init/work/status/check/sync untouched (verified manually + by parity tests)."
+  started_at: 2026-05-04T01:51:26Z
+  completed_at: 2026-05-04T02:02:41Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-117
+  last_command: /harness:work F-118
   last_gate_passed: gate_5
   active_feature_id: null

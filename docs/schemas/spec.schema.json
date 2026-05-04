@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://harness-boot.dev/schemas/spec.schema.json",
   "title": "harness-boot spec.yaml",
-  "description": "v2.3.8 — promotes the eight metadata.* blocks (formerly the v2.3.7 metadata.extensions.* experimental namespace) to native fields. Re-converted across the meta-domain samples; rationale: design/rfcs/v2.3.8-metadata-extensions-promotion.md",
+  "description": "v2.3.9 — additive: introduces top-level `goals[]` (drive autonomous-loop containers, F-118) and `features[].goal_id` back-reference. Built on v2.3.8 which promoted the metadata.* blocks. Rationale: design/rfcs/v2.3.9-drive-goals.md",
   "type": "object",
 
-  "$comment": "schema_version note: v2.3.8 is additive — every v2.3.7 spec still loads. metadata.extensions.* is accepted for backward compatibility but deprecated (slated for removal in v2.5.0).",
+  "$comment": "schema_version note: v2.3.9 is additive — every v2.3.8 spec still loads. goals[] and goal_id are optional. metadata.extensions.* is accepted for backward compatibility but deprecated (slated for removal in v2.5.0).",
 
   "required": ["version", "project", "domain", "features"],
 
@@ -13,7 +13,7 @@
     "version": {
       "type": "string",
       "pattern": "^\\d+\\.\\d+(\\.\\d+)?(-[A-Za-z0-9.-]+)?$",
-      "description": "Spec schema version (semver). The v2.3.8 loader accepts >=2.3.0."
+      "description": "Spec schema version (semver). The v2.3.9 loader accepts >=2.3.0."
     },
 
     "project": {
@@ -196,6 +196,11 @@
           "include_path": {
             "type": "string",
             "description": "v0.10.6 additive — entry point for sharding. When set, this feature's detail is loaded from an external file (e.g. 'spec/features/auth/F-042.yaml'). Currently ignorable (forward-compat); activates around the ~1000-feature threshold."
+          },
+          "goal_id": {
+            "type": "string",
+            "pattern": "^G-\\d+$",
+            "description": "v2.3.9 additive (F-118 / drive) — back-reference to the Goal that this feature was scaffolded under. Optional; legacy features without a goal stay valid. The forward index is goals[].feature_ids; this is the inverse for fast feature → goal lookup."
           }
         },
         "additionalProperties": true
@@ -212,6 +217,55 @@
           "additionalProperties": true
         }
       ]
+    },
+
+    "goals": {
+      "type": "array",
+      "description": "v2.3.9 additive (F-118 / drive) — autonomous-loop Goal containers. Each Goal groups N features under one user-supplied natural-language objective. Created by /harness-boot:drive (Stage 2 / F-119) but the schema lands in Stage 1 so dogfood manual goal-grouping is possible. Empty array on legacy specs.",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "feature_ids"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^G-\\d+$",
+            "description": "Goal identifier — G-NNN, monotonically allocated. Collision detection is GoalStore's responsibility."
+          },
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "description": "URL-safe lowercase slug derived from `title`. Used for _workspace/drive/goals/<slug>/ paths. Korean and other non-ASCII titles are romanized or hash-fallback."
+          },
+          "title": {
+            "type": "string",
+            "description": "User-supplied natural-language objective. Verbatim — Korean is fine."
+          },
+          "description": {
+            "type": "string",
+            "description": "1-paragraph summary refined by researcher / product-planner. Optional on stage 1 (manual entry); auto-filled by Phase A in stage 2."
+          },
+          "feature_ids": {
+            "type": "array",
+            "items": {"type": "string", "pattern": "^F-\\d+$"},
+            "description": "Forward index — features that compose this goal. Each referenced feature should also carry `goal_id: G-NNN` (mirror) but missing back-references are warnings, not errors."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO8601 UTC timestamp."
+          },
+          "archived_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "ISO8601 UTC timestamp when the Goal was archived. Null on active goals."
+          },
+          "archive_reason": {
+            "type": ["string", "null"],
+            "description": "1-2 line archive reason. Null on active goals."
+          }
+        },
+        "additionalProperties": true
+      }
     },
 
     "constraints": {

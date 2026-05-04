@@ -35,6 +35,17 @@
 export type GateResult = 'pass' | 'fail' | 'skipped';
 /** Permitted feature status values. */
 export type FeatureStatus = 'planned' | 'in_progress' | 'blocked' | 'done' | 'archived';
+/**
+ * Permitted goal runtime status values (v0.14.0 — F-118).
+ *
+ * Goal lifecycle: planning → scaffolded → executing → done. `paused`
+ * is a user-initiated pause; `blocked` mirrors the feature-level block
+ * up to the goal so the dashboard can highlight stuck goals at a
+ * glance.
+ */
+export type GoalStatus = 'planning' | 'scaffolded' | 'executing' | 'done' | 'paused' | 'blocked';
+/** All valid goal status values (runtime check + iteration). */
+export declare const GOAL_STATUSES: readonly GoalStatus[];
 /** All valid feature statuses (runtime check + iteration). */
 export declare const FEATURE_STATUSES: readonly FeatureStatus[];
 /** All valid gate result values (runtime check). */
@@ -88,12 +99,45 @@ export interface Feature {
     skipped_agents?: SkippedAgentEntry[];
     [key: string]: unknown;
 }
+/**
+ * Per-feature runtime progress within a goal (v0.14.0 — F-118).
+ *
+ * Mirrors `feature.status` but cached at the goal level so the
+ * progress renderer doesn't need to walk `features[]` on every call.
+ * The authoritative source is still `features[]`; this is a snapshot.
+ */
+export type FeatureProgressMap = Record<string, FeatureStatus>;
+/**
+ * Goal runtime state inside `state.yaml.goals[]` (v0.14.0 — F-118).
+ *
+ * The forward index lives in `spec.yaml.goals[]` (a Goal definition);
+ * this interface is the runtime mirror that tracks execution status,
+ * iteration count, and the last halt reason. A Goal cannot be
+ * activated unless its definition exists in `spec.yaml.goals[]`.
+ */
+export interface GoalRuntimeState {
+    id: string;
+    status: GoalStatus;
+    started_at: string | null;
+    completed_at: string | null;
+    iteration: number;
+    elapsed_sec: number;
+    feature_progress: FeatureProgressMap;
+    last_halt_reason: string | null;
+    [key: string]: unknown;
+}
 /** The session block at the bottom of `state.yaml`. */
 export interface Session {
     started_at: string | null;
     last_command: string;
     last_gate_passed: string | null;
     active_feature_id: string | null;
+    /**
+     * v0.14.0 — F-118. Pointer to the currently active drive goal.
+     * Single value (sequential — BR-015 (g)). `null` when no goal is
+     * being driven.
+     */
+    active_goal_id?: string | null;
     [key: string]: unknown;
 }
 /** Top-level shape of `state.yaml`. */
@@ -102,6 +146,12 @@ export interface StateData {
     schema_version: string;
     features: Feature[];
     session: Session;
+    /**
+     * v0.14.0 — F-118. Drive autonomous-loop runtime mirror.
+     * Optional for backward compatibility; legacy state.yaml files
+     * load with `goals` undefined and the loader treats it as `[]`.
+     */
+    goals?: GoalRuntimeState[];
     [key: string]: unknown;
 }
 /** Optional positional input shared by record-style mutators. */
@@ -222,6 +272,50 @@ export declare class State {
      * `session.started_at` on the very first call.
      */
     setLastCommand(command: string): void;
+    /**
+     * Returns the in-memory goals array, normalizing missing or
+     * malformed entries on a legacy state.yaml. Mutations on the
+     * returned array are visible on the next {@link State.save}.
+     */
+    goals(): GoalRuntimeState[];
+    /** Returns the goal record for `gid`, or `null`. */
+    getGoal(gid: string): GoalRuntimeState | null;
+    /**
+     * Returns the goal record for `gid`, inserting a `planning`
+     * placeholder when the id is new.
+     *
+     * Identity is preserved across calls — mutations on the returned
+     * object are visible on the next {@link State.save}.
+     */
+    ensureGoal(gid: string): GoalRuntimeState;
+    /**
+     * Sets `goal.status` for `gid`, updating `started_at` and
+     * `completed_at` lifecycle timestamps when the transition warrants.
+     *
+     * Throws on unknown status. Resetting to an earlier phase is
+     * allowed but does not clear timestamps.
+     */
+    setGoalStatus(gid: string, status: GoalStatus): void;
+    /**
+     * Sets `session.active_goal_id`.
+     *
+     * BR-015 (g) — sequential constraint. The previous goal stays
+     * recorded under `goals[]` but is no longer the driver target.
+     */
+    setActiveGoal(gid: string | null): void;
+    /** Returns `session.active_goal_id` (defaults to `null`). */
+    activeGoalId(): string | null;
+    /**
+     * Updates the cached per-feature status for a goal.
+     *
+     * Used by drive loop iterations to keep the progress renderer
+     * snapshot current without re-walking `state.features[]` on every
+     * render. Out-of-band updates (work.py setStatus on a feature
+     * inside a goal) are reconciled on the next drive iteration.
+     */
+    setGoalFeatureProgress(gid: string, fid: string, status: FeatureStatus): void;
+    /** Removes a goal from `goals[]`. Also clears active_goal_id when matching. */
+    removeGoal(gid: string): boolean;
     /** Returns a `{status: count}` map for each FEATURE_STATUSES entry. */
     featureCounts(): Record<FeatureStatus, number>;
     /**

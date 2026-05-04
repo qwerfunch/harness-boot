@@ -641,6 +641,88 @@ function buildProgram(): Command {
     });
 
   // -----------------------------------------------------------------
+  // drive — autonomous loop (v0.14.0 / F-118 — Stage 1 ships --status only)
+  // -----------------------------------------------------------------
+  program
+    .command('drive')
+    .description('autonomous loop driver — Stage 1 (F-118) ships read-only --status')
+    .argument('[target]', 'goal id (G-NNN), feature id (F-NNN), or free-text goal — Stage 2 (F-119)')
+    .option('--harness-dir <dir>', 'path to .harness directory', './.harness')
+    .option('--status', 'render the progress dashboard for one (or all) goal(s) — read-only')
+    .option('--all', 'with --status: render every goal in the spec')
+    .option('--json', 'with --status: emit JSON instead of formatted text')
+    .option('--watch', 'with --status: re-render every <interval> seconds')
+    .option('--interval <sec>', 'with --status --watch: refresh interval (default 2s)', '2')
+    .option('--resume', 'continue a paused drive run — Stage 2 (F-119)')
+    .option('--plan-only', 'run only Phase A (researcher → planner) — Stage 2 (F-119)')
+    .option('--auto-approve-brief', 'skip the researcher-approval halt — Stage 2 (F-119)')
+    .option('--auto-approve-all', 'skip every plan-phase halt — Stage 2 (F-119)')
+    .option('--max-iterations <n>', 'iteration cap — Stage 2 (F-119)')
+    .option('--max-hours <n>', 'wall-clock cap — Stage 2 (F-119)')
+    .option('--dry-run', 'print actions without executing — Stage 2 (F-119)')
+    .option('--abort <gid>', 'abort a running goal — Stage 2 (F-119)')
+    .action((target: string | undefined, options: Record<string, unknown>) => {
+      const harnessDir = resolveHarnessDir(options['harnessDir'] as string | undefined);
+      if (!isDirectory(harnessDir)) {
+        printError(`error: ${harnessDir} not found`);
+        process.exit(2);
+      }
+
+      // Stage-2 flags — bail out with a helpful message rather than silently
+      // running --status. The user typed something that won't ship until F-119.
+      const stage2Flag =
+        options['resume'] ||
+        options['planOnly'] ||
+        options['autoApproveBrief'] ||
+        options['autoApproveAll'] ||
+        options['maxIterations'] ||
+        options['maxHours'] ||
+        options['dryRun'] ||
+        options['abort'];
+      if (stage2Flag) {
+        printError(
+          'drive: that flag is part of Stage 2 (F-119) — only --status, --all, --json, --watch land in v0.14.0 Stage 1.',
+        );
+        printError('       The Goal domain primitives are in place; the autonomous loop ships in the next release.');
+        process.exit(3);
+      }
+
+      // Free-text goal text → Stage 2.
+      if (typeof target === 'string' && !/^[FG]-\d+$/i.test(target)) {
+        printError(
+          'drive: free-text goal scaffolding is Stage 2 (F-119). For now, register the Goal manually in spec.yaml goals[] and use `harness drive --status`.',
+        );
+        process.exit(3);
+      }
+
+      // Either explicit goal id, no arg, or --status: every form maps to runDriveStatus.
+      // (Stage 1 contract: `harness drive` and `harness drive --status` are equivalent.)
+      const explicitGoal = typeof target === 'string' && /^G-\d+$/i.test(target) ? target : null;
+      // Lazy-import keeps the existing CLI hot path free of the drive
+      // module surface for users that never touch goals.
+      void import('../drive/statusCommand.js')
+        .then(({runDriveStatus}) =>
+          runDriveStatus({
+            harnessDir,
+            goalId: explicitGoal,
+            all: Boolean(options['all']),
+            json: Boolean(options['json']),
+            watch: Boolean(options['watch']),
+            intervalSec: Number(options['interval'] ?? 2),
+          }),
+        )
+        .then((code) => {
+          if (typeof code === 'number' && code !== 0) {
+            process.exit(code);
+          }
+        })
+        .catch((err: Error) => {
+          printError(`drive: ${err.message}`);
+          process.exit(2);
+        });
+    });
+
+  // -----------------------------------------------------------------
   // validate
   // -----------------------------------------------------------------
   program

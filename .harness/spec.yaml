@@ -30,7 +30,7 @@
 #   · metadata.changelog[] 신설 — P-24 MAY 준수, 부록 C 를 구조화
 #   · adapter_version_used : none → 0.2
 # ==========================================================================
-version: "2.3.8"
+version: "2.3.9"
 
 project:
   name: "harness-boot"
@@ -281,6 +281,9 @@ domain:
     - id: "BR-014"
       statement: "The two anti-rationalization lines are always emitted right after the preamble (introduced in v2.3.1)."
       rationale: "Forces step compliance so the LLM can't plausibly rationalize its own skips."
+    - id: "BR-015"
+      statement: "Autonomous loops (drive and any future autonomy mechanism) escalate rather than bypass Iron Law (BR-004) and anti-rationalization (BR-014). They cannot self-issue --hotfix-reason; cannot call git commit/push/tag, gh release, or marketplace operations; must escalate on severity=error drift; must escalate after the configured retry threshold; must record every halt reason to _workspace/drive/run.yaml; and obey the BR-014 preamble themselves. A single active goal and a single active feature are allowed at any time — sequential only."
+      rationale: "Iron Law's value comes from its non-negotiability. An autonomous loop that quietly bypasses it inverts the harness from a guard into an attack surface. Discipline is preserved by making the loop yield, not by relaxing the law."
   vocabulary:
     - term: "Walking Skeleton"
       meaning: "The first feature (F-001) must be a minimal end-to-end implementation that crosses the entire stack and passes through gate_5."
@@ -4381,6 +4384,93 @@ features:
       - "AC-5: F-117 mirrored on both spec.yaml copies."
       - "AC-6: F-117 completed via harness CLI cycle on chore/F-117-root-python-cleanup branch."
       - "AC-7: Full regression — typecheck · lint · parity 497/497 · self_check 5/5 — all pass after cleanup."
+
+  - id: "F-118"
+    name: "Drive — Goal domain primitives (Stage 1 of v0.14.0)"
+    type: "feature"
+    goal_id: "G-001"
+    description: |
+      Thirty-fifth cycle. Stage 1 of the two-stage v0.14.0 "drive"
+      autonomous loop. This stage introduces the new domain object —
+      a Goal — that groups N features under one user-supplied
+      natural-language objective, plus the read-only surfaces
+      (--status, JSON export) that let users observe goal progress
+      from any terminal. No autonomous loop logic ships in this
+      stage; that is F-119.
+
+      Why split: drive's full surface is ~2,800 lines of TS plus a
+      9-condition halt protocol plus E2E ceremonies. Landing the
+      domain primitives first means stage 2 can focus purely on
+      the loop body, and users can already dogfood Goal-grouped
+      manual work via /harness-boot:work plus drive --status before
+      autonomy is wired.
+
+      Strict additive contract — existing init/work commands,
+      existing state.yaml shapes (without `goals` or
+      `session.active_goal_id`), and existing spec.yaml fixtures
+      (without `goals[]` or `features[].goal_id`) must all keep
+      working unchanged. Backward-compatibility is verified by a
+      regression test that loads the canonical spec from before
+      v0.14.0 and confirms it still validates and parses.
+
+      Brand vocabulary additions: "Goal" (domain object),
+      "/harness-boot:drive" (Stage 2 will own the verb forms).
+
+    acceptance_criteria:
+      - "AC-1: Spec schema bumped 2.3.8 → 2.3.9 (additive). `goals[]` is a new top-level array; each entry has id (G-NNN), slug, title, description, feature_ids[], created_at, optional archived_at and archive_reason. `features[].goal_id` is a new optional reference. Both fields validate as no-ops on legacy specs."
+      - "AC-2: `state.yaml` accepts `session.active_goal_id` (optional, single value — sequential constraint per BR-015) and top-level `goals[]` mirroring spec goals[] plus runtime fields (status ∈ {planning, scaffolded, executing, done, paused, blocked}, started_at, completed_at, iteration, elapsed_sec, feature_progress, last_halt_reason). Default state.yaml without goals[] keeps loading."
+      - "AC-3: `src/drive/goalStore.ts` implements GoalStore with CRUD, next-G-NNN allocation, slug normalization (Korean and ASCII titles), feature_ids linkage, and atomic write to both spec.yaml mirrors via existing dual-mirror helpers (no orphan-write hazard)."
+      - "AC-4: `src/drive/progressRenderer.ts` renders the two-layer progress block (goal-level `📊 Goal G-NNN ... (XX%)` + feature-level icons ✅/🔵/⚪/⚠) plus a `▶ now: …` line and `next halt expected: …` line. Stable byte-for-byte across runs given identical state."
+      - "AC-5: `harness drive --status [G-NNN] [--json] [--watch] [--all]` is registered in src/cli/harness.ts as a read-only subcommand. `--status` only — `--resume` and free-text goal forms are stage 2 (return a clear `not yet wired` message). state.yaml + events.log + spec.yaml mtimes are invariant under `--status` (CQS, BR-012)."
+      - "AC-6: docs/schemas/spec.schema.json updated to v2.3.9 (additive). Existing fixtures and the harness-boot-self canonical sample still validate."
+      - "AC-7: Unit tests ≥ 25 covering: spec schema legacy compat · GoalStore round-trip · G-NNN allocation collision · slug normalization (한국어 + ASCII + collisions) · state.yaml legacy load · progress renderer snapshots (planning / scaffolded / executing / done / blocked) · CQS mtime invariant on --status · --json schema · --all aggregation. Existing 1119+ tests stay green."
+      - "AC-8: F-118 mirrored on both spec.yaml copies (lockstep, self_check.sh diff -q)."
+      - "AC-9: F-118 completed via the harness CLI cycle on feat/v0.14.0-drive-stage1 — gate_0/1/2/3/5 pass plus declared evidence ≥ 1 (prototype mode)."
+
+  - id: "F-119"
+    name: "Drive — autonomous loop body (Stage 2 of v0.14.0)"
+    type: "feature"
+    goal_id: "G-001"
+    status: "planned"
+    description: |
+      Thirty-sixth cycle. Stage 2 builds on F-118 's Goal primitives
+      and ships the actual autonomous loop — the Codex `/goal`
+      equivalent, redesigned as a Bounded Goal Driver under BR-015.
+
+      Phase A (Plan): natural-language goal → researcher → halt #1
+      → product-planner → halt #1 → feature-author scaffolds N
+      features under a new G-NNN. Phase B (Execute): for each
+      feature in feature_progress, intentPlanner.suggest() drives
+      the run-gate / add-evidence / complete subset deterministically;
+      llm_required actions (analyze_fail · resolve_block) halt to
+      user by default. Phase C (Goal Retro): Goal-level retro after
+      the last feature transitions to done.
+
+      9 halt conditions (#1 plan-phase approval · #2 commit-boundary
+      · #3 retry threshold · #4 severity=error drift · #5 feature
+      blocked · #6 wall-clock · #7 iteration cap · #8 network
+      failure during researcher · #9 STOP file).
+
+      Strict BR-015 enforcement — drive cannot self-issue
+      --hotfix-reason, cannot call git commit/push/tag/gh release,
+      cannot run /plugin marketplace.
+
+      Single active goal + single active feature — sequential only.
+
+    acceptance_criteria:
+      - "AC-1: `commands/drive.md` slash command authored with the standard 3-line preamble (BR-014). Subcommands: free-text goal · F-N · G-N · --resume · --status (stage 1) · --abort · --auto-approve-{brief,all} · --max-iterations · --max-hours · --dry-run."
+      - "AC-2: src/drive/{executor,loop,planPhase,checkpoint,goalRetro}.ts implement the Phase A → Phase B → Phase C flow. `_workspace/drive/run.yaml` is the resume checkpoint."
+      - "AC-3: All 9 halt conditions are exercised by E2E tests and produce a clear yield message + run.yaml entry + progress.log line."
+      - "AC-4: BR-015 self-hotfix-issue attempt is rejected with a specific error (verified by an injected test that simulates the loop trying to call --hotfix-reason). Same for git commit/push/tag and gh release attempts."
+      - "AC-5: Phase A uses the existing researcher / product-planner / feature-author trio without modification (additive only — drive composes them, doesn't fork them)."
+      - "AC-6: Goal retro auto-fires once on the last feature done event; idempotent — re-running drive does not duplicate the retro file or feature_retro_written events."
+      - "AC-7: F-119 mirrored on both spec.yaml copies."
+      - "AC-8: F-119 completed via the harness CLI cycle on feat/v0.14.0-drive-stage2 (own branch, separate PR, both PRs roll up to v0.14.0 release)."
+
+# v0.14.0 — Drive autonomous loop containers (filled in Stage 2 / F-119).
+# Each Goal groups N features under one user-supplied natural-language
+# objective. The runtime state mirror lives in state.yaml goals[].
+goals: []
 
 constraints:
   tech_stack:
