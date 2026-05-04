@@ -2643,7 +2643,7 @@ features:
   started_at: 2026-05-04T17:28:03Z
   completed_at: 2026-05-04T17:33:30Z
 - id: F-125
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -2685,9 +2685,9 @@ features:
     kind: manual_check
     summary: "F-125 legacy/scripts/ git eviction verified: git ls-files legacy/ returns 0 (was 72); find legacy -type f returns 146 (working tree fully preserved on maintainer machine). CLAUDE.md L31/64-65/119 reference sites updated; layout block trimmed by 2 lines (legacy/scripts/ entry removed); §7 working rule changed from 'keep tracked, no new' to 'fully untracked, do not re-add'. self_check 5/5 PASS, harness check clean, npm test 622/622 PASS, harness validate clean. Scope deliberately narrow: tests/unit + tests/integration Python suites (74 files, ~15k LOC) are quarantined but distinct from legacy/scripts and remain a separate user decision noted in the PR body."
   started_at: 2026-05-04T17:45:11Z
-  completed_at: null
+  completed_at: 2026-05-04T17:47:27Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-125
   last_gate_passed: gate_5
-  active_feature_id: F-125
+  active_feature_id: null
