@@ -4503,6 +4503,69 @@ features:
       - "AC-5: F-120 mirrored on both spec.yaml copies."
       - "AC-6: F-120 completed via the harness CLI cycle on `fix/v0.14.1-gate-option-parsing`. Patch release v0.14.1."
 
+  - id: "F-121"
+    name: "logcat-on ISSUES-LOG batch return (L-001/L-002/L-003)"
+    type: "fix"
+    description: |
+      Thirty-eighth cycle. External dogfood project (Rust workspace,
+      logcat-on) accumulated three entries on its
+      `.harness/_workspace/issues-log.md`. Returned as one patch in
+      the same shape as the cosmic-suika v0.10.7 batch return
+      (I-003/I-004/I-006/I-007).
+
+      L-001 (annoying, /harness-boot:init): the starter
+      `docs/templates/starter/spec.yaml.template` declared
+      `name / description / vision / stakeholders` under `project:`
+      but not `summary`, while `docs/schemas/spec.schema.json`
+      requires `["name", "summary"]`. The first
+      `harness sync --soft` after init therefore ran through
+      `tryInitialSync()` -> `run()` -> `SpecValidationError` ->
+      caught and rendered as "sync (initial): fail —
+      SpecValidationError: project: must have required property
+      'summary'". Exit code 0 (fail-open intact) but the message
+      scared users on a brand-new skeleton. Fix: add the one missing
+      line to the template.
+
+      L-003 (blocker, /harness-boot:drive): `src/gate/runner.ts`
+      `detectGate0Command()` only probed pyproject / package.json /
+      tests/ / Makefile, while `detectGate1Command` /
+      `detectGate2Command` / `detectGate3Command` already had
+      symmetric `Cargo.toml` / `go.mod` branches. So every Rust (or
+      Go) project hit "no test command detected" and fell into L-002
+      below. Fix: append the same Cargo.toml -> `cargo test
+      --workspace` and go.mod -> `go test ./...` probes to gate_0,
+      mirroring the existing pattern in gate_1/2/3.
+
+      L-002 (blocker, /harness-boot:drive): `bumpRetryCounter()` in
+      `src/drive/loop.ts` only incremented the per-gate fail counter
+      when `result === 'fail'`. `intentPlanner.suggest()` is pure (no
+      memory of prior recommendations), so on a stuck gate
+      (`skipped` from L-003 above) drive recommended the same
+      `run_gate` action every iteration, never tripped halt #3
+      (retry_threshold), and burned all 50 iterations until halt #7
+      (iteration_cap) fired. Users couldn't tell from the halt
+      message that the loop had been stuck on the same point. Fix:
+      track the last 3 (gate, result) tuples per (feature, gate) on
+      the checkpoint; when the same non-pass result repeats N=2
+      times in a row, fire a new halt #10 `gate_no_progress` with
+      an actionable message ("set harness.yaml.gate_commands.gate_X
+      or fix project detection").
+
+      Patch-only — no schema / behaviour / BR changes besides the
+      additive halt enum + checkpoint field (both backward-compatible
+      via defensive defaults).
+
+    acceptance_criteria:
+      - "AC-1: `docs/templates/starter/spec.yaml.template` adds `summary: \"\"` to the `project:` block; both spec.yaml mirrors already carry `summary` (or grow it in this commit)."
+      - "AC-2: `tests/parity/validate.test.ts` (or a new starter-template test) loads the template and AJV-validates against `docs/schemas/spec.schema.json` -> pass."
+      - "AC-3: `src/gate/runner.ts` `detectGate0Command()` returns `['cargo','test','--workspace']` when only `Cargo.toml` is present, and `['go','test','./...']` when only `go.mod` is present. Pyproject / npm precedence preserved (regression case)."
+      - "AC-4: `src/drive/types.ts` `HaltReason` adds `'gate_no_progress'`; `src/drive/halt.ts` `HALT_REASON_INDEX` adds `{n: 10, tag: 'gate no progress'}` and `nextStepFor()` adds the matching hint."
+      - "AC-5: `src/drive/checkpoint.ts` `ExecutePhaseCheckpoint` adds `recent_gate_results: Record<string, Record<string, Array<'pass'|'fail'|'skipped'>>>`; `defaultCheckpoint()` initializes it to `{}`. `loadCheckpoint()` defensively fills it when missing (backward compat)."
+      - "AC-6: `src/drive/loop.ts` after gate execution pushes the result onto the per-(feature, gate) array (capped at 3 entries) and, when the last 2 entries are identical AND non-pass, emits halt #10 `gate_no_progress` with an actionable message. Retry_threshold (#3) keeps priority on consecutive `fail` (test guards the order)."
+      - "AC-7: `tests/parity/driveLoopAndPlan.test.ts` or `driveHaltAndRetro.test.ts` covers: (a) two iterations with `gate_0=skipped` -> halt `gate_no_progress`, iteration count low; (b) `pass` between two `skipped` resets; (c) two `fail` still hit `retry_threshold` first."
+      - "AC-8: F-121 mirrored on both spec.yaml copies; logcat-on ISSUES-LOG entries grow a `Resolution:` line citing F-121 + the merge commit, per the F-027 return convention."
+      - "AC-9: F-121 completed via the harness CLI cycle on `feat/v0.14.2-logcat-on-issues-log-batch`. Patch release v0.14.2."
+
 # v0.14.0 — Drive autonomous loop containers (filled in Stage 2 / F-119).
 # Each Goal groups N features under one user-supplied natural-language
 # objective. The runtime state mirror lives in state.yaml goals[].

@@ -2472,8 +2472,52 @@ features:
     summary: "F-120 fix lands in v0.14.1: commander option spec changed from <name> <result> to <values...> variadic. 2 new regression tests in cli.test.ts pin the contract (happy path + cardinality guard). 613/613 tests green; self_check 5/5; bundle 918 KB unchanged. issues-log I-009 marked resolved per F-027 return cycle."
   started_at: 2026-05-04T03:38:04Z
   completed_at: 2026-05-04T03:40:10Z
+- id: F-121
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-04T05:46:34Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-04T05:46:39Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-04T05:46:40Z
+      note: "cmd: npm run lint"
+    gate_3:
+      last_result: pass
+      ts: 2026-05-04T05:46:46Z
+      note: "cmd: npx nyc npm test"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-04T05:46:47Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-04T05:46:34Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.3s) · cmd: npm test"
+  - ts: 2026-05-04T05:46:39Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.8s) · cmd: npm run typecheck"
+  - ts: 2026-05-04T05:46:40Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.4s) · cmd: npm run lint"
+  - ts: 2026-05-04T05:46:46Z
+    kind: gate_run
+    summary: "Gate gate_3 pass (2.4s) · cmd: npx nyc npm test"
+  - ts: 2026-05-04T05:46:47Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.5s) · cmd: bash self_check.sh"
+  - ts: 2026-05-04T05:48:49Z
+    kind: test
+    summary: "L-001 template summary added · L-003 gate_0 cargo+go probes · L-002 halt #10 gate_no_progress wired — 8 new tests, 621/621 green, self_check OK"
+  started_at: 2026-05-04T05:41:51Z
+  completed_at: null
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-120
+  last_command: /harness:work F-121
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-121

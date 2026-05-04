@@ -74,6 +74,23 @@ describe('gate runner — gate_0 detection', () => {
       expect(cmd[1]).toBe('test');
     }
   });
+
+  // F-121 / L-003 — Rust + Go probes mirror gate_1/2/3 ordering.
+  it('Cargo.toml triggers `cargo test --workspace` when no other signal exists', () => {
+    writeFileSync(join(fx.root, 'Cargo.toml'), '[package]\nname = "x"\nversion = "0.0.1"\n', 'utf-8');
+    expect(detectGate0Command(fx.root)).toEqual(['cargo', 'test', '--workspace']);
+  });
+
+  it('go.mod triggers `go test ./...` when no other signal exists', () => {
+    writeFileSync(join(fx.root, 'go.mod'), 'module example.com/x\n\ngo 1.22\n', 'utf-8');
+    expect(detectGate0Command(fx.root)).toEqual(['go', 'test', './...']);
+  });
+
+  it('npm test still wins over Cargo.toml (regression — precedence preserved)', () => {
+    writePackageJson(fx.root, {test: 'vitest run'});
+    writeFileSync(join(fx.root, 'Cargo.toml'), '[package]\nname = "x"\nversion = "0"\n', 'utf-8');
+    expect(detectGate0Command(fx.root)).toEqual(['npm', 'test']);
+  });
 });
 
 describe('gate runner — gate_1 / gate_2 detection', () => {

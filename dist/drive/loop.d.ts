@@ -43,6 +43,19 @@ export interface RunDriveLoopOptions {
 /** Default consecutive-fail threshold for halt #3 (gate retry). */
 export declare const DEFAULT_MAX_RETRIES = 3;
 /**
+ * F-121 / L-002 — sliding-window cap for the per-(feature, gate) recent
+ * results array on the checkpoint. Three entries is enough to spot
+ * stuck loops without bloating the YAML.
+ */
+export declare const RECENT_GATE_RESULTS_WINDOW = 3;
+/**
+ * F-121 / L-002 — number of consecutive identical non-pass gate results
+ * that fires halt #10 (`gate_no_progress`). Two is the smallest value
+ * that still distinguishes "first miss" from "stuck on the same point";
+ * tests assert the value to keep the contract explicit.
+ */
+export declare const GATE_STAGNATION_THRESHOLD = 2;
+/**
  * Executes one drive iteration.
  *
  * Halt order (each is checked before the planner is invoked):

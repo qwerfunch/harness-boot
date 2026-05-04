@@ -146,3 +146,25 @@ describe('spec validator — Python parity sanity', () => {
     expect((parsed['features'] as unknown[]).length).toBeGreaterThan(10);
   });
 });
+
+describe('starter spec template (F-121 / L-001)', () => {
+  // The template at docs/templates/starter/spec.yaml.template is the
+  // file `/harness-boot:init` writes into a fresh project. It must
+  // satisfy spec.schema.json so the very first `harness sync --soft`
+  // does not surface a SpecValidationError to the user.
+  const TEMPLATE_PATH = join(REPO_ROOT, 'docs', 'templates', 'starter', 'spec.yaml.template');
+
+  it('passes AJV validation against spec.schema.json', () => {
+    const parsed = loadSpec(TEMPLATE_PATH);
+    expect(() => validate(parsed, SCHEMA_PATH)).not.toThrow();
+  });
+
+  it('declares all schema-required project.* fields (regression guard)', () => {
+    const parsed = loadSpec(TEMPLATE_PATH);
+    const project = parsed['project'] as Record<string, unknown> | undefined;
+    expect(project).toBeDefined();
+    // Schema requires ["name", "summary"] — see docs/schemas/spec.schema.json.
+    expect(project).toHaveProperty('name');
+    expect(project).toHaveProperty('summary');
+  });
+});

@@ -16,6 +16,7 @@ version: "2.3"
 
 project:
   name: ""                    # 제품 이름 (필수)
+  summary: ""                 # 한 문장 요약 (필수). 빈 따옴표면 sync 가 schema 에러로 거부
   description: ""             # 🗒 한 단락 정도. 길면 $include 권장
   vision: ""                  # 🗒 저자 강조 3축 중 1~2개 문장화
   stakeholders: []            # end-user 제외

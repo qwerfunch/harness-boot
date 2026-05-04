@@ -88,6 +88,7 @@ export function defaultCheckpoint(goalId, now = new Date()) {
             elapsed_sec: 0,
             active_feature: null,
             retry_counts: {},
+            recent_gate_results: {},
             max_iterations: DEFAULT_MAX_ITERATIONS,
             max_seconds: DEFAULT_MAX_SECONDS,
         },
