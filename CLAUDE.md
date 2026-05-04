@@ -27,8 +27,8 @@ Cumulative state:
 - **Ceremony automation 4/4** — kickoff · retro · design-review · inbox; all auto-fire from `src/work.ts` lifecycle hooks (silent on failure).
 - **Phase 2 self-dogfood active** — `.harness/` is the live workspace. Every new feature in this repo runs through `node bin/harness work F-N --harness-dir .harness`. See §7 for the contract.
 - **Init/work observability** — the `## Issue logging` section in `commands/{init,work}.md` plus `hooks/prompt-log.sh` (UserPromptSubmit). Users accumulate `.harness/_workspace/{issues-log.md, prompts/YYYY-MM.jsonl}` → maintainer return cycle + prompt-shape corpus.
-- **Scaling preparedness** — five additive fields on `features[]` (area · archived_at · archive_reason · digest · include_path) plus `tests/scale/test_scale.py` measuring 100 / 1000 / 3000 / 10000 features. Sharding utilities are scoped but not required until ~300 features.
-- **TS migration cutover** — full Python → TypeScript operational rewrite. The plugin ships as a single `dist/cli/harness.bundle.mjs` (esbuild) loaded by `bin/harness`; install sites no longer need `node_modules`. Python files in `legacy/` are read-only history.
+- **Scaling preparedness** — five additive fields on `features[]` (area · archived_at · archive_reason · digest · include_path). Sharding utilities are scoped but not required until ~300 features. The original Python benchmark (`tests/scale/test_scale.py`, 100 / 1k / 3k / 10k features) was retired in F-126 alongside the rest of the quarantined Python suites; a TS-native re-measurement is queued under the F-030 sharding-port follow-up.
+- **TS migration cutover** — full Python → TypeScript operational rewrite. The plugin ships as a single `dist/cli/harness.bundle.mjs` (esbuild) loaded by `bin/harness`; install sites no longer need `node_modules`. The pre-cutover Python source is no longer tracked in git (the maintainer keeps a local-only archive under `legacy/` for personal reference).
 - **Drive autonomous loop** — natural-language goal → researcher → product-planner → feature-author → execute, with bounded halts (10-enum: max iterations, wall clock, blocked feature, retry threshold, gate no progress, …). Halt classes live in `src/drive/halt.ts`.
 - **feature-author skill** — auto-trigger spec entry authoring on free-text feature ideas; auto-detects shape (UI / sensitive / performance / pure-domain) and emits paste-ready `features[]` blocks for both spec.yaml mirrors.
 
@@ -61,10 +61,7 @@ src/                                # TypeScript implementation (operational sin
 dist/cli/harness.bundle.mjs         # esbuild single-file bundle (committed for plugin install — no node_modules at install site)
 bin/harness                         # Node shim that loads the bundle (auto-PATH by Claude Code)
 self_check.sh                       # repo-root 5-step self-dogfood verification
-legacy/scripts/                     # Python archive (read-only since v0.13.0)
-                                    # — kept until external dogfood signals zero regressions
 tests/parity/                       # TS parity test suite (operational)
-tests/unit/ · tests/integration/    # Python tests (quarantined; reference-only)
 tests/regression/conversion-goldens/   # golden samples + MANIFEST
 docs/
 ├── schemas/spec.schema.json        # spec v2.3.8 JSONSchema (Walking Skeleton enforced + project.mode)
@@ -108,7 +105,6 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (this file)
 | **Self-referential canonical spec** | `docs/samples/harness-boot-self/spec.yaml` — the SSoT for `.harness/spec.yaml` |
 | Skill v0.5 implementation guide | `skills/spec-conversion/SKILL.md` |
 | TS parity tests | `tests/parity/*.test.ts` (~620 vitest tests, operational since v0.13.0) |
-| Legacy Python tests | `tests/unit/test_*.py` (1119 tests, quarantined post-v0.13.0 cutover; reference-only) |
 | Project mode semantics | `src/core/projectMode.ts` (prototype-vs-product docstring) |
 | Self-hosting appendix | `docs/archive/local-install-v0.1.0.md` Appendix A (F-042 archive) |
 | Local memory (user style, progress notes) | `~/.claude/projects/.../memory/MEMORY.md` (gitignored) |
@@ -116,7 +112,7 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (this file)
 ## 7. Working rules
 
 - **`design/` is your personal workspace.** Never `git add` it. If something there deserves to be public, promote it into `docs/`.
-- **`legacy/` is the same.** Keep the existing tracked files; don't add new ones.
+- **`legacy/` is fully untracked** (F-125). Pre-cutover Python source remains as a local-only archive on the maintainer's machine for reference; do not re-add it to git.
 - **The plugin does not install onto itself.** Never run `/harness-boot:init` in this repo — it would overwrite the plugin source.
 
 - **Self-dogfood policy — Phase 2 active** (since 2026-04-27):

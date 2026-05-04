@@ -4720,6 +4720,125 @@ features:
       - "AC-13: F-124 mirrored on both spec.yaml copies; `diff -q` clean."
       - "AC-14: F-124 completed via the harness CLI cycle on `feat/v0.14.3-claude-md-refresh` (bundled with F-123 in the same PR — both touch the same file with the same intent of staleness elimination). Patch release v0.14.3."
 
+  - id: "F-125"
+    name: "Legacy Python source eviction from git tracking (local-only retention)"
+    type: "chore"
+    description: |
+      Forty-second cycle. After the v0.13.0 Python -> TypeScript
+      cutover (F-107), the Python operational surface moved to
+      `legacy/scripts/` with `legacy/` declared gitignored and the
+      directory documented as "kept until external dogfood signals
+      zero regressions" (CLAUDE.md L119). Two release lines later
+      (v0.13.x, v0.14.x) the TS port has shipped clean, no
+      regression has surfaced through cosmic-suika or logcat-on
+      dogfood, and the Python suite has been quarantined since
+      v0.13.0 cutover.
+
+      Despite the gitignore rule, 72 files under `legacy/scripts/`
+      remain `git ls-files`-tracked because they were committed
+      before the gitignore entry landed. The repo therefore carries
+      ~1.5 MB of Python history (source + `__pycache__`) that has
+      no operational role and produces noise in PR diffs, blame
+      output, and editor file pickers.
+
+      This patch evicts the 72 tracked files from the index via
+      `git rm --cached -r legacy/scripts/` while leaving the
+      working-tree copy intact (the maintainer's local archive
+      reference remains available; future `git pull` will not
+      restore the directory). Three CLAUDE.md call-sites that
+      describe `legacy/` as part-tracked, part-untracked are
+      updated to reflect the new state — `legacy/` is now
+      uniformly untracked.
+
+      No code or schema changes; the runtime is already TS-only
+      and unaware of `legacy/`. Self-check, spec validation, and
+      drift detectors do not reference legacy paths.
+
+      Patch-only — no behaviour, no schema, no BR changes.
+
+    test_strategy: "smoke"
+    acceptance_criteria:
+      - "AC-1: `git ls-files legacy/` returns zero entries after the patch (was 72)."
+      - "AC-2: `legacy/scripts/` working-tree copy is preserved on the maintainer's machine — file count unchanged before and after the patch (verified by `find legacy -type f | wc -l`)."
+      - "AC-3: `.gitignore` already contains `legacy/` (no edit needed); verified by `grep '^legacy/' .gitignore`."
+      - "AC-4: `CLAUDE.md` §3 layout block is updated — the `legacy/scripts/` line removed (the directory is now uniformly untracked, just like `design/` and `translations-ko/`)."
+      - "AC-5: `CLAUDE.md` §3 'Untracked' summary line stays accurate (it already lists `legacy/`); no edit required."
+      - "AC-6: `CLAUDE.md` §7 'Working rules' line about `legacy/` is updated — the rule changes from 'keep the existing tracked files; do not add new ones' to 'fully untracked; do not re-add'."
+      - "AC-7: `CLAUDE.md` §2 capability-inventory mention of `legacy/` (Python files in legacy/ are read-only history) updated to reflect that it is local-only history, not a tracked archive."
+      - "AC-8: `bash self_check.sh` returns 5/5 OK (no step references `legacy/`, so no change expected)."
+      - "AC-9: `npm test` returns 622/622 PASS (no test references `legacy/`, so no change expected)."
+      - "AC-10: F-125 mirrored on both spec.yaml copies; `diff -q` clean."
+      - "AC-11: F-125 completed via the harness CLI cycle on `feat/v0.14.4-legacy-git-eviction`. Targets the next patch release in the v0.14.x family."
+
+  - id: "F-126"
+    name: "Quarantined Python test suite eviction (tests/unit + integration + scale)"
+    type: "chore"
+    description: |
+      Forty-third cycle. Direct follow-up to F-125. After legacy/scripts/
+      was evicted, the quarantined Python tests under tests/unit/ (69
+      files), tests/integration/ (5 files), and tests/scale/ (2 files)
+      remain as the last operational Python footprint on the repo. The
+      v0.13.0 Python -> TypeScript cutover (F-107) replaced them with
+      ~620 vitest parity tests under tests/parity/, and no
+      Python-vs-TypeScript regression has surfaced through cosmic-suika
+      or logcat-on dogfood across two release lines (v0.13.x, v0.14.x).
+      The Python suites have not been runtime-invoked since cutover and
+      were preserved only as a parity reference.
+
+      User intent (literal): "파이선 테스트도 제외되어야함, ts로 모두
+      바뀌었기 때문" — TS migration is complete, so the parity
+      reference is no longer load-bearing.
+
+      Scope:
+
+        - tests/unit/ (69 files) — quarantined unit tests, evict.
+        - tests/integration/ (5 files) — quarantined integration tests,
+          evict.
+        - tests/scale/ (2 files: __init__.py + test_scale.py) — F-031
+          measurement scripts. Although the scaling utility (F-030)
+          remains TS-port-pending, the Python measurement was a
+          *one-time benchmark* (100 / 1k / 3k / 10k features). Evict;
+          regenerate in TS when the F-030 port lands.
+
+      Out of scope (deliberately preserved):
+
+        - tests/parity/fixtures/{canonical_hash, event_log, state}/
+          generate_fixtures.py (3 files) — fixture *generators*, not
+          tests. Used only when a TS parity fixture needs regeneration
+          after a schema change. TS tests reference them by comment
+          only; runtime never invokes Python.
+        - tests/fixtures/brownfield-repos/python-fastapi/src/app/models.py
+          — Python file that *is the fixture itself* (simulates a
+          brownfield Python project for fog-clear scenario tests).
+          Evicting it would break the fixture's purpose.
+
+      Mechanism: `git rm --cached -r tests/unit tests/integration
+      tests/scale`. Working tree preserved (the maintainer keeps the
+      files locally). `.gitignore` gains the three directories so
+      future `git add .` from the repo root will not re-stage them.
+      `CLAUDE.md` L30 (Scaling preparedness) and L66
+      (tests/unit · tests/integration line) updated to reflect the
+      new state.
+
+      Patch-only — no code, schema, or BR changes. The TS parity
+      suite (~620 tests) keeps running unchanged.
+
+    test_strategy: "smoke"
+    acceptance_criteria:
+      - "AC-1: `git ls-files tests/unit | wc -l` returns 0 (was 69)."
+      - "AC-2: `git ls-files tests/integration | wc -l` returns 0 (was 5)."
+      - "AC-3: `git ls-files tests/scale | wc -l` returns 0 (was 2)."
+      - "AC-4: Working-tree copies of all three directories preserved (the maintainer keeps the local archive). `find tests/unit tests/integration tests/scale -type f | wc -l` is unchanged before and after the patch."
+      - "AC-5: `tests/parity/fixtures/**/generate_fixtures.py` (3 files) remain tracked — they are fixture generators, not tests."
+      - "AC-6: `tests/fixtures/brownfield-repos/python-fastapi/src/app/models.py` remains tracked — it *is* the fixture content (Python brownfield simulation), not a test against it."
+      - "AC-7: `.gitignore` grows three additive lines: `tests/unit/`, `tests/integration/`, `tests/scale/`. Sorted under the existing `legacy/` block."
+      - "AC-8: `CLAUDE.md` §2 'Scaling preparedness' line updated — the `tests/scale/test_scale.py` measurement reference is rewritten to note that Python measurements have been retired and the TS port is queued under F-030."
+      - "AC-9: `CLAUDE.md` §3 layout block — the `tests/unit/ · tests/integration/    # Python tests (quarantined; reference-only)` line removed (the directories are now uniformly untracked)."
+      - "AC-10: `bash self_check.sh` returns 5/5 OK (none of the 5 steps reference the evicted directories)."
+      - "AC-11: `npm run test:parity` returns 622/622 PASS (the TS suite is independent of the evicted Python paths)."
+      - "AC-12: F-126 mirrored on both spec.yaml copies; `diff -q` clean."
+      - "AC-13: F-126 completed via the harness CLI cycle on `feat/v0.14.4-legacy-git-eviction` (bundled with F-125 in the same PR — both evict pre-cutover Python footprints with the same rationale)."
+
 # v0.14.0 — Drive autonomous loop containers (filled in Stage 2 / F-119).
 # Each Goal groups N features under one user-supplied natural-language
 # objective. The runtime state mirror lives in state.yaml goals[].
