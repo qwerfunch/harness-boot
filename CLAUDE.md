@@ -164,7 +164,6 @@ README.md · CHANGELOG.md · LICENSE · CLAUDE.md (this file)
 - gate_perf auto-detect heuristics (lighthouse / k6 / wrk config detection).
 - F-030 sharding utility (and other spec/* author tools) has not been ported to TS yet — `harness check` runs at 0.27 s on the live workspace, so low priority until real-world scale demands it.
 - F-028 prompt-log hook needs a production check — confirm prompts actually accumulate after a real `/plugin update`.
-- F-034 pre-commit hook does not cover merge commits (no `active_feature_id` after a feature completes); a `.git/MERGE_HEAD` short-circuit is logged in `.harness/_workspace/issues-log.md`.
 
 ## 9. Next-phase candidates
 
