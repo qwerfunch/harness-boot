@@ -6313,6 +6313,40 @@ features:
     name: drive mid-cycle real test — periodic system-level smoke during a goal
     type: feature
     test_strategy: tdd
+  - id: F-140
+    name: drive transient retry — auto-retry real_test_failed once before yielding
+    type: feature
+    description: |
+      Cycle C of the drive-adaptivity plan. Today a single
+      `real_test_failed` halts drive immediately. Real-world e2e
+      flakiness (network, race, rate limit) means a transient fail
+      can resolve on a retry — yielding to the user every time
+      defeats the "auto-progress unless big decision" intent.
+
+      Mechanism:
+        - Track per-goal `real_test_retry_count` on the drive
+          checkpoint. Default cap: 1 retry.
+        - On `real_test_failed`, if retry_count < cap → write
+          `real_test_retry_scheduled` event, increment count, and
+          return `proceed: true` so the next iteration re-runs the
+          command. Reset count to 0 on a subsequent pass.
+        - On `real_test_failed` with retry_count >= cap → emit the
+          existing halt with reason `real_test_failed`. The user
+          (or orchestrator) inspects.
+        - Opt-out: `harness.yaml drive.real_test.transient_retry: false`
+          disables; cap configurable via
+          `drive.real_test.max_transient_retries` (default 1).
+
+    test_strategy: tdd
+    acceptance_criteria:
+      - "AC-1: `src/drive/checkpoint.ts` `ExecutePhaseCheckpoint` gains `real_test_retry_count: number` (default 0); `loadCheckpoint` defensively fills 0 when missing on legacy checkpoints."
+      - "AC-2: New helper `bumpRealTestRetry(ck)` in `src/drive/loop.ts` (or realTest.ts) returns `{retried: boolean, count: number}`; honours config cap (default 1) and the opt-out toggle."
+      - "AC-3: When the loop's real-test branch sees `passed === false`, it calls `bumpRealTestRetry`; if `retried: true`, writes `real_test_retry_scheduled` event and returns `proceed: true` (loop re-runs the command on the next iteration)."
+      - "AC-4: A subsequent successful real_test resets `real_test_retry_count` to 0."
+      - "AC-5: Opt-out (`drive.real_test.transient_retry: false`) disables the retry path; first fail goes straight to halt as before."
+      - "AC-6: 4+ vitest cases in `tests/parity/driveTransientRetry.test.ts`: first fail triggers retry, second fail halts, pass resets counter, opt-out skips retry."
+      - "AC-7: F-140 mirrored on both spec.yaml copies; diff -q clean."
+      - "AC-8: F-140 completed via the harness CLI cycle on `feat/v0.14.4-drive-transient-retry`. self_check 5/5 + npm test green."
 goals: []
 constraints:
   tech_stack:
