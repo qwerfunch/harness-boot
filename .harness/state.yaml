@@ -2819,7 +2819,7 @@ features:
   started_at: 2026-05-04T18:14:11Z
   completed_at: 2026-05-04T18:16:33Z
 - id: F-129
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -2858,9 +2858,9 @@ features:
     kind: reviewer_check
     summary: perf_regression+perf_resolved evidence kinds, complete() guard, 7 new vitest cases all green; full suite 629/629
   started_at: 2026-05-11T02:50:01Z
-  completed_at: null
+  completed_at: 2026-05-11T02:53:44Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-129
   last_gate_passed: gate_5
-  active_feature_id: F-129
+  active_feature_id: null
