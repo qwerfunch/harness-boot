@@ -9,6 +9,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
+### Added
+
+- **F-129** — `perf_regression` and `perf_resolved` evidence kinds plus a `complete()` guard that refuses the transition while the latest of the two markers on a feature is `perf_regression`. Closes the Iron Law gap surfaced by a `logcat-on` ISSUES-LOG entry: a feature could ship with `gate_perf` result = `pass` even when the just-measured numbers regressed against the previous baseline, because gate_perf records pass/fail without a baseline comparison and the Iron Law's declared-evidence threshold is satisfied by any kind of declared evidence. The Lite half of the closure ships now (paired evidence kinds + one-shot guard); structured baseline capture inside gate_perf and threshold-based auto-fail are queued for a separate cycle. `--hotfix-reason` bypasses the guard with the existing audit trail. `commands/work.md` kind-taxonomy section documents the new kinds and the resolution flow.
+
 ### Queued
 
 - Marketplace submission to `anthropic/claude-plugins-official` — held until external soak; submission text templated, user submits via https://claude.ai/settings/plugins/submit.

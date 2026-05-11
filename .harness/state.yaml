@@ -2818,8 +2818,49 @@ features:
     summary: "F-128 v0.14.3 release prep verified: CHANGELOG.md [0.14.3] entry expanded — F-122 narrative preserved, Fixed/Changed/Removed sections added enumerating F-122/F-127 (Fixed) + F-123/F-124 (Changed) + F-125/F-126 (Removed). README.md v0.14.x section grew **v0.14.3** entry above v0.14.0; README.ko.md got matching native-Korean entry. plugin.json/package.json already at 0.14.3 (no edit). self_check 5/5 PASS, npm test 622/622 PASS, harness check clean, harness validate clean. Tag + gh release create deferred to post-merge main fast-forward."
   started_at: 2026-05-04T18:14:11Z
   completed_at: 2026-05-04T18:16:33Z
+- id: F-129
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-11T02:53:05Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-11T02:53:06Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-11T02:53:07Z
+      note: "cmd: npm run lint"
+    gate_3:
+      last_result: pass
+      ts: 2026-05-11T02:53:13Z
+      note: "cmd: npx nyc npm test"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-11T02:53:19Z
+      note: self_check 5/5 OK; npm test 629/629 PASS
+  evidence:
+  - ts: 2026-05-11T02:53:05Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.4s) · cmd: npm test"
+  - ts: 2026-05-11T02:53:06Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.8s) · cmd: npm run typecheck"
+  - ts: 2026-05-11T02:53:07Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.5s) · cmd: npm run lint"
+  - ts: 2026-05-11T02:53:13Z
+    kind: gate_run
+    summary: "Gate gate_3 pass (2.6s) · cmd: npx nyc npm test"
+  - ts: 2026-05-11T02:53:19Z
+    kind: reviewer_check
+    summary: perf_regression+perf_resolved evidence kinds, complete() guard, 7 new vitest cases all green; full suite 629/629
+  started_at: 2026-05-11T02:50:01Z
+  completed_at: null
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-128
+  last_command: /harness:work F-129
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-129

@@ -254,6 +254,70 @@ describe('work.complete — Iron Law (product mode)', () => {
   });
 });
 
+describe('work.complete — perf regression guard (F-129)', () => {
+  let ws: Workspace;
+  beforeEach(() => {
+    ws = makeWorkspace();
+    activate(ws.harness, 'F-001');
+    recordGate(ws.harness, 'F-001', 'gate_5', 'pass');
+  });
+  afterEach(() => {
+    rmSync(ws.dir, {recursive: true, force: true});
+  });
+
+  it('perf_regression evidence counts as declared (Iron Law)', () => {
+    addEvidence(ws.harness, 'F-001', 'perf_regression', 'lcp 2.1s → 3.4s after refactor');
+    addEvidence(ws.harness, 'F-001', 'perf_resolved', 'rolled back; lcp 2.0s on rerun');
+    const res = complete(ws.harness, 'F-001');
+    expect(res.action).toBe('completed');
+  });
+
+  it('rejects when latest perf marker is perf_regression (no resolution)', () => {
+    addEvidence(ws.harness, 'F-001', 'perf_regression', 'lcp 2.1s → 3.4s');
+    const res = complete(ws.harness, 'F-001');
+    expect(res.action).toBe('queried');
+    expect(res.message).toContain('perf regression unresolved');
+    expect(res.current_status).toBe('in_progress');
+  });
+
+  it('rejects when newer declared evidence does NOT clear an earlier perf_regression', () => {
+    addEvidence(ws.harness, 'F-001', 'perf_regression', 'inp 200ms regressed');
+    addEvidence(ws.harness, 'F-001', 'manual_check', 'unrelated review');
+    const res = complete(ws.harness, 'F-001');
+    expect(res.action).toBe('queried');
+    expect(res.message).toContain('perf regression unresolved');
+  });
+
+  it('completes when perf_resolved is more recent than perf_regression', () => {
+    addEvidence(ws.harness, 'F-001', 'perf_regression', 'inp 200ms regressed');
+    addEvidence(ws.harness, 'F-001', 'perf_resolved', 'fix landed; inp 180ms');
+    const res = complete(ws.harness, 'F-001');
+    expect(res.action).toBe('completed');
+  });
+
+  it('completes when perf_resolved appears with no prior perf_regression', () => {
+    addEvidence(ws.harness, 'F-001', 'perf_resolved', 'preventive note: no regression observed');
+    const res = complete(ws.harness, 'F-001');
+    expect(res.action).toBe('completed');
+  });
+
+  it('hotfix-reason bypasses the perf-regression guard', () => {
+    addEvidence(ws.harness, 'F-001', 'perf_regression', 'critical fix worsened lcp');
+    const res = complete(ws.harness, 'F-001', {
+      hotfixReason: 'prod down — accepting perf regression to ship security patch',
+    });
+    expect(res.action).toBe('completed');
+    const done = readEvents(ws.harness).find((e) => e['type'] === 'feature_done')!;
+    expect(done['hotfix_reason']).toContain('prod down');
+  });
+
+  it('keeps existing behaviour when neither perf marker is present', () => {
+    addEvidence(ws.harness, 'F-001', 'manual_check', 'verified');
+    const res = complete(ws.harness, 'F-001');
+    expect(res.action).toBe('completed');
+  });
+});
+
 describe('work.archive', () => {
   let ws: Workspace;
   beforeEach(() => {
