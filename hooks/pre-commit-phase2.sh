@@ -16,7 +16,16 @@
 #      that already had its own feature cycle; the discipline does not apply
 #      to git's own conflict-resolution finalizers.
 #   4. Staged set is whitelist-only (chore commits) → exit 0.
-#      Whitelist: .harness/state.yaml · .harness/_workspace/* · CHANGELOG.md
+#      Whitelist (six patterns):
+#        · .harness/state.yaml — status transitions
+#        · .harness/_workspace/* — kickoff, retro, design-review, …
+#        · CHANGELOG.md — release notes
+#        · .harness/spec.yaml — F-132/F-134 lifecycle artifact
+#          (complete()'s archive auto-move strips body keys here)
+#        · .harness/spec.archive.yaml — F-132 lifecycle artifact
+#          (complete()'s archive auto-move appends body here)
+#        · docs/samples/harness-boot-self/spec.yaml — lockstep mirror
+#        · docs/samples/harness-boot-self/spec.archive.yaml — lockstep mirror
 #   5. Non-whitelisted staged + no active feature → exit 1 with four bypass
 #      options on stderr.
 #   6. Non-whitelisted staged + active feature present → exit 0.
@@ -68,6 +77,10 @@ while IFS= read -r f; do
     case "$f" in
         .harness/state.yaml) ;;
         .harness/_workspace/*) ;;
+        .harness/spec.yaml) ;;
+        .harness/spec.archive.yaml) ;;
+        docs/samples/harness-boot-self/spec.yaml) ;;
+        docs/samples/harness-boot-self/spec.archive.yaml) ;;
         CHANGELOG.md) ;;
         *) ALL_WHITELISTED=0; break ;;
     esac

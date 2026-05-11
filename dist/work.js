@@ -36,6 +36,7 @@ import { generateDesignReview } from './ceremonies/designReview.js';
 import { agentsForShapes, detectShapes, generateKickoff, hasAudioFlag, parallelGroupsForShapes, renderStyleBlock, } from './ceremonies/kickoff.js';
 import { generateRetro } from './ceremonies/retro.js';
 import { runGate } from './gate/runner.js';
+import { moveToArchive } from './spec/archive.js';
 import { tryInitialSync } from './sync.js';
 /** Friendly labels for gate identifiers (F-061 user-facing display). */
 const GATE_FRIENDLY = {
@@ -623,6 +624,17 @@ export function complete(harnessDir, fid, options = {}) {
     }
     appendEvent(harnessDir, event);
     autowireRetro(harnessDir, fid);
+    // F-132 — body-to-archive separation. Best-effort: the transition
+    // is already committed and Iron Law has passed. A failure here must
+    // not regress the lifecycle, so we catch and warn on stderr. The
+    // next sync run can re-attempt.
+    try {
+        moveToArchive(harnessDir, fid);
+    }
+    catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        process.stderr.write(`[warn] archive auto-move skipped for ${fid}: ${msg}\n`);
+    }
     const res = summarize(state, fid);
     res.action = 'completed';
     return res;
