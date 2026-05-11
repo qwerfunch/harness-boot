@@ -2983,7 +2983,7 @@ features:
   started_at: 2026-05-11T03:51:07Z
   completed_at: 2026-05-11T03:55:40Z
 - id: F-133
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3015,9 +3015,9 @@ features:
     kind: trivial
     summary: "F-132 follow-up wired: hook whitelist gains spec.archive.yaml + lockstep mirror; self_check step 1 extended; F-132 dogfood proof rides along this commit"
   started_at: 2026-05-11T04:00:25Z
-  completed_at: null
+  completed_at: 2026-05-11T04:01:49Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-133
   last_gate_passed: gate_5
-  active_feature_id: F-133
+  active_feature_id: null

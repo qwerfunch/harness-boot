@@ -103,3 +103,58 @@ features:
       - "AC-9: F-132 completed via the harness CLI cycle on
         `feat/v0.14.4-spec-archive-separation`. self_check 5/5 PASS, npm test
         all green."
+  - id: F-133
+    description: >
+      Trivial cleanup of F-132's deployment friction. F-132 added an
+
+      automatic archive move inside `complete()` so that the body of a
+
+      done feature relocates from `.harness/spec.yaml` to
+
+      `.harness/spec.archive.yaml`. That created a new class of files
+
+      that show up in the *post-complete* commit (the user's record
+
+      commit after the lifecycle transition), which the F-034 pre-commit
+
+      hook does not yet whitelist — so the very first attempt to commit
+
+      F-132's own archive output got rejected.
+
+
+      This cycle closes the gap with three small changes:
+
+        - `hooks/pre-commit-phase2.sh` whitelist gains the four
+          lifecycle artifacts that `complete()` now produces /
+          mutates: `.harness/spec.yaml` (body removed), `.harness/spec.archive.yaml`
+          (body appended), and the two docs/samples lockstep mirrors.
+          Active feature flow is unaffected; the whitelist only
+          matters when active_feature_id is null (i.e. immediately
+          after a successful complete).
+        - `self_check.sh` step 1 extended to diff
+          `.harness/spec.archive.yaml` against the docs/samples mirror
+          so SSoT discipline applies to the archive too (already
+          drafted in F-132's commit but split out).
+        - the previously-blocked F-132 lifecycle artifacts
+          (spec.yaml mutation + spec.archive.yaml + mirrors) ride
+          along in this same commit so the dogfood proof closes
+          cleanly.
+
+      This is intentionally a kind=trivial cycle — wire-up only,
+
+      no semantic change beyond what F-132 already shipped.
+    acceptance_criteria:
+      - "AC-1: hooks/pre-commit-phase2.sh whitelist permits .harness/spec.yaml,
+        .harness/spec.archive.yaml, docs/samples/harness-boot-self/spec.yaml,
+        docs/samples/harness-boot-self/spec.archive.yaml when staged alone
+        (active_feature_id may be null)."
+      - "AC-2: self_check.sh step 1 diffs .harness/spec.archive.yaml against
+        docs/samples/harness-boot-self/spec.archive.yaml when either copy
+        exists."
+      - "AC-3: F-132's auto-archive output (.harness/spec.archive.yaml +
+        lockstep mirror, plus the body-stripped .harness/spec.yaml + mirror) is
+        committed in this same commit, completing the F-132 dogfood proof."
+      - "AC-4: bash self_check.sh returns 5/5 OK after this cycle."
+      - "AC-5: F-133 mirrored on both spec.yaml copies; diff -q clean."
+      - "AC-6: F-133 completed via the harness CLI cycle on
+        feat/v0.14.4-spec-archive-separation."
