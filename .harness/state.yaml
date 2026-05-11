@@ -2942,7 +2942,7 @@ features:
   started_at: 2026-05-11T03:02:21Z
   completed_at: 2026-05-11T03:06:21Z
 - id: F-132
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -2981,9 +2981,9 @@ features:
     kind: reviewer_check
     summary: "src/spec/archive.ts moveToArchive() + work.complete() hook + 11+4 vitest cases. self-bootstrap smoke: F-132 own body will move to .harness/spec.archive.yaml on complete."
   started_at: 2026-05-11T03:51:07Z
-  completed_at: null
+  completed_at: 2026-05-11T03:55:40Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-132
   last_gate_passed: gate_5
-  active_feature_id: F-132
+  active_feature_id: null
