@@ -171,3 +171,100 @@ function upsertArchiveEntry(
 function isFeatureRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
+
+/** Statuses considered shipped — bulk migration only touches these. */
+const SHIPPED_STATUSES: ReadonlySet<string> = new Set(['done', 'archived']);
+
+/**
+ * F-137 — relocates **all existing** done/archived feature bodies from
+ * `spec.yaml` to `spec.archive.yaml` in a single pass. Closes the
+ * recursive gap left by F-132~F-134, where archive auto-move only
+ * triggers on the next `complete()` and never reaches features that
+ * shipped before the auto-move existed.
+ *
+ * Behaviour:
+ *
+ *   - Reads `state.yaml` for ids whose status is in
+ *     {@link SHIPPED_STATUSES}.
+ *   - For each id, calls {@link moveToArchive} (no-op when the body
+ *     is already gone — preserving idempotency at the per-id level).
+ *   - Returns the count of features whose body was actually moved
+ *     (not the count attempted). Callers use this to decide whether
+ *     to emit an event / warn line.
+ *
+ * Boundaries:
+ *
+ *   - **Read-side guard** — call site (in `sync.ts`) is expected to
+ *     check working-tree cleanliness and the opt-out config before
+ *     invoking. This function itself does not consult those signals;
+ *     it does the work or stays silent.
+ *   - **Stable order** — features are iterated in their state.yaml
+ *     order so the resulting `spec.archive.yaml` reads naturally
+ *     (oldest done id first).
+ *
+ * @param harnessDir absolute or relative path to the `.harness/` dir
+ * @returns number of features whose body was actually relocated
+ * @throws when `state.yaml` or `spec.yaml` cannot be parsed; the
+ *         caller is expected to catch.
+ */
+export function bulkMigrate(harnessDir: string): number {
+  const statePath = join(harnessDir, 'state.yaml');
+  const specPath = join(harnessDir, 'spec.yaml');
+
+  if (!existsSync(statePath) || !existsSync(specPath)) {
+    return 0;
+  }
+
+  const state = yamlParse(readFileSync(statePath, 'utf-8')) as Record<string, unknown> | null;
+  if (state === null || typeof state !== 'object' || Array.isArray(state)) {
+    return 0;
+  }
+  const stateFeatures = state['features'];
+  if (!Array.isArray(stateFeatures)) {
+    return 0;
+  }
+
+  const spec = yamlParse(readFileSync(specPath, 'utf-8')) as Record<string, unknown> | null;
+  if (spec === null || typeof spec !== 'object' || Array.isArray(spec)) {
+    return 0;
+  }
+  const specFeatures = spec['features'];
+  if (!Array.isArray(specFeatures)) {
+    return 0;
+  }
+
+  let moved = 0;
+  for (const sf of stateFeatures) {
+    if (!isFeatureRecord(sf)) {
+      continue;
+    }
+    const id = sf['id'];
+    const status = sf['status'];
+    if (typeof id !== 'string' || typeof status !== 'string') {
+      continue;
+    }
+    if (!SHIPPED_STATUSES.has(status)) {
+      continue;
+    }
+    // Cheap pre-check: only call moveToArchive when the live entry
+    // still has a body. moveToArchive itself short-circuits in the
+    // no-body case, but skipping the file read/write keeps the bulk
+    // path fast on already-migrated specs (idempotent + cheap).
+    const liveEntry = specFeatures.find(
+      (f) => isFeatureRecord(f) && f['id'] === id,
+    ) as Record<string, unknown> | undefined;
+    if (liveEntry === undefined) {
+      continue;
+    }
+    const hasBody =
+      (typeof liveEntry['description'] === 'string' && liveEntry['description'].length > 0) ||
+      (Array.isArray(liveEntry['acceptance_criteria']) &&
+        liveEntry['acceptance_criteria'].length > 0);
+    if (!hasBody) {
+      continue;
+    }
+    moveToArchive(harnessDir, id);
+    moved += 1;
+  }
+  return moved;
+}

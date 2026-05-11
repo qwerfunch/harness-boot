@@ -21,7 +21,7 @@ import {join} from 'node:path';
 import {afterEach, beforeEach, describe, expect, it} from 'vitest';
 import {parse as yamlParse, stringify as yamlStringify} from 'yaml';
 
-import {moveToArchive} from '../../src/spec/archive.js';
+import {bulkMigrate, moveToArchive} from '../../src/spec/archive.js';
 
 interface Workspace {
   dir: string;
@@ -223,5 +223,93 @@ describe('moveToArchive — no-op safety', () => {
     expect(() => moveToArchive(ws.harness, 'F-002')).not.toThrow();
     // Archive should not be created when there is nothing to move.
     expect(existsSync(join(ws.harness, 'spec.archive.yaml'))).toBe(false);
+  });
+});
+
+describe('bulkMigrate (F-137)', () => {
+  let ws: Workspace;
+
+  function writeStateWithDoneIds(harness: string, doneIds: string[]): void {
+    const state = {
+      version: '2.3',
+      schema_version: '2.3',
+      features: doneIds.map((id) => ({id, status: 'done', evidence: [], gates: {}})),
+      session: {
+        started_at: null,
+        last_command: '',
+        last_gate_passed: null,
+        active_feature_id: null,
+      },
+    };
+    writeFileSync(join(harness, 'state.yaml'), yamlStringify(state), 'utf-8');
+  }
+
+  beforeEach(() => {
+    ws = makeWorkspace();
+  });
+  afterEach(() => {
+    rmSync(ws.dir, {recursive: true, force: true});
+  });
+
+  it('relocates every done feature body in one pass and returns the count', () => {
+    writeStateWithDoneIds(ws.harness, ['F-001', 'F-002']);
+    const moved = bulkMigrate(ws.harness);
+    expect(moved).toBe(2);
+    const liveF001 = readLiveFeature(ws.harness, 'F-001');
+    expect(liveF001['description']).toBeUndefined();
+    expect(liveF001['acceptance_criteria']).toBeUndefined();
+    const liveF002 = readLiveFeature(ws.harness, 'F-002');
+    expect(liveF002['description']).toBeUndefined();
+    expect(liveF002['acceptance_criteria']).toBeUndefined();
+    const archive = readArchive(ws.harness);
+    const archiveIds = (archive!['features'] as Array<Record<string, unknown>>).map(
+      (f) => f['id'],
+    );
+    expect(archiveIds.sort()).toEqual(['F-001', 'F-002']);
+  });
+
+  it('skips features whose state status is in_progress (only done ids count)', () => {
+    // F-001 done, F-002 in_progress.
+    const state = {
+      version: '2.3',
+      schema_version: '2.3',
+      features: [
+        {id: 'F-001', status: 'done', evidence: [], gates: {}},
+        {id: 'F-002', status: 'in_progress', evidence: [], gates: {}},
+      ],
+      session: {
+        started_at: null,
+        last_command: '',
+        last_gate_passed: null,
+        active_feature_id: 'F-002',
+      },
+    };
+    writeFileSync(join(ws.harness, 'state.yaml'), yamlStringify(state), 'utf-8');
+    const moved = bulkMigrate(ws.harness);
+    expect(moved).toBe(1);
+    const liveF002 = readLiveFeature(ws.harness, 'F-002');
+    // F-002 still has its body intact (active feature, no migration).
+    expect(liveF002['description']).toBe('F-002 description body.');
+  });
+
+  it('idempotent — second call moves nothing and leaves spec.yaml byte-identical', () => {
+    writeStateWithDoneIds(ws.harness, ['F-001', 'F-002']);
+    bulkMigrate(ws.harness);
+    const after1 = readFileSync(join(ws.harness, 'spec.yaml'), 'utf-8');
+    const moved2 = bulkMigrate(ws.harness);
+    expect(moved2).toBe(0);
+    const after2 = readFileSync(join(ws.harness, 'spec.yaml'), 'utf-8');
+    expect(after2).toBe(after1);
+  });
+
+  it('returns 0 when state.yaml is missing', () => {
+    // No state.yaml in the workspace at all.
+    expect(bulkMigrate(ws.harness)).toBe(0);
+    expect(existsSync(join(ws.harness, 'spec.archive.yaml'))).toBe(false);
+  });
+
+  it('returns 0 when state.yaml has no done features', () => {
+    writeStateWithDoneIds(ws.harness, []);
+    expect(bulkMigrate(ws.harness)).toBe(0);
   });
 });

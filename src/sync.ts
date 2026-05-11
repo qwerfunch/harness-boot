@@ -30,11 +30,14 @@ import {dirname, join, resolve as resolvePath} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {parse as yamlParse, stringify as yamlStringify} from 'yaml';
 
+import {spawnSync} from 'node:child_process';
+
 import {canonicalHash, merkleRoot, subtreeHashes} from './core/canonicalHash.js';
 import {
   PluginRootError,
   resolve as resolvePluginRoot,
 } from './core/pluginRoot.js';
+import {bulkMigrate} from './spec/archive.js';
 import {
   expand as expandIncludes,
   findIncludes,
@@ -57,6 +60,13 @@ export interface SyncOptions {
   timestamp?: string;
   skipValidation?: boolean;
   schemaPath?: string | null;
+  /**
+   * F-137 — disable the bulk archive migration step (relocates
+   * existing done feature bodies to spec.archive.yaml). Default
+   * `false` means migration runs. CLI: `--no-archive-migrate`.
+   * harness.yaml: `archive.auto_migrate: false`.
+   */
+  noArchiveMigrate?: boolean;
 }
 
 /** Summary returned by {@link run}; identical shape to Python's dict. */
@@ -69,6 +79,10 @@ export interface SyncResult {
   arch_skipped: boolean;
   dry_run: boolean;
   drift_status: 'clean' | 'derived_edited';
+  /** F-137 — count of features whose body was relocated (0 when skip). */
+  archive_migrated?: number;
+  /** F-137 — when migration was skipped, why (dirty-tree, opt-out, none-needed). */
+  archive_migrate_skip_reason?: 'dirty_tree' | 'opt_out' | null;
 }
 
 /** Outcome of {@link tryInitialSync}; matches Python's status dict. */
@@ -289,6 +303,11 @@ interface HarnessYaml {
   hash_protocol_version?: string;
   generation?: HarnessYamlGeneration;
   policies?: Record<string, unknown>;
+  /** F-137 — archive auto-migration toggle. */
+  archive?: {
+    /** When `false`, sync skips bulk archive migration. Default `true`. */
+    auto_migrate?: boolean;
+  };
   [key: string]: unknown;
 }
 
@@ -460,6 +479,47 @@ export function run(harnessDir: string, options: SyncOptions = {}): SyncResult {
     appendEvent(eventsLog, event);
   }
 
+  // 7. F-137 — bulk archive migration. Relocates existing done feature
+  // bodies from spec.yaml to spec.archive.yaml. Skipped on dry-run, on
+  // explicit opt-out (CLI flag or harness.yaml config), or on a dirty
+  // working tree (avoids interleaving with the user's in-flight edits).
+  let archiveMigrated = 0;
+  let archiveSkipReason: 'dirty_tree' | 'opt_out' | null = null;
+
+  if (dryRun) {
+    archiveSkipReason = null; // dry-run leaves the field absent in the result.
+  } else if (options.noArchiveMigrate || harnessYaml.archive?.auto_migrate === false) {
+    archiveSkipReason = 'opt_out';
+  } else {
+    const projectRoot = resolvePath(harnessDir, '..');
+    if (workingTreeDirty(projectRoot)) {
+      archiveSkipReason = 'dirty_tree';
+      process.stderr.write(
+        '[warn] sync: skipping bulk archive migration — working tree is dirty. ' +
+          'Commit or stash, then re-run sync.\n',
+      );
+    } else {
+      try {
+        archiveMigrated = bulkMigrate(harnessDir);
+        if (archiveMigrated > 0) {
+          appendEvent(eventsLog, {
+            ts,
+            type: 'bulk_archive_migrated',
+            count: archiveMigrated,
+          });
+          process.stderr.write(
+            `[info] sync: auto-archived ${archiveMigrated} done feature bod${
+              archiveMigrated === 1 ? 'y' : 'ies'
+            } → .harness/spec.archive.yaml — review with git diff\n`,
+          );
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        process.stderr.write(`[warn] sync: bulk archive migration failed — ${msg}\n`);
+      }
+    }
+  }
+
   return {
     ok: true,
     spec_hash: hashRaw,
@@ -469,7 +529,26 @@ export function run(harnessDir: string, options: SyncOptions = {}): SyncResult {
     arch_skipped: archSkipped,
     dry_run: dryRun,
     drift_status: generation.drift_status,
+    archive_migrated: archiveMigrated,
+    archive_migrate_skip_reason: archiveSkipReason,
   };
+}
+
+/** Returns true when `git status --porcelain` reports any untracked or modified files. */
+function workingTreeDirty(projectRoot: string): boolean {
+  try {
+    const result = spawnSync('git', ['status', '--porcelain'], {
+      cwd: projectRoot,
+      stdio: ['ignore', 'pipe', 'ignore'],
+      encoding: 'utf-8',
+    });
+    if (result.status !== 0) {
+      return false; // not a git repo, or git missing — treat as clean (safe default).
+    }
+    return result.stdout.trim().length > 0;
+  } catch {
+    return false;
+  }
 }
 
 /**

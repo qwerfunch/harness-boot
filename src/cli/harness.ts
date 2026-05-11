@@ -422,6 +422,7 @@ function buildProgram(): Command {
     .option('--skip-validation', 'skip JSONSchema check')
     .option('--schema <path>', 'path to spec.schema.json override')
     .option('--timestamp <iso>', 'override UTC timestamp (tests)')
+    .option('--no-archive-migrate', 'skip F-137 bulk archive migration this run')
     .option('--json', 'emit JSON summary')
     .action((options: Record<string, unknown>) => {
       const harnessDir = resolveHarnessDir(options['harnessDir'] as string | undefined);
@@ -453,6 +454,7 @@ function buildProgram(): Command {
             typeof options['schema'] === 'string' ? (options['schema'] as string) : null,
           timestamp:
             typeof options['timestamp'] === 'string' ? (options['timestamp'] as string) : undefined,
+          noArchiveMigrate: options['archiveMigrate'] === false,
         });
         if (json) {
           printJson(summary);

@@ -9,6 +9,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
+### Added
+
+- **F-137** — `harness sync` now relocates existing done feature bodies from `spec.yaml` to `spec.archive.yaml` in one pass. Closes the recursive gap from F-132~F-134, where archive auto-move only ran on the next `complete()` and never reached features that shipped before the auto-move existed. Migration is silent + idempotent: skips on a dirty working tree (warn line), opt-out via `harness.yaml` `archive.auto_migrate: false` or `harness sync --no-archive-migrate`. Existing-user effect: `/plugin update` then a normal sync produces one large diff (bodies move from one file to the other), then `spec.yaml` stays slim. Side rule added: `docs/communication-rules.md` Family 1 now includes plan-mode file management — overwrite the plan file when the user pivots tasks.
+
 ### Changed
 
 - **F-136** — Communication rules tightened. Three corrections to F-135: (a) `docs/communication-rules.md` is now a single English template (the Korean side-by-side duplication is gone — the rule "write in the user's language natively" doesn't need to be restated in Korean); (b) Family 1 gains a **progress-ID surface discipline** rule — don't list handled `F-NNN` IDs in routine responses; (c) Family 1 gains a **brevity rule for write surfaces** — CHANGELOG entries, commit messages, and PR bodies follow the same answer-first standard. CLAUDE.md.template reminder rewritten to match. Existing users: copy the new section over once; agents auto-update on `/plugin update`.
