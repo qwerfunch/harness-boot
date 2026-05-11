@@ -6321,6 +6321,40 @@ features:
     name: v0.15.0 release prep — minor bump for the 12-feature batch
     type: chore
     test_strategy: smoke
+  - id: F-142
+    name: drive hook trigger relaxation — fire on any unevaluated done feature
+    type: feature
+    description: |
+      Validation cycle on the v0.15.0 sample project (calc-app)
+      surfaced that F-138 replan / F-139 real_test / F-140 retry
+      hooks never fire when the user mixes work CLI with drive
+      --resume. The current trigger requires
+      `checkpoint.execute.active_feature !== null AND
+       state.getFeature(active).status === 'done'`, which is only
+      true when drive itself owned the just-completed transition.
+      External work CLI completions never set drive's
+      active_feature pointer, so hooks silent-skip forever.
+
+      Fix (Lite): change the trigger to "iterate every done feature
+      in the active goal's progress map; for each id whose
+      events.log lacks a `replan_evaluated` entry, fire the hooks
+      now." The existing per-id idempotent guard inside
+      `replanAfterCompletion` (already keyed on events.log) makes
+      the loop safe — an already-evaluated id short-circuits.
+
+      No schema change. No new event type. The only behavioural
+      delta is that drive's hook firing window widens from "drive's
+      own previous step" to "any pending done feature drive hasn't
+      seen yet."
+
+    test_strategy: tdd
+    acceptance_criteria:
+      - "AC-1: `src/drive/loop.ts` step 3.5 iterates `goal.feature_progress` for every id whose status is `done`, calls `replanAfterCompletion` for each. The existing idempotent guard skips already-evaluated ids."
+      - "AC-2: After the iteration, the same loop also calls `runRealTestIfDue` once per newly-evaluated done id (not once per goal). Cadence calculation uses the goal-local done count (existing behaviour)."
+      - "AC-3: Existing trigger condition (`active_feature own done`) remains valid — the relaxation is a superset, so all current passing tests still pass without modification."
+      - "AC-4: New vitest cases under `tests/parity/driveReplan.test.ts` and `driveRealTest.test.ts`: simulate the work-CLI-then-drive-resume scenario (active_feature set externally, drive sees it on next iteration) and assert the events fire."
+      - "AC-5: F-142 mirrored on both spec.yaml copies; diff -q clean."
+      - "AC-6: F-142 completed via the harness CLI cycle on `feat/v0.15.1-drive-hook-trigger-relaxation`. self_check 5/5 + npm test green."
 goals: []
 constraints:
   tech_stack:
