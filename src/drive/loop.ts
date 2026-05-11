@@ -32,6 +32,7 @@ import {
   type ExecutorResult,
 } from './executor.js';
 import {generateGoalRetro} from './goalRetro.js';
+import {replanAfterCompletion} from './replan.js';
 
 /** Per-iteration result returned by {@link runDriveStep}. */
 export interface StepResult {
@@ -382,6 +383,24 @@ export function runDriveStep(
     }
   } else {
     ck.execute.started_at = nowIso(now);
+  }
+
+  // (3.5) F-138 — adaptive replan hook. Fires when the previously
+  // active feature has just transitioned to done; deterministic
+  // deferral of blocked / superseded ids + optional file-drop
+  // manifest when the retro hints at a pivot. Idempotent per fid.
+  // Best-effort — never blocks the loop; replan failures fall back
+  // to the existing planner chain on the next iteration.
+  if (ck.execute.active_feature !== null) {
+    try {
+      const replanState = State.load(harnessDir);
+      const prevActive = replanState.getFeature(ck.execute.active_feature);
+      if (prevActive !== null && prevActive.status === 'done') {
+        replanAfterCompletion(harnessDir, ck.execute.active_feature, ck.goal_id);
+      }
+    } catch {
+      // silent — replan is auxiliary
+    }
   }
 
   // (4) goal completion check — emit retro + flip phase.
