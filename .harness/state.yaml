@@ -3289,7 +3289,7 @@ features:
   started_at: 2026-05-11T05:40:18Z
   completed_at: 2026-05-11T05:45:06Z
 - id: F-142
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3321,9 +3321,9 @@ features:
     kind: reviewer_check
     summary: loop.ts step 3.5 widened to iterate unevaluated done features; replanAlreadyEvaluated helper exported; 2 new vitest cases
   started_at: 2026-05-11T06:57:26Z
-  completed_at: null
+  completed_at: 2026-05-11T07:01:28Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-142
   last_gate_passed: gate_5
-  active_feature_id: F-142
+  active_feature_id: null
