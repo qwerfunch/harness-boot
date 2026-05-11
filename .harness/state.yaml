@@ -3255,7 +3255,7 @@ features:
   started_at: 2026-05-11T05:32:17Z
   completed_at: 2026-05-11T05:36:09Z
 - id: F-141
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3287,9 +3287,9 @@ features:
     kind: reviewer_check
     summary: plugin.json/package.json 0.15.0 + CHANGELOG [0.15.0] header + README.md/README.ko.md badge + capability narrative
   started_at: 2026-05-11T05:40:18Z
-  completed_at: null
+  completed_at: 2026-05-11T05:45:06Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-141
   last_gate_passed: gate_5
-  active_feature_id: F-141
+  active_feature_id: null
