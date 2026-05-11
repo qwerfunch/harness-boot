@@ -431,3 +431,56 @@ features:
       - "AC-8: F-138 mirrored on both spec.yaml copies; diff -q clean."
       - "AC-9: F-138 completed via the harness CLI cycle on
         `feat/v0.14.4-drive-replan`. self_check 5/5 + npm test green."
+  - id: F-139
+    description: |
+      Cycle B of the drive-adaptivity plan. After every N feature
+      completions inside a goal, drive runs a user-defined "real
+      test" command — anything from `npm run e2e` to a curl smoke
+      script — to confirm the accumulating system still behaves.
+      Per-feature gate_5 already covers the unit-level smoke; this
+      catches the cross-feature regressions that only show up when
+      the parts come together.
+
+      Mechanism:
+        - User defines the command in `harness.yaml`:
+            drive:
+              real_test:
+                command: "npm run e2e"
+                every_n_features: 3   # default
+        - When unset, the hook silently does nothing — drive's
+          behaviour is unchanged for projects that don't opt in.
+        - The trigger fires at the same moment as the F-138 replan
+          hook (start of any iteration whose previous active feature
+          has just transitioned to done) and only when the
+          done-feature counter for the active goal hits the
+          configured N.
+        - On exit code 0 → write `real_test_passed` event, continue.
+        - On non-zero exit → write `real_test_failed` event with
+          stderr tail, halt the loop with reason `real_test_failed`
+          so the user (or orchestrator) can decide.
+    acceptance_criteria:
+      - "AC-1: New module `src/drive/realTest.ts` exposes
+        `runRealTestIfDue(harnessDir, goalId, completedFid)` returning `{ran:
+        boolean, passed: boolean|null, command: string|null, exit_code:
+        number|null, skip_reason?: string}`."
+      - "AC-2: When `harness.yaml drive.real_test.command` is unset or empty,
+        the hook returns `{ran: false, passed: null, command: null, exit_code:
+        null, skip_reason: 'unconfigured'}` without invoking anything."
+      - "AC-3: When configured, the hook counts done features in the active goal
+        (state.yaml `feature_progress` values === 'done'); fires only when
+        `count % every_n_features === 0` (default N=3); skip with `skip_reason:
+        'not_due'` otherwise."
+      - "AC-4: On exit 0, writes one `real_test_passed` event with the command +
+        count; returns `{ran: true, passed: true}`."
+      - "AC-5: On non-zero exit, writes one `real_test_failed` event including
+        the command, exit_code, and the last 10 lines of stderr; returns `{ran:
+        true, passed: false}`."
+      - "AC-6: `src/drive/loop.ts` invokes `runRealTestIfDue` after the F-138
+        replan hook at the same trigger point. On `passed === false`, the loop
+        emits a halt with `reason: 'real_test_failed'`."
+      - "AC-7: 5+ vitest cases in `tests/parity/driveRealTest.test.ts` covering:
+        unconfigured skip, not-due skip, due + pass, due + fail, custom
+        every_n_features."
+      - "AC-8: F-139 mirrored on both spec.yaml copies; diff -q clean."
+      - "AC-9: F-139 completed via the harness CLI cycle on
+        `feat/v0.14.4-drive-real-test`. self_check 5/5 + npm test green."

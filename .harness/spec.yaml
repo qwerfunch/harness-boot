@@ -6309,6 +6309,10 @@ features:
     name: drive replan hook — adaptive feature-by-feature replanning (Lite)
     type: feature
     test_strategy: tdd
+  - id: F-139
+    name: drive mid-cycle real test — periodic system-level smoke during a goal
+    type: feature
+    test_strategy: tdd
 goals: []
 constraints:
   tech_stack:

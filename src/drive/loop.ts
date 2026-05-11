@@ -32,6 +32,7 @@ import {
   type ExecutorResult,
 } from './executor.js';
 import {generateGoalRetro} from './goalRetro.js';
+import {runRealTestIfDue} from './realTest.js';
 import {replanAfterCompletion} from './replan.js';
 
 /** Per-iteration result returned by {@link runDriveStep}. */
@@ -391,15 +392,37 @@ export function runDriveStep(
   // manifest when the retro hints at a pivot. Idempotent per fid.
   // Best-effort — never blocks the loop; replan failures fall back
   // to the existing planner chain on the next iteration.
+  //
+  // (3.6) F-139 — mid-cycle real test. After replan, runs the
+  // user-defined `harness.yaml drive.real_test.command` every N
+  // done features (default 3). Unconfigured projects skip silently.
+  // On fail, surfaces `real_test_failed` halt so the user inspects.
   if (ck.execute.active_feature !== null) {
     try {
       const replanState = State.load(harnessDir);
       const prevActive = replanState.getFeature(ck.execute.active_feature);
       if (prevActive !== null && prevActive.status === 'done') {
         replanAfterCompletion(harnessDir, ck.execute.active_feature, ck.goal_id);
+        const realTest = runRealTestIfDue(
+          harnessDir,
+          ck.goal_id,
+          ck.execute.active_feature,
+        );
+        if (realTest.ran && realTest.passed === false) {
+          return {
+            proceed: false,
+            halt: emitHalt(
+              harnessDir,
+              'manual',
+              `real_test_failed: ${realTest.command} (exit ${realTest.exit_code}). ` +
+                `Inspect events.log for stderr tail.`,
+              {goal_id: ck.goal_id, feature_id: ck.execute.active_feature, now},
+            ),
+          };
+        }
       }
     } catch {
-      // silent — replan is auxiliary
+      // silent — replan / real-test are auxiliary
     }
   }
 
