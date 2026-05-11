@@ -9,6 +9,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
+### Changed
+
+- **F-136** — Communication rules tightened. Three corrections to F-135: (a) `docs/communication-rules.md` is now a single English template (the Korean side-by-side duplication is gone — the rule "write in the user's language natively" doesn't need to be restated in Korean); (b) Family 1 gains a **progress-ID surface discipline** rule — don't list handled `F-NNN` IDs in routine responses; (c) Family 1 gains a **brevity rule for write surfaces** — CHANGELOG entries, commit messages, and PR bodies follow the same answer-first standard. CLAUDE.md.template reminder rewritten to match. Existing users: copy the new section over once; agents auto-update on `/plugin update`.
+
 ### Added
 
 - **F-135** — plugin-level **response writing rules**, promoted from maintainer-local memory to a single source of truth that every harness user inherits. Two rule families: (1) **answer-first / scannable format** — conclusion in the first line, short paragraphs, headings, define jargon on first mention, no hedging unless genuinely uncertain; (2) **native tone for any user language** — auto-detect the user's language and reply in it, no translation tone, zero character/grammar errors, keep proper nouns verbatim, use loanwords as that language's IT community uses them. Reference patterns named for Korean, Japanese, Chinese, Spanish, German, French, and Portuguese; the rule generalises to any natural language. Wiring: new `docs/communication-rules.md` (bilingual SSoT), new section in `docs/templates/starter/CLAUDE.md.template` so fresh `/harness-boot:init` writes a reminder into the user's CLAUDE.md, and one link line appended to every `agents/*.md` (16 files) so subagent invocations inherit the rules. **Existing user migration**: `/plugin update` auto-applies the agents/* change but cannot rewrite a user-owned CLAUDE.md — copy the new "Response writing rules" section from `docs/templates/starter/CLAUDE.md.template` into your existing CLAUDE.md once. New parity test `tests/parity/communicationRules.test.ts` pins the wiring.
