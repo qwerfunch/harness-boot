@@ -44,10 +44,11 @@ import {render as renderDashboard} from '../ui/dashboard.js';
 import {suggest} from '../ui/intentPlanner.js';
 import {resolveLang} from '../ui/lang.js';
 import {SpecValidationError, loadSpec, validate as validateSpec} from '../spec/validate.js';
+import {exportSpec} from '../spec/exportSpec.js';
 import {State} from '../core/state.js';
 import {buildReport, formatHuman as formatStatusHuman} from '../status.js';
 import {parse as yamlParse} from 'yaml';
-import {readFileSync} from 'node:fs';
+import {readFileSync, writeFileSync} from 'node:fs';
 import {run as runSync, tryInitialSync} from '../sync.js';
 import {
   activate,
@@ -513,6 +514,41 @@ function buildProgram(): Command {
         printHuman(formatCheckHuman(report));
       }
       process.exit(report.findings.length === 0 ? 0 : 6);
+    });
+
+  // -----------------------------------------------------------------
+  // export-spec (F-131)
+  // -----------------------------------------------------------------
+  program
+    .command('export-spec')
+    .description(
+      'emit spec.yaml to stdout (read-only / CQS); --active-only ' +
+        'compacts done/archived features so the LLM import stays small',
+    )
+    .option('--harness-dir <dir>', 'path to .harness directory', './.harness')
+    .option('--active-only', 'compact done/archived feature bodies')
+    .option('--output <path>', 'write to file instead of stdout')
+    .action((options: Record<string, unknown>) => {
+      const harnessDir = resolveHarnessDir(options['harnessDir'] as string | undefined);
+      if (!isDirectory(harnessDir)) {
+        printError(`error: ${harnessDir} not found`);
+        process.exit(2);
+      }
+      let yaml: string;
+      try {
+        yaml = exportSpec(harnessDir, {activeOnly: Boolean(options['activeOnly'])});
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        printError(`error: ${msg}`);
+        process.exit(2);
+      }
+      const outputPath = typeof options['output'] === 'string' ? (options['output'] as string) : null;
+      if (outputPath !== null) {
+        writeFileSync(outputPath, yaml, 'utf-8');
+      } else {
+        process.stdout.write(yaml);
+      }
+      process.exit(0);
     });
 
   // -----------------------------------------------------------------

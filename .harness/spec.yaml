@@ -5049,6 +5049,57 @@ features:
       - "AC-5: F-130 mirrored on both spec.yaml copies; `diff -q` clean."
       - "AC-6: F-130 completed via the harness CLI cycle on `feat/v0.14.4-feature-title-length-validator`. self_check 5/5 PASS, npm test all green."
 
+  - id: "F-131"
+    name: "harness export-spec — done feature compaction (Lite)"
+    type: "feature"
+    description: |
+      Forty-eighth cycle. Closes the most weighty logcat-on
+      ISSUES-LOG entry (blocker, "spec.yaml context bloat"): a
+      project that has accumulated 200+ done features now spends
+      ~30k tokens of every Claude conversation just on the
+      `acceptance_criteria` and `description` bodies of features
+      that have already shipped, because `@.harness/spec.yaml` is a
+      whole-file import.
+
+      Lite shape: a new read-only CLI subcommand
+      `harness export-spec --active-only` that emits a compacted
+      copy of the spec.yaml to stdout (or `--output <path>`). For
+      every feature whose state.yaml status is `done` (or
+      `archived`), the export replaces:
+
+        - `acceptance_criteria: [...]` with a single placeholder
+          string `"(N criteria — see spec.yaml history)"`.
+        - `description: |` with its first non-blank line, hard-
+          truncated at 120 chars + `…` if longer.
+
+      Active features (planned, in_progress, blocked) are emitted
+      verbatim. The schema and field names are preserved so the
+      output still parses through the existing spec validator.
+
+      Out of scope: changing the default behaviour of any other
+      command, modifying spec.yaml in place, automatic CLAUDE.md
+      template rewrite, archived-feature off-loading to a separate
+      file. Those are larger backward-compat decisions queued for
+      follow-up cycles. This cycle adds only a new opt-in command.
+
+      Files touched (expected): `src/spec/exportSpec.ts` (new
+      module — compaction logic); `src/cli/harness.ts` (register
+      the new subcommand); `tests/parity/exportSpec.test.ts` (new
+      test file with active-only behaviour, passthrough,
+      placeholder shape); `CHANGELOG.md` Added line.
+
+    test_strategy: "tdd"
+    acceptance_criteria:
+      - "AC-1: `harness export-spec --active-only --harness-dir <dir>` reads `<dir>/spec.yaml` plus `<dir>/state.yaml`, emits a yaml document on stdout whose top-level shape matches the input (same keys, same order)."
+      - "AC-2: For every feature whose state.yaml `status` is `done` or `archived`, the emitted entry's `acceptance_criteria` is a single-element array `[\"(N criteria — see spec.yaml history)\"]` where N is the original count, and `description` is the first non-blank line truncated at 120 chars (with `…` suffix if truncation occurred)."
+      - "AC-3: Active features (status in {planned, in_progress, blocked}, or absent from state.yaml entirely) are emitted with `acceptance_criteria` and `description` byte-identical to the input."
+      - "AC-4: Without `--active-only`, the command emits the spec.yaml content effectively unchanged (idempotent passthrough — round-trip via `yaml.parse` then `yaml.stringify` equality is sufficient; comments may not be preserved)."
+      - "AC-5: `--output <path>` writes the result to the file instead of stdout. The file is overwritten if it already exists. Without `--output`, output goes to stdout."
+      - "AC-6: The command never mutates `<dir>/spec.yaml` or `<dir>/state.yaml` (CQS, BR-012). A unit test verifies mtime invariance."
+      - "AC-7: The compacted output, when re-fed to `harness validate`, validates clean against `docs/schemas/spec.schema.json`."
+      - "AC-8: F-131 mirrored on both spec.yaml copies; `diff -q` clean."
+      - "AC-9: F-131 completed via the harness CLI cycle on `feat/v0.14.4-spec-compact-export`. self_check 5/5 PASS, npm test all green."
+
 # v0.14.0 — Drive autonomous loop containers (filled in Stage 2 / F-119).
 # Each Goal groups N features under one user-supplied natural-language
 # objective. The runtime state mirror lives in state.yaml goals[].
