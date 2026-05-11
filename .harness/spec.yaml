@@ -887,7 +887,7 @@ features:
       - "AC-5: F-032 풀 사이클 (gate_0 + gate_5 + 4 + evidence + complete) 완주"
 
   - id: "F-033"
-    name: "Audit pass — stale rename + work.py archive wiring + README/CLAUDE.md refresh + dogfood self-issues-log"
+    name: "Audit pass — stale rename, work.py archive wiring, README/CLAUDE.md refresh, dogfood log"
     type: "feature"
     description: "v0.10.4~v0.10.7 빠른 출시 후 codebase audit. 발견된 6 갭 일괄 fix: (1) docs/setup/local-install.md 의 /harness: 26회 + first-run-checklist.md 6회 + templates/starter/CLAUDE.md.template 9회 stale namespace rename. (2) README.md 배지 v0.9.6→v0.10.7, 테스트 수 764/742→883. (3) CLAUDE.md 루트 v0.10.3→v0.10.7 갱신. (4) work.py --archive 가 archived_at (F-029 신 schema field) 자동 채움. (5) F-027 도그푸드 첫 적용 — .harness/_workspace/issues-log.md 에 audit findings 누적. (6) F-028 prompt log hook 의 production 미작동 (사용자 /plugin update 필요) 메모리 + CHANGELOG 안내."
     modules:
@@ -1682,7 +1682,7 @@ features:
       - "AC-6: 1117 unit + integration tests PASS, regression 0."
 
   - id: "F-058"
-    name: "README first-impression polish — Quick start plan.md sample, portfolio Preview column, conversation example rewrite"
+    name: "README first-impression polish — Quick start, portfolio Preview, conversation rewrite"
     type: "feature"
     description: |
       Three first-impression issues surfaced while reviewing the README:
@@ -5014,6 +5014,40 @@ features:
       - "AC-7: `CHANGELOG.md` [Unreleased] (or [0.14.4]) gains an `### Added` line citing F-129 and the two new kinds."
       - "AC-8: F-129 mirrored on both spec.yaml copies; `diff -q` clean."
       - "AC-9: F-129 completed via the harness CLI cycle on `feat/v0.14.4-perf-regression-evidence`. self_check 5/5 PASS, npm test all green."
+
+  - id: "F-130"
+    name: "feature name length validator (≤100 char)"
+    type: "feature"
+    description: |
+      Forty-seventh cycle. Trivial closure of a logcat-on ISSUES-LOG
+      entry: feature `name` strings can grow to 200–300 characters,
+      which spills the dashboard layout and erodes spec readability.
+      The schema currently leaves `features[].name` open
+      (`additionalProperties: true` on the items shape), so nothing
+      catches the overflow at validation time.
+
+      This cycle adds a `maxLength: 100` constraint on
+      `features[].name` in `docs/schemas/spec.schema.json`. The
+      existing `harness validate` path (Ajv-based, F-089) picks the
+      rule up automatically — no work in `src/` beyond touching the
+      JSON. A new vitest case under `tests/parity/validate.test.ts`
+      asserts both directions: a 100-char name passes, a 101-char
+      name fails with a schema-violation error whose path points at
+      `/features/0/name`.
+
+      No runtime check.ts drift kind is added — the validator is the
+      right enforcement point because schema violation already blocks
+      the gate-friendly `harness validate` step. Adding a separate
+      drift kind would be redundant noise.
+
+    test_strategy: "tdd"
+    acceptance_criteria:
+      - "AC-1: `docs/schemas/spec.schema.json` constrains `features[].name` to `maxLength: 100`."
+      - "AC-2: A spec where `features[0].name` is exactly 100 characters validates clean."
+      - "AC-3: A spec where `features[0].name` is 101 characters fails with `SpecValidationError`, and the error's `errors[0].instancePath` (or equivalent) names `/features/0/name`."
+      - "AC-4: The canonical `docs/samples/harness-boot-self/spec.yaml` continues to validate clean — all existing feature names are checked at this cycle's start to be ≤ 100."
+      - "AC-5: F-130 mirrored on both spec.yaml copies; `diff -q` clean."
+      - "AC-6: F-130 completed via the harness CLI cycle on `feat/v0.14.4-feature-title-length-validator`. self_check 5/5 PASS, npm test all green."
 
 # v0.14.0 — Drive autonomous loop containers (filled in Stage 2 / F-119).
 # Each Goal groups N features under one user-supplied natural-language
