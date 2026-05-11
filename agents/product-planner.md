@@ -190,3 +190,7 @@ NO shortcut: researcher does the exploring — the planner only decides with the
 - Patton, *User Story Mapping* (2014)
 - Nygard, *Documenting Architecture Decisions* (2011)
 - Cockburn, *Walking Skeleton* (2004)
+
+## Communication
+
+Follow `docs/communication-rules.md` for response style — answer-first format and native tone for any user language.

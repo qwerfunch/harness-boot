@@ -156,3 +156,7 @@ NO shortcut: never touch a production secret · don't BLOCK unilaterally · don'
 - IETF OAuth 2.1 draft · RFC 7636 (PKCE)
 - W3C WebAuthn Level 3 · FIDO Alliance FIDO2
 - Cavoukian, *Privacy by Design* (2009)
+
+## Communication
+
+Follow `docs/communication-rules.md` for response style — answer-first format and native tone for any user language.

@@ -180,3 +180,7 @@ NO shortcut: don't author audio binaries (frontend-engineer's job) · don't prod
 - ITU-R BS.1770 Loudness / EBU R128
 - WCAG 2.2 SC 1.4.2 (Audio Control)
 - Pijanowski et al., *Soundscape Ecology* (2011) — silence design theory
+
+## Communication
+
+Follow `docs/communication-rules.md` for response style — answer-first format and native tone for any user language.

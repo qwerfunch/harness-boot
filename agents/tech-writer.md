@@ -111,3 +111,7 @@ NO shortcut: don't edit code or spec · don't manually edit screenshots · don't
 - Keep a Changelog — `https://keepachangelog.com/`
 - Write the Docs community — `https://www.writethedocs.org/`
 - Horn, *Information Mapping* (1989)
+
+## Communication
+
+Follow `docs/communication-rules.md` for response style — answer-first format and native tone for any user language.

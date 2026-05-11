@@ -6291,6 +6291,11 @@ features:
     name: F-133 follow-up — extend whitelist to live spec.yaml
     type: feature
     test_strategy: smoke
+  - id: F-135
+    name: communication rules — answer-first format + native-tone for any user
+      language
+    type: feature
+    test_strategy: smoke
 goals: []
 constraints:
   tech_stack:

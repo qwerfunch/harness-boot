@@ -105,3 +105,7 @@ NO shortcut: don't rewrite module internals · don't hard-code secrets · don't 
 - Wiggins, *The Twelve-Factor App* (2011)
 - OpenFeature · Feature flag standard (CNCF, 2022)
 - Cockburn, *Walking Skeleton* (2004)
+
+## Communication
+
+Follow `docs/communication-rules.md` for response style — answer-first format and native tone for any user language.

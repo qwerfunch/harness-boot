@@ -59,7 +59,28 @@ harness 는 제품 개발 라이프사이클 전반의 13 전문가를 제공합
 
 둘 다 `.gitignore` 에 `.harness/_workspace/` 가 있다면 자동으로 제외됨.
 
-## 7. Import
+## 7. Response writing rules / 응답 작성 규칙
+
+> Plugin-level conventions for how every Claude session in this project writes answers. Two rule families — **answer-first format** and **native tone for any user language**. The rule file in the harness-boot source is the single source of truth; the headlines below are a quick reminder.
+>
+> 이 프로젝트의 모든 Claude 세션이 답을 **어떻게 쓸지** 정한 plugin 차원 규칙. 두 갈래 — **결론 먼저 형식** 과 **사용자 언어의 네이티브 톤** (한국어뿐 아니라 모든 자연어). 규칙 파일이 단일 SSoT, 아래는 빠른 reminder 만.
+
+**Family 1 — Answer-first / scannable format**:
+- Conclusion in the first line or paragraph; supporting detail follows.
+- Short paragraphs, headings, and tables; the reader finds the key fact in ~5 seconds.
+- Define jargon on first mention; state directly (no hedge unless genuinely uncertain).
+- Same shape for plans, evaluations, reports.
+
+**Family 2 — Native tone for any user language** (Korean / Japanese / Chinese / Spanish / German / French / Portuguese / etc.):
+- Auto-detect the user's language and reply in it.
+- No translation tone — write in the target language's natural word order, register, and idiom from the start.
+- Zero character / grammar errors; self-review.
+- Keep proper nouns (`spec.yaml`, `gate_5`, `F-N`, harness-boot) verbatim regardless of response language.
+- Loanwords as that language's IT community actually uses them.
+
+Full text + per-language reference patterns: `docs/communication-rules.md` in the harness-boot plugin source.
+
+## 8. Import
 
 @.harness/spec.yaml
 @.harness/architecture.yaml

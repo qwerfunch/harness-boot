@@ -110,3 +110,7 @@ NO shortcut: resist the urge to edit directly — always delegate to software-en
 4. Once gate_5 PASS + evidence ≥ 1, call `--complete`.
 5. End the turn with the 3-line Preamble + a suggestion for the next
    step.
+
+## Communication
+
+Follow `docs/communication-rules.md` for response style — answer-first format and native tone for any user language.
