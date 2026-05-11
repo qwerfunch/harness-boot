@@ -3254,8 +3254,42 @@ features:
     summary: checkpoint field + readTransientRetryConfig + loop retry decision + 6 vitest cases
   started_at: 2026-05-11T05:32:17Z
   completed_at: 2026-05-11T05:36:09Z
+- id: F-141
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-11T05:44:46Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-11T05:44:47Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-11T05:44:49Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-11T05:44:49Z
+      note: self_check 5/5 + npm test 708/708 + build clean
+  evidence:
+  - ts: 2026-05-11T05:44:46Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.5s) · cmd: npm test"
+  - ts: 2026-05-11T05:44:47Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.9s) · cmd: npm run typecheck"
+  - ts: 2026-05-11T05:44:49Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.4s) · cmd: npm run lint"
+  - ts: 2026-05-11T05:44:49Z
+    kind: reviewer_check
+    summary: plugin.json/package.json 0.15.0 + CHANGELOG [0.15.0] header + README.md/README.ko.md badge + capability narrative
+  started_at: 2026-05-11T05:40:18Z
+  completed_at: 2026-05-11T05:45:06Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-140
+  last_command: /harness:work F-141
   last_gate_passed: gate_5
   active_feature_id: null

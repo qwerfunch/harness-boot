@@ -6,7 +6,7 @@
 
 harness-boot is a multi-agent development harness for Claude Code. Where most AI tools add *capability*, we add *focus*.
 
-[![plugin](https://img.shields.io/badge/plugin-v0.14.3-blue)](.claude-plugin/plugin.json)
+[![plugin](https://img.shields.io/badge/plugin-v0.15.0-blue)](.claude-plugin/plugin.json)
 [![tests](https://img.shields.io/badge/tests-467%20passing-brightgreen)](tests/parity)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
@@ -212,7 +212,9 @@ harness-boot/
 
 ## Status
 
-**v0.14.3** — Stability + cleanup batch (F-122 → F-128). `tests/parity/driveLoopAndPlan.test.ts` time-bomb fixed (F-122) so CI on every downstream fork stays green; CLAUDE.md brought back in sync (F-123) and refactored into stable / semi-static sigil / volatile-pointer layers so future drift is structurally prevented (F-124); the pre-cutover Python footprint (`legacy/scripts/`, `tests/unit`, `tests/integration`, `tests/scale` — ~28 k lines combined) evicted from git tracking, working trees preserved locally (F-125 + F-126); `hooks/pre-commit-phase2.sh` now short-circuits during git's own merge / cherry-pick / revert / rebase finalizers so conflict-resolution commits no longer require `HARNESS_BYPASS_PRE_COMMIT=1` (F-127). Zero capability addition, zero behaviour change; v0.14.2 installs are functionally identical.
+**v0.15.0** — Adaptive drive + structural archive separation + plugin-level writing rules (F-129 → F-140). Iron Law gains paired `perf_regression` / `perf_resolved` evidence kinds so silently-regressing perf cycles can no longer ship. `complete()` now relocates done feature bodies into a sibling `spec.archive.yaml` and `harness sync` migrates pre-existing bodies in one pass — `spec.yaml` stays slim by construction. `harness drive` becomes adaptive: deterministic replan after each completion, periodic real-test injection (`harness.yaml drive.real_test.command`), and transient-retry on flaky e2e. Plugin-level `docs/communication-rules.md` standardises answer-first format and native-tone replies for any user language.
+
+Previously: **v0.14.3** — Stability + cleanup batch (F-122 → F-128). `tests/parity/driveLoopAndPlan.test.ts` time-bomb fixed (F-122) so CI on every downstream fork stays green; CLAUDE.md brought back in sync (F-123) and refactored into stable / semi-static sigil / volatile-pointer layers so future drift is structurally prevented (F-124); the pre-cutover Python footprint (`legacy/scripts/`, `tests/unit`, `tests/integration`, `tests/scale` — ~28 k lines combined) evicted from git tracking, working trees preserved locally (F-125 + F-126); `hooks/pre-commit-phase2.sh` now short-circuits during git's own merge / cherry-pick / revert / rebase finalizers so conflict-resolution commits no longer require `HARNESS_BYPASS_PRE_COMMIT=1` (F-127). Zero capability addition, zero behaviour change; v0.14.2 installs are functionally identical.
 
 **v0.14.0** — `drive` ships (F-118 + F-119). New autonomous-loop slash command `/harness-boot:drive "<natural-language goal>"` that scaffolds a *Goal* (a container that groups N features) via researcher → product-planner → feature-author and then runs every feature's gate cycle to completion. **Bounded by design**: BR-015 forbids self-issued `--hotfix-reason`, `git commit/push/tag`, and any shared-state mutation; the loop *halts* on 9 enumerated conditions (commit boundary, retry threshold, drift error, blocked feature, wall-clock, iteration cap, network failure, STOP file, plan-phase approval) and yields back to the user. Read-only `harness drive --status [G-N] [--all] [--json] [--watch]` is mtime-invariant (CQS, BR-012).
 

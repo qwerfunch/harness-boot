@@ -6317,6 +6317,10 @@ features:
     name: drive transient retry — auto-retry real_test_failed once before yielding
     type: feature
     test_strategy: tdd
+  - id: F-141
+    name: v0.15.0 release prep — minor bump for the 12-feature batch
+    type: chore
+    test_strategy: smoke
 goals: []
 constraints:
   tech_stack:

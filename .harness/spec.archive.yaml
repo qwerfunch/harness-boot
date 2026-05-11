@@ -526,3 +526,46 @@ features:
       - "AC-7: F-140 mirrored on both spec.yaml copies; diff -q clean."
       - "AC-8: F-140 completed via the harness CLI cycle on
         `feat/v0.14.4-drive-transient-retry`. self_check 5/5 + npm test green."
+  - id: F-141
+    description: |
+      Forty-third release cycle. Twelve features (F-129 → F-140)
+      ship as a single minor bump because the batch crosses the
+      "substantial milestone" threshold the maintainer reserves for
+      minor versions: a new evidence taxonomy (perf_regression /
+      perf_resolved), the structural archive separation that
+      permanently slims spec.yaml, plugin-level communication
+      rules, and three drive-loop adaptivity hooks (replan / mid-
+      cycle real test / transient retry).
+
+      Mechanics:
+        - plugin.json + package.json: 0.14.3 → 0.15.0.
+        - CHANGELOG.md [Unreleased] block reflows into [0.15.0]
+          dated 2026-05-11 with grouped Added / Changed / Fixed
+          sections (release brevity standard from F-136).
+        - README.md and README.ko.md gain a v0.15.0 capability
+          line each (release-time README sync per maintainer
+          policy).
+        - F-141 itself runs through the harness CLI cycle for the
+          audit trail, then develop fast-forwards into main and
+          main is tagged v0.15.0 (annotated). `gh release create`
+          finalises the GitHub release with the [0.15.0] CHANGELOG
+          section as the body.
+    acceptance_criteria:
+      - "AC-1: `.claude-plugin/plugin.json` `version` and `package.json`
+        `version` both equal `0.15.0`."
+      - "AC-2: `CHANGELOG.md` carries a `## [0.15.0] — 2026-05-11` header with
+        grouped Added / Changed / Fixed sections covering F-129 → F-140; `##
+        [Unreleased]` is empty (or carries only Queued items)."
+      - "AC-3: `README.md` and `README.ko.md` both gain a `**v0.15.0**` line
+        summarising the release in one or two sentences (English and natural
+        Korean respectively)."
+      - "AC-4: `bash self_check.sh` returns 5/5 OK and `npm test` is fully
+        green."
+      - "AC-5: F-141 mirrored on both spec.yaml copies; diff -q clean."
+      - "AC-6: F-141 completed via the harness CLI cycle on
+        `chore/v0.15.0-release-prep`."
+      - "AC-7: After PR merges to develop, develop fast-forwards into main; main
+        is tagged `v0.15.0` (annotated, message references F-129 → F-140); the
+        tag is pushed to origin."
+      - "AC-8: `gh release create v0.15.0 --notes-file
+        <CHANGELOG-section-extracted>` creates the GitHub release."

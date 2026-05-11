@@ -378,6 +378,7 @@ function buildProgram() {
         .option('--skip-validation', 'skip JSONSchema check')
         .option('--schema <path>', 'path to spec.schema.json override')
         .option('--timestamp <iso>', 'override UTC timestamp (tests)')
+        .option('--no-archive-migrate', 'skip F-137 bulk archive migration this run')
         .option('--json', 'emit JSON summary')
         .action((options) => {
         const harnessDir = resolveHarnessDir(options['harnessDir']);
@@ -404,6 +405,7 @@ function buildProgram() {
                 skipValidation: Boolean(options['skipValidation']),
                 schemaPath: typeof options['schema'] === 'string' ? options['schema'] : null,
                 timestamp: typeof options['timestamp'] === 'string' ? options['timestamp'] : undefined,
+                noArchiveMigrate: options['archiveMigrate'] === false,
             });
             if (json) {
                 printJson(summary);
