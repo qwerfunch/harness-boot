@@ -38,10 +38,13 @@ describe('communication-rules.md — single source of truth', () => {
     expect(text).toContain('Native tone');
   });
 
-  it('carries bilingual (English + Korean) sections', () => {
+  it('is single-language English (no side-by-side ko duplication)', () => {
     const text = readFileSync(RULES_PATH, 'utf-8');
-    expect(text).toContain('### English');
-    expect(text).toContain('### 한국어');
+    // The standalone "### 한국어" heading was removed in F-136; the file
+    // now reads as one English template that generalises to all languages.
+    expect(text).not.toContain('### 한국어');
+    // Korean reference *examples* (loanwords, rule samples) are still
+    // allowed inline — only the dedicated sibling heading is gone.
   });
 
   it('names at least four reference languages with native-tone notes', () => {
@@ -51,13 +54,27 @@ describe('communication-rules.md — single source of truth', () => {
     const hits = tokens.filter((t) => text.includes(t));
     expect(hits.length).toBeGreaterThanOrEqual(4);
   });
+
+  it('carries the F-136 progress-ID surface-discipline rule', () => {
+    const text = readFileSync(RULES_PATH, 'utf-8');
+    expect(text).toContain('Progress-ID surface discipline');
+  });
+
+  it('carries the F-136 brevity-for-write-surfaces rule naming CHANGELOG / commit / PR', () => {
+    const text = readFileSync(RULES_PATH, 'utf-8');
+    expect(text).toContain('Brevity for write surfaces');
+    expect(text).toContain('CHANGELOG');
+    expect(text).toContain('commit');
+    expect(text).toContain('PR');
+  });
 });
 
 describe('CLAUDE.md.template — reminder section', () => {
   it('contains a section that previews the rules', () => {
     const text = readFileSync(TEMPLATE_PATH, 'utf-8');
     expect(text).toContain('Response writing rules');
-    expect(text).toContain('응답 작성 규칙');
+    // F-136 — the section is now English-only; the Korean
+    // "응답 작성 규칙" duplicate heading was removed.
   });
 
   it('links back to the SSoT', () => {

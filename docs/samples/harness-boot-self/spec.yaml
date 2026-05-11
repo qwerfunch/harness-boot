@@ -6296,6 +6296,11 @@ features:
       language
     type: feature
     test_strategy: smoke
+  - id: F-136
+    name: communication rules v2 — single-language template + brevity for
+      IDs/commits/PRs/CHANGELOG
+    type: feature
+    test_strategy: smoke
 goals: []
 constraints:
   tech_stack:

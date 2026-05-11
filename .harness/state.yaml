@@ -3084,8 +3084,42 @@ features:
     summary: docs/communication-rules.md (bilingual SSoT) + CLAUDE.md.template reminder section + 16 agents linked + 24 vitest cases. plugin-level rule promotion from local memory
   started_at: 2026-05-11T04:34:25Z
   completed_at: 2026-05-11T04:38:59Z
+- id: F-136
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-11T04:47:55Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-11T04:47:56Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-11T04:47:58Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-11T04:47:59Z
+      note: self_check 5/5 OK; npm test 683/683
+  evidence:
+  - ts: 2026-05-11T04:47:55Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.4s) · cmd: npm test"
+  - ts: 2026-05-11T04:47:56Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.9s) · cmd: npm run typecheck"
+  - ts: 2026-05-11T04:47:58Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.4s) · cmd: npm run lint"
+  - ts: 2026-05-11T04:47:59Z
+    kind: reviewer_check
+    summary: communication-rules.md single-language; CLAUDE.md.template reminder rewritten; 2 new Family 1 rules + tests updated
+  started_at: 2026-05-11T04:45:29Z
+  completed_at: 2026-05-11T04:48:23Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-135
+  last_command: /harness:work F-136
   last_gate_passed: gate_5
   active_feature_id: null
