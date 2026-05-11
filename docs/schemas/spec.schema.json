@@ -110,6 +110,11 @@
         "required": ["id"],
         "properties": {
           "id": {"type": "string", "pattern": "^F-\\d+$"},
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "description": "F-130 — short human-readable label. Hard-capped at 100 characters so the dashboard layout, kickoff template, and inbox listings stay readable. Long context belongs in `description`, not the name."
+          },
           "type": {"type": "string"},
           "ui_surface": {
             "type": "object",
@@ -207,11 +212,12 @@
       },
       "prefixItems": [
         {
-          "description": "Walking Skeleton (v2.3 Runtime-Verified First) — features[0] must have type='skeleton'. The first feature has to carry an end-to-end execution skeleton that passes through gate_5; subsequent features ride on top of it.",
+          "description": "Walking Skeleton (v2.3 Runtime-Verified First) — features[0] must have type='skeleton'. The first feature has to carry an end-to-end execution skeleton that passes through gate_5; subsequent features ride on top of it. The 100-char `name` cap (F-130) applies here too — Walking Skeleton entries get the same readability rules.",
           "type": "object",
           "required": ["id", "type"],
           "properties": {
             "id": {"type": "string", "pattern": "^F-\\d+$"},
+            "name": {"type": "string", "maxLength": 100},
             "type": {"const": "skeleton"}
           },
           "additionalProperties": true

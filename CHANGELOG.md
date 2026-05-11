@@ -13,6 +13,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 - **F-129** — `perf_regression` and `perf_resolved` evidence kinds plus a `complete()` guard that refuses the transition while the latest of the two markers on a feature is `perf_regression`. Closes the Iron Law gap surfaced by a `logcat-on` ISSUES-LOG entry: a feature could ship with `gate_perf` result = `pass` even when the just-measured numbers regressed against the previous baseline, because gate_perf records pass/fail without a baseline comparison and the Iron Law's declared-evidence threshold is satisfied by any kind of declared evidence. The Lite half of the closure ships now (paired evidence kinds + one-shot guard); structured baseline capture inside gate_perf and threshold-based auto-fail are queued for a separate cycle. `--hotfix-reason` bypasses the guard with the existing audit trail. `commands/work.md` kind-taxonomy section documents the new kinds and the resolution flow.
 
+### Changed
+
+- **F-130** — `docs/schemas/spec.schema.json` constrains `features[].name` to `maxLength: 100` (both the generic `items` shape and the Walking Skeleton `prefixItems[0]` shape). Closes a `logcat-on` ISSUES-LOG entry where feature `name` strings had grown to 200–300 characters and were spilling the dashboard layout and the kickoff template. The cap is enforced at validation time (`harness validate`), so it shows up as a schema-violation error pointing at `/features/N/name` rather than as a separate drift kind. Two pre-existing canonical entries (F-033 at 103 chars, F-058 at 115 chars) were shortened to fit; long context belongs in `description`, not the name. `tests/parity/validate.test.ts` gains a paired length-cap case (100-char accept, 101-char reject).
+
 ### Queued
 
 - Marketplace submission to `anthropic/claude-plugins-official` — held until external soak; submission text templated, user submits via https://claude.ai/settings/plugins/submit.
