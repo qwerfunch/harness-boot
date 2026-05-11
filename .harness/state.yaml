@@ -3017,7 +3017,7 @@ features:
   started_at: 2026-05-11T04:00:25Z
   completed_at: 2026-05-11T04:01:49Z
 - id: F-134
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3049,9 +3049,9 @@ features:
     kind: trivial
     summary: hook whitelist closes recursive lifecycle gap; F-133 spec.yaml mutation rides along
   started_at: 2026-05-11T04:04:31Z
-  completed_at: null
+  completed_at: 2026-05-11T04:05:41Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-134
   last_gate_passed: gate_5
-  active_feature_id: F-134
+  active_feature_id: null

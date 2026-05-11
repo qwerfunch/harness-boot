@@ -158,3 +158,45 @@ features:
       - "AC-5: F-133 mirrored on both spec.yaml copies; diff -q clean."
       - "AC-6: F-133 completed via the harness CLI cycle on
         feat/v0.14.4-spec-archive-separation."
+  - id: F-134
+    description: |
+      Closes the recursive lifecycle gap left open by F-133. After
+      F-132 introduced auto-archive on `complete()`, the post-complete
+      record commit always carries three categories of artifact:
+
+        1. `.harness/state.yaml` — the status transition. Already on
+           the whitelist since the original F-034 hook.
+        2. `.harness/spec.archive.yaml` — the moved body. F-133 added
+           this and its docs/samples mirror to the whitelist.
+        3. `.harness/spec.yaml` — the *live* spec mutated to drop the
+           moved feature's body. **Still not whitelisted** because
+           F-133 ran out of cycle commit budget and the cycle that
+           would whitelist spec.yaml was itself blocked by the
+           same gap.
+
+      F-134 is the trivial cycle that adds entry 3 to the whitelist —
+      `.harness/spec.yaml` and the docs/samples mirror — so that the
+      record commit after every future `harness work F-N --complete`
+      passes through branch 4 of the F-034 hook even when
+      active_feature_id has just been cleared. Active-feature flow
+      stays untouched (branch 6); the whitelist only applies when
+      no feature is active, which is precisely the post-complete
+      moment.
+
+      F-133's previously-blocked `spec.yaml` mutation rides along in
+      this same commit, completing the dogfood proof for the whole
+      F-132 → F-133 → F-134 chain. After this cycle lands, future
+      complete() lifecycles produce only whitelist-friendly diffs.
+    acceptance_criteria:
+      - "AC-1: hooks/pre-commit-phase2.sh whitelist permits .harness/spec.yaml
+        and docs/samples/harness-boot-self/spec.yaml when staged alone
+        (active_feature_id may be null)."
+      - "AC-2: The branch-4 header comment block is updated to enumerate all six
+        whitelist patterns (state.yaml, _workspace/*, CHANGELOG.md,
+        spec.archive.yaml + mirror, spec.yaml + mirror)."
+      - "AC-3: Working-tree hook synced to .git/hooks/pre-commit so this cycle's
+        record commit can rely on the new whitelist immediately."
+      - "AC-4: F-133's pending spec.yaml mutation is committed in this same
+        change."
+      - "AC-5: bash self_check.sh returns 5/5 OK."
+      - "AC-6: F-134 mirrored on both spec.yaml copies; diff -q clean."
