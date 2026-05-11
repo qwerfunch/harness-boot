@@ -9,6 +9,18 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ## [Unreleased]
 
+### Added
+
+- **F-129** — `perf_regression` and `perf_resolved` evidence kinds plus a `complete()` guard that refuses the transition while the latest of the two markers on a feature is `perf_regression`. Closes the Iron Law gap surfaced by a `logcat-on` ISSUES-LOG entry: a feature could ship with `gate_perf` result = `pass` even when the just-measured numbers regressed against the previous baseline, because gate_perf records pass/fail without a baseline comparison and the Iron Law's declared-evidence threshold is satisfied by any kind of declared evidence. The Lite half of the closure ships now (paired evidence kinds + one-shot guard); structured baseline capture inside gate_perf and threshold-based auto-fail are queued for a separate cycle. `--hotfix-reason` bypasses the guard with the existing audit trail. `commands/work.md` kind-taxonomy section documents the new kinds and the resolution flow.
+
+### Changed
+
+- **F-130** — `docs/schemas/spec.schema.json` constrains `features[].name` to `maxLength: 100` (both the generic `items` shape and the Walking Skeleton `prefixItems[0]` shape). Closes a `logcat-on` ISSUES-LOG entry where feature `name` strings had grown to 200–300 characters and were spilling the dashboard layout and the kickoff template. The cap is enforced at validation time (`harness validate`), so it shows up as a schema-violation error pointing at `/features/N/name` rather than as a separate drift kind. Two pre-existing canonical entries (F-033 at 103 chars, F-058 at 115 chars) were shortened to fit; long context belongs in `description`, not the name. `tests/parity/validate.test.ts` gains a paired length-cap case (100-char accept, 101-char reject).
+
+### Added (continued)
+
+- **F-131** — new read-only CLI subcommand `harness export-spec [--active-only] [--output <path>]`. Closes the heaviest `logcat-on` ISSUES-LOG entry (blocker, "spec.yaml context bloat"): once a project has accumulated 200+ done features, `@.harness/spec.yaml` imports tens of thousands of tokens of `acceptance_criteria` + `description` for features that already shipped. With `--active-only`, the exporter reads `state.yaml`, finds every feature in `done` or `archived`, and replaces its `acceptance_criteria` with `["(N criteria — see spec.yaml history)"]` plus its `description` with the first non-blank line truncated at 120 chars + ellipsis. Active features (planned / in_progress / blocked / absent from state) emit byte-identical to the input. The compacted yaml passes `harness validate` against the same schema. Without `--active-only` the command is an idempotent yaml round-trip (passthrough). The command never mutates `spec.yaml` or `state.yaml` (CQS, BR-012); a unit test pins the mtime invariant. Default output is stdout; `--output <path>` writes to a file. Self-dogfood smoke: the canonical `.harness/spec.yaml` exports from 5756 lines to 2941 lines (49% smaller). The `@import` substitution itself (CLAUDE.md rewrite, automatic refresh wiring) is out of scope and queued — this cycle ships the data path so external dogfood adopters can opt in immediately.
+
 ### Queued
 
 - Marketplace submission to `anthropic/claude-plugins-official` — held until external soak; submission text templated, user submits via https://claude.ai/settings/plugins/submit.

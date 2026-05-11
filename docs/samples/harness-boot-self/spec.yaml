@@ -887,7 +887,7 @@ features:
       - "AC-5: F-032 풀 사이클 (gate_0 + gate_5 + 4 + evidence + complete) 완주"
 
   - id: "F-033"
-    name: "Audit pass — stale rename + work.py archive wiring + README/CLAUDE.md refresh + dogfood self-issues-log"
+    name: "Audit pass — stale rename, work.py archive wiring, README/CLAUDE.md refresh, dogfood log"
     type: "feature"
     description: "v0.10.4~v0.10.7 빠른 출시 후 codebase audit. 발견된 6 갭 일괄 fix: (1) docs/setup/local-install.md 의 /harness: 26회 + first-run-checklist.md 6회 + templates/starter/CLAUDE.md.template 9회 stale namespace rename. (2) README.md 배지 v0.9.6→v0.10.7, 테스트 수 764/742→883. (3) CLAUDE.md 루트 v0.10.3→v0.10.7 갱신. (4) work.py --archive 가 archived_at (F-029 신 schema field) 자동 채움. (5) F-027 도그푸드 첫 적용 — .harness/_workspace/issues-log.md 에 audit findings 누적. (6) F-028 prompt log hook 의 production 미작동 (사용자 /plugin update 필요) 메모리 + CHANGELOG 안내."
     modules:
@@ -1682,7 +1682,7 @@ features:
       - "AC-6: 1117 unit + integration tests PASS, regression 0."
 
   - id: "F-058"
-    name: "README first-impression polish — Quick start plan.md sample, portfolio Preview column, conversation example rewrite"
+    name: "README first-impression polish — Quick start, portfolio Preview, conversation rewrite"
     type: "feature"
     description: |
       Three first-impression issues surfaced while reviewing the README:
@@ -4965,6 +4965,140 @@ features:
       - "AC-8: F-128 completed via the harness CLI cycle on `chore/v0.14.3-release-prep`."
       - "AC-9: After PR merges to develop, develop fast-forwards into main; main is tagged `v0.14.3` (annotated, message references the F-122 → F-127 batch); the tag is pushed to origin."
       - "AC-10: `gh release create v0.14.3 --notes-file <CHANGELOG-section-extracted-to-temp-file>` creates the GitHub release with the v0.14.3 CHANGELOG content as the release notes body."
+
+  - id: "F-129"
+    name: "perf_regression evidence kind + complete() guard"
+    type: "feature"
+    description: |
+      Forty-sixth cycle. Closes the Iron Law gap surfaced by an
+      external dogfood ISSUES-LOG entry: a feature can ship with
+      gate_perf result = `pass` even when the just-measured numbers
+      regress against the previous baseline. The runtime smoke gate
+      cannot catch this because gate_perf records pass/fail without
+      a baseline comparison, and the Iron Law's declared-evidence
+      threshold is satisfied by any kind of declared evidence — so a
+      perf-fix cycle that actually made things worse can still
+      declare "manual_check passed" three times and complete.
+
+      This cycle is the **Lite half** of the closure: it adds a
+      paired evidence kind taxonomy (`perf_regression` and
+      `perf_resolved`) and a one-shot complete() guard that rejects
+      the transition when the latest of the two markers on the
+      feature is `perf_regression`. The author declares the
+      regression explicitly after looking at the gate_perf output;
+      the resolution is declared the same way once the fix lands and
+      a follow-up gate_perf run shows recovery. `--hotfix-reason`
+      bypasses the guard with the existing audit trail.
+
+      Out of scope (queued for a separate cycle): automatic baseline
+      capture inside gate_perf, structured metric storage on
+      evidence entries, threshold-based auto-fail. The Lite version
+      is intentionally bounded so it ships in one cycle and starts
+      collecting real-world signal — the auto-baseline cycle can
+      reuse the kind taxonomy this cycle establishes.
+
+      Files touched (expected): `src/work.ts` (complete() new guard
+      branch); `tests/parity/work.test.ts` (perf_regression reject /
+      perf_resolved unblock / hotfix bypass scenarios);
+      `commands/work.md` (kind taxonomy section gains the two new
+      entries); `CHANGELOG.md` Added line.
+
+    test_strategy: "tdd"
+    acceptance_criteria:
+      - "AC-1: `harness work F-N --evidence \"<text>\" --kind perf_regression` records the entry into `state.yaml` features[].evidence with `kind: perf_regression`. The entry counts toward the Iron Law declared-evidence threshold (it is not in `AUTOMATIC_EVIDENCE_KINDS`)."
+      - "AC-2: Same shape for `--kind perf_resolved` — recorded normally, counts as declared evidence, no special handling at record time."
+      - "AC-3: `harness work F-N --complete` rejects with `action: queried` and the message starts with `cannot complete — perf regression unresolved` when the most-recent entry on `features[F-N].evidence[]` whose kind is in {perf_regression, perf_resolved} has kind `perf_regression`. Status remains unchanged; the call is re-callable."
+      - "AC-4: When the most-recent entry of those two kinds is `perf_resolved` (i.e. the regression has been declared resolved by the author), `--complete` proceeds through the existing Iron Law checks. When neither kind is present, behaviour is identical to today."
+      - "AC-5: `--complete --hotfix-reason \"...\"` bypasses the perf-regression guard with the existing audit trail (the hotfix evidence entry is appended). The bypass message and event payload include the hotfix reason as today."
+      - "AC-6: `commands/work.md` kind-taxonomy section names both `perf_regression` and `perf_resolved` in the declared list, with one short usage line each."
+      - "AC-7: `CHANGELOG.md` [Unreleased] (or [0.14.4]) gains an `### Added` line citing F-129 and the two new kinds."
+      - "AC-8: F-129 mirrored on both spec.yaml copies; `diff -q` clean."
+      - "AC-9: F-129 completed via the harness CLI cycle on `feat/v0.14.4-perf-regression-evidence`. self_check 5/5 PASS, npm test all green."
+
+  - id: "F-130"
+    name: "feature name length validator (≤100 char)"
+    type: "feature"
+    description: |
+      Forty-seventh cycle. Trivial closure of a logcat-on ISSUES-LOG
+      entry: feature `name` strings can grow to 200–300 characters,
+      which spills the dashboard layout and erodes spec readability.
+      The schema currently leaves `features[].name` open
+      (`additionalProperties: true` on the items shape), so nothing
+      catches the overflow at validation time.
+
+      This cycle adds a `maxLength: 100` constraint on
+      `features[].name` in `docs/schemas/spec.schema.json`. The
+      existing `harness validate` path (Ajv-based, F-089) picks the
+      rule up automatically — no work in `src/` beyond touching the
+      JSON. A new vitest case under `tests/parity/validate.test.ts`
+      asserts both directions: a 100-char name passes, a 101-char
+      name fails with a schema-violation error whose path points at
+      `/features/0/name`.
+
+      No runtime check.ts drift kind is added — the validator is the
+      right enforcement point because schema violation already blocks
+      the gate-friendly `harness validate` step. Adding a separate
+      drift kind would be redundant noise.
+
+    test_strategy: "tdd"
+    acceptance_criteria:
+      - "AC-1: `docs/schemas/spec.schema.json` constrains `features[].name` to `maxLength: 100`."
+      - "AC-2: A spec where `features[0].name` is exactly 100 characters validates clean."
+      - "AC-3: A spec where `features[0].name` is 101 characters fails with `SpecValidationError`, and the error's `errors[0].instancePath` (or equivalent) names `/features/0/name`."
+      - "AC-4: The canonical `docs/samples/harness-boot-self/spec.yaml` continues to validate clean — all existing feature names are checked at this cycle's start to be ≤ 100."
+      - "AC-5: F-130 mirrored on both spec.yaml copies; `diff -q` clean."
+      - "AC-6: F-130 completed via the harness CLI cycle on `feat/v0.14.4-feature-title-length-validator`. self_check 5/5 PASS, npm test all green."
+
+  - id: "F-131"
+    name: "harness export-spec — done feature compaction (Lite)"
+    type: "feature"
+    description: |
+      Forty-eighth cycle. Closes the most weighty logcat-on
+      ISSUES-LOG entry (blocker, "spec.yaml context bloat"): a
+      project that has accumulated 200+ done features now spends
+      ~30k tokens of every Claude conversation just on the
+      `acceptance_criteria` and `description` bodies of features
+      that have already shipped, because `@.harness/spec.yaml` is a
+      whole-file import.
+
+      Lite shape: a new read-only CLI subcommand
+      `harness export-spec --active-only` that emits a compacted
+      copy of the spec.yaml to stdout (or `--output <path>`). For
+      every feature whose state.yaml status is `done` (or
+      `archived`), the export replaces:
+
+        - `acceptance_criteria: [...]` with a single placeholder
+          string `"(N criteria — see spec.yaml history)"`.
+        - `description: |` with its first non-blank line, hard-
+          truncated at 120 chars + `…` if longer.
+
+      Active features (planned, in_progress, blocked) are emitted
+      verbatim. The schema and field names are preserved so the
+      output still parses through the existing spec validator.
+
+      Out of scope: changing the default behaviour of any other
+      command, modifying spec.yaml in place, automatic CLAUDE.md
+      template rewrite, archived-feature off-loading to a separate
+      file. Those are larger backward-compat decisions queued for
+      follow-up cycles. This cycle adds only a new opt-in command.
+
+      Files touched (expected): `src/spec/exportSpec.ts` (new
+      module — compaction logic); `src/cli/harness.ts` (register
+      the new subcommand); `tests/parity/exportSpec.test.ts` (new
+      test file with active-only behaviour, passthrough,
+      placeholder shape); `CHANGELOG.md` Added line.
+
+    test_strategy: "tdd"
+    acceptance_criteria:
+      - "AC-1: `harness export-spec --active-only --harness-dir <dir>` reads `<dir>/spec.yaml` plus `<dir>/state.yaml`, emits a yaml document on stdout whose top-level shape matches the input (same keys, same order)."
+      - "AC-2: For every feature whose state.yaml `status` is `done` or `archived`, the emitted entry's `acceptance_criteria` is a single-element array `[\"(N criteria — see spec.yaml history)\"]` where N is the original count, and `description` is the first non-blank line truncated at 120 chars (with `…` suffix if truncation occurred)."
+      - "AC-3: Active features (status in {planned, in_progress, blocked}, or absent from state.yaml entirely) are emitted with `acceptance_criteria` and `description` byte-identical to the input."
+      - "AC-4: Without `--active-only`, the command emits the spec.yaml content effectively unchanged (idempotent passthrough — round-trip via `yaml.parse` then `yaml.stringify` equality is sufficient; comments may not be preserved)."
+      - "AC-5: `--output <path>` writes the result to the file instead of stdout. The file is overwritten if it already exists. Without `--output`, output goes to stdout."
+      - "AC-6: The command never mutates `<dir>/spec.yaml` or `<dir>/state.yaml` (CQS, BR-012). A unit test verifies mtime invariance."
+      - "AC-7: The compacted output, when re-fed to `harness validate`, validates clean against `docs/schemas/spec.schema.json`."
+      - "AC-8: F-131 mirrored on both spec.yaml copies; `diff -q` clean."
+      - "AC-9: F-131 completed via the harness CLI cycle on `feat/v0.14.4-spec-compact-export`. self_check 5/5 PASS, npm test all green."
 
 # v0.14.0 — Drive autonomous loop containers (filled in Stage 2 / F-119).
 # Each Goal groups N features under one user-supplied natural-language

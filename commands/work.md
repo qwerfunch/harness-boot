@@ -206,8 +206,9 @@ re-callable). On pass, the feature transitions to `done`,
 - automatic: `gate_run` · `gate_auto_run` — emitted by the gate runner;
   Iron Law doesn't count these.
 - declared: `test` · `manual_check` · `user_feedback` · `reviewer_check`
-  · `blocker` · `hotfix` · `generic` · `trivial` · anything else —
-  developer intent signal; Iron Law counts these.
+  · `blocker` · `hotfix` · `generic` · `trivial` · `perf_regression` ·
+  `perf_resolved` · anything else — developer intent signal; Iron Law
+  counts these.
 
 **`kind=trivial`** (v0.10.7, cosmic-suika I-006 return): an intent
 marker for genuinely tiny changes (one-line wiring · typo · doc-only ·
@@ -216,6 +217,18 @@ the evidence ≥ N threshold. The marker just lets a reviewer or audit
 reader see "this wasn't ceremony, this was actually trivial". Use it
 on cleanup PRs where a full ceremony entry feels like overkill. For a
 real emergency bypass, use `--hotfix-reason`.
+
+**`kind=perf_regression` / `kind=perf_resolved`** (F-129, logcat-on
+ISSUES-LOG return): paired markers for perf cycles. Declare
+`perf_regression` after a `gate_perf` run when the just-measured
+numbers actually got worse against the previous baseline — `complete()`
+will then refuse to transition until you record a matching
+`perf_resolved` (typically after another `gate_perf` run shows the fix
+landed). Both kinds count toward the Iron Law threshold like any
+declared evidence. The check is simply "what is the latest of the two
+markers on this feature?" — `perf_regression` blocks, `perf_resolved`
+clears. `--hotfix-reason` overrides the guard with the existing audit
+trail.
 
 ### Query the active feature (CQS — read-only)
 

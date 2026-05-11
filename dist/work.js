@@ -60,6 +60,15 @@ const BLOCKING_DRIFT_KINDS = new Set([
     'AnchorIntegration',
     'Coverage',
 ]);
+/**
+ * F-129 — paired evidence kinds the perf-regression guard inspects.
+ *
+ * The guard walks the feature's evidence array in reverse and acts on
+ * the most recent entry whose kind is in this set: `perf_regression`
+ * blocks complete(), `perf_resolved` clears the block. Other entries
+ * (manual_check, gate_run, …) are transparent to the guard.
+ */
+const PERF_MARKER_KINDS = new Set(['perf_regression', 'perf_resolved']);
 function isPlainObject(value) {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -134,6 +143,37 @@ function findFeature(spec, fid) {
         if (isPlainObject(f) && f['id'] === fid) {
             return f;
         }
+    }
+    return null;
+}
+/**
+ * F-129 — returns the unresolved perf-regression summary, or `null`.
+ *
+ * Walks the feature's evidence list newest-to-oldest and stops on the
+ * first entry whose kind is in {@link PERF_MARKER_KINDS}: a
+ * `perf_regression` is "still open" (returns its summary string), a
+ * `perf_resolved` cancels any older regression (returns `null`). When
+ * no marker is present, the guard is silent (returns `null`).
+ */
+function findUnresolvedPerfRegression(feature) {
+    const evidenceList = feature.evidence;
+    if (!Array.isArray(evidenceList)) {
+        return null;
+    }
+    for (let i = evidenceList.length - 1; i >= 0; i -= 1) {
+        const entry = evidenceList[i];
+        if (!isPlainObject(entry)) {
+            continue;
+        }
+        const kind = entry['kind'];
+        if (typeof kind !== 'string' || !PERF_MARKER_KINDS.has(kind)) {
+            continue;
+        }
+        if (kind === 'perf_resolved') {
+            return null;
+        }
+        const summary = typeof entry['summary'] === 'string' ? entry['summary'] : '(no summary)';
+        return summary;
     }
     return null;
 }
@@ -546,6 +586,24 @@ export function complete(harnessDir, fid, options = {}) {
                 `in last ${IRON_LAW_WINDOW_DAYS} days (mode: ${mode}${reasonSuffix}). ` +
                 'Add more with --evidence, or use --hotfix-reason for emergency override.';
         return res;
+    }
+    // F-129 perf-regression guard. Runs after the declared-evidence check
+    // so the message ordering matches the user's mental model (Iron Law
+    // count first, then the perf-specific block). Skipped when the
+    // operator supplied --hotfix-reason — the audit trail already
+    // captures the override on the hotfix evidence entry.
+    if (!hotfixReason) {
+        const blockingPerf = findUnresolvedPerfRegression(featureNow);
+        if (blockingPerf !== null) {
+            const res = summarize(state, fid);
+            res.action = 'queried';
+            res.message =
+                `cannot complete — perf regression unresolved: ${blockingPerf}. ` +
+                    'Add `--evidence "<fix detail>" --kind perf_resolved` after a ' +
+                    'follow-up gate_perf run shows recovery, or use --hotfix-reason ' +
+                    'for emergency override.';
+            return res;
+        }
     }
     state.setStatus(fid, 'done');
     if (state.data.session.active_feature_id === fid) {

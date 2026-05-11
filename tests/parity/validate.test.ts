@@ -133,6 +133,47 @@ describe('spec validator — schema violations', () => {
   });
 });
 
+describe('spec validator — feature name length cap (F-130)', () => {
+  function specWithFeatureName(name: string): Record<string, unknown> {
+    return {
+      version: '2.3',
+      schema_version: '2.3',
+      project: {name: 'len-test', summary: 'fixture for F-130', mode: 'prototype'},
+      domain: {one_liner: 'fixture'},
+      features: [
+        {
+          id: 'F-001',
+          name,
+          type: 'skeleton',
+        },
+      ],
+    };
+  }
+
+  it('accepts a feature name exactly 100 characters long', () => {
+    const name100 = 'a'.repeat(100);
+    expect(name100.length).toBe(100);
+    expect(() => validate(specWithFeatureName(name100), SCHEMA_PATH)).not.toThrow();
+  });
+
+  it('rejects a feature name 101 characters long with a path that names features/0/name', () => {
+    const name101 = 'a'.repeat(101);
+    expect(name101.length).toBe(101);
+    try {
+      validate(specWithFeatureName(name101), SCHEMA_PATH);
+      expect.fail('expected validate to throw on overlong feature name');
+    } catch (err) {
+      expect(err).toBeInstanceOf(SpecValidationError);
+      const path = (err as SpecValidationError).path;
+      expect(path).toBeInstanceOf(Array);
+      // Path should contain a segment naming /features/0/name (Ajv style: /features/0/name).
+      const flat = (path as string[]).join(' ');
+      expect(flat).toContain('features');
+      expect(flat).toContain('name');
+    }
+  });
+});
+
 describe('spec validator — Python parity sanity', () => {
   it('TS valid result matches Python valid result for the canonical spec', () => {
     // Read the same spec from disk that Python uses.
