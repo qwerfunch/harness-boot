@@ -30,6 +30,13 @@ export interface SyncOptions {
     timestamp?: string;
     skipValidation?: boolean;
     schemaPath?: string | null;
+    /**
+     * F-137 — disable the bulk archive migration step (relocates
+     * existing done feature bodies to spec.archive.yaml). Default
+     * `false` means migration runs. CLI: `--no-archive-migrate`.
+     * harness.yaml: `archive.auto_migrate: false`.
+     */
+    noArchiveMigrate?: boolean;
 }
 /** Summary returned by {@link run}; identical shape to Python's dict. */
 export interface SyncResult {
@@ -41,6 +48,10 @@ export interface SyncResult {
     arch_skipped: boolean;
     dry_run: boolean;
     drift_status: 'clean' | 'derived_edited';
+    /** F-137 — count of features whose body was relocated (0 when skip). */
+    archive_migrated?: number;
+    /** F-137 — when migration was skipped, why (dirty-tree, opt-out, none-needed). */
+    archive_migrate_skip_reason?: 'dirty_tree' | 'opt_out' | null;
 }
 /** Outcome of {@link tryInitialSync}; matches Python's status dict. */
 export interface InitialSyncResult {

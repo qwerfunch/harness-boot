@@ -59,4 +59,37 @@
  *         regress.
  */
 export declare function moveToArchive(harnessDir: string, fid: string): void;
+/**
+ * F-137 — relocates **all existing** done/archived feature bodies from
+ * `spec.yaml` to `spec.archive.yaml` in a single pass. Closes the
+ * recursive gap left by F-132~F-134, where archive auto-move only
+ * triggers on the next `complete()` and never reaches features that
+ * shipped before the auto-move existed.
+ *
+ * Behaviour:
+ *
+ *   - Reads `state.yaml` for ids whose status is in
+ *     {@link SHIPPED_STATUSES}.
+ *   - For each id, calls {@link moveToArchive} (no-op when the body
+ *     is already gone — preserving idempotency at the per-id level).
+ *   - Returns the count of features whose body was actually moved
+ *     (not the count attempted). Callers use this to decide whether
+ *     to emit an event / warn line.
+ *
+ * Boundaries:
+ *
+ *   - **Read-side guard** — call site (in `sync.ts`) is expected to
+ *     check working-tree cleanliness and the opt-out config before
+ *     invoking. This function itself does not consult those signals;
+ *     it does the work or stays silent.
+ *   - **Stable order** — features are iterated in their state.yaml
+ *     order so the resulting `spec.archive.yaml` reads naturally
+ *     (oldest done id first).
+ *
+ * @param harnessDir absolute or relative path to the `.harness/` dir
+ * @returns number of features whose body was actually relocated
+ * @throws when `state.yaml` or `spec.yaml` cannot be parsed; the
+ *         caller is expected to catch.
+ */
+export declare function bulkMigrate(harnessDir: string): number;
 //# sourceMappingURL=archive.d.ts.map

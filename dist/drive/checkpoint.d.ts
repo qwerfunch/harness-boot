@@ -69,6 +69,14 @@ export interface ExecutePhaseCheckpoint {
     max_iterations: number;
     /** Wall-clock cap in seconds (default 7200 / 2h, override via --max-hours). */
     max_seconds: number;
+    /**
+     * F-140 — consecutive `real_test_failed` count. Resets to 0 on a
+     * pass. While `< drive.real_test.max_transient_retries` (default 1),
+     * the loop schedules an automatic re-run instead of halting. When
+     * the cap is reached, the loop emits the existing `real_test_failed`
+     * halt so the user can inspect.
+     */
+    real_test_retry_count?: number;
 }
 /** Last-halt structured payload. */
 export interface HaltCheckpoint {

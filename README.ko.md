@@ -6,7 +6,7 @@
 
 Claude Code 위에서 도는 multi-agent 개발 하네스. 다른 AI 도구가 *능력* 을 더할 때, harness-boot 는 *방향* 을 만듭니다.
 
-[![plugin](https://img.shields.io/badge/plugin-v0.14.3-blue)](.claude-plugin/plugin.json)
+[![plugin](https://img.shields.io/badge/plugin-v0.15.0-blue)](.claude-plugin/plugin.json)
 [![tests](https://img.shields.io/badge/tests-467%20passing-brightgreen)](tests/parity)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
@@ -215,7 +215,9 @@ harness-boot/
 
 ## 현재 상태
 
-**v0.14.3** — 안정화·정리 묶음 (F-122 → F-128). `tests/parity/driveLoopAndPlan.test.ts` 의 시간 폭탄을 잡아 (F-122) 모든 downstream fork 의 CI 가 다시 green 으로 돌아오게 만들고, CLAUDE.md 를 최신 상태로 동기화 (F-123) 한 다음 stable / semi-static sigil / volatile-pointer 의 3 계층으로 재설계 (F-124) 해 다음 release 부터는 drift 자체가 구조적으로 못 끼어들게 막았습니다. v0.13 TS 전환 이후 git 에 남아있던 Python 자취 (`legacy/scripts/`, `tests/unit`, `tests/integration`, `tests/scale` — 합쳐 약 28 k 줄) 도 추적에서 빼냈고 (F-125 + F-126), `hooks/pre-commit-phase2.sh` 가 git 자체의 merge / cherry-pick / revert / rebase finalizer 에서는 short-circuit 하도록 고쳐 (F-127) `HARNESS_BYPASS_PRE_COMMIT=1` 우회가 더 이상 필요 없게 만들었습니다. capability 추가는 0 건이고 사용자가 보는 동작도 v0.14.2 와 동일합니다.
+**v0.15.0** — 적응형 drive · 구조적 archive 분리 · 플러그인 차원 응답 규칙 (F-129 → F-140). Iron Law 에 `perf_regression` / `perf_resolved` 짝 evidence kind 가 들어가, 측정값이 회귀했는데 조용히 ship 되던 perf 사이클을 막습니다. `complete()` 가 done 된 feature 본문을 `spec.archive.yaml` 로 자동 이동하고 `harness sync` 가 기존 본문도 한 번에 마이그레이션하니까 `spec.yaml` 이 구조적으로 비대해지지 않습니다. `harness drive` 가 적응형으로 — 매 feature 완료 후 deterministic 재계획, N 회마다 사용자 정의 real test 자동 실행, 일시적 e2e 실패 자동 재시도. 플러그인 차원 `docs/communication-rules.md` 가 결론 먼저 형식과 모든 사용자 언어의 네이티브 톤을 표준화.
+
+직전 **v0.14.3** — 안정화·정리 묶음 (F-122 → F-128). `tests/parity/driveLoopAndPlan.test.ts` 의 시간 폭탄을 잡아 (F-122) 모든 downstream fork 의 CI 가 다시 green 으로 돌아오게 만들고, CLAUDE.md 를 최신 상태로 동기화 (F-123) 한 다음 stable / semi-static sigil / volatile-pointer 의 3 계층으로 재설계 (F-124) 해 다음 release 부터는 drift 자체가 구조적으로 못 끼어들게 막았습니다. v0.13 TS 전환 이후 git 에 남아있던 Python 자취 (`legacy/scripts/`, `tests/unit`, `tests/integration`, `tests/scale` — 합쳐 약 28 k 줄) 도 추적에서 빼냈고 (F-125 + F-126), `hooks/pre-commit-phase2.sh` 가 git 자체의 merge / cherry-pick / revert / rebase finalizer 에서는 short-circuit 하도록 고쳐 (F-127) `HARNESS_BYPASS_PRE_COMMIT=1` 우회가 더 이상 필요 없게 만들었습니다. capability 추가는 0 건이고 사용자가 보는 동작도 v0.14.2 와 동일합니다.
 
 **v0.14.0** — `drive` 출시 (F-118 + F-119). 자율 루프 슬래시 명령 `/harness-boot:drive "<자연어 목표>"` 추가. *Goal* (여러 feature 를 묶는 컨테이너) 을 researcher → product-planner → feature-author 로 자동 분해한 뒤, 각 feature 의 gate cycle 까지 끝까지 운전합니다. **본질적으로 bounded**: BR-015 가 자가 `--hotfix-reason`, `git commit/push/tag`, 모든 shared-state mutation 을 금지. 루프는 9 가지 명시 조건 (commit boundary · retry threshold · drift error · blocked feature · wall-clock · iteration cap · network failure · STOP file · plan-phase approval) 중 하나가 트리거되면 즉시 *halt* 하여 사용자에게 yield. read-only `harness drive --status [G-N] [--all] [--json] [--watch]` 는 mtime 불변 (CQS, BR-012).
 
