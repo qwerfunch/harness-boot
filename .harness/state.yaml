@@ -3051,7 +3051,7 @@ features:
   started_at: 2026-05-11T04:04:31Z
   completed_at: 2026-05-11T04:05:41Z
 - id: F-135
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3083,9 +3083,9 @@ features:
     kind: reviewer_check
     summary: docs/communication-rules.md (bilingual SSoT) + CLAUDE.md.template reminder section + 16 agents linked + 24 vitest cases. plugin-level rule promotion from local memory
   started_at: 2026-05-11T04:34:25Z
-  completed_at: null
+  completed_at: 2026-05-11T04:38:59Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-135
   last_gate_passed: gate_5
-  active_feature_id: F-135
+  active_feature_id: null
