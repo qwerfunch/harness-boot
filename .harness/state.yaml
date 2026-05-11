@@ -3187,7 +3187,7 @@ features:
   started_at: 2026-05-11T05:17:35Z
   completed_at: 2026-05-11T05:23:40Z
 - id: F-139
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3219,9 +3219,9 @@ features:
     kind: reviewer_check
     summary: realTest.ts (config + cadence + spawnSync) + loop hook + 6 vitest cases
   started_at: 2026-05-11T05:26:06Z
-  completed_at: null
+  completed_at: 2026-05-11T05:29:15Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-139
   last_gate_passed: gate_5
-  active_feature_id: F-139
+  active_feature_id: null
