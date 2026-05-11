@@ -6313,6 +6313,10 @@ features:
     name: drive mid-cycle real test — periodic system-level smoke during a goal
     type: feature
     test_strategy: tdd
+  - id: F-140
+    name: drive transient retry — auto-retry real_test_failed once before yielding
+    type: feature
+    test_strategy: tdd
 goals: []
 constraints:
   tech_stack:

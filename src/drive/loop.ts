@@ -12,7 +12,7 @@
  */
 
 import {execFileSync} from 'node:child_process';
-import {existsSync, readFileSync} from 'node:fs';
+import {appendFileSync, existsSync, readFileSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {parse as yamlParse} from 'yaml';
 import {State, type Feature, type FeatureStatus} from '../core/state.js';
@@ -32,7 +32,7 @@ import {
   type ExecutorResult,
 } from './executor.js';
 import {generateGoalRetro} from './goalRetro.js';
-import {runRealTestIfDue} from './realTest.js';
+import {runRealTestIfDue, readTransientRetryConfig} from './realTest.js';
 import {replanAfterCompletion} from './replan.js';
 
 /** Per-iteration result returned by {@link runDriveStep}. */
@@ -82,6 +82,41 @@ export const RECENT_GATE_RESULTS_WINDOW = 3;
  * tests assert the value to keep the contract explicit.
  */
 export const GATE_STAGNATION_THRESHOLD = 2;
+
+/**
+ * F-140 — appends one `real_test_retry_scheduled` event to events.log.
+ * Helper kept here (rather than realTest.ts) because the retry
+ * decision lives in the loop body.
+ */
+function appendRealTestRetryEvent(
+  harnessDir: string,
+  payload: {
+    goal_id: string;
+    feature_id: string;
+    attempt: number;
+    cap: number;
+    command: string | null;
+    exit_code: number | null;
+    ts: string;
+  },
+): void {
+  const path = join(harnessDir, 'events.log');
+  const event = {
+    ts: payload.ts,
+    type: 'real_test_retry_scheduled',
+    goal: payload.goal_id,
+    feature: payload.feature_id,
+    attempt: payload.attempt,
+    cap: payload.cap,
+    command: payload.command,
+    exit_code: payload.exit_code,
+  };
+  try {
+    appendFileSync(path, `${JSON.stringify(event)}\n`, 'utf-8');
+  } catch {
+    // best-effort
+  }
+}
 
 /** Returns the current UTC timestamp formatted as `YYYY-MM-DDTHH:MM:SSZ`. */
 function nowIso(now: Date): string {
@@ -408,13 +443,45 @@ export function runDriveStep(
           ck.goal_id,
           ck.execute.active_feature,
         );
+        if (realTest.ran && realTest.passed === true) {
+          // F-140 — pass resets the transient retry counter so a
+          // future flake starts from zero again.
+          if ((ck.execute.real_test_retry_count ?? 0) > 0) {
+            ck.execute.real_test_retry_count = 0;
+            saveCheckpoint(harnessDir, ck, now);
+          }
+        }
         if (realTest.ran && realTest.passed === false) {
+          // F-140 — auto-retry once (configurable cap) before yielding.
+          const retryCfg = readTransientRetryConfig(harnessDir);
+          const currentCount = ck.execute.real_test_retry_count ?? 0;
+          if (retryCfg.enabled && currentCount < retryCfg.cap) {
+            ck.execute.real_test_retry_count = currentCount + 1;
+            saveCheckpoint(harnessDir, ck, now);
+            appendRealTestRetryEvent(harnessDir, {
+              goal_id: ck.goal_id,
+              feature_id: ck.execute.active_feature,
+              attempt: currentCount + 1,
+              cap: retryCfg.cap,
+              command: realTest.command,
+              exit_code: realTest.exit_code,
+              ts: nowIso(now),
+            });
+            // Return proceed=true with no executor action — the next
+            // iteration re-enters this hook (active_feature is still
+            // the just-completed one) and re-runs the real test.
+            return {
+              proceed: true,
+              feature_id: ck.execute.active_feature,
+            };
+          }
           return {
             proceed: false,
             halt: emitHalt(
               harnessDir,
               'manual',
-              `real_test_failed: ${realTest.command} (exit ${realTest.exit_code}). ` +
+              `real_test_failed: ${realTest.command} (exit ${realTest.exit_code}, ` +
+                `attempt ${currentCount + 1}/${retryCfg.cap + 1}). ` +
                 `Inspect events.log for stderr tail.`,
               {goal_id: ck.goal_id, feature_id: ck.execute.active_feature, now},
             ),

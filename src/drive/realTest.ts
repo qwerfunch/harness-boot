@@ -43,6 +43,52 @@ import {State} from '../core/state.js';
 /** Default cadence — run every 3 done features when unset by the user. */
 export const DEFAULT_EVERY_N_FEATURES = 3;
 
+/** F-140 — default cap on automatic retries before yielding to the user. */
+export const DEFAULT_MAX_TRANSIENT_RETRIES = 1;
+
+/**
+ * F-140 — read the `drive.real_test.transient_retry` and
+ * `drive.real_test.max_transient_retries` config fields.
+ *
+ * Returns `{enabled, cap}`. When the user has disabled the toggle
+ * (`transient_retry: false`) the loop should never auto-retry, even
+ * on the first fail. `cap` is bounded ≥ 0; `0` means "no auto-retry".
+ */
+export interface TransientRetryConfig {
+  enabled: boolean;
+  cap: number;
+}
+
+export function readTransientRetryConfig(harnessDir: string): TransientRetryConfig {
+  const path = join(harnessDir, 'harness.yaml');
+  const fallback: TransientRetryConfig = {enabled: true, cap: DEFAULT_MAX_TRANSIENT_RETRIES};
+  if (!existsSync(path)) {
+    return fallback;
+  }
+  let parsed: unknown;
+  try {
+    parsed = yamlParse(readFileSync(path, 'utf-8'));
+  } catch {
+    return fallback;
+  }
+  if (!isPlainObject(parsed)) {
+    return fallback;
+  }
+  const drive = parsed['drive'];
+  if (!isPlainObject(drive)) {
+    return fallback;
+  }
+  const realTest = drive['real_test'];
+  if (!isPlainObject(realTest)) {
+    return fallback;
+  }
+  const enabled = realTest['transient_retry'] !== false;
+  const capRaw = realTest['max_transient_retries'];
+  const cap =
+    typeof capRaw === 'number' && capRaw >= 0 ? Math.floor(capRaw) : DEFAULT_MAX_TRANSIENT_RETRIES;
+  return {enabled, cap};
+}
+
 /** Result of one real-test evaluation. */
 export interface RealTestResult {
   /** True when the command actually ran (false on opt-out / not-due). */
