@@ -67,6 +67,12 @@ describe('communication-rules.md — single source of truth', () => {
     expect(text).toContain('commit');
     expect(text).toContain('PR');
   });
+
+  it('carries the F-137 plan-mode file-management rule (overwrite on task pivot)', () => {
+    const text = readFileSync(RULES_PATH, 'utf-8');
+    expect(text).toContain('Plan-mode file management');
+    expect(text).toContain('overwrite');
+  });
 });
 
 describe('CLAUDE.md.template — reminder section', () => {

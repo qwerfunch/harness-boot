@@ -20,6 +20,7 @@ The rules are written once in English; each rule generalises to whichever natura
    - **CHANGELOG**: one short paragraph per entry. Lead with the change, then a single sentence on motivation, then any breaking-change note. Skip lists of acceptance criteria, file paths, and test counts — those live in the PR.
    - **Commit message**: subject line ≤ 70 chars, imperative mood. Body (if any) explains *why* the change matters in 2–4 short paragraphs, not *what files changed* (that is the diff).
    - **PR body**: lead with one paragraph stating the change. Use a "Summary" bullet list (3–5 items max) and a short "Test plan" checklist. Skip multi-paragraph rationale, diff narration, and "out of scope" essays — link to the plan or spec entry instead.
+8. **Plan-mode file management — overwrite on task pivot.** When the user starts a different task while in plan mode, **overwrite the plan file** instead of appending a new section. The plan file's first heading should always describe the *current* task, not the original one. Long accumulated plans hide the question the user is asking right now and force them to scroll past stale headers. Continuation of the *same* task may modify the existing plan; a new task means start fresh.
 
 ---
 

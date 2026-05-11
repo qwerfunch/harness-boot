@@ -3118,8 +3118,42 @@ features:
     summary: communication-rules.md single-language; CLAUDE.md.template reminder rewritten; 2 new Family 1 rules + tests updated
   started_at: 2026-05-11T04:45:29Z
   completed_at: 2026-05-11T04:48:23Z
+- id: F-137
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-11T05:08:35Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-11T05:08:35Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-11T05:08:37Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-11T05:08:37Z
+      note: self_check 5/5 + npm test 689/689
+  evidence:
+  - ts: 2026-05-11T05:08:35Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.4s) · cmd: npm test"
+  - ts: 2026-05-11T05:08:35Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.8s) · cmd: npm run typecheck"
+  - ts: 2026-05-11T05:08:37Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.1s) · cmd: npm run lint"
+  - ts: 2026-05-11T05:08:38Z
+    kind: reviewer_check
+    summary: bulkMigrate() + sync hook (dirty-tree + opt-out guard) + 5 new tests + plan-mode rule
+  started_at: 2026-05-11T05:02:23Z
+  completed_at: 2026-05-11T05:09:09Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-136
+  last_command: /harness:work F-137
   last_gate_passed: gate_5
   active_feature_id: null

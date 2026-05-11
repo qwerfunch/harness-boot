@@ -6301,6 +6301,10 @@ features:
       IDs/commits/PRs/CHANGELOG
     type: feature
     test_strategy: smoke
+  - id: F-137
+    name: bulk archive migration in sync — auto-relocate existing done bodies
+    type: feature
+    test_strategy: smoke
 goals: []
 constraints:
   tech_stack:
