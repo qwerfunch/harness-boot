@@ -11,6 +11,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ### Added
 
+- **F-138** — drive replan hook (Lite). After each feature transitions to `done`, drive deterministically reorders pending features in the active goal — blocked / superseded ids move to the end so the next iteration picks an unblocked candidate. When the just-completed retro contains pivot keywords (`replan`, `pivot`, `rethink`, scope shift), drive drops a structured manifest under `.harness/_workspace/replan/<goal>-after-<fid>.md` for the orchestrator to act on. Idempotent per fid; opt-out via `harness.yaml drive.replan.enabled: false`. Cycle A1 of a 3-cycle drive-adaptivity plan; automatic LLM call for the manifest follow-ups is queued for Cycle A2.
 - **F-137** — `harness sync` now relocates existing done feature bodies from `spec.yaml` to `spec.archive.yaml` in one pass. Closes the recursive gap from F-132~F-134, where archive auto-move only ran on the next `complete()` and never reached features that shipped before the auto-move existed. Migration is silent + idempotent: skips on a dirty working tree (warn line), opt-out via `harness.yaml` `archive.auto_migrate: false` or `harness sync --no-archive-migrate`. Existing-user effect: `/plugin update` then a normal sync produces one large diff (bodies move from one file to the other), then `spec.yaml` stays slim. Side rule added: `docs/communication-rules.md` Family 1 now includes plan-mode file management — overwrite the plan file when the user pivots tasks.
 
 ### Changed

@@ -6305,6 +6305,10 @@ features:
     name: bulk archive migration in sync — auto-relocate existing done bodies
     type: feature
     test_strategy: smoke
+  - id: F-138
+    name: drive replan hook — adaptive feature-by-feature replanning (Lite)
+    type: feature
+    test_strategy: tdd
 goals: []
 constraints:
   tech_stack:

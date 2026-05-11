@@ -3152,8 +3152,42 @@ features:
     summary: bulkMigrate() + sync hook (dirty-tree + opt-out guard) + 5 new tests + plan-mode rule
   started_at: 2026-05-11T05:02:23Z
   completed_at: 2026-05-11T05:09:09Z
+- id: F-138
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-11T05:23:13Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-11T05:23:14Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-11T05:23:16Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-11T05:23:16Z
+      note: self_check 5/5 + npm test 696/696
+  evidence:
+  - ts: 2026-05-11T05:23:13Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.4s) · cmd: npm test"
+  - ts: 2026-05-11T05:23:14Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.8s) · cmd: npm run typecheck"
+  - ts: 2026-05-11T05:23:16Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.2s) · cmd: npm run lint"
+  - ts: 2026-05-11T05:23:16Z
+    kind: reviewer_check
+    summary: src/drive/replan.ts (deterministic deferral + manifest file-drop) + loop hook + 7 vitest cases
+  started_at: 2026-05-11T05:17:35Z
+  completed_at: 2026-05-11T05:23:40Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-137
+  last_command: /harness:work F-138
   last_gate_passed: gate_5
   active_feature_id: null
