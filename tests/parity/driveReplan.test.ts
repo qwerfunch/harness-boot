@@ -20,7 +20,7 @@ import {afterEach, beforeEach, describe, expect, it} from 'vitest';
 import {stringify as yamlStringify} from 'yaml';
 
 import {State} from '../../src/core/state.js';
-import {replanAfterCompletion} from '../../src/drive/replan.js';
+import {replanAfterCompletion, replanAlreadyEvaluated} from '../../src/drive/replan.js';
 
 interface Workspace {
   dir: string;
@@ -219,5 +219,26 @@ describe('replanAfterCompletion — idempotent + opt-out', () => {
     expect(r2.evaluated).toBe(false);
     const events2 = readEvents(ws.harness);
     expect(events2.filter((e) => e['type'] === 'replan_disabled').length).toBe(1);
+  });
+});
+
+describe('replanAlreadyEvaluated (F-142 helper)', () => {
+  let ws: Workspace;
+  beforeEach(() => {
+    ws = makeWorkspace();
+  });
+  afterEach(() => {
+    rmSync(ws.dir, {recursive: true, force: true});
+  });
+
+  it('returns false before the first evaluation', () => {
+    expect(replanAlreadyEvaluated(ws.harness, 'F-001')).toBe(false);
+  });
+
+  it('returns true once events.log carries a replan_evaluated entry for the fid', () => {
+    seedGoalAndState(ws.harness, {doneIds: ['F-001'], blockedIds: ['F-002']});
+    replanAfterCompletion(ws.harness, 'F-001', 'G-001');
+    expect(replanAlreadyEvaluated(ws.harness, 'F-001')).toBe(true);
+    expect(replanAlreadyEvaluated(ws.harness, 'F-002')).toBe(false);
   });
 });

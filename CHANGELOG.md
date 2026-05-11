@@ -11,6 +11,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ### Queued
 
+## [0.15.1] — 2026-05-11
+
+**Drive hook trigger fix.** The validation cycle on the v0.15.0 sample project surfaced that F-138 / F-139 / F-140 hooks never fired when a user mixed `harness work` CLI calls with `harness drive --resume` (the common pattern for any cycle that needs human-driven coding between drive iterations). The fix widens the trigger window so the hooks fire on **any pending done feature drive hasn't seen yet**, not just transitions drive itself owned.
+
+### Fixed
+
+- **F-142** — drive hook trigger relaxation. `src/drive/loop.ts` step 3.5 now iterates the goal's `feature_progress` for every done id whose `events.log` lacks a `replan_evaluated` entry, calls `replanAfterCompletion` for each (per-id idempotent guard prevents re-fire). The real-test cadence runs once per iteration on the most recent unevaluated id; F-140 transient retry semantics preserved. Net effect: drive's adaptive hooks now work in the realistic pattern where users drive some features through the work CLI and resume drive between them.
+
+
+
 - Marketplace submission to `anthropic/claude-plugins-official` — held until external soak; submission text templated, user submits via https://claude.ai/settings/plugins/submit.
 - SKILL.md → seed_spec reference rot — `skills/spec-conversion/SKILL.md:409` references `scripts/scan/seed_spec` which is no longer ported. Skill is Markdown-driven, so the LLM can synthesize the seed inline; not blocking.
 - Deferred autowires named in `src/work.ts:411-413` — `spec/quantClaims`, `scan/chapterWriter`, `scan/styleFingerprint`. Stderr-only hints, never Iron-Law gating; pick up when there is external pressure.

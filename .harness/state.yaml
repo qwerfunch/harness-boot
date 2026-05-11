@@ -3288,8 +3288,42 @@ features:
     summary: plugin.json/package.json 0.15.0 + CHANGELOG [0.15.0] header + README.md/README.ko.md badge + capability narrative
   started_at: 2026-05-11T05:40:18Z
   completed_at: 2026-05-11T05:45:06Z
+- id: F-142
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-11T07:01:05Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-11T07:01:06Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-11T07:01:08Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-11T07:01:08Z
+      note: self_check 5/5 + npm test 710/710
+  evidence:
+  - ts: 2026-05-11T07:01:05Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.9s) · cmd: npm test"
+  - ts: 2026-05-11T07:01:06Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.9s) · cmd: npm run typecheck"
+  - ts: 2026-05-11T07:01:08Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.5s) · cmd: npm run lint"
+  - ts: 2026-05-11T07:01:08Z
+    kind: reviewer_check
+    summary: loop.ts step 3.5 widened to iterate unevaluated done features; replanAlreadyEvaluated helper exported; 2 new vitest cases
+  started_at: 2026-05-11T06:57:26Z
+  completed_at: 2026-05-11T07:01:28Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-141
+  last_command: /harness:work F-142
   last_gate_passed: gate_5
   active_feature_id: null
