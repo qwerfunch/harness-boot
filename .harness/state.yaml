@@ -3221,7 +3221,7 @@ features:
   started_at: 2026-05-11T05:26:06Z
   completed_at: 2026-05-11T05:29:15Z
 - id: F-140
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3253,9 +3253,9 @@ features:
     kind: reviewer_check
     summary: checkpoint field + readTransientRetryConfig + loop retry decision + 6 vitest cases
   started_at: 2026-05-11T05:32:17Z
-  completed_at: null
+  completed_at: 2026-05-11T05:36:09Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-140
   last_gate_passed: gate_5
-  active_feature_id: F-140
+  active_feature_id: null
