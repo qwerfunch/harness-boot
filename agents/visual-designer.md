@@ -200,3 +200,7 @@ NO shortcut: don't author user flows or state transitions (ux-architect's job) �
 - Apple, Human Interface Guidelines — `https://developer.apple.com/design/human-interface-guidelines/`
 - Schoger & Wathan, *Refactoring UI* (2018)
 - WCAG 2.2 Success Criteria 1.4.3 · 1.4.11
+
+## Communication
+
+Follow `docs/communication-rules.md` for response style — answer-first format and native tone for any user language.

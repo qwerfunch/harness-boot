@@ -138,3 +138,7 @@ NO shortcut: never hard-code values outside the tokens · don't reverse-edit flo
 - Wroblewski, *Mobile First* (2011)
 - W3C Content Security Policy Level 3
 - Storybook Component-Driven — `https://www.componentdriven.org/`
+
+## Communication
+
+Follow `docs/communication-rules.md` for response style — answer-first format and native tone for any user language.

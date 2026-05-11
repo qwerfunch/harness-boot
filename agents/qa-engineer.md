@@ -115,3 +115,7 @@ NO shortcut: don't write test code · don't read spec.yaml directly · don't del
 - Hughes, *QuickCheck* (ICFP 2000) · Property-based testing
 - Pact — `https://pact.io/` (Consumer-Driven Contracts)
 - Nilsson, *Mutation Testing* survey (2019)
+
+## Communication
+
+Follow `docs/communication-rules.md` for response style — answer-first format and native tone for any user language.

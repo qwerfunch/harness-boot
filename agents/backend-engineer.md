@@ -108,3 +108,7 @@ NO shortcut: don't edit UI or design files · destructive migrations need user a
 - Fielding, REST dissertation (2000) · Richardson Maturity Model
 - Stripe, *Idempotent requests* engineering docs
 - Codd, *A Relational Model of Data* (1970) · 3NF/BCNF
+
+## Communication
+
+Follow `docs/communication-rules.md` for response style — answer-first format and native tone for any user language.

@@ -101,3 +101,7 @@ The reviewer:
   2-line anti-rationalization survived;
 - reports PASS, or a finding list mapped to the BRs that were
   violated.
+
+## Communication
+
+Follow `docs/communication-rules.md` for response style — answer-first format and native tone for any user language.

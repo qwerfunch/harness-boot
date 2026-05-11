@@ -6291,6 +6291,69 @@ features:
     name: F-133 follow-up — extend whitelist to live spec.yaml
     type: feature
     test_strategy: smoke
+  - id: F-135
+    name: communication rules — answer-first format + native-tone for any user language
+    type: feature
+    description: |
+      Promotes two cross-cutting writing conventions from the
+      maintainer's local memory to the plugin level so every harness
+      user gets the same effect, not just sessions where the
+      maintainer's memory happens to be loaded.
+
+      Why this exists (user feedback 2026-05-11):
+
+        - "Plans and answers don't put the answer up front — I have
+          to scan to find it. Make this more efficient."
+        - "Sometimes the Korean comes out awkward (translation
+          tone). When responding in any user language — not just
+          Korean but Japanese, Chinese, Spanish, French, etc. —
+          write it in that language's native voice from the start,
+          not as a word-by-word translation."
+        - "Bake these rules into harness-boot itself so plugin users
+          inherit them automatically. Do this before the bulk
+          migration cycle."
+
+      Mechanism (no new CLI surface):
+
+        1. New single-source-of-truth file
+           `docs/communication-rules.md` — bilingual (en + ko) with
+           explicit per-language guidance for ja/zh/es/de/fr/pt as
+           reference patterns.
+        2. `docs/templates/starter/CLAUDE.md.template` gains a
+           short "## 12. Response writing rules" section that
+           inlines the rule headlines + links to the full file.
+           Every fresh `/harness-boot:init` writes this into the
+           user's CLAUDE.md so the rules sit in the always-loaded
+           system context.
+        3. Every `agents/*.md` file gets one line in its Context
+           section: "Follow `docs/communication-rules.md`." Subagent
+           invocations inherit the rules without per-call boilerplate.
+        4. `CHANGELOG.md` Added entry — calls out that existing
+           users who keep their own CLAUDE.md need to copy the new
+           section once (plugin update auto-applies the agents/*
+           change but cannot rewrite a user-owned CLAUDE.md).
+
+      Scope discipline (kept narrow on purpose):
+
+        - No code surface change. Pure docs cycle.
+        - Rules cover the *output style*, not the *answer content*.
+          The plugin still leaves the LLM free to choose what to
+          say; only how to say it is constrained.
+        - Existing maintainer memory (`feedback_plain_explanation.md`,
+          `feedback_korean_native_writing.md`) becomes redundant
+          with this cycle and can be tidied up afterwards. Out of
+          scope here — left to the maintainer.
+
+    test_strategy: smoke
+    acceptance_criteria:
+      - "AC-1: `docs/communication-rules.md` exists, contains both English and Korean sections side-by-side, and names at least four reference languages (ja, zh, es, plus one more) with one-line native-tone notes each."
+      - "AC-2: The two rule families are present and named: (a) answer-first / scannable format, (b) user-language native tone (any natural language, not just Korean). Each family lists 4–6 concrete rules."
+      - "AC-3: `docs/templates/starter/CLAUDE.md.template` gains a section titled '## 12. 응답 작성 가이드 / Response Writing Guide' (or equivalent numbered section) that inlines the rule headlines and links to `docs/communication-rules.md`."
+      - "AC-4: Every file matching `agents/*.md` (excluding `agents/README.md` if present) contains exactly one new line linking to `docs/communication-rules.md` inside the Context section. A grep test pins the count."
+      - "AC-5: `CHANGELOG.md` [Unreleased] gains an Added line that names F-135, mentions both rule families, and explicitly calls out the existing-user CLAUDE.md migration step."
+      - "AC-6: `tests/parity/communicationRules.test.ts` (new) verifies presence of (a) `docs/communication-rules.md` with required headings, (b) the new section in `docs/templates/starter/CLAUDE.md.template`, (c) the agent link line in each `agents/*.md` file."
+      - "AC-7: F-135 mirrored on both spec.yaml copies; `diff -q` clean."
+      - "AC-8: F-135 completed via the harness CLI cycle on `feat/v0.14.4-communication-rules`. self_check 5/5 PASS, npm test all green."
 goals: []
 constraints:
   tech_stack:

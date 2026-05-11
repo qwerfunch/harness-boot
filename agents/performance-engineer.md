@@ -109,3 +109,7 @@ NO shortcut: no large refactors · no cherry-picked environments · no verdicts 
 - Gregg, *Systems Performance* (2020) · USE Method
 - Gene Amdahl (1967) — Amdahl's Law
 - Abrash, *Graphics Programming Black Book* (1997) — profile-first mindset
+
+## Communication
+
+Follow `docs/communication-rules.md` for response style — answer-first format and native tone for any user language.

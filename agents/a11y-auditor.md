@@ -168,3 +168,7 @@ NO shortcut: no file edits (CQS) · no unilateral BLOCK · no auto-fix code
 - The A11y Project Checklist — `https://www.a11yproject.com/checklist/`
 - Microsoft Inclusive Design — `https://inclusive.microsoft.design/`
 - Deque axe-core rules — `https://dequeuniversity.com/rules/axe/`
+
+## Communication
+
+Follow `docs/communication-rules.md` for response style — answer-first format and native tone for any user language.

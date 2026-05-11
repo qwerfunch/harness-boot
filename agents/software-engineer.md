@@ -112,3 +112,7 @@ NO shortcut: gate_5 and --complete go through the orchestrator
    gate_1, gate_2).
 5. On all-PASS, record evidence and report back to the orchestrator
    that "gate_5 + complete are ready".
+
+## Communication
+
+Follow `docs/communication-rules.md` for response style — answer-first format and native tone for any user language.

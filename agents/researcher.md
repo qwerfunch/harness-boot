@@ -177,3 +177,7 @@ NO shortcut: don't make decisions — priority and AC belong to product-planner
 - Fitzpatrick, *The Mom Test* (2013)
 - Lafley & Martin, *Playing to Win* (2013)
 - Torres, *Continuous Discovery Habits* (2021)
+
+## Communication
+
+Follow `docs/communication-rules.md` for response style — answer-first format and native tone for any user language.

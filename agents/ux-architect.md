@@ -172,3 +172,7 @@ NO shortcut: don't define color/typography/tokens (visual-designer's job) · don
 - Jobs-To-Be-Done — Christensen et al., *Competing Against Luck* (2016)
 - 5E framework — Doug Dickson, *Experience Design Framework* (2003; museum UX origin, extended to digital)
 - WCAG 2.2 — `https://www.w3.org/TR/WCAG22/`
+
+## Communication
+
+Follow `docs/communication-rules.md` for response style — answer-first format and native tone for any user language.
