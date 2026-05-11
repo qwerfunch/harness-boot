@@ -39,6 +39,12 @@ step 1 "SSoT diff (.harness/spec.yaml vs docs/samples/...)"
 if ! diff -q .harness/spec.yaml docs/samples/harness-boot-self/spec.yaml >/dev/null; then
     fail "SSoT drift — .harness/spec.yaml ≠ docs/samples/harness-boot-self/spec.yaml · 한 쪽을 다른 쪽에 맞춰 sync"
 fi
+# F-132 — spec.archive.yaml 도 lockstep (한쪽만 존재해도 drift 로 간주)
+if [ -f .harness/spec.archive.yaml ] || [ -f docs/samples/harness-boot-self/spec.archive.yaml ]; then
+    if ! diff -q .harness/spec.archive.yaml docs/samples/harness-boot-self/spec.archive.yaml >/dev/null 2>&1; then
+        fail "SSoT drift — .harness/spec.archive.yaml ≠ docs/samples/harness-boot-self/spec.archive.yaml"
+    fi
+fi
 
 # --- Step 2: JSONSchema 검증 ---
 step 2 "validate .harness/spec.yaml"
