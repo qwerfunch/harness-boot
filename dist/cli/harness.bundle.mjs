@@ -22538,6 +22538,28 @@ function findFeature(spec, fid) {
   }
   return null;
 }
+function findUnresolvedPerfRegression(feature) {
+  const evidenceList = feature.evidence;
+  if (!Array.isArray(evidenceList)) {
+    return null;
+  }
+  for (let i = evidenceList.length - 1; i >= 0; i -= 1) {
+    const entry = evidenceList[i];
+    if (!isPlainObject12(entry)) {
+      continue;
+    }
+    const kind = entry["kind"];
+    if (typeof kind !== "string" || !PERF_MARKER_KINDS.has(kind)) {
+      continue;
+    }
+    if (kind === "perf_resolved") {
+      return null;
+    }
+    const summary = typeof entry["summary"] === "string" ? entry["summary"] : "(no summary)";
+    return summary;
+  }
+  return null;
+}
 function summarize(state, fid) {
   const f = state.getFeature(fid);
   const gates = f?.gates ?? {};
@@ -22910,6 +22932,15 @@ function complete(harnessDir, fid, options = {}) {
     res2.message = `cannot complete \u2014 Iron Law: ${declared}/${required} declared evidence in last ${IRON_LAW_WINDOW_DAYS} days (mode: ${mode}${reasonSuffix}). Add more with --evidence, or use --hotfix-reason for emergency override.`;
     return res2;
   }
+  if (!hotfixReason) {
+    const blockingPerf = findUnresolvedPerfRegression(featureNow);
+    if (blockingPerf !== null) {
+      const res2 = summarize(state, fid);
+      res2.action = "queried";
+      res2.message = `cannot complete \u2014 perf regression unresolved: ${blockingPerf}. Add \`--evidence "<fix detail>" --kind perf_resolved\` after a follow-up gate_perf run shows recovery, or use --hotfix-reason for emergency override.`;
+      return res2;
+    }
+  }
   state.setStatus(fid, "done");
   if (state.data.session.active_feature_id === fid) {
     state.setActive(null);
@@ -23154,7 +23185,7 @@ function runAndRecordGate(harnessDir, fid, gateName, options = {}) {
   res.message = `${friendlyGate(gateName)} ${runResult.result.toUpperCase()}` + (runResult.reason ? ` \u2014 ${runResult.reason}` : "");
   return res;
 }
-var import_yaml12, GATE_FRIENDLY, IRON_LAW_REQUIRED, BLOCKING_DRIFT_KINDS;
+var import_yaml12, GATE_FRIENDLY, IRON_LAW_REQUIRED, BLOCKING_DRIFT_KINDS, PERF_MARKER_KINDS;
 var init_work = __esm({
   "src/work.ts"() {
     "use strict";
@@ -23184,6 +23215,7 @@ var init_work = __esm({
       "AnchorIntegration",
       "Coverage"
     ]);
+    PERF_MARKER_KINDS = /* @__PURE__ */ new Set(["perf_regression", "perf_resolved"]);
   }
 });
 

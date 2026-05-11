@@ -4966,6 +4966,55 @@ features:
       - "AC-9: After PR merges to develop, develop fast-forwards into main; main is tagged `v0.14.3` (annotated, message references the F-122 → F-127 batch); the tag is pushed to origin."
       - "AC-10: `gh release create v0.14.3 --notes-file <CHANGELOG-section-extracted-to-temp-file>` creates the GitHub release with the v0.14.3 CHANGELOG content as the release notes body."
 
+  - id: "F-129"
+    name: "perf_regression evidence kind + complete() guard"
+    type: "feature"
+    description: |
+      Forty-sixth cycle. Closes the Iron Law gap surfaced by an
+      external dogfood ISSUES-LOG entry: a feature can ship with
+      gate_perf result = `pass` even when the just-measured numbers
+      regress against the previous baseline. The runtime smoke gate
+      cannot catch this because gate_perf records pass/fail without
+      a baseline comparison, and the Iron Law's declared-evidence
+      threshold is satisfied by any kind of declared evidence — so a
+      perf-fix cycle that actually made things worse can still
+      declare "manual_check passed" three times and complete.
+
+      This cycle is the **Lite half** of the closure: it adds a
+      paired evidence kind taxonomy (`perf_regression` and
+      `perf_resolved`) and a one-shot complete() guard that rejects
+      the transition when the latest of the two markers on the
+      feature is `perf_regression`. The author declares the
+      regression explicitly after looking at the gate_perf output;
+      the resolution is declared the same way once the fix lands and
+      a follow-up gate_perf run shows recovery. `--hotfix-reason`
+      bypasses the guard with the existing audit trail.
+
+      Out of scope (queued for a separate cycle): automatic baseline
+      capture inside gate_perf, structured metric storage on
+      evidence entries, threshold-based auto-fail. The Lite version
+      is intentionally bounded so it ships in one cycle and starts
+      collecting real-world signal — the auto-baseline cycle can
+      reuse the kind taxonomy this cycle establishes.
+
+      Files touched (expected): `src/work.ts` (complete() new guard
+      branch); `tests/parity/work.test.ts` (perf_regression reject /
+      perf_resolved unblock / hotfix bypass scenarios);
+      `commands/work.md` (kind taxonomy section gains the two new
+      entries); `CHANGELOG.md` Added line.
+
+    test_strategy: "tdd"
+    acceptance_criteria:
+      - "AC-1: `harness work F-N --evidence \"<text>\" --kind perf_regression` records the entry into `state.yaml` features[].evidence with `kind: perf_regression`. The entry counts toward the Iron Law declared-evidence threshold (it is not in `AUTOMATIC_EVIDENCE_KINDS`)."
+      - "AC-2: Same shape for `--kind perf_resolved` — recorded normally, counts as declared evidence, no special handling at record time."
+      - "AC-3: `harness work F-N --complete` rejects with `action: queried` and the message starts with `cannot complete — perf regression unresolved` when the most-recent entry on `features[F-N].evidence[]` whose kind is in {perf_regression, perf_resolved} has kind `perf_regression`. Status remains unchanged; the call is re-callable."
+      - "AC-4: When the most-recent entry of those two kinds is `perf_resolved` (i.e. the regression has been declared resolved by the author), `--complete` proceeds through the existing Iron Law checks. When neither kind is present, behaviour is identical to today."
+      - "AC-5: `--complete --hotfix-reason \"...\"` bypasses the perf-regression guard with the existing audit trail (the hotfix evidence entry is appended). The bypass message and event payload include the hotfix reason as today."
+      - "AC-6: `commands/work.md` kind-taxonomy section names both `perf_regression` and `perf_resolved` in the declared list, with one short usage line each."
+      - "AC-7: `CHANGELOG.md` [Unreleased] (or [0.14.4]) gains an `### Added` line citing F-129 and the two new kinds."
+      - "AC-8: F-129 mirrored on both spec.yaml copies; `diff -q` clean."
+      - "AC-9: F-129 completed via the harness CLI cycle on `feat/v0.14.4-perf-regression-evidence`. self_check 5/5 PASS, npm test all green."
+
 # v0.14.0 — Drive autonomous loop containers (filled in Stage 2 / F-119).
 # Each Goal groups N features under one user-supplied natural-language
 # objective. The runtime state mirror lives in state.yaml goals[].
