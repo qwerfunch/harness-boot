@@ -3119,7 +3119,7 @@ features:
   started_at: 2026-05-11T04:45:29Z
   completed_at: 2026-05-11T04:48:23Z
 - id: F-137
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3151,9 +3151,9 @@ features:
     kind: reviewer_check
     summary: bulkMigrate() + sync hook (dirty-tree + opt-out guard) + 5 new tests + plan-mode rule
   started_at: 2026-05-11T05:02:23Z
-  completed_at: null
+  completed_at: 2026-05-11T05:09:09Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-137
   last_gate_passed: gate_5
-  active_feature_id: F-137
+  active_feature_id: null

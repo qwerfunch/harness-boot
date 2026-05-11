@@ -6304,49 +6304,7 @@ features:
   - id: F-137
     name: bulk archive migration in sync — auto-relocate existing done bodies
     type: feature
-    description: |
-      Closes the recursive gap left by F-132~F-134: archive auto-move
-      runs only on the next `complete()`, so existing done feature
-      bodies in `.harness/spec.yaml` stay untouched until each is
-      completed again (which never happens). Existing harness-boot
-      users who run `/plugin update` see no immediate slimming.
-
-      Fix: `harness sync` detects done feature bodies still living in
-      spec.yaml and relocates them to spec.archive.yaml in one pass.
-      Sync is the natural home — it already runs on `init`, on
-      `harness work` activate (auto-fire), and on explicit user call,
-      so the migration kicks in during normal flow without a new
-      command.
-
-      Behaviour:
-        - Reads state.yaml for done/archived feature ids.
-        - Walks spec.yaml; for each matching id with description or
-          acceptance_criteria still present, calls the existing
-          `moveToArchive(harnessDir, fid)`.
-        - Writes one events.log entry: `bulk_archive_migrated` with
-          count + ts.
-        - Idempotent: second sync finds nothing to move.
-        - Skip + warn (one stderr line) when working tree is dirty;
-          retries on the next sync.
-        - Opt-out: `harness.yaml` `archive.auto_migrate: false` or
-          `harness sync --no-archive-migrate` per call.
-
-      Side cycle (1 line in same PR): adds a Family 1 rule to
-      `docs/communication-rules.md` covering plan-mode file
-      management — when the user starts a different task in plan
-      mode, overwrite the plan file rather than appending. Keeps
-      future plans from carrying stale headers.
-
     test_strategy: smoke
-    acceptance_criteria:
-      - "AC-1: New `bulkMigrate(harnessDir)` in `src/spec/archive.ts` walks state.yaml's done/archived ids, calls existing `moveToArchive()` for each id whose spec.yaml entry still carries description or acceptance_criteria, and returns the count of features moved."
-      - "AC-2: `src/sync.ts` calls `bulkMigrate` near the end of the derive pipeline. Calls `runDirtyTreeCheck()`-equivalent first; when the working tree is dirty, skips the migration and emits one stderr warning. Honours `harness.yaml` `archive.auto_migrate: false` and the `--no-archive-migrate` CLI flag."
-      - "AC-3: When at least one feature is migrated, sync writes one `bulk_archive_migrated` entry to events.log with `count` and `ts` fields."
-      - "AC-4: Idempotent. A second sync call (clean tree, default options) leaves spec.yaml byte-identical and writes no new events."
-      - "AC-5: `tests/parity/archive.test.ts` covers: bulk happy path (N done bodies moved), idempotent re-run, dirty-tree skip + warn, opt-out flag, opt-out config."
-      - "AC-6: `docs/communication-rules.md` Family 1 gains one new rule: plan-mode file management — when the user pivots to a different task, the plan file is overwritten, not appended to."
-      - "AC-7: F-137 mirrored on both spec.yaml copies; diff -q clean."
-      - "AC-8: F-137 completed via the harness CLI cycle on `feat/v0.14.4-bulk-archive-migration`. self_check 5/5 + npm test green."
 goals: []
 constraints:
   tech_stack:
