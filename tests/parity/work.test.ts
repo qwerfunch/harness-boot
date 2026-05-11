@@ -318,6 +318,79 @@ describe('work.complete — perf regression guard (F-129)', () => {
   });
 });
 
+describe('work.complete — body archive auto-move (F-132)', () => {
+  let ws: Workspace;
+
+  function makeFixtureWithBody(): object {
+    return {
+      version: '2.3',
+      schema_version: '2.3',
+      project: {name: 'archive-test', mode: 'prototype'},
+      features: [
+        {
+          id: 'F-001',
+          name: 'first',
+          title: 'first',
+          modules: ['core/x'],
+          area: 'core',
+          digest: 'F-001 digest',
+          description: 'F-001 description body.',
+          acceptance_criteria: ['AC-1: thing.', 'AC-2: other thing.'],
+        },
+      ],
+    };
+  }
+
+  beforeEach(() => {
+    ws = makeWorkspace(makeFixtureWithBody());
+    activate(ws.harness, 'F-001');
+    recordGate(ws.harness, 'F-001', 'gate_5', 'pass');
+    addEvidence(ws.harness, 'F-001', 'manual_check', 'verified');
+  });
+  afterEach(() => {
+    rmSync(ws.dir, {recursive: true, force: true});
+  });
+
+  it('moves description + acceptance_criteria out of live spec.yaml on complete', () => {
+    const res = complete(ws.harness, 'F-001');
+    expect(res.action).toBe('completed');
+
+    const liveSpec = readFileSync(join(ws.harness, 'spec.yaml'), 'utf-8');
+    expect(liveSpec).not.toContain('F-001 description body.');
+    expect(liveSpec).not.toContain('AC-1: thing.');
+  });
+
+  it('writes the body to spec.archive.yaml under the same id', () => {
+    complete(ws.harness, 'F-001');
+    const archivePath = join(ws.harness, 'spec.archive.yaml');
+    expect(existsSync(archivePath)).toBe(true);
+    const archive = readFileSync(archivePath, 'utf-8');
+    expect(archive).toContain('F-001');
+    expect(archive).toContain('F-001 description body.');
+    expect(archive).toContain('AC-1: thing.');
+  });
+
+  it('preserves meta keys on the live entry (id/name/area/digest)', () => {
+    complete(ws.harness, 'F-001');
+    const liveSpec = readFileSync(join(ws.harness, 'spec.yaml'), 'utf-8');
+    expect(liveSpec).toContain('F-001');
+    expect(liveSpec).toContain('first');
+    expect(liveSpec).toContain('core');
+    expect(liveSpec).toContain('F-001 digest');
+  });
+
+  it('does not regress the lifecycle when archive write fails (silent warn)', () => {
+    // Force a write failure on spec.archive.yaml by pre-creating a
+    // directory at that path. moveToArchive will throw EISDIR on
+    // writeFileSync; complete() must catch it and still report
+    // completed (the state transition already happened).
+    mkdirSync(join(ws.harness, 'spec.archive.yaml'), {recursive: true});
+    const res = complete(ws.harness, 'F-001');
+    expect(res.action).toBe('completed');
+    expect(res.current_status).toBe('done');
+  });
+});
+
 describe('work.archive', () => {
   let ws: Workspace;
   beforeEach(() => {

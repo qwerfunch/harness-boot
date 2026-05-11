@@ -5100,6 +5100,83 @@ features:
       - "AC-8: F-131 mirrored on both spec.yaml copies; `diff -q` clean."
       - "AC-9: F-131 completed via the harness CLI cycle on `feat/v0.14.4-spec-compact-export`. self_check 5/5 PASS, npm test all green."
 
+  - id: "F-132"
+    name: "complete() auto-archive — done feature body moves out of spec.yaml"
+    type: "feature"
+    description: |
+      Forty-ninth cycle. First of the root-cause cycles (after the
+      logcat-on return batch's Lite compaction in F-131): turns the
+      "compress in place" workaround into a proper separation.
+
+      Root-cause reading (from the maintainer's plan): spec.yaml
+      is forced to carry both the *currently living definition* and
+      the *full history* in one file because BR-002 says spec is
+      SSoT. The compression of F-131 was a band-aid — given enough
+      time the compacted form bloats again. The real fix is to
+      move the done body out of the live file entirely. spec.yaml
+      then stays slim by construction, not by repeated squeezing.
+
+      Mechanism (no new commands):
+
+        - `harness work F-N --complete` already runs inside the
+          `complete()` lifecycle in `src/work.ts`. At the end of a
+          successful transition we add one step: read the feature's
+          `description` and `acceptance_criteria`, append them to
+          `.harness/spec.archive.yaml` under the same id, and remove
+          those two keys from the live spec.yaml entry. The meta
+          (id, name, status, type, area, digest, ...) stays in
+          place so dashboards, gates, drift checks all keep
+          working.
+        - silent fail on archive write — the transition already
+          succeeded, the archive move is best-effort. A warn line
+          on stderr is enough; the next sync run will retry.
+        - idempotent — if `.harness/spec.archive.yaml` already has
+          the id, overwrite (the body is the only thing that
+          changes; the move is a one-way ratchet).
+
+      Scope discipline:
+
+        - Only the **new** feature transitioning in this cycle
+          (F-132 itself) actually moves to archive in this cycle.
+          The 130 existing done entries stay in spec.yaml as full
+          bodies — a separate **bulk-migration follow-up cycle**
+          will sweep them. Keeps the diff in this PR auditable.
+        - No CLI surface change. No new subcommand. `export-spec`
+          from F-131 is unaffected (it can still produce a
+          compact view from the live spec). Once archive lands,
+          `export-spec --active-only` will become near-no-op
+          because the bodies are already gone — that pruning is
+          part of the later Lazy-Read cycle, not this one.
+
+      Files touched (expected): `src/spec/archive.ts` (new
+      internal module: `extractArchivePayload`, `moveToArchive`,
+      idempotent append-or-overwrite); `src/work.ts` (one call
+      site at the end of `complete()` after `state.setStatus`);
+      `src/spec/validate.ts` or `docs/schemas/spec.archive.schema.json`
+      (new minimal schema for the archive file); `.gitignore`
+      (un-ignore `.harness/spec.archive.yaml` if needed — it must
+      be tracked for self-bootstrap); `tests/parity/spec/archive.test.ts`
+      (new); `tests/parity/work.test.ts` (assert complete() moves
+      body); `CHANGELOG.md`.
+
+      Self-bootstrap smoke: F-132 itself completing via the harness
+      CLI cycle will exercise the new code — F-132's own
+      description + AC end up in `.harness/spec.archive.yaml`,
+      leaving only the meta in `.harness/spec.yaml`. That's the
+      dogfood proof.
+
+    test_strategy: "tdd"
+    acceptance_criteria:
+      - "AC-1: `src/spec/archive.ts` exposes `moveToArchive(harnessDir, fid)` that reads the live spec.yaml, extracts the named feature's `description` and `acceptance_criteria`, appends them to `<harnessDir>/spec.archive.yaml` under the same id (overwriting prior body for that id), and rewrites the live spec.yaml with those two keys removed from that feature entry only."
+      - "AC-2: `complete()` in `src/work.ts` calls `moveToArchive(harnessDir, fid)` after the successful `state.setStatus(fid, 'done')` save. If the archive write throws, complete() still returns success (the transition is already committed); a stderr warning is emitted with the error message. A unit test pins the silent-fail contract."
+      - "AC-3: idempotency — calling `moveToArchive` twice on the same id leaves the live spec.yaml byte-identical (no body to move the second time) and the archive entry unchanged."
+      - "AC-4: meta preservation — every key on the feature entry **other than** `description` and `acceptance_criteria` is preserved verbatim (id, name, type, ui_surface, performance_budget, area, supersedes, ...). A unit test pins this."
+      - "AC-5: archive file shape — `<harnessDir>/spec.archive.yaml` has a top-level `version`, `schema_version`, and `features: [{id, description, acceptance_criteria}]`. When the file does not exist, it is created. When it exists, it is read, mutated, and re-written. The order of entries in `features[]` follows insertion order."
+      - "AC-6: `harness validate` continues to accept the live spec.yaml after a feature's body has been moved out — `description` and `acceptance_criteria` are not required on a feature entry by the schema, so the meta-only shape stays valid."
+      - "AC-7: F-132 self-bootstrap proof — after `harness work F-132 --complete`, `.harness/spec.yaml` contains the F-132 entry with `id`, `name`, `type`, etc. but **no** `description` or `acceptance_criteria` keys, and `.harness/spec.archive.yaml` contains the F-132 entry with its `description` and `acceptance_criteria` bodies."
+      - "AC-8: F-132 mirrored on both spec.yaml copies; `diff -q .harness/spec.yaml docs/samples/harness-boot-self/spec.yaml` clean. Same lockstep applied to the new `spec.archive.yaml` (both `.harness/` and `docs/samples/harness-boot-self/`)."
+      - "AC-9: F-132 completed via the harness CLI cycle on `feat/v0.14.4-spec-archive-separation`. self_check 5/5 PASS, npm test all green."
+
 # v0.14.0 — Drive autonomous loop containers (filled in Stage 2 / F-119).
 # Each Goal groups N features under one user-supplied natural-language
 # objective. The runtime state mirror lives in state.yaml goals[].
