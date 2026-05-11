@@ -3153,7 +3153,7 @@ features:
   started_at: 2026-05-11T05:02:23Z
   completed_at: 2026-05-11T05:09:09Z
 - id: F-138
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3185,9 +3185,9 @@ features:
     kind: reviewer_check
     summary: src/drive/replan.ts (deterministic deferral + manifest file-drop) + loop hook + 7 vitest cases
   started_at: 2026-05-11T05:17:35Z
-  completed_at: null
+  completed_at: 2026-05-11T05:23:40Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-138
   last_gate_passed: gate_5
-  active_feature_id: F-138
+  active_feature_id: null

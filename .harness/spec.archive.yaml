@@ -369,3 +369,65 @@ features:
       - "AC-7: F-137 mirrored on both spec.yaml copies; diff -q clean."
       - "AC-8: F-137 completed via the harness CLI cycle on
         `feat/v0.14.4-bulk-archive-migration`. self_check 5/5 + npm test green."
+  - id: F-138
+    description: |
+      Today drive runs planned features blindly in order. The user
+      wants drive to **rethink the plan after each feature** based on
+      what it just learned (retro, evidence, gate trends) and adjust
+      the pending features. Toward the end of a goal the actual
+      remaining work may diverge from the original sketch — that is
+      the point.
+
+      Lite scope (Cycle A1 of a multi-cycle plan):
+        - **Deterministic replan** only — blocked features moved to
+          the end, superseded features auto-deferred, sibling-area
+          features prioritised after a successful complete.
+        - **File-drop manifest** for LLM-required replan: when the
+          deterministic pass detects a non-trivial change candidate
+          (e.g. evidence suggests scope shift), drive writes a
+          replan request file under
+          `.harness/_workspace/replan/<goal-id>-after-<fid>.md`
+          with structured context. The orchestrator (next Claude
+          turn) reads the file and applies the mutation.
+        - **No automatic LLM call** in this cycle — that lives in
+          Cycle A2 once the orchestrator-handoff path is proven.
+
+      Mechanism:
+        - New module `src/drive/replan.ts` exposes
+          `replanAfterCompletion(harnessDir, completedFid, goalId)`.
+        - `src/drive/loop.ts` calls the hook at the start of an
+          iteration whose previous step's active feature has just
+          transitioned to `done`.
+        - Each call emits one `replan_evaluated` event (deltas +
+          file-drop path when applicable). Re-call on the same fid
+          is idempotent (no duplicate event, no re-mutation).
+        - Opt-out: `harness.yaml` `drive.replan.enabled: false`
+          skips entirely; opt-out emits one `replan_disabled` event
+          the first time and is then silent.
+    acceptance_criteria:
+      - "AC-1: `src/drive/replan.ts` exposes `replanAfterCompletion(harnessDir,
+        completedFid, goalId)` returning `{evaluated: boolean, deltas:
+        {deferred: string[], reordered: string[]}, manifest_path:
+        string|null}`."
+      - "AC-2: Deterministic replan moves any pending feature whose state.yaml
+        status is `blocked` to the end of the goal's `feature_progress`
+        ordering, and applies `superseded_by` chains to defer superseded ids."
+      - "AC-3: When the deterministic pass detects an LLM-worthy condition
+        (active goal has ≥ 1 retro mentioning 'replan' / 'pivot' / 'rethink'
+        keywords, or evidence indicates a scope shift), drive writes a file-drop
+        manifest at `.harness/_workspace/replan/<goal-id>-after-<fid>.md` with
+        structured context. Returns `manifest_path` set."
+      - "AC-4: One `replan_evaluated` event written to events.log per call (with
+        deltas + manifest_path). Re-calling with the same `completedFid` is a
+        silent no-op (no duplicate event, no re-mutation)."
+      - "AC-5: `src/drive/loop.ts` invokes the hook at the start of an iteration
+        when `state.getFeature(checkpoint.execute.active_feature).status ===
+        'done'`."
+      - "AC-6: Opt-out: `harness.yaml` `drive.replan.enabled: false` skips.
+        Single `replan_disabled` event emitted the first time then silent."
+      - "AC-7: 5+ vitest cases in `tests/parity/driveReplan.test.ts` covering:
+        blocked deferral, supersedes deferral, manifest write trigger,
+        idempotent re-call, opt-out."
+      - "AC-8: F-138 mirrored on both spec.yaml copies; diff -q clean."
+      - "AC-9: F-138 completed via the harness CLI cycle on
+        `feat/v0.14.4-drive-replan`. self_check 5/5 + npm test green."
