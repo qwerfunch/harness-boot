@@ -3085,7 +3085,7 @@ features:
   started_at: 2026-05-11T04:34:25Z
   completed_at: 2026-05-11T04:38:59Z
 - id: F-136
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3117,9 +3117,9 @@ features:
     kind: reviewer_check
     summary: communication-rules.md single-language; CLAUDE.md.template reminder rewritten; 2 new Family 1 rules + tests updated
   started_at: 2026-05-11T04:45:29Z
-  completed_at: null
+  completed_at: 2026-05-11T04:48:23Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-136
   last_gate_passed: gate_5
-  active_feature_id: F-136
+  active_feature_id: null

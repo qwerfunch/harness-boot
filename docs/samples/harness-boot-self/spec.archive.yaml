@@ -277,3 +277,38 @@ features:
       - "AC-8: F-135 completed via the harness CLI cycle on
         `feat/v0.14.4-communication-rules`. self_check 5/5 PASS, npm test all
         green."
+  - id: F-136
+    description: |
+      Three corrections on top of F-135 from a user review:
+
+        1. Drop the side-by-side English/Korean duplication in
+           docs/communication-rules.md. One English template that
+           generalises to every natural language is enough.
+        2. Stop listing handled F-N IDs in every response. Surface
+           them only on demand, and even then in a one-line summary.
+        3. CHANGELOG, commit messages, and PR bodies should follow
+           the same brevity rules — lead with the change, keep
+           paragraphs short.
+
+      Wiring (no new CLI surface):
+        - docs/communication-rules.md rewritten as single English template.
+        - Two new Family 1 rules: (a) progress-ID surface discipline,
+          (b) brevity for write surfaces (CHANGELOG / commit / PR).
+        - CLAUDE.md.template reminder rewritten English-only.
+        - Test file updated for the new shape.
+    acceptance_criteria:
+      - "AC-1: docs/communication-rules.md is English-only (no side-by-side ko
+        duplication). Family 2 references at least four user languages
+        (ko/ja/zh/es)."
+      - "AC-2: Family 1 carries a rule explicitly named 'progress-ID surface
+        discipline' or equivalent: don't list handled F-N IDs in routine
+        responses."
+      - "AC-3: Family 1 carries a rule explicitly named 'brevity for write
+        surfaces' or equivalent that names CHANGELOG / commit / PR explicitly."
+      - "AC-4: CLAUDE.md.template reminder section is single-language English
+        referencing the three new rules."
+      - "AC-5: tests/parity/communicationRules.test.ts updated (no ### 한국어
+        check; adds new rule checks)."
+      - "AC-6: F-136 mirrored on both spec.yaml copies; diff -q clean."
+      - "AC-7: F-136 completed via harness CLI cycle. self_check 5/5 + npm test
+        green."
