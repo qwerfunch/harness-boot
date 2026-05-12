@@ -19,7 +19,12 @@ import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {afterEach, beforeEach, describe, expect, it} from 'vitest';
 
-import {SpecValidationError, loadSpec, validate} from '../../src/spec/validate.js';
+import {
+  SpecValidationError,
+  collectWarnings,
+  loadSpec,
+  validate,
+} from '../../src/spec/validate.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, '..', '..');
@@ -171,6 +176,63 @@ describe('spec validator — feature name length cap (F-130)', () => {
       expect(flat).toContain('features');
       expect(flat).toContain('name');
     }
+  });
+});
+
+describe('spec validator — F-166 title length soft warning (≤ 80)', () => {
+  function specWithName(name: string): Record<string, unknown> {
+    return {
+      features: [{id: 'F-001', name, type: 'feature'}],
+    };
+  }
+
+  it('emits no warning when name is 80 chars (boundary)', () => {
+    const name80 = 'a'.repeat(80);
+    const warnings = collectWarnings(specWithName(name80));
+    const nameWarnings = warnings.filter((w) => w.code === 'feature.name_too_long');
+    expect(nameWarnings).toHaveLength(0);
+  });
+
+  it('emits a soft warning when name is 81 chars', () => {
+    const name81 = 'a'.repeat(81);
+    const warnings = collectWarnings(specWithName(name81));
+    const nameWarnings = warnings.filter((w) => w.code === 'feature.name_too_long');
+    expect(nameWarnings).toHaveLength(1);
+    const w = nameWarnings[0]!;
+    expect(w.path).toEqual(['features', 0, 'name']);
+    expect(w.message).toContain('81 chars');
+    expect(w.message).toMatch(/digest|description/);
+  });
+
+  it('counts unicode code points, not utf-16 units (emoji as 1)', () => {
+    // 79 ASCII + 1 emoji = 80 code points → no warning.
+    const name80cp = 'a'.repeat(79) + '🎯';
+    const warnings = collectWarnings(specWithName(name80cp));
+    const nameWarnings = warnings.filter((w) => w.code === 'feature.name_too_long');
+    expect(nameWarnings).toHaveLength(0);
+  });
+
+  it('validate() does not throw on overlong (≤100) names — warnings are non-blocking', () => {
+    // Hard cap (F-130) is 100; soft warn (F-166) is 80.
+    // A name between 81 and 100 must pass validate() and only show as a warning.
+    const name99 = 'a'.repeat(99);
+    const fullSpec = loadSpec(CANONICAL_SPEC);
+    (fullSpec['features'] as Array<Record<string, unknown>>).push({
+      id: 'F-9999',
+      name: name99,
+      type: 'feature',
+      status: 'planned',
+    });
+    expect(() => validate(fullSpec, SCHEMA_PATH)).not.toThrow();
+    const warnings = collectWarnings(fullSpec);
+    expect(warnings.some((w) => w.code === 'feature.name_too_long')).toBe(true);
+  });
+
+  it('returns [] on malformed input without throwing', () => {
+    expect(collectWarnings(null)).toEqual([]);
+    expect(collectWarnings('not a mapping')).toEqual([]);
+    expect(collectWarnings({features: 'not an array'})).toEqual([]);
+    expect(collectWarnings({features: [null, 42, 'bad']})).toEqual([]);
   });
 });
 

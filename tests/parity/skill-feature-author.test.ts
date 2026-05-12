@@ -22,6 +22,7 @@
 import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {describe, expect, it} from 'vitest';
+import {parse as yamlParse} from 'yaml';
 
 const REPO_ROOT = join(__dirname, '..', '..');
 const SKILL_DIR = join(REPO_ROOT, 'skills', 'feature-author');
@@ -181,6 +182,74 @@ describe('feature-author skill — template', () => {
     expect(tpl).toContain('# ui_surface:');
     expect(tpl).toContain('# entities:');
     expect(tpl).toContain('# performance_budget:');
+  });
+});
+
+describe('feature-author skill — F-165 YAML emit safety', () => {
+  const tpl = readSkill(join('templates', 'feature-entry.yaml'));
+
+  it('template uses `|-` literal block scalar for description (not folded plain)', () => {
+    expect(tpl).toMatch(/description:\s*\|-\s*$/m);
+  });
+
+  it('SKILL.md documents the block-scalar rule for free-text fields', () => {
+    const skillMd = readSkill('SKILL.md');
+    expect(skillMd).toMatch(/YAML emit safety/);
+    expect(skillMd).toContain('`|-`');
+    expect(skillMd).toMatch(/PARSE/);
+  });
+
+  it('template fills with risky multi-line content and round-trips byte-identically', () => {
+    // The 4 risky patterns logcat-on hit:
+    //   1. `{Math.round(...)}` — flow mapping indicator at line start
+    //   2. `{ color: red; opacity: 0 }` — mapping value indicator inline
+    //   3. `transform: translateY(...)` — mapping value indicator inline
+    //   4. `` `${vrowStart}px` `` — backtick + template literal
+    // The template's description body is indented 6 spaces under
+    // `description: |-`. When filling, each line of the multi-line
+    // body must keep that indent — otherwise the block scalar ends
+    // early. This mirrors what the LLM agent must do when pasting.
+    const dangerousLines = [
+      'Line one starts here.',
+      '{Math.round(width)} should render correctly.',
+      'CSS rule: { color: red; opacity: 0 } applies on hover.',
+      'transform: translateY(-50%) on focus.',
+      'Template literal `${vrowStart}px` survives.',
+    ];
+    const dangerousBody = dangerousLines.join('\n      ');
+
+    // `<DESCRIPTION>` appears in both the header comment block and the
+    // actual body line. Strip the comment header first so the
+    // replacement targets the body unambiguously.
+    const bodyOnly = tpl
+      .split('\n')
+      .filter((l) => !l.startsWith('#'))
+      .join('\n');
+    const filled = bodyOnly
+      .replace('"<F_ID>"', '"F-999"')
+      .replace('"<NAME>"', '"F-165 round-trip safety test"')
+      .replace('"<TYPE>"', '"feature"')
+      .replace('<DESCRIPTION>', dangerousBody)
+      .replace('"AC-1: <AC_1>"', '"AC-1: CSS like { color: red } survives quotes"')
+      .replace('"AC-2: <AC_2>"', '"AC-2: Backtick `${val}px` survives quotes"')
+      .replace('"AC-3: <AC_3>"', '"AC-3: Plain text AC entry"');
+
+    // The template's feature block is indented 2 (lives under
+    // `features:`). Wrap in a `features:` parent so it parses as
+    // a complete document.
+    const wrapped = `features:\n${filled}`;
+    const parsed = yamlParse(wrapped) as Record<string, unknown>;
+    const features = parsed['features'] as Array<Record<string, unknown>>;
+    const feature = features[0];
+    expect(feature).toBeDefined();
+    expect(feature!['id']).toBe('F-999');
+    expect(feature!['description']).toContain('{Math.round(width)}');
+    expect(feature!['description']).toContain('{ color: red; opacity: 0 }');
+    expect(feature!['description']).toContain('transform: translateY(-50%)');
+    expect(feature!['description']).toContain('`${vrowStart}px`');
+    const ac = feature!['acceptance_criteria'] as string[];
+    expect(ac[0]).toContain('{ color: red }');
+    expect(ac[1]).toContain('`${val}px`');
   });
 });
 

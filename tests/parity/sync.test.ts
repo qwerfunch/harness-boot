@@ -17,6 +17,7 @@
  * Run via `npm run test:parity`.
  */
 
+import {spawnSync} from 'node:child_process';
 import {existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -61,6 +62,54 @@ function makeWorkspace(): Workspace {
   writeFileSync(join(dir, 'spec.yaml'), MINIMAL_SPEC, 'utf-8');
   return {dir};
 }
+
+/**
+ * F-164 fixture — same minimal shape as MINIMAL_SPEC plus a single
+ * `features[0]` entry with a non-empty body and `status: done`. The
+ * matching state.yaml below mirrors that status, so `bulkMigrate`
+ * picks it up.
+ */
+const MINIMAL_SPEC_WITH_DONE = `version: "2.3"
+schema_version: "2.3"
+project:
+  name: "test-project"
+  summary: "F-164 dirty-tree whitelist fixture"
+  vision: "drive parity green"
+  description: "test description"
+  language: "en"
+  mode: "prototype"
+domain:
+  entities: []
+  business_rules: []
+features:
+  - id: "F-001"
+    name: "shipped feature"
+    type: "feature"
+    status: "done"
+    description: |-
+      Body that bulkMigrate will relocate to spec.archive.yaml.
+    acceptance_criteria:
+      - "AC-1: archive migration runs once."
+constraints:
+  tech_stack:
+    runtime: "node"
+    min_version: "20"
+    language: "typescript"
+  architectural: []
+  compliance: []
+  prototype_mode: true
+deliverable:
+  what: "A test harness directory."
+  acceptance: "All gates pass."
+metadata: {}
+`;
+
+const MINIMAL_STATE_WITH_DONE = `version: "1"
+features:
+  - id: "F-001"
+    status: "done"
+session: {}
+`;
 
 describe('sync.run — happy path', () => {
   let ws: Workspace;
@@ -199,6 +248,71 @@ describe('sync.editWins helper', () => {
       expect(editWins(path, 'b'.repeat(64))).toBe(true);
     } finally {
       rmSync(dir, {recursive: true, force: true});
+    }
+  });
+});
+
+/**
+ * F-164 — sync's bulk archive step must not block on the derived
+ * outputs it just wrote. Render dirties domain.md / architecture.yaml
+ * / harness.yaml; without the whitelist those marks were enough to
+ * trip workingTreeDirty and refuse the archive step. With the
+ * whitelist, only non-rendered dirt blocks archive.
+ */
+describe('sync.run — F-164 dirty-tree whitelist for render outputs', () => {
+  function setupGitWorkspace(): {projectRoot: string; harnessDir: string} {
+    const projectRoot = mkdtempSync(join(tmpdir(), 'sync-f164-'));
+    const harnessDir = join(projectRoot, '.harness');
+    mkdirSync(harnessDir, {recursive: true});
+    writeFileSync(join(harnessDir, 'spec.yaml'), MINIMAL_SPEC_WITH_DONE, 'utf-8');
+    writeFileSync(join(harnessDir, 'state.yaml'), MINIMAL_STATE_WITH_DONE, 'utf-8');
+
+    const env = {
+      ...process.env,
+      GIT_AUTHOR_NAME: 'F-164 Test',
+      GIT_AUTHOR_EMAIL: 'f164@test.local',
+      GIT_COMMITTER_NAME: 'F-164 Test',
+      GIT_COMMITTER_EMAIL: 'f164@test.local',
+    };
+    const g = (args: string[]): void => {
+      const r = spawnSync('git', args, {cwd: projectRoot, env, stdio: 'ignore'});
+      if (r.status !== 0) {
+        throw new Error(`git ${args.join(' ')} failed`);
+      }
+    };
+    g(['init', '-q', '-b', 'main']);
+    g(['add', '-A']);
+    g(['commit', '-q', '-m', 'initial']);
+    return {projectRoot, harnessDir};
+  }
+
+  it('runs bulk archive even though render dirtied derived outputs', () => {
+    const {projectRoot, harnessDir} = setupGitWorkspace();
+    try {
+      const result = run(harnessDir, {
+        timestamp: '2026-05-13T09:00:00Z',
+        skipValidation: true,
+      });
+      expect(result.archive_migrate_skip_reason).toBeNull();
+      expect(result.archive_migrated).toBe(1);
+      expect(existsSync(join(harnessDir, 'spec.archive.yaml'))).toBe(true);
+    } finally {
+      rmSync(projectRoot, {recursive: true, force: true});
+    }
+  });
+
+  it('still skips with dirty_tree when an unrelated file is modified', () => {
+    const {projectRoot, harnessDir} = setupGitWorkspace();
+    try {
+      writeFileSync(join(projectRoot, 'unrelated.txt'), 'user edit\n', 'utf-8');
+      const result = run(harnessDir, {
+        timestamp: '2026-05-13T09:00:00Z',
+        skipValidation: true,
+      });
+      expect(result.archive_migrate_skip_reason).toBe('dirty_tree');
+      expect(result.archive_migrated).toBe(0);
+    } finally {
+      rmSync(projectRoot, {recursive: true, force: true});
     }
   });
 });

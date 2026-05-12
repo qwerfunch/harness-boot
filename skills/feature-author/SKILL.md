@@ -108,6 +108,30 @@ skeleton. Fill placeholders:
 - `<AC-LIST>` — the AC count from step 2, drawn from the adapter
   template plus 1-2 feature-specific ones. Each line `- "AC-N: ..."`.
 
+### YAML emit safety for free-text fields (F-165)
+
+logcat-on ISSUES-LOG return — when free-text fields wrap and a
+continuation line starts with `{` (flow mapping indicator) or contains
+`: ` (mapping value indicator), the YAML parser reads them as nested
+mappings and `harness sync` / `harness validate` abort with PARSE
+error. The fix lives at the emitter (you), not the validator —
+PARSE failure happens before validation gets a chance.
+
+Rules when filling the template:
+
+- **`description:`** — always use `|-` (literal block scalar, strip
+  trailing newline). Preserves body verbatim regardless of `{`, `: `,
+  backticks, or `${template}` content. **Never** use plain scalar
+  (no `|-`) for multi-line descriptions.
+- **`acceptance_criteria[]`** — wrap each AC in double quotes
+  (`"AC-N: ..."`). Single-line AC entries are fine plain, but
+  code-flavored content (CSS `{...}`, JS template literals, `: `
+  pairs in URLs) survives only inside `"..."`.
+- **`statement:`** (in `risks[]` if you add them) — same rule: `|-`
+  for multi-line, `"..."` for single line with code content.
+
+If unsure, pick `|-` — it's never wrong, just sometimes verbose.
+
 Shape-specific extras:
 - `ui-surface`: include `ui_surface: { present: true, platforms: [...], has_audio: <bool> }` block.
 - `sensitive`: include `entities: [{ name: "...", sensitive: true }]` block when an entity is involved.
