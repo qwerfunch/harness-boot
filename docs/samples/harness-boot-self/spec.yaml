@@ -1810,45 +1810,12 @@ features:
     type: feature
     test_strategy: tdd
   - id: F-143
-    name: self-managing spec — auto digest + auto-archive open_q + retroactive catch-up
+    name: self-managing spec — auto digest + auto-archive open_q + retroactive
+      catch-up
     type: feature
     test_strategy: tdd
-    description: |
-      Closes the spec.yaml bloat axis end-to-end. Three additive
-      behaviors land in one cycle:
-
-      1. **Auto-digest on complete (F-145 sub)** — `moveToArchive()`
-         backfills the live entry's `digest` field from the first
-         ~120 chars of `description` before relocating the body to
-         spec.archive.yaml. Existing user-authored digests are
-         respected. Effect: dashboards · kickoff templates · external
-         `@import` readers retain a meaningful one-line label for
-         done features even after the body moves out.
-
-      2. **Auto-archive resolved open_questions (F-147 sub)** —
-         `harness sync` adds an 8th step that relocates entries from
-         `spec.open_questions[]` whose `answered_at` (or
-         `resolved_at` / `closed_at`) timestamp is older than 30
-         days into `spec.archive.yaml.open_questions[]`. Idempotent
-         per id. Skipped on dirty tree or opt-out
-         (`harness.yaml: archive.open_questions: false`).
-
-      3. **Retroactive catch-up of harness-boot self spec** — first
-         `harness sync` on a clean tree relocates 128 accumulated
-         done feature bodies from `.harness/spec.yaml` (and the
-         lockstep mirror under `docs/samples/harness-boot-self/`)
-         into `spec.archive.yaml`. Closes the gap left by F-137,
-         which never auto-fired on this self repo because every
-         interactive sync hit the dirty-tree guard.
-
-      Net effect: `.harness/spec.yaml` shrinks 7028 → 2512 lines
-      (64% reduction); future done-feature transitions auto-archive
-      with a meaningful digest left behind; resolved open questions
-      drift out of the live spec on their own.
-    acceptance_criteria:
-      - "AC-1: `moveToArchive()` writes `digest` (≤120 chars, ellipsis suffix when truncated) when the live entry has no digest, leaves it untouched when one exists; covered by `tests/parity/archive.test.ts > moveToArchive — F-145 auto-digest`."
-      - "AC-2: `harness sync` runs `autoArchiveOpenQuestions()` after bulk archive migration; entries with `*_at` older than 30 days move to `spec.archive.yaml.open_questions[]` (per-id upsert); honours `--no-open-questions-archive` and `harness.yaml: archive.open_questions: false`; covered by `tests/parity/archive.test.ts > autoArchiveOpenQuestions — F-147`."
-      - "AC-3: `harness sync` on a clean tree against this self repo emits `[info] sync: auto-archived 128 done feature bodies` and shrinks `.harness/spec.yaml` from 7028 to ~2500 lines while keeping `self_check.sh` 5/5 OK and `npm test` 720/720 (10 new tests)."
+    digest: "Closes the spec.yaml bloat axis end-to-end. Three additive behaviors
+      land in one cycle: 1. **Auto-digest on complete..."
 goals: []
 constraints:
   tech_stack:

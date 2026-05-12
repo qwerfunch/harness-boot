@@ -3323,7 +3323,7 @@ features:
   started_at: 2026-05-11T06:57:26Z
   completed_at: 2026-05-11T07:01:28Z
 - id: F-143
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3358,9 +3358,9 @@ features:
     kind: manual_check
     summary: spec.yaml 7028 → 2512 lines (-64%); 128 done bodies + 0 open_q archived; 720/720 vitest (10 new); self_check 5/5; lockstep mirror OK
   started_at: 2026-05-12T02:38:13Z
-  completed_at: null
+  completed_at: 2026-05-12T02:41:17Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-143
   last_gate_passed: gate_5
-  active_feature_id: F-143
+  active_feature_id: null
