@@ -68,10 +68,19 @@ describe('communication-rules.md — single source of truth', () => {
     expect(text).toContain('PR');
   });
 
-  it('carries the F-137 plan-mode file-management rule (overwrite on task pivot)', () => {
+  it('carries the F-157 plan-mode file hygiene rule (4-step cleanup discipline)', () => {
     const text = readFileSync(RULES_PATH, 'utf-8');
-    expect(text).toContain('Plan-mode file management');
-    expect(text).toContain('overwrite');
+    expect(text).toContain('Plan-mode file hygiene');
+    expect(text).toMatch(/4-step cleanup discipline|4 step cleanup discipline/);
+    // The four named steps that turn the abstract policy into LLM-actionable behaviour.
+    expect(text).toContain('Read');
+    expect(text).toContain('Classify');
+    expect(text).toContain('Apply');
+    expect(text).toContain('Archive location');
+    // The safety contract: cleanup never deletes.
+    expect(text).toMatch(/never delete|never delete\.|mv to archive/);
+    // The preserve override exists so long-running master plans can opt out.
+    expect(text).toContain('preserve');
   });
 });
 

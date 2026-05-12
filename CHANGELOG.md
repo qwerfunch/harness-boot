@@ -11,6 +11,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ### Queued
 
+## [0.15.3] — 2026-05-12
+
+**Plan-mode file hygiene.** Closes a multi-prompt friction surfaced in the v0.15.2 cycle itself: when a user iterates on the same axis across follow-up prompts (verification, regression fix, deepening analysis), the plan file accumulated section by section until it crossed two hundred lines and the answer became hard to find. The existing Family 1 §8 rule said "overwrite on task pivot" but left the *continuation* path silent on cleanup, so LLMs defaulted to appending. v0.15.3 turns §8 into an explicit 4-step discipline (read → classify → apply → write with archive reference) and propagates the rule into the starter template so every installed project inherits it.
+
+### Changed
+
+- **F-157** — `docs/communication-rules.md` Family 1 §8 rewritten from a single paragraph to a 4-step cleanup discipline plus a plan-header standard, a 50/150/200-line guideline, and the `<!-- preserve -->` sentinel for long-running master plans. Cleanup is always `mv` to `~/.claude/plans/archive/<project-slug>/`, never delete; on filesystem error the cleanup skips with a stderr warning and the plan proceeds normally. `docs/templates/starter/CLAUDE.md.template` §7 Family 1 grew from six to seven bullets so user projects pick up the rule on `init`. No code change, parity tests still 720/720.
+
 ## [0.15.2] — 2026-05-12
 
 **Self-managing spec.** Three additive behaviours close the long-running spec.yaml bloat axis end to end. `complete()` now backfills the live entry's `digest` (capped at 120 chars) from the description before the body relocates to `spec.archive.yaml`, so dashboards and external `@import` readers retain a meaningful one-line label after archive. `harness sync` gains an 8th step that auto-archives resolved `open_questions[]` whose `*_at` timestamp is older than 30 days. The harness-boot self spec finally caught up: `.harness/spec.yaml` shrunk from 7028 to 2512 lines (-64%) as `harness sync` migrated 128 accumulated done feature bodies that F-137 had been silently skipping on every dirty-tree run.

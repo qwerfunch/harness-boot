@@ -20,7 +20,31 @@ The rules are written once in English; each rule generalises to whichever natura
    - **CHANGELOG**: one short paragraph per entry. Lead with the change, then a single sentence on motivation, then any breaking-change note. Skip lists of acceptance criteria, file paths, and test counts — those live in the PR.
    - **Commit message**: subject line ≤ 70 chars, imperative mood. Body (if any) explains *why* the change matters in 2–4 short paragraphs, not *what files changed* (that is the diff).
    - **PR body**: lead with one paragraph stating the change. Use a "Summary" bullet list (3–5 items max) and a short "Test plan" checklist. Skip multi-paragraph rationale, diff narration, and "out of scope" essays — link to the plan or spec entry instead.
-8. **Plan-mode file management — overwrite on task pivot.** When the user starts a different task while in plan mode, **overwrite the plan file** instead of appending a new section. The plan file's first heading should always describe the *current* task, not the original one. Long accumulated plans hide the question the user is asking right now and force them to scroll past stale headers. Continuation of the *same* task may modify the existing plan; a new task means start fresh.
+8. **Plan-mode file hygiene — 4-step cleanup discipline.** Every plan-mode re-entry must follow:
+   - **(a) Read** the existing plan file in full. Skipping this step is the most common cause of accumulation.
+   - **(b) Classify** the user's current task against the previous plan: *continuation* (same feature / same analysis axis / deeper iteration on the same problem) or *pivot* (different code area / different feature / different vision axis). When the boundary is ambiguous, **default to pivot** — fresh start is safer than over-aggressive merge.
+   - **(c) Apply**:
+     - *continuation*: identify outdated sections (cycle already released, PR already merged, user-marked "done") and move only those to archive. The active + queued portion remains as the base for the new plan.
+     - *pivot*: move the entire previous plan to archive. Start fresh.
+   - **(d) Archive location** is `~/.claude/plans/archive/<project-slug>/<YYYY-MM-DD>--<task-slug>.md` — auto-`mkdir -p` the parent. When archive happened, the new plan's header carries one short reference line so the user can locate prior context.
+
+   **Plan header standard** (always renders at the top of what the user sees on `ExitPlanMode`):
+
+   ```markdown
+   # Plan — <current task title>
+
+   > Previous plans archived to: ~/.claude/plans/archive/<slug>/<date>--<task>.md
+   > (omit this line on a fresh first-task plan)
+
+   ## 한 줄 답 / One-line answer
+   ...
+   ```
+
+   **Length guideline**: a healthy 1-task plan sits at 50-150 lines. 150-200 lines is a yellow flag — review for stale sections. Over 200 lines is a red flag — archive immediately, regardless of classification.
+
+   **Preserve override**: a section wrapped in `<!-- preserve -->` ... `<!-- /preserve -->` sentinels is never archived, even on pivot. Reserved for long-running master plans (e.g. milestone-level vision) the user explicitly wants to keep.
+
+   **Safety**: cleanup never deletes — it always `mv`s to archive. The user can restore from `~/.claude/plans/archive/` at any time. On filesystem error (ENOENT, permission denied), skip cleanup and emit one stderr warning; the plan itself proceeds normally.
 
 ---
 

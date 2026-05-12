@@ -3433,8 +3433,45 @@ features:
     summary: commands/work.md 28KB → 18.9KB (-32%); 두 사이드카 신설 (_work-ceremonies.md 6.4KB + _work-orchestration.md 3.4KB); self_check.sh step 5 underscore-skip 추가; self_check 5/5 + npm test 720/720; 코드/spec 회귀 0
   started_at: 2026-05-12T06:37:24Z
   completed_at: 2026-05-12T06:38:02Z
+- id: F-157
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-12T07:17:55Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-12T07:16:53Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-12T07:16:54Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-12T07:16:55Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-12T07:16:53Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.9s) · cmd: npm run typecheck"
+  - ts: 2026-05-12T07:16:54Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.5s) · cmd: npm run lint"
+  - ts: 2026-05-12T07:16:55Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.5s) · cmd: bash self_check.sh"
+  - ts: 2026-05-12T07:17:55Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.5s) · cmd: npm test"
+  - ts: 2026-05-12T07:17:55Z
+    kind: manual_check
+    summary: communication-rules §8 expanded to 4-step discipline; CLAUDE.md.template §7 bullet 7 added; parity test updated; doc-only, code 0; self_check 5/5; npm test 720/720
+  started_at: 2026-05-12T07:16:50Z
+  completed_at: 2026-05-12T07:18:22Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-156
-  last_gate_passed: gate_5
+  last_command: /harness:work F-157
+  last_gate_passed: gate_0
   active_feature_id: null

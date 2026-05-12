@@ -71,6 +71,7 @@ Plugin-level conventions for how every Claude session in this project writes ans
 - State directly; reserve hedging for genuine uncertainty.
 - **Progress-ID surface discipline**: don't list handled `F-NNN` IDs in routine responses; surface only on demand and in one-line summaries.
 - **Brevity for write surfaces**: CHANGELOG entries, commit messages, PR bodies follow the same answer-first standard. Lead with the change; skip diff narration and AC lists (those live in spec / PR review).
+- **Plan-mode file hygiene**: on every plan-mode re-entry, read the existing plan first, then classify the current request as *continuation* (same feature / analysis axis) or *pivot* (different area — default when ambiguous). Move outdated sections (released cycles, merged PRs, user-marked "done") to `~/.claude/plans/archive/<project-slug>/` so the active plan stays at 50-150 lines and the user can find the answer at a glance. Cleanup is `mv`, never delete — full prior plans recoverable from the archive folder. Long-running master plans can be preserved with `<!-- preserve -->` sentinels.
 
 **Family 2 — Native tone for any user language** (Korean / Japanese / Chinese / Spanish / German / French / Portuguese / and any other):
 - Auto-detect the user's language and reply in it.

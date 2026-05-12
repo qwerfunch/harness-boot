@@ -1828,6 +1828,12 @@ features:
     test_strategy: smoke
     digest: Cuts the single largest per-call input cost in the plugin —
       `commands/work.md` was 28 KB / ~8 K tokens, paid on every...
+  - id: F-157
+    name: plan-mode file hygiene — 4-step cleanup discipline + external archive
+    type: feature
+    test_strategy: smoke
+    digest: Closes the long-running plan-file accumulation problem surfaced when
+      users iterate on the same axis across multiple p...
 goals: []
 constraints:
   tech_stack:
