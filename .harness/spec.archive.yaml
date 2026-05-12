@@ -5790,3 +5790,29 @@ features:
           guard, the events.log token append, and a parity test
           rendering of the new conventions body. Existing
           F-160/F-161/F-162 parity tests stay green.
+  - id: F-164
+    description: |-
+      logcat-on ISSUES-LOG return (2026-05-13). The Phase 0 sync sequence
+      runs render (step 4) before bulk archive migration (step 7). Render
+      writes timestamp updates to `domain.md` and `harness.yaml`; when the
+      user project tracks those derived files, the immediate `git status
+      --porcelain` check in step 7 sees them as dirty and refuses to
+      archive — `archive_migrate_skip_reason: "dirty_tree"`. Sync ends up
+      blocking itself.
+
+      Fix: `workingTreeDirty` accepts a whitelist of paths sync just
+      wrote, and a porcelain line matching that whitelist no longer
+      counts as dirty. Real user in-flight edits (anywhere else in the
+      tree) still block the archive — the safety intent is preserved.
+    acceptance_criteria:
+      - "AC-1: `workingTreeDirty(projectRoot, ignorePaths)` filters out any
+        porcelain entry whose path is in `ignorePaths` (relative to
+        `projectRoot`)."
+      - "AC-2: Sync passes the four derived paths it just wrote
+        (`.harness/domain.md`, `.harness/architecture.yaml`,
+        `.harness/harness.yaml`, `.harness/events.log`) as the whitelist."
+      - "AC-3: When ONLY whitelisted files are dirty, bulk archive runs and
+        emits `bulk_archive_migrated` (not `dirty_tree`)."
+      - "AC-4: When any non-whitelisted file is dirty, bulk archive still skips
+        with `dirty_tree` (safety intent preserved)."
+      - "AC-5: Test covers both branches with a temp git repo."

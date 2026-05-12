@@ -3621,7 +3621,7 @@ features:
   started_at: 2026-05-12T14:01:48Z
   completed_at: 2026-05-12T14:04:47Z
 - id: F-164
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3656,7 +3656,7 @@ features:
     kind: test
     summary: logcat-on Issue 6 fix verified — workingTreeDirty whitelist branch tested with both whitelisted-only dirty (archive runs) and unrelated dirt (still blocks); 814 vitest pass
   started_at: 2026-05-12T23:21:11Z
-  completed_at: null
+  completed_at: 2026-05-12T23:30:49Z
 - id: F-165
   status: in_progress
   gates:
