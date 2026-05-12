@@ -3695,7 +3695,7 @@ features:
   started_at: 2026-05-12T23:27:43Z
   completed_at: 2026-05-12T23:31:31Z
 - id: F-166
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3730,9 +3730,9 @@ features:
     kind: test
     summary: logcat-on Issue 4 fix — collectWarnings(spec) emits feature.name_too_long for names > 80 cp (Unicode-correct), non-blocking; CLI prints to stderr; real spec surfaces ~18 candidates without breaking validate
   started_at: 2026-05-12T23:29:58Z
-  completed_at: null
+  completed_at: 2026-05-12T23:31:41Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-166
   last_gate_passed: gate_5
-  active_feature_id: F-166
+  active_feature_id: null

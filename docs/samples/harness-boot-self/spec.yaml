@@ -1941,21 +1941,8 @@ features:
     modules:
       - spec_validate
     test_strategy: tdd
-    description: |-
-      logcat-on ISSUES-LOG return (2026-05-13). Feature `name:` values
-      have grown to 200-300 characters in some projects — they overflow
-      the dashboard `working on: "..."` line, get truncated in `git log
-      --oneline`, and bloat spec.yaml's readable surface. The fix is a
-      soft validator warning (non-blocking — backward compat) that
-      nudges authors toward a `digest:` / `description:` body for the
-      long-form content.
-    acceptance_criteria:
-      - "AC-1: Spec validator emits warning code `feature.name_too_long` when
-        `len(name) > 80` (utf-8 code points)."
-      - "AC-2: Warnings are non-blocking — `validateSpec` still returns success."
-      - "AC-3: Warning message suggests moving overflow to `digest:` or
-        `description:`."
-      - "AC-4: Unit test covers boundary 80/81 chars."
+    digest: logcat-on ISSUES-LOG return (2026-05-13). Feature `name:` values have
+      grown to 200-300 characters in some projects —...
 goals: []
 constraints:
   tech_stack:
