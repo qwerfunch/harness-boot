@@ -3546,7 +3546,7 @@ features:
   started_at: 2026-05-12T09:53:02Z
   completed_at: 2026-05-12T09:59:19Z
 - id: F-161
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3569,9 +3569,9 @@ features:
     kind: manual_check
     summary: Brownfield safety guards landed. redact.ts blocks OpenAI/GitHub/AWS/generic credential patterns + url-embedded creds; signals.ts refuses .env/.envrc/secrets.yaml/credentials.json and runs the redactor over readmePreview. conflictResolver.ts implements merge (append user-edit-bounded block to CLAUDE.md, replaces existing harness block) / coexist (default, both docs live side-by-side) / skip (no standalone conventions.md). commands/init.md scenario-3b LLM hook spec documents the codebase-archaeologist's sampling rule, single-turn prompt, and recordLlmCall handoff. End-to-end on npm fixture with planted sk-fakefakefakefakefake1234 + postgres://admin:s3cretpass@... confirmed zero leakage.
   started_at: 2026-05-12T10:06:14Z
-  completed_at: null
+  completed_at: 2026-05-12T10:11:22Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-161
   last_gate_passed: gate_5
-  active_feature_id: F-161
+  active_feature_id: null
