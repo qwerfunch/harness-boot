@@ -3521,7 +3521,7 @@ features:
   started_at: 2026-05-12T09:40:33Z
   completed_at: 2026-05-12T09:48:32Z
 - id: F-160
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3544,9 +3544,9 @@ features:
     kind: manual_check
     summary: "PR 3a (scenario 3 Layer-0) shipped. signals.ts collects 10 deterministic source families; conventionsWriter renders the 7-section conventions.md with harness:fact sigils + user-edit guard. CLI: harness init --scenario existing_code boots skeleton + walks signals + writes conventions.md + patches spec.yaml (project.name + tech_stack + metadata.source.origin=existing_code + draft=true). Comments / Tests sections ship as LLM hook stubs for PR 3b. Verified end-to-end on tests/perf/fixtures/{npm,python}: conventions written with 7-8 facts, spec validates, drift check clean, work activate routes correctly. Secret guard + CLAUDE.md merge land in PR 3b."
   started_at: 2026-05-12T09:53:02Z
-  completed_at: null
+  completed_at: 2026-05-12T09:59:19Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-160
   last_gate_passed: gate_5
-  active_feature_id: F-160
+  active_feature_id: null
