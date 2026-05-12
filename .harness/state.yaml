@@ -3434,7 +3434,7 @@ features:
   started_at: 2026-05-12T06:37:24Z
   completed_at: 2026-05-12T06:38:02Z
 - id: F-157
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3469,9 +3469,9 @@ features:
     kind: manual_check
     summary: communication-rules §8 expanded to 4-step discipline; CLAUDE.md.template §7 bullet 7 added; parity test updated; doc-only, code 0; self_check 5/5; npm test 720/720
   started_at: 2026-05-12T07:16:50Z
-  completed_at: null
+  completed_at: 2026-05-12T07:18:22Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-157
   last_gate_passed: gate_0
-  active_feature_id: F-157
+  active_feature_id: null
