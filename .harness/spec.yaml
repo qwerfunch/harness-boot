@@ -1828,6 +1828,55 @@ features:
     test_strategy: smoke
     digest: Cuts the single largest per-call input cost in the plugin —
       `commands/work.md` was 28 KB / ~8 K tokens, paid on every...
+  - id: F-157
+    name: plan-mode file hygiene — 4-step cleanup discipline + external archive
+    type: feature
+    test_strategy: smoke
+    description: |
+      Closes the long-running plan-file accumulation problem
+      surfaced when users iterate on the same axis across multiple
+      prompts (debugging, follow-up verification, deepening
+      analysis). The previous rule (Family 1 §8 in
+      `docs/communication-rules.md`) said "overwrite on task pivot"
+      but left the *continuation* path silent on cleanup, so LLMs
+      kept appending sections until the plan file became hundreds
+      of lines and the user could no longer find the answer.
+
+      Three changes, doc-only:
+
+      1. Rewrite Family 1 §8 from a one-paragraph rule into a
+         4-step discipline — (a) read existing plan, (b) classify
+         continuation vs pivot (default to pivot when ambiguous),
+         (c) apply the matching action (continuation: archive only
+         outdated sections; pivot: archive the entire prior plan),
+         (d) write the new plan with a header reference to the
+         archive location.
+      2. Define the plan header standard (current-task title plus
+         one-line archive reference when applicable), the length
+         guideline (50-150 lines healthy / 200+ red flag), and the
+         `<!-- preserve -->` sentinel for long-running master
+         plans.
+      3. Add a 7th Family 1 bullet to
+         `docs/templates/starter/CLAUDE.md.template` §7 so every
+         user project that installs the plugin inherits the rule
+         without needing to read the source `communication-rules`
+         file.
+
+      Safety: cleanup is always `mv` to
+      `~/.claude/plans/archive/<project-slug>/`, never delete —
+      prior plans recoverable. On filesystem error, cleanup
+      skipped with a stderr warning; plan itself proceeds normally.
+
+      No code change, no parity-test movement. Token cost: +0 on
+      every `/harness-boot:work` call (`communication-rules.md`
+      is not auto-loaded); +~35 tokens at session start from the
+      added template bullet — negligible against the answer-finding
+      cost the previous accumulation imposed.
+    acceptance_criteria:
+      - "AC-1: `docs/communication-rules.md` Family 1 §8 expanded from one paragraph to a 4-step cleanup discipline + header standard + length guideline + `<!-- preserve -->` sentinel rule."
+      - "AC-2: `docs/templates/starter/CLAUDE.md.template` §7 Family 1 grows from 6 bullets to 7, the new bullet summarising plan-mode hygiene with archive path + 150-line guideline + safety note."
+      - "AC-3: `bash self_check.sh` 5/5 OK; `npm test` 720/720 — no source code or parity-test movement."
+      - "AC-4: The plan file `/Users/qwerfunch/.claude/plans/<slug>.md` for this very cycle is itself an instance of the new standard — under 150 lines, design-options table + risk-scenario list + plan-header standard demonstration all present."
 goals: []
 constraints:
   tech_stack:
