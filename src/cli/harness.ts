@@ -24,6 +24,7 @@ import {join, resolve as resolvePath} from 'node:path';
 import {Command} from 'commander';
 
 import {generateDesignReview} from '../ceremonies/designReview.js';
+import {runSkeletonInit} from '../init/skeleton.js';
 import {
   agentsForShapes as kickoffAgentsForShapes,
   detectShapes as kickoffDetectShapes,
@@ -977,7 +978,95 @@ function buildProgram(): Command {
       }
     });
 
+  // -----------------------------------------------------------------
+  // init  (F-158 — bench-friendly backend of /harness-boot:init)
+  // -----------------------------------------------------------------
+  program
+    .command('init')
+    .description(
+      'install the harness skeleton (use --skeleton-only for the regression-safe path; ' +
+        'the full scenario UX lives in the /harness-boot:init slash command)',
+    )
+    .option('--harness-dir <dir>', 'target project root (`.harness/` is created inside)', '.')
+    .option(
+      '--skeleton-only',
+      'copy bare starter templates only — zero LLM calls, < 500 ms wall time',
+    )
+    .option('--plugin-root <dir>', 'plugin root path (auto-resolves from `harness` binary location)')
+    .option('--mode <mode>', 'solo (default) or team — controls .gitignore behavior', 'solo')
+    .option('--json', 'emit JSON result')
+    .action((options: Record<string, unknown>) => {
+      if (!options['skeletonOnly']) {
+        printError(
+          'init: only --skeleton-only is supported on this CLI surface. ' +
+            'Use the /harness-boot:init slash command for the full UX (scenario 1/2/3 routing).',
+        );
+        process.exit(3);
+      }
+      const targetDir = resolvePath(
+        typeof options['harnessDir'] === 'string' ? (options['harnessDir'] as string) : '.',
+      );
+      const pluginRoot =
+        typeof options['pluginRoot'] === 'string'
+          ? resolvePath(options['pluginRoot'] as string)
+          : resolvePluginRootFromBinary();
+      const mode =
+        options['mode'] === 'team' || options['mode'] === 'solo'
+          ? (options['mode'] as 'solo' | 'team')
+          : 'solo';
+      try {
+        const result = runSkeletonInit({targetDir, pluginRoot, mode});
+        if (options['json']) {
+          printJson({
+            ok: true,
+            harness_dir: result.harnessDir,
+            files_written: result.filesWritten,
+            wall_time_ms: result.wallTimeMs,
+            llm_call_count: result.llmCallCount,
+          });
+        } else {
+          printHuman(
+            `init (skeleton-only): ${result.filesWritten.length} files written ` +
+              `to ${result.harnessDir} in ${result.wallTimeMs.toFixed(1)} ms ` +
+              `(0 LLM calls)\n`,
+          );
+        }
+      } catch (err) {
+        const message = (err as Error).message;
+        if (options['json']) {
+          printJson({ok: false, error: message});
+        } else {
+          printError(`error: ${message}`);
+        }
+        process.exit(2);
+      }
+    });
+
   return program;
+}
+
+/**
+ * Best-effort resolution of the plugin root from the running `harness`
+ * binary location — climb until a `.claude-plugin/plugin.json` is found.
+ */
+function resolvePluginRootFromBinary(): string {
+  // The bundle is at <plugin-root>/dist/cli/harness.bundle.mjs and the
+  // shim at <plugin-root>/bin/harness; either way `__dirname` (or the
+  // entry script directory) sits two levels under the plugin root.
+  const entry = process.argv[1] ?? '.';
+  let dir = resolvePath(entry, '..');
+  for (let i = 0; i < 6; i += 1) {
+    if (existsSync(join(dir, '.claude-plugin', 'plugin.json'))) {
+      return dir;
+    }
+    const parent = resolvePath(dir, '..');
+    if (parent === dir) break;
+    dir = parent;
+  }
+  throw new Error(
+    `init: could not auto-resolve plugin root from ${entry}. ` +
+      'Pass --plugin-root <path> explicitly.',
+  );
 }
 
 /** Entry point — parses argv and dispatches. */

@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "scenario": "skeleton-only",
+  "note": "Anchor baseline for F-158. Wall-time floor is 50ms (see initBench.test.ts). spec_field_coverage_pct stays at 0 until scenario 1/2/3 land — the starter template ships top-level keys with empty values, so the bench treats them as 'unfilled' and the monotonic rule lets later PRs raise the floor.",
+  "thresholds": {
+    "wall_time_multiplier": 1.2,
+    "tokens_multiplier": 1.3
+  },
+  "fixtures": {
+    "empty": {
+      "init_wall_time_ms": 100,
+      "init_tokens_total": 0,
+      "spec_field_coverage_pct": 0
+    },
+    "plan-md": {
+      "init_wall_time_ms": 100,
+      "init_tokens_total": 0,
+      "spec_field_coverage_pct": 0
+    },
+    "npm": {
+      "init_wall_time_ms": 100,
+      "init_tokens_total": 0,
+      "spec_field_coverage_pct": 0
+    },
+    "python": {
+      "init_wall_time_ms": 100,
+      "init_tokens_total": 0,
+      "spec_field_coverage_pct": 0
+    }
+  }
+}

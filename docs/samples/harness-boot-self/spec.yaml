@@ -1834,6 +1834,66 @@ features:
     test_strategy: smoke
     digest: Closes the long-running plan-file accumulation problem surfaced when
       users iterate on the same axis across multiple p...
+  - id: F-158
+    name: init bench + skeleton-only safety net
+    type: feature
+    status: planned
+    release_target: v0.15.4
+    modules:
+      - init_command
+      - cli_init
+      - bench
+    test_strategy: smoke
+    description: |
+      Lock in a measurable safety net before the larger init UX
+      overhaul (3-scenario auto-routing). This PR ships only the
+      regression-gate infrastructure: a `--skeleton-only` route
+      that keeps the existing init behavior byte-identical (zero
+      LLM calls, < 500 ms wall time), a `harness init` CLI command
+      that backs the slash command for bench-friendly invocation,
+      and a perf bench scaffold under `tests/perf/` that measures
+      wall time, spec-field coverage, and (stub) token usage across
+      four fixtures (empty / plan-md / npm / Python).
+
+      Baseline values land in `tests/perf/init-baseline.json` so
+      later PRs (scenario 1 / 2 / 3) can be regression-gated: wall
+      time +20 % or tokens +30 % fails CI. Token measurement is
+      stubbed (always 0) in this PR since the skeleton-only path
+      makes no LLM calls — full token plumbing follows when
+      scenario 1 (idea ticky-taka) lands.
+
+      Net narrative the bench enforces: init alone may get slower
+      when scenarios 1/2/3 ship, but the first-cycle wall time
+      (init → first `harness work F-N --complete`) must drop, since
+      the user no longer hand-writes spec.yaml. The bench therefore
+      records both `init_wall_time_ms` and `first_cycle_wall_time_ms`
+      and treats the second as the primary user-value metric.
+    acceptance_criteria:
+      - id: AC-1
+        text: |
+          `node bin/harness init --skeleton-only` produces the same
+          `.harness/` file set as the existing slash-command init
+          (spec.yaml · harness.yaml · state.yaml · events.log all
+          present), with wall time < 500 ms and zero LLM calls
+          (events.log carries no `llm_call` entries).
+      - id: AC-2
+        text: |
+          `tests/perf/init-bench.test.ts` (vitest) runs against four
+          fixtures under `tests/perf/fixtures/` (empty · plan-md ·
+          npm · python) and records four metrics per fixture:
+          `init_wall_time_ms`, `init_tokens_total` (stub 0 here),
+          `spec_field_coverage_pct`, and `first_cycle_wall_time_ms`
+          (stub — same as init time since no work cycle in skeleton).
+      - id: AC-3
+        text: |
+          `tests/perf/init-baseline.json` holds the committed baseline
+          for the four fixtures. Bench compares against it and fails
+          when `init_wall_time_ms` exceeds baseline × 1.20 or
+          `init_tokens_total` exceeds baseline × 1.30.
+      - id: AC-4
+        text: |
+          `spec_field_coverage_pct` never decreases from baseline
+          (monotonic non-decrease rule). Bench fails on regression.
 goals: []
 constraints:
   tech_stack:

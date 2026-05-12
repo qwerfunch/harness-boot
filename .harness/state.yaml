@@ -3470,8 +3470,33 @@ features:
     summary: communication-rules §8 expanded to 4-step discipline; CLAUDE.md.template §7 bullet 7 added; parity test updated; doc-only, code 0; self_check 5/5; npm test 720/720
   started_at: 2026-05-12T07:16:50Z
   completed_at: 2026-05-12T07:18:22Z
+- id: F-158
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-12T09:33:24Z
+      note: 726 parity + 5 perf bench tests green
+    gate_1:
+      last_result: pass
+      ts: 2026-05-12T09:33:32Z
+      note: tsc --noEmit clean
+    gate_2:
+      last_result: pass
+      ts: 2026-05-12T09:33:32Z
+      note: eslint clean
+    gate_5:
+      last_result: pass
+      ts: 2026-05-12T09:33:32Z
+      note: self_check.sh 5/5
+  evidence:
+  - ts: 2026-05-12T09:33:41Z
+    kind: manual_check
+    summary: "Regression-safety net landed: harness init --skeleton-only (zero LLM, <500ms), tests/perf bench scaffold + 4 fixtures + init-baseline.json (wall +20%/tokens +30% gates), 6 parity unit tests, 5 bench tests. Future scenario 1/2/3 PRs cannot silently regress wall time or coverage."
+  started_at: 2026-05-12T09:27:20Z
+  completed_at: null
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-157
-  last_gate_passed: gate_0
-  active_feature_id: null
+  last_command: /harness:work F-158
+  last_gate_passed: gate_5
+  active_feature_id: F-158

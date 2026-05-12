@@ -122,6 +122,15 @@ Example: `🧰 /harness-boot:init · solo · first-time scaffold into empty dir`
    to `.gitignore`); `--solo` or no flag means `mode=solo` (state.yaml
    stays committed). Unknown flags get ignored, with a `unknown argument: X`
    note in the final report.
+5. **`--skeleton-only` short-circuit (F-158)**: if the user passed
+   `--skeleton-only`, shell out to `harness init --skeleton-only` (the
+   CLI surface backed by `src/init/skeleton.ts`) and stop. The skeleton
+   path copies the three starter templates, writes one
+   `harness_initialized` event line, and returns in under 500 ms with
+   zero LLM calls. Use this when the regression-safe behavior of v0.1
+   is what you want — no scenario branching, no agent collaboration.
+   The bench (`tests/perf/init-bench.test.ts`) calls this path
+   directly to anchor the wall-time / token baseline.
 
 ### 0.5. Runtime prerequisite — Node.js 20+ (F-107)
 
