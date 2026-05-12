@@ -1816,6 +1816,36 @@ features:
     test_strategy: tdd
     digest: "Closes the spec.yaml bloat axis end-to-end. Three additive behaviors
       land in one cycle: 1. **Auto-digest on complete..."
+  - id: F-148
+    name: archive sidecar auto-import in starter CLAUDE.md template
+    type: feature
+    test_strategy: smoke
+    description: |
+      Closes the v0.15.2 follow-up gap surfaced by the A/B "작업 결과물"
+      audit: every plugin-shipped import recommendation
+      (`docs/templates/starter/CLAUDE.md.template` §8, `commands/init.md`
+      Existing-file case) only lists `@.harness/spec.yaml`. After the
+      F-143 retroactive archive, that means a Claude session in the
+      user's project loses every done-feature description / AC the
+      moment it walks through the @import chain.
+
+      Fix: add `@.harness/spec.archive.yaml` to the import block in
+      both `CLAUDE.md.template` §8 and the existing-file append path in
+      `init.md`. Touch §1 of the template too so users understand the
+      sidecar is auto-managed (don't edit). The archive file is
+      created on the first `harness sync` post-install, so a fresh
+      project's @import is safely silent until the first
+      done-transition produces archive content.
+
+      Net effect: reviewer / human grep / external LLM context retains
+      every done-feature body even after the body relocated to the
+      sidecar. Token cost vs full inline = +1% (digest annotation), -73%
+      compared to legacy spec.yaml-only flow.
+    acceptance_criteria:
+      - "AC-1: `docs/templates/starter/CLAUDE.md.template` §8 lists `@.harness/spec.archive.yaml` directly under `@.harness/spec.yaml`, with a short note that the sidecar is auto-managed."
+      - "AC-2: `commands/init.md` Existing-file case appends both `@.harness/spec.yaml` and `@.harness/spec.archive.yaml` (skip duplicates)."
+      - "AC-3: Template §1 explains `spec.archive.yaml` is not user-edited (auto-managed by `harness sync`)."
+      - "AC-4: self_check.sh 5/5 OK and npm test 720/720 still pass; lockstep mirror under docs/samples/ stays diff-clean."
 goals: []
 constraints:
   tech_stack:

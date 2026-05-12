@@ -328,12 +328,18 @@ Option 3 only fires on first init.
    - if the normalized result is empty, fall back to a user prompt
 3. `Write` the result to `CLAUDE.md`.
 
-**Existing-file case**: append the following line to the end (skip if
-already present):
+**Existing-file case**: append the following lines to the end (skip
+each line that's already present):
 
 ```
 @.harness/spec.yaml
+@.harness/spec.archive.yaml
 ```
+
+(F-148 — `spec.archive.yaml` is the done-feature body sidecar that
+`harness sync` writes alongside `spec.yaml`. Importing both keeps the
+reviewer / audit context intact even when bodies have moved out of the
+live spec.)
 
 Then append a section:
 

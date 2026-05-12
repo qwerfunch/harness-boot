@@ -23,6 +23,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 ### Changed
 
 - **F-143** — retroactive catch-up of harness-boot self spec. The first clean-tree `harness sync` after the upgrade emitted `[info] sync: auto-archived 128 done feature bodies → .harness/spec.archive.yaml`; the lockstep mirror under `docs/samples/harness-boot-self/` was updated in the same commit. `self_check.sh` 5/5 OK, `npm test` 720/720 (10 new vitest cases for F-145 + F-147 covered behaviours).
+- **F-148** — starter `CLAUDE.md.template` §8 and `commands/init.md` existing-file path now register `@.harness/spec.archive.yaml` alongside `@.harness/spec.yaml`. Closes the v0.15.2 follow-up gap where every Claude session in a user's project lost done-feature bodies the moment they relocated to the sidecar; reviewer / audit / human grep now retain full done detail at +1% token cost vs full inline (-73% vs the legacy spec.yaml-only flow).
 
 ## [0.15.1] — 2026-05-11
 
