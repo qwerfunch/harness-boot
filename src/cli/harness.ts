@@ -26,6 +26,12 @@ import {Command} from 'commander';
 import {generateDesignReview} from '../ceremonies/designReview.js';
 import {runSkeletonInit} from '../init/skeleton.js';
 import {
+  generateIdeaSpec,
+  type ProjectMode,
+  type QualityFocus,
+  type DeliverableType,
+} from '../init/scenarioIdea.js';
+import {
   agentsForShapes as kickoffAgentsForShapes,
   detectShapes as kickoffDetectShapes,
   generateKickoff,
@@ -992,17 +998,50 @@ function buildProgram(): Command {
       '--skeleton-only',
       'copy bare starter templates only — zero LLM calls, < 500 ms wall time',
     )
+    .option(
+      '--scenario <kind>',
+      'scenario branch — `idea` (F-159) writes a draft spec from the four ' +
+        'ticky-taka answers; plan_doc / existing_code land later',
+    )
     .option('--plugin-root <dir>', 'plugin root path (auto-resolves from `harness` binary location)')
     .option('--mode <mode>', 'solo (default) or team — controls .gitignore behavior', 'solo')
+    // Scenario-idea answers (F-159) — consumed when `--scenario idea` is set.
+    .option('--name <project-name>', '[scenario idea] project name (kebab-case recommended)')
+    .option('--vision <text>', '[scenario idea] one-line vision / what the product does')
+    .option('--features <names>', '[scenario idea] comma-separated feature names (3–5)')
+    .option(
+      '--project-mode <mode>',
+      '[scenario idea] prototype (default) or product',
+      'prototype',
+    )
+    .option(
+      '--quality-focus <list>',
+      '[scenario idea] comma-separated values from {design,performance,accessibility,security}',
+      '',
+    )
+    .option(
+      '--deliverable-type <type>',
+      '[scenario idea] cli (default), web-service, game, worker, library, static-site, desktop, mobile-app',
+      'cli',
+    )
     .option('--json', 'emit JSON result')
     .action((options: Record<string, unknown>) => {
-      if (!options['skeletonOnly']) {
+      const wantsSkeleton = Boolean(options['skeletonOnly']);
+      const scenario = typeof options['scenario'] === 'string' ? (options['scenario'] as string) : null;
+
+      if (!wantsSkeleton && !scenario) {
         printError(
-          'init: only --skeleton-only is supported on this CLI surface. ' +
-            'Use the /harness-boot:init slash command for the full UX (scenario 1/2/3 routing).',
+          'init: pass --skeleton-only for the regression-safe path or ' +
+            '--scenario <idea|plan_doc|existing_code> for an authored draft. ' +
+            'The full UX (auto-routing across the three) lives in /harness-boot:init.',
         );
         process.exit(3);
       }
+      if (wantsSkeleton && scenario) {
+        printError('init: --skeleton-only and --scenario are mutually exclusive');
+        process.exit(3);
+      }
+
       const targetDir = resolvePath(
         typeof options['harnessDir'] === 'string' ? (options['harnessDir'] as string) : '.',
       );
@@ -1014,23 +1053,39 @@ function buildProgram(): Command {
         options['mode'] === 'team' || options['mode'] === 'solo'
           ? (options['mode'] as 'solo' | 'team')
           : 'solo';
+
       try {
-        const result = runSkeletonInit({targetDir, pluginRoot, mode});
-        if (options['json']) {
-          printJson({
-            ok: true,
-            harness_dir: result.harnessDir,
-            files_written: result.filesWritten,
-            wall_time_ms: result.wallTimeMs,
-            llm_call_count: result.llmCallCount,
-          });
-        } else {
-          printHuman(
-            `init (skeleton-only): ${result.filesWritten.length} files written ` +
-              `to ${result.harnessDir} in ${result.wallTimeMs.toFixed(1)} ms ` +
-              `(0 LLM calls)\n`,
-          );
+        if (wantsSkeleton) {
+          const result = runSkeletonInit({targetDir, pluginRoot, mode});
+          if (options['json']) {
+            printJson({
+              ok: true,
+              scenario: 'skeleton-only',
+              harness_dir: result.harnessDir,
+              files_written: result.filesWritten,
+              wall_time_ms: result.wallTimeMs,
+              llm_call_count: result.llmCallCount,
+            });
+          } else {
+            printHuman(
+              `init (skeleton-only): ${result.filesWritten.length} files written ` +
+                `to ${result.harnessDir} in ${result.wallTimeMs.toFixed(1)} ms ` +
+                `(0 LLM calls)\n`,
+            );
+          }
+          return;
         }
+
+        if (scenario === 'idea') {
+          runIdeaScenario({targetDir, pluginRoot, mode, options});
+          return;
+        }
+
+        printError(
+          `init: scenario '${scenario}' is not implemented yet. ` +
+            'Supported in v0.15.5: idea. plan_doc / existing_code land in later PRs.',
+        );
+        process.exit(3);
       } catch (err) {
         const message = (err as Error).message;
         if (options['json']) {
@@ -1043,6 +1098,95 @@ function buildProgram(): Command {
     });
 
   return program;
+}
+
+/** Argument bag for {@link runIdeaScenario}. */
+interface IdeaScenarioArgs {
+  readonly targetDir: string;
+  readonly pluginRoot: string;
+  readonly mode: 'solo' | 'team';
+  readonly options: Record<string, unknown>;
+}
+
+/**
+ * Scenario-1 (idea → spec) CLI handler — F-159.
+ *
+ * Bootstraps the skeleton, then overwrites the just-copied
+ * `spec.yaml` with the draft generated from the ticky-taka
+ * answers. Skeleton boot remains the byte-stable baseline; this
+ * path adds two more file writes (spec rewrite + draft label).
+ */
+function runIdeaScenario(args: IdeaScenarioArgs): void {
+  const {targetDir, pluginRoot, mode, options} = args;
+  const name = optionAsString(options, 'name');
+  const vision = optionAsString(options, 'vision');
+  const featuresRaw = optionAsString(options, 'features');
+  const projectMode = optionAsString(options, 'projectMode') ?? 'prototype';
+  const qualityFocusRaw = optionAsString(options, 'qualityFocus') ?? '';
+  const deliverableType = optionAsString(options, 'deliverableType') ?? 'cli';
+
+  if (!name || !vision || !featuresRaw) {
+    printError(
+      'init --scenario idea requires --name, --vision, and --features. ' +
+        'The slash command collects them from the researcher ticky-taka.',
+    );
+    process.exit(3);
+  }
+  if (projectMode !== 'prototype' && projectMode !== 'product') {
+    printError(`init: --project-mode must be 'prototype' or 'product' (got '${projectMode}')`);
+    process.exit(3);
+  }
+  const features = featuresRaw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  if (features.length === 0) {
+    printError('init --scenario idea: --features must list at least one feature name');
+    process.exit(3);
+  }
+  const qualityFocus = qualityFocusRaw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s): s is QualityFocus =>
+      s === 'design' || s === 'performance' || s === 'accessibility' || s === 'security',
+    );
+
+  // Boot the skeleton so harness.yaml / state.yaml / events.log exist.
+  const skel = runSkeletonInit({targetDir, pluginRoot, mode});
+  // Overwrite spec.yaml with the authored draft.
+  const generated = generateIdeaSpec({
+    name,
+    vision,
+    features,
+    mode: projectMode as ProjectMode,
+    qualityFocus,
+    deliverableType: deliverableType as DeliverableType,
+  });
+  const specPath = join(skel.harnessDir, 'spec.yaml');
+  writeFileSync(specPath, generated.specYaml, 'utf8');
+
+  if (options['json']) {
+    printJson({
+      ok: true,
+      scenario: 'idea',
+      harness_dir: skel.harnessDir,
+      spec_path: specPath,
+      content_hash: generated.contentHash,
+      confidence: generated.confidence,
+      llm_call_count: 0,
+    });
+  } else {
+    printHuman(
+      `init (scenario: idea): wrote ${specPath} · confidence ${generated.confidence} · ` +
+        `draft=true · ${features.length} features · hash ${generated.contentHash.slice(0, 19)}…\n` +
+        `next: /harness-boot:work F-1 to start the first cycle\n`,
+    );
+  }
+}
+
+function optionAsString(options: Record<string, unknown>, key: string): string | undefined {
+  const value = options[key];
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
 /**

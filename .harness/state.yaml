@@ -3495,8 +3495,33 @@ features:
     summary: "Regression-safety net landed: harness init --skeleton-only (zero LLM, <500ms), tests/perf bench scaffold + 4 fixtures + init-baseline.json (wall +20%/tokens +30% gates), 6 parity unit tests, 5 bench tests. Future scenario 1/2/3 PRs cannot silently regress wall time or coverage."
   started_at: 2026-05-12T09:27:20Z
   completed_at: 2026-05-12T09:34:10Z
+- id: F-159
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-12T09:47:12Z
+      note: 745 parity tests green (19 new for F-159)
+    gate_1:
+      last_result: pass
+      ts: 2026-05-12T09:47:12Z
+      note: tsc --noEmit clean
+    gate_2:
+      last_result: pass
+      ts: 2026-05-12T09:47:12Z
+      note: eslint clean
+    gate_5:
+      last_result: pass
+      ts: 2026-05-12T09:47:12Z
+      note: self_check 5/5 + e2e CLI run produced valid spec.yaml
+  evidence:
+  - ts: 2026-05-12T09:47:21Z
+    kind: manual_check
+    summary: "scenario-1 (idea → spec) shipped. CLI: harness init --scenario idea writes draft spec.yaml with metadata.source.origin=idea + draft=true + content_hash. Work activate detects user edits via content_hash mismatch and auto-flips draft=false + emits spec_promoted event. quality_focus marker carries design/perf/a11y/security signal into work-cycle routing. End-to-end verified: CLI invocation produces valid spec.yaml; draftPromotion integration test covers all three transitions (no-edit / edited / idempotent). Token-log infrastructure landed (recordLlmCall) but unused on CLI side; slash command will record researcher/product-planner usage."
+  started_at: 2026-05-12T09:40:33Z
+  completed_at: null
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-158
+  last_command: /harness:work F-159
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-159

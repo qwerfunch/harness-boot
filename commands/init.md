@@ -132,6 +132,54 @@ Example: `🧰 /harness-boot:init · solo · first-time scaffold into empty dir`
    The bench (`tests/perf/init-bench.test.ts`) calls this path
    directly to anchor the wall-time / token baseline.
 
+6. **Scenario 1 — idea → spec (F-159, since v0.15.5)**: when routing
+   landed on Option 1 (free text describing an idea, or empty input
+   without an obvious md/manifest), invoke
+   `@harness:researcher` and ask the four ticky-taka questions in
+   **one** LLM turn:
+
+   ```
+   1) 한 줄로 뭐 만들 거예요? / In one line, what are we building?       (vision)
+   2) 주요 사용자/기능 3–5 개는?    / Three to five core features?         (features[])
+   3) prototype vs product?       / Throwaway experiment or long-term?  (project.mode)
+   4) 특별히 힘 줄 영역은?         / Where should we spend our quality?  (quality_focus)
+   ```
+
+   `quality_focus` is a multi-select over `{design, performance,
+   accessibility, security}`. Empty selection is fine.
+
+   Hand the four answers to `@harness:product-planner`, which calls
+   `harness init --scenario idea` with:
+
+   ```bash
+   harness init --scenario idea \
+     --name <kebab-case> \
+     --vision "<one-line answer>" \
+     --features "<a,b,c>" \
+     --project-mode <prototype|product> \
+     --quality-focus <design,performance,accessibility,security> \
+     --plugin-root "$PLUGIN_ROOT" \
+     --harness-dir "$(pwd)"
+   ```
+
+   The CLI is deterministic — no LLM call from the harness binary —
+   and writes a draft `spec.yaml` carrying
+   `metadata.source.origin: idea`, `metadata.draft: true`, and a
+   `metadata.content_hash` so the work-cycle auto-promotion hook can
+   detect user edits (F-159 AC-3).
+
+   `quality_focus` is read by the work-cycle router: `design` makes
+   the design-review ceremony fire earlier, `performance` summons
+   `performance-engineer` even without an explicit
+   `performance_budget`, `accessibility` makes the `a11y-auditor`
+   non-skippable, `security` makes the `security-engineer`
+   non-skippable.
+
+   When the `researcher` slash-command turn records its own LLM
+   usage, append one event per call to `.harness/events.log` via
+   `src/init/tokenLog.ts:recordLlmCall`. The bench reads these
+   events to compute `init_tokens_total`.
+
 ### 0.5. Runtime prerequisite — Node.js 20+ (F-107)
 
 The plugin ships a single-file CLI bundle under `dist/cli/` and a
