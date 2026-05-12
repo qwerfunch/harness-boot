@@ -5478,3 +5478,77 @@ features:
         text: |
           `spec_field_coverage_pct` never decreases from baseline
           (monotonic non-decrease rule). Bench fails on regression.
+  - id: F-159
+    description: |
+      First user-facing slice of the init UX overhaul (after the
+      F-158 safety net): when a user runs `/harness-boot:init`
+      against an empty directory (or with a free-text idea
+      keyword), the init flow boots a `harness:researcher` agent
+      that asks four questions in a single LLM turn — vision /
+      features / mode / quality-focus. The four answers feed into
+      `harness:product-planner`, which writes a draft spec.yaml.
+
+      Three CLI pieces back the slash command:
+
+      1. `src/init/scenarioIdea.ts` — pure transform: given the
+         four answers, produce a v2.3.8 spec.yaml string. No LLM
+         call; that lives in the slash command. Determinism keeps
+         the parity test trivial.
+      2. `src/init/draftLabel.ts` — stamps
+         `metadata.source.origin: idea` + `metadata.source.confidence`
+         + `metadata.draft: true` + `metadata.content_hash` so the
+         work-cycle auto-promotion hook can detect user edits.
+      3. `src/init/tokenLog.ts` — infrastructure-only helper that
+         appends `llm_call` events to `events.log`. Scenario 1
+         doesn't call any LLMs from the CLI side (the slash
+         command does that and records its own tokens), but the
+         helper lands here so the bench can light up the
+         `init_tokens_total` metric once scenarios 2/3 land.
+
+      Two work-cycle hooks ship alongside:
+
+      - `src/work.ts` reads `metadata.content_hash` on activate; if
+        it disagrees with the current spec.yaml hash and
+        `metadata.draft` is `true`, it flips draft to `false` and
+        appends a `spec_promoted` event. This is the ownership
+        contract — the moment a user touches the file, it becomes
+        a constitution.
+      - The `harness work --current` dashboard surfaces
+        `draft: true` so the user knows the spec is auto-generated.
+
+      The slash command's four-question contract goes into
+      `commands/init.md` (scenario-1 branch). The CLI surface
+      (`harness init --scenario idea --vision <text> --features
+      <a,b,c> --mode <prototype|product> --quality-focus
+      <design,perf,a11y,security>`) is what the slash command
+      shells out to once the answers are collected — pure
+      determinism on this side.
+    acceptance_criteria:
+      - id: AC-1
+        text: |
+          `node bin/harness init --scenario idea --vision "X" --features
+          "a,b,c" --mode prototype --quality-focus design,perf
+          --plugin-root <root>` writes a spec.yaml that validates
+          against `docs/schemas/spec.schema.json`, carries
+          `metadata.source.origin: idea` + `metadata.draft: true` +
+          a `metadata.content_hash` matching the file's SHA-256.
+      - id: AC-2
+        text: |
+          `metadata.quality_focus` lists exactly the values passed,
+          and the spec contains a `features[]` entry per supplied
+          feature name (acceptance_criteria empty — work-cycle
+          fog-clear fills those later).
+      - id: AC-3
+        text: |
+          On `harness work F-N` activate, if the spec.yaml has been
+          edited (content_hash mismatch) and `draft: true`, the
+          hook flips `metadata.draft` to `false` and appends a
+          `spec_promoted` event. Idempotent — second activate
+          after promotion is a no-op.
+      - id: AC-4
+        text: |
+          Unit tests cover both the transform (`scenarioIdea.test.ts`,
+          ≥ 6 tests) and the draft label + content_hash
+          (`draftLabel.test.ts`, ≥ 5 tests including hash stability
+          on no-op rewrites). Existing `tests/parity/initSkeleton.test.ts`
+          continues to pass — no regression on F-158.
