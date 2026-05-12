@@ -1834,6 +1834,82 @@ features:
     test_strategy: smoke
     digest: Closes the long-running plan-file accumulation problem surfaced when
       users iterate on the same axis across multiple p...
+  - id: F-158
+    name: init bench + skeleton-only safety net
+    type: feature
+    status: planned
+    release_target: v0.15.4
+    modules:
+      - init_command
+      - cli_init
+      - bench
+    test_strategy: smoke
+    digest: Lock in a measurable safety net before the larger init UX overhaul
+      (3-scenario auto-routing). This PR ships only the...
+  - id: F-159
+    name: scenario-1 idea → spec (researcher ticky-taka + draft label)
+    type: feature
+    status: planned
+    release_target: v0.15.5
+    modules:
+      - init_command
+      - scenario_idea
+      - draft_label
+      - token_log
+    test_strategy: smoke
+    digest: "First user-facing slice of the init UX overhaul (after the F-158 safety
+      net): when a user runs `/harness-boot:init` a..."
+  - id: F-160
+    name: scenario-3a codebase scan → conventions.md (Layer-0 deterministic)
+    type: feature
+    status: planned
+    release_target: v0.15.5
+    modules:
+      - init_command
+      - codebase_signals
+      - conventions_writer
+      - cli_init
+    test_strategy: smoke
+    digest: "Third slice of the init UX overhaul: when the project already has code,
+      the init flow runs deterministic Layer-0 sign..."
+  - id: F-161
+    name: scenario-3b secret guard + CLAUDE.md merge + LLM hook spec
+    type: feature
+    status: planned
+    release_target: v0.15.5
+    modules:
+      - init_command
+      - codebase_redact
+      - codebase_conflict
+      - cli_init
+    test_strategy: smoke
+    digest: "Closes the scenario-3 split. Three guards make brownfield init safe to
+      ship: 1. Secret redaction over every fact that..."
+  - id: F-162
+    name: scenario-2 plan_doc → spec (md auto-detect + spec-conversion handoff)
+    type: feature
+    status: planned
+    release_target: v0.15.5
+    modules:
+      - init_command
+      - scenario_plan_doc
+      - md_detect
+      - cli_init
+    test_strategy: smoke
+    digest: Fourth and final slice of the init UX overhaul. When the project root
+      carries a plan / requirements / architecture ma...
+  - id: F-163
+    name: conventions LLM hook fill — Comments + Tests sections + token accounting
+    type: feature
+    status: planned
+    release_target: v0.15.5
+    modules:
+      - cli_init
+      - conventions_fill
+      - token_log
+    test_strategy: smoke
+    digest: "Closes the F-161 \"[pending: LLM hook stub]\" placeholders in
+      `.harness/conventions.md`. The CLI itself doesn't call an..."
 goals: []
 constraints:
   tech_stack:

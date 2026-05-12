@@ -24,6 +24,7 @@
     "prepare": "test -f dist/cli/harness.bundle.mjs || npm run build",
     "test": "vitest run tests/parity --passWithNoTests",
     "test:parity": "vitest run tests/parity --passWithNoTests",
+    "test:perf": "vitest run tests/perf --passWithNoTests",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint 'src/**/*.ts' 'tests/**/*.ts'",

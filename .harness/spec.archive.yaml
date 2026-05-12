@@ -5427,3 +5427,366 @@ features:
         very cycle is itself an instance of the new standard — under 150 lines,
         design-options table + risk-scenario list + plan-header standard
         demonstration all present."
+  - id: F-158
+    description: |
+      Lock in a measurable safety net before the larger init UX
+      overhaul (3-scenario auto-routing). This PR ships only the
+      regression-gate infrastructure: a `--skeleton-only` route
+      that keeps the existing init behavior byte-identical (zero
+      LLM calls, < 500 ms wall time), a `harness init` CLI command
+      that backs the slash command for bench-friendly invocation,
+      and a perf bench scaffold under `tests/perf/` that measures
+      wall time, spec-field coverage, and (stub) token usage across
+      four fixtures (empty / plan-md / npm / Python).
+
+      Baseline values land in `tests/perf/init-baseline.json` so
+      later PRs (scenario 1 / 2 / 3) can be regression-gated: wall
+      time +20 % or tokens +30 % fails CI. Token measurement is
+      stubbed (always 0) in this PR since the skeleton-only path
+      makes no LLM calls — full token plumbing follows when
+      scenario 1 (idea ticky-taka) lands.
+
+      Net narrative the bench enforces: init alone may get slower
+      when scenarios 1/2/3 ship, but the first-cycle wall time
+      (init → first `harness work F-N --complete`) must drop, since
+      the user no longer hand-writes spec.yaml. The bench therefore
+      records both `init_wall_time_ms` and `first_cycle_wall_time_ms`
+      and treats the second as the primary user-value metric.
+    acceptance_criteria:
+      - id: AC-1
+        text: |
+          `node bin/harness init --skeleton-only` produces the same
+          `.harness/` file set as the existing slash-command init
+          (spec.yaml · harness.yaml · state.yaml · events.log all
+          present), with wall time < 500 ms and zero LLM calls
+          (events.log carries no `llm_call` entries).
+      - id: AC-2
+        text: |
+          `tests/perf/init-bench.test.ts` (vitest) runs against four
+          fixtures under `tests/perf/fixtures/` (empty · plan-md ·
+          npm · python) and records four metrics per fixture:
+          `init_wall_time_ms`, `init_tokens_total` (stub 0 here),
+          `spec_field_coverage_pct`, and `first_cycle_wall_time_ms`
+          (stub — same as init time since no work cycle in skeleton).
+      - id: AC-3
+        text: |
+          `tests/perf/init-baseline.json` holds the committed baseline
+          for the four fixtures. Bench compares against it and fails
+          when `init_wall_time_ms` exceeds baseline × 1.20 or
+          `init_tokens_total` exceeds baseline × 1.30.
+      - id: AC-4
+        text: |
+          `spec_field_coverage_pct` never decreases from baseline
+          (monotonic non-decrease rule). Bench fails on regression.
+  - id: F-159
+    description: |
+      First user-facing slice of the init UX overhaul (after the
+      F-158 safety net): when a user runs `/harness-boot:init`
+      against an empty directory (or with a free-text idea
+      keyword), the init flow boots a `harness:researcher` agent
+      that asks four questions in a single LLM turn — vision /
+      features / mode / quality-focus. The four answers feed into
+      `harness:product-planner`, which writes a draft spec.yaml.
+
+      Three CLI pieces back the slash command:
+
+      1. `src/init/scenarioIdea.ts` — pure transform: given the
+         four answers, produce a v2.3.8 spec.yaml string. No LLM
+         call; that lives in the slash command. Determinism keeps
+         the parity test trivial.
+      2. `src/init/draftLabel.ts` — stamps
+         `metadata.source.origin: idea` + `metadata.source.confidence`
+         + `metadata.draft: true` + `metadata.content_hash` so the
+         work-cycle auto-promotion hook can detect user edits.
+      3. `src/init/tokenLog.ts` — infrastructure-only helper that
+         appends `llm_call` events to `events.log`. Scenario 1
+         doesn't call any LLMs from the CLI side (the slash
+         command does that and records its own tokens), but the
+         helper lands here so the bench can light up the
+         `init_tokens_total` metric once scenarios 2/3 land.
+
+      Two work-cycle hooks ship alongside:
+
+      - `src/work.ts` reads `metadata.content_hash` on activate; if
+        it disagrees with the current spec.yaml hash and
+        `metadata.draft` is `true`, it flips draft to `false` and
+        appends a `spec_promoted` event. This is the ownership
+        contract — the moment a user touches the file, it becomes
+        a constitution.
+      - The `harness work --current` dashboard surfaces
+        `draft: true` so the user knows the spec is auto-generated.
+
+      The slash command's four-question contract goes into
+      `commands/init.md` (scenario-1 branch). The CLI surface
+      (`harness init --scenario idea --vision <text> --features
+      <a,b,c> --mode <prototype|product> --quality-focus
+      <design,perf,a11y,security>`) is what the slash command
+      shells out to once the answers are collected — pure
+      determinism on this side.
+    acceptance_criteria:
+      - id: AC-1
+        text: |
+          `node bin/harness init --scenario idea --vision "X" --features
+          "a,b,c" --mode prototype --quality-focus design,perf
+          --plugin-root <root>` writes a spec.yaml that validates
+          against `docs/schemas/spec.schema.json`, carries
+          `metadata.source.origin: idea` + `metadata.draft: true` +
+          a `metadata.content_hash` matching the file's SHA-256.
+      - id: AC-2
+        text: |
+          `metadata.quality_focus` lists exactly the values passed,
+          and the spec contains a `features[]` entry per supplied
+          feature name (acceptance_criteria empty — work-cycle
+          fog-clear fills those later).
+      - id: AC-3
+        text: |
+          On `harness work F-N` activate, if the spec.yaml has been
+          edited (content_hash mismatch) and `draft: true`, the
+          hook flips `metadata.draft` to `false` and appends a
+          `spec_promoted` event. Idempotent — second activate
+          after promotion is a no-op.
+      - id: AC-4
+        text: |
+          Unit tests cover both the transform (`scenarioIdea.test.ts`,
+          ≥ 6 tests) and the draft label + content_hash
+          (`draftLabel.test.ts`, ≥ 5 tests including hash stability
+          on no-op rewrites). Existing `tests/parity/initSkeleton.test.ts`
+          continues to pass — no regression on F-158.
+  - id: F-160
+    description: |
+      Third slice of the init UX overhaul: when the project already
+      has code, the init flow runs deterministic Layer-0 signal
+      collectors over 12 sources and writes a one-page
+      `.harness/conventions.md` plus a partially-filled
+      `.harness/spec.yaml`. No LLM call from the CLI binary — the
+      slash command will fill the Comments and Tests sections in
+      PR 3b (LLM hooks + secret guard + CLAUDE.md merge).
+
+      Layer-0 sources implemented in this PR (deterministic):
+
+      1. Manifest (reuse `src/scan/manifest.ts`).
+      2. Build / deploy YAML / TOML (Dockerfile · docker-compose ·
+         GitHub Actions · GitLab CI · CircleCI · Netlify · Vercel ·
+         Fly · serverless).
+      3. Style configs (`.editorconfig` · `.prettierrc` ·
+         `biome.json` · `pyproject [tool.ruff/black]` ·
+         `.eslintrc*` · `tsconfig.json` · `.rustfmt.toml`).
+      4. Dependency category dictionary — maps deps to
+         frameworks / ORM / API / styling / test / state.
+      5. Directory pattern (src+tests · co-located · Next-app ·
+         Next-pages · monorepo).
+      6. AI-tool traces (`.cursorrules` · `CLAUDE.md` · `AGENTS.md`
+         · `.continuerules` · `.aider.conf.yml`).
+      7. CI stages (lint · typecheck · test · coverage · deploy).
+      8. License + CHANGELOG presence.
+      9. i18n folders + react-intl-style deps.
+      10. Quality-enforce traces (`.husky/` · `.lefthook/` ·
+          `.pre-commit-config.yaml` · `lint-staged.config.*`).
+
+      The Comments and Tests sections of `conventions.md` ship as
+      `[pending: LLM hook stub]` placeholders for PR 3b.
+
+      Mini-map principle (StarCraft fog-of-war): Layer-0 is the
+      coarse outline. Layer-1 fog-clear (per-feature, on
+      `harness work F-N activate`) zooms in. Layer-2 (deep
+      analysis) is on-demand. This PR ships Layer-0 only.
+    acceptance_criteria:
+      - id: AC-1
+        text: |
+          `src/init/codebase/signals.ts:collectSignals(projectRoot)`
+          walks the 10 deterministic source families above and
+          returns a `Signals` record. No file outside `projectRoot`
+          is read; `node_modules` / `.git` / `dist` etc. are
+          skipped (reuse `IGNORED_DIRS` from `src/scan/structure.ts`).
+      - id: AC-2
+        text: |
+          `src/init/codebase/conventionsWriter.ts:writeConventions
+          (signals, targetPath)` produces a 7-section markdown file
+          (Stack · Style · Rules · Comments · Tests · Imports ·
+          Directory). Each fact line carries
+          `<!-- harness:fact key=K value=V source=PATH -->`. The
+          Comments and Tests sections render
+          `[pending: LLM hook stub]` placeholders. A
+          `<!-- harness:user-edit-begin --> ... <!-- harness:user-edit-end -->`
+          guard ends the file.
+      - id: AC-3
+        text: |
+          `node bin/harness init --scenario existing_code
+          --plugin-root <root> --harness-dir <target>` boots the
+          skeleton, then overwrites `spec.yaml` with a partially-filled
+          draft (project.name + constraints.tech_stack from the
+          manifest) and writes `conventions.md`. The CLI prints a
+          one-paragraph summary listing the detected stack and the
+          number of facts written.
+      - id: AC-4
+        text: |
+          Unit tests cover signals against two fixtures (npm
+          fixture + Python fixture, both already shipped under
+          `tests/perf/fixtures/`) and the conventions writer
+          renders byte-stable output (golden file). Existing
+          F-158 / F-159 parity tests stay green — no regression.
+  - id: F-161
+    description: |
+      Closes the scenario-3 split. Three guards make brownfield
+      init safe to ship:
+
+      1. Secret redaction over every fact that lands in
+         conventions.md / spec.yaml / report. Regex covers
+         api/secret/token/bearer/password keys plus blanket refusal
+         to read `.env` / `.envrc` / `secrets.yaml`. Matches
+         become `[REDACTED: <kind>]`.
+      2. Convention-doc conflict resolver. When CLAUDE.md or
+         .cursorrules or AGENTS.md exists, `--conventions-conflict
+         ={merge,coexist,skip}` (default coexist). Merge appends a
+         user-edit-bounded conventions block.
+      3. commands/init.md scenario-3b LLM hook contract for the
+         Comments / Tests sections of conventions.md. The CLI
+         stays deterministic; only the slash-command's
+         codebase-archaeologist calls the model.
+    acceptance_criteria:
+      - id: AC-1
+        text: |
+          `src/init/codebase/redact.ts:redactSecrets(text)` replaces
+          api-key-shaped strings (OpenAI / AWS / generic bearer /
+          hard-coded passwords) with `[REDACTED: <kind>]`. signals.ts
+          refuses to read `.env` / `.envrc` / `secrets.yaml`.
+      - id: AC-2
+        text: |
+          When a convention doc exists, `harness init --scenario
+          existing_code` requires --conventions-conflict and produces
+          a different on-disk result for merge vs coexist vs skip.
+          Each branch is covered by a parity test.
+      - id: AC-3
+        text: |
+          commands/init.md scenario-3b section names the files the
+          codebase-archaeologist samples, the single-turn prompt
+          shape, and the recordLlmCall handoff for token accounting.
+      - id: AC-4
+        text: |
+          End-to-end: planting a fake `apiKey = "sk-fakefakefakefakefake1234"`
+          inside the npm fixture and running scenario=existing_code
+          leaves no occurrence of `sk-fakefake...` in conventions.md
+          or spec.yaml. The redaction note appears in the analysis
+          report.
+  - id: F-162
+    description: |
+      Fourth and final slice of the init UX overhaul. When the
+      project root carries a plan / requirements / architecture
+      markdown file, the init flow detects it and seeds a draft
+      spec.yaml from its first paragraph plus metadata pointing
+      at the source path. The slash command's `spec-conversion`
+      skill then fills the full spec.yaml in a follow-up turn.
+
+      CLI side (deterministic, this PR):
+
+      - `src/init/codebase/mdDetect.ts:detectPlanDocCandidate(root)`
+        returns the single non-README markdown file or null when 0
+        or 2+ are present. Skips README · CHANGELOG · LICENSE ·
+        CONTRIBUTING by name to keep the auto-detect safe.
+      - `src/init/scenarioPlanDoc.ts:seedSpecFromPlanDoc({mdPath,
+        ...})` reads the file (redact pass on the way in), takes
+        the first H1 as project.name when present, the first
+        paragraph as project.summary, and the first 500 chars as
+        project.description. Stamps
+        `metadata.source.origin: plan_doc` + `metadata.source.plan_doc_path`
+        + `metadata.draft: true` + `metadata.content_hash`.
+      - `harness init --scenario plan_doc --plan <path>` CLI: boot
+        skeleton + seed from the path. When `--plan` is omitted,
+        auto-detect via `detectPlanDocCandidate` and error out if
+        the result is ambiguous (0 or 2+ candidates).
+
+      Slash-command side (LLM hook, next session's work):
+
+      - After CLI return, the slash command invokes the
+        `spec-conversion` skill with the md path. The skill turns
+        the prose into a full v2.3.8 spec.yaml (features[],
+        acceptance_criteria, entities, …) and writes it back
+        through the harness CLI so `metadata.content_hash` and
+        `draft` stay coherent. Token usage records via
+        `tokenLog.recordLlmCall`.
+    acceptance_criteria:
+      - id: AC-1
+        text: |
+          `detectPlanDocCandidate(root)` returns the path of the
+          only non-README/non-CHANGELOG/non-LICENSE/non-CONTRIBUTING
+          markdown file in the project root, or `null` when 0 or
+          2+ such files exist. Tests cover all three branches.
+      - id: AC-2
+        text: |
+          `harness init --scenario plan_doc --plan <path>` writes
+          a spec.yaml with `metadata.source.origin: plan_doc`,
+          `metadata.source.plan_doc_path` pointing at the relative
+          path, `metadata.draft: true`, and the first H1 +
+          paragraph copied into project.name + project.summary.
+          Any secret-shaped strings in the md body are redacted
+          before they land in spec.yaml.
+      - id: AC-3
+        text: |
+          `harness init --scenario plan_doc` without `--plan` runs
+          auto-detect. On 0 or 2+ candidates, the CLI exits with
+          a clear error and a hint to pass `--plan` explicitly.
+          On exactly one candidate, it proceeds.
+      - id: AC-4
+        text: |
+          End-to-end on `tests/perf/fixtures/plan-md/PLAN.md`:
+          spec validates · `metadata.source.plan_doc_path` is
+          `PLAN.md` · `project.name` reads "Pomodoro Timer for
+          Solo Musicians" · `project.summary` reads the first
+          paragraph. Existing F-158/F-159/F-160/F-161 parity tests
+          stay green.
+  - id: F-163
+    description: |
+      Closes the F-161 "[pending: LLM hook stub]" placeholders in
+      `.harness/conventions.md`. The CLI itself doesn't call any
+      model — the slash command's codebase-archaeologist samples
+      source files, runs a single LLM turn per section, and pipes
+      the result back to the CLI through a new `harness conventions
+      fill` command. The CLI replaces the placeholder in place and
+      records an `llm_call` event so the bench's
+      `init_tokens_total` baseline reflects real cost.
+
+      Why CLI side only handles the replacement: keeps deterministic
+      surface clean for parity tests + lets the slash command iterate
+      on prompt shape without breaking the bundle build.
+
+      New CLI surface:
+
+      ```bash
+      harness conventions fill \
+        --section <comments|tests> \
+        --text "<body text from the LLM turn>" \
+        --tokens-in <n> --tokens-out <n> \
+        [--model <id>] \
+        --harness-dir <dir>
+      ```
+
+      Idempotent: if the placeholder has already been replaced (the
+      sigil line no longer matches), `fill` errors with a clear
+      message instead of duplicating content. The bench picks up
+      `init_tokens_total` automatically from the appended events.
+    acceptance_criteria:
+      - id: AC-1
+        text: |
+          `src/init/codebase/conventionsFill.ts:fillConventionsSection
+          (path, section, text)` finds the `[pending: LLM hook stub]`
+          placeholder for `comments` or `tests` and replaces it with
+          the supplied text. Preserves all other content byte-for-byte.
+      - id: AC-2
+        text: |
+          `harness conventions fill --section <comments|tests>
+          --text "..."` invokes the helper and on success appends an
+          `llm_call` event to `<harness-dir>/events.log` via
+          `tokenLog.recordLlmCall`. Without `--tokens-in/--tokens-out`
+          the event records 0 (still allowed — slash command must
+          supply real counts).
+      - id: AC-3
+        text: |
+          Idempotent — calling `fill` on a section that no longer
+          carries the placeholder returns exit 4 with a clear error
+          ("section already filled"). No duplicate content.
+      - id: AC-4
+        text: |
+          Unit tests cover both replacement branches, the idempotency
+          guard, the events.log token append, and a parity test
+          rendering of the new conventions body. Existing
+          F-160/F-161/F-162 parity tests stay green.

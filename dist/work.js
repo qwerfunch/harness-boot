@@ -24,15 +24,16 @@
  *
  * @module work
  */
-import { appendFileSync, mkdirSync, readFileSync, statSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve as resolvePath } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { parse as yamlParse } from 'yaml';
+import { parse as yamlParse, stringify as yamlStringify } from 'yaml';
 import { runBlockingCheck } from './check.js';
 import { STANDARD_GATES } from './core/gates.js';
 import { resolveMode } from './core/projectMode.js';
 import { IRON_LAW_WINDOW_DAYS, State, countDeclaredEvidence, } from './core/state.js';
 import { generateDesignReview } from './ceremonies/designReview.js';
+import { isDraft, specMatchesRecordedHash } from './init/draftLabel.js';
 import { agentsForShapes, detectShapes, generateKickoff, hasAudioFlag, parallelGroupsForShapes, renderStyleBlock, } from './ceremonies/kickoff.js';
 import { generateRetro } from './ceremonies/retro.js';
 import { runGate } from './gate/runner.js';
@@ -215,6 +216,50 @@ function autowireInitialSync(harnessDir) {
         process.stderr.write(`[warn] initial sync auto-wire failed: ${err.message}\n`);
     }
 }
+/**
+ * Detect user edits on a draft spec and flip the constitution bit
+ * (F-159 AC-3). Reads `<harnessDir>/spec.yaml`, compares its current
+ * content hash with the recorded `metadata.content_hash`, and on
+ * mismatch — while `metadata.draft` is still `true` — rewrites the
+ * file with `draft: false` plus a fresh hash and appends a
+ * `spec_promoted` event. Fail-open: any error during promotion logs
+ * a warning and lets activate continue.
+ */
+function autowireDraftPromotion(harnessDir) {
+    const specPath = join(harnessDir, 'spec.yaml');
+    let body;
+    try {
+        body = readFileSync(specPath, 'utf8');
+    }
+    catch {
+        return;
+    }
+    if (!isDraft(body))
+        return;
+    const matches = specMatchesRecordedHash(body);
+    if (matches === null || matches === true)
+        return;
+    try {
+        const parsed = yamlParse(body);
+        if (!parsed || typeof parsed !== 'object')
+            return;
+        const metadata = parsed['metadata'] ?? {};
+        metadata['draft'] = false;
+        // Drop the stale hash — user-edited specs no longer carry a
+        // content_hash field (a future re-draft would re-stamp).
+        delete metadata['content_hash'];
+        parsed['metadata'] = metadata;
+        writeFileSync(specPath, yamlStringify(parsed, { sortMapEntries: true }), 'utf8');
+        appendEvent(harnessDir, {
+            ts: nowIso(),
+            type: 'spec_promoted',
+            reason: 'user edit detected (content_hash mismatch)',
+        });
+    }
+    catch (err) {
+        process.stderr.write(`[warn] draft auto-promotion failed: ${err.message}\n`);
+    }
+}
 function autowireKickoff(harnessDir, fid, force = false) {
     const spec = loadSpec(harnessDir);
     if (spec === null) {
@@ -359,6 +404,7 @@ export function activate(harnessDir, fid, options = {}) {
         status: state.getFeature(fid).status,
     });
     autowireInitialSync(harnessDir);
+    autowireDraftPromotion(harnessDir);
     // Quant-lint and fog-clear auto-wires are deferred until their TS deps land
     // (spec/quantClaims, scan/chapterWriter, scan/styleFingerprint). The
     // deferred autowires were never Iron-Law gating — only stderr hints.

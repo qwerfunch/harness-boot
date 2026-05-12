@@ -24,6 +24,27 @@ import {join, resolve as resolvePath} from 'node:path';
 import {Command} from 'commander';
 
 import {generateDesignReview} from '../ceremonies/designReview.js';
+import {runSkeletonInit} from '../init/skeleton.js';
+import {
+  generateIdeaSpec,
+  type ProjectMode,
+  type QualityFocus,
+  type DeliverableType,
+} from '../init/scenarioIdea.js';
+import {collectSignals, type Signals} from '../init/codebase/signals.js';
+import {writeConventions} from '../init/codebase/conventionsWriter.js';
+import {
+  resolveConventionConflict,
+  type ConflictPolicy,
+} from '../init/codebase/conflictResolver.js';
+import {detectPlanDocCandidate} from '../init/codebase/mdDetect.js';
+import {seedSpecFromPlanDoc} from '../init/scenarioPlanDoc.js';
+import {
+  fillConventionsSection,
+  SectionAlreadyFilledError,
+  type FillSection,
+} from '../init/codebase/conventionsFill.js';
+import {recordLlmCall} from '../init/tokenLog.js';
 import {
   agentsForShapes as kickoffAgentsForShapes,
   detectShapes as kickoffDetectShapes,
@@ -47,8 +68,8 @@ import {SpecValidationError, loadSpec, validate as validateSpec} from '../spec/v
 import {exportSpec} from '../spec/exportSpec.js';
 import {State} from '../core/state.js';
 import {buildReport, formatHuman as formatStatusHuman} from '../status.js';
-import {parse as yamlParse} from 'yaml';
-import {readFileSync, writeFileSync} from 'node:fs';
+import {parse as yamlParse, stringify as yamlStringify} from 'yaml';
+import {readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {run as runSync, tryInitialSync} from '../sync.js';
 import {
   activate,
@@ -977,7 +998,493 @@ function buildProgram(): Command {
       }
     });
 
+  // -----------------------------------------------------------------
+  // init  (F-158 — bench-friendly backend of /harness-boot:init)
+  // -----------------------------------------------------------------
+  program
+    .command('init')
+    .description(
+      'install the harness skeleton (use --skeleton-only for the regression-safe path; ' +
+        'the full scenario UX lives in the /harness-boot:init slash command)',
+    )
+    .option('--harness-dir <dir>', 'target project root (`.harness/` is created inside)', '.')
+    .option(
+      '--skeleton-only',
+      'copy bare starter templates only — zero LLM calls, < 500 ms wall time',
+    )
+    .option(
+      '--scenario <kind>',
+      'scenario branch — `idea` (F-159) writes a draft spec from the four ' +
+        'ticky-taka answers; plan_doc / existing_code land later',
+    )
+    .option('--plugin-root <dir>', 'plugin root path (auto-resolves from `harness` binary location)')
+    .option('--mode <mode>', 'solo (default) or team — controls .gitignore behavior', 'solo')
+    // Scenario-idea answers (F-159) — consumed when `--scenario idea` is set.
+    .option('--name <project-name>', '[scenario idea] project name (kebab-case recommended)')
+    .option('--vision <text>', '[scenario idea] one-line vision / what the product does')
+    .option('--features <names>', '[scenario idea] comma-separated feature names (3–5)')
+    .option(
+      '--project-mode <mode>',
+      '[scenario idea] prototype (default) or product',
+      'prototype',
+    )
+    .option(
+      '--quality-focus <list>',
+      '[scenario idea] comma-separated values from {design,performance,accessibility,security}',
+      '',
+    )
+    .option(
+      '--deliverable-type <type>',
+      '[scenario idea] cli (default), web-service, game, worker, library, static-site, desktop, mobile-app',
+      'cli',
+    )
+    .option(
+      '--conventions-conflict <policy>',
+      '[scenario existing_code] merge | coexist (default) | skip — what to do when CLAUDE.md / .cursorrules / AGENTS.md already exists',
+      'coexist',
+    )
+    .option(
+      '--plan <path>',
+      '[scenario plan_doc] explicit path to the plan markdown (auto-detects when omitted and exactly one non-README md exists)',
+    )
+    .option('--json', 'emit JSON result')
+    .action((options: Record<string, unknown>) => {
+      const wantsSkeleton = Boolean(options['skeletonOnly']);
+      const scenario = typeof options['scenario'] === 'string' ? (options['scenario'] as string) : null;
+
+      if (!wantsSkeleton && !scenario) {
+        printError(
+          'init: pass --skeleton-only for the regression-safe path or ' +
+            '--scenario <idea|plan_doc|existing_code> for an authored draft. ' +
+            'The full UX (auto-routing across the three) lives in /harness-boot:init.',
+        );
+        process.exit(3);
+      }
+      if (wantsSkeleton && scenario) {
+        printError('init: --skeleton-only and --scenario are mutually exclusive');
+        process.exit(3);
+      }
+
+      const targetDir = resolvePath(
+        typeof options['harnessDir'] === 'string' ? (options['harnessDir'] as string) : '.',
+      );
+      const pluginRoot =
+        typeof options['pluginRoot'] === 'string'
+          ? resolvePath(options['pluginRoot'] as string)
+          : resolvePluginRootFromBinary();
+      const mode =
+        options['mode'] === 'team' || options['mode'] === 'solo'
+          ? (options['mode'] as 'solo' | 'team')
+          : 'solo';
+
+      try {
+        if (wantsSkeleton) {
+          const result = runSkeletonInit({targetDir, pluginRoot, mode});
+          if (options['json']) {
+            printJson({
+              ok: true,
+              scenario: 'skeleton-only',
+              harness_dir: result.harnessDir,
+              files_written: result.filesWritten,
+              wall_time_ms: result.wallTimeMs,
+              llm_call_count: result.llmCallCount,
+            });
+          } else {
+            printHuman(
+              `init (skeleton-only): ${result.filesWritten.length} files written ` +
+                `to ${result.harnessDir} in ${result.wallTimeMs.toFixed(1)} ms ` +
+                `(0 LLM calls)\n`,
+            );
+          }
+          return;
+        }
+
+        if (scenario === 'idea') {
+          runIdeaScenario({targetDir, pluginRoot, mode, options});
+          return;
+        }
+
+        if (scenario === 'existing_code') {
+          runExistingCodeScenario({targetDir, pluginRoot, mode, options});
+          return;
+        }
+
+        if (scenario === 'plan_doc') {
+          runPlanDocScenario({targetDir, pluginRoot, mode, options});
+          return;
+        }
+
+        printError(
+          `init: scenario '${scenario}' is not implemented yet. ` +
+            'Supported in v0.15.5: idea, existing_code, plan_doc.',
+        );
+        process.exit(3);
+      } catch (err) {
+        const message = (err as Error).message;
+        if (options['json']) {
+          printJson({ok: false, error: message});
+        } else {
+          printError(`error: ${message}`);
+        }
+        process.exit(2);
+      }
+    });
+
+  // -----------------------------------------------------------------
+  // conventions  (F-163 — LLM hook fill for scenario-3b)
+  // -----------------------------------------------------------------
+  const conventions = program
+    .command('conventions')
+    .description('manage .harness/conventions.md (currently only `fill` subcommand)');
+
+  conventions
+    .command('fill')
+    .description(
+      'replace a [pending: LLM hook stub] placeholder in conventions.md with text the ' +
+        'slash command produced from sampling source files',
+    )
+    .requiredOption('--section <name>', 'comments | tests')
+    .requiredOption('--text <body>', 'the markdown body to inject')
+    .option('--harness-dir <dir>', 'path to .harness directory', './.harness')
+    .option('--tokens-in <n>', 'LLM input tokens (for the bench)', '0')
+    .option('--tokens-out <n>', 'LLM output tokens (for the bench)', '0')
+    .option('--model <id>', 'model identifier (recorded in the llm_call event)')
+    .option('--json', 'emit JSON result')
+    .action((options: Record<string, unknown>) => {
+      const sectionRaw = options['section'];
+      if (sectionRaw !== 'comments' && sectionRaw !== 'tests') {
+        printError(
+          `conventions fill: --section must be 'comments' or 'tests' (got '${String(sectionRaw)}')`,
+        );
+        process.exit(3);
+      }
+      const section = sectionRaw as FillSection;
+      const text = typeof options['text'] === 'string' ? (options['text'] as string) : '';
+      if (text.trim().length === 0) {
+        printError('conventions fill: --text must be non-empty');
+        process.exit(3);
+      }
+      const harnessDir = resolvePath(
+        typeof options['harnessDir'] === 'string' ? (options['harnessDir'] as string) : './.harness',
+      );
+      const conventionsPath = join(harnessDir, 'conventions.md');
+      const tokensIn = Number(options['tokensIn'] ?? 0);
+      const tokensOut = Number(options['tokensOut'] ?? 0);
+      const model = typeof options['model'] === 'string' ? (options['model'] as string) : undefined;
+      try {
+        const result = fillConventionsSection(conventionsPath, section, text);
+        const eventsPath = join(harnessDir, 'events.log');
+        recordLlmCall({
+          eventsPath,
+          event: {
+            scenario: 'existing_code',
+            agent: 'codebase-archaeologist',
+            tokens_in: Number.isFinite(tokensIn) ? tokensIn : 0,
+            tokens_out: Number.isFinite(tokensOut) ? tokensOut : 0,
+            ...(model !== undefined ? {model} : {}),
+          },
+        });
+        if (options['json']) {
+          printJson({
+            ok: true,
+            path: result.path,
+            section: result.section,
+            tokens_in: tokensIn,
+            tokens_out: tokensOut,
+          });
+        } else {
+          printHuman(
+            `conventions fill: ${result.section} section replaced in ${result.path} ` +
+              `(llm_call recorded: in=${tokensIn} out=${tokensOut})\n`,
+          );
+        }
+      } catch (err) {
+        if (err instanceof SectionAlreadyFilledError) {
+          if (options['json']) {
+            printJson({ok: false, error: err.message});
+          } else {
+            printError(`error: ${err.message}`);
+          }
+          process.exit(4);
+        }
+        printError(`error: ${(err as Error).message}`);
+        process.exit(2);
+      }
+    });
+
   return program;
+}
+
+/** Argument bag for {@link runIdeaScenario}. */
+interface IdeaScenarioArgs {
+  readonly targetDir: string;
+  readonly pluginRoot: string;
+  readonly mode: 'solo' | 'team';
+  readonly options: Record<string, unknown>;
+}
+
+/**
+ * Scenario-1 (idea → spec) CLI handler — F-159.
+ *
+ * Bootstraps the skeleton, then overwrites the just-copied
+ * `spec.yaml` with the draft generated from the ticky-taka
+ * answers. Skeleton boot remains the byte-stable baseline; this
+ * path adds two more file writes (spec rewrite + draft label).
+ */
+function runIdeaScenario(args: IdeaScenarioArgs): void {
+  const {targetDir, pluginRoot, mode, options} = args;
+  const name = optionAsString(options, 'name');
+  const vision = optionAsString(options, 'vision');
+  const featuresRaw = optionAsString(options, 'features');
+  const projectMode = optionAsString(options, 'projectMode') ?? 'prototype';
+  const qualityFocusRaw = optionAsString(options, 'qualityFocus') ?? '';
+  const deliverableType = optionAsString(options, 'deliverableType') ?? 'cli';
+
+  if (!name || !vision || !featuresRaw) {
+    printError(
+      'init --scenario idea requires --name, --vision, and --features. ' +
+        'The slash command collects them from the researcher ticky-taka.',
+    );
+    process.exit(3);
+  }
+  if (projectMode !== 'prototype' && projectMode !== 'product') {
+    printError(`init: --project-mode must be 'prototype' or 'product' (got '${projectMode}')`);
+    process.exit(3);
+  }
+  const features = featuresRaw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  if (features.length === 0) {
+    printError('init --scenario idea: --features must list at least one feature name');
+    process.exit(3);
+  }
+  const qualityFocus = qualityFocusRaw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s): s is QualityFocus =>
+      s === 'design' || s === 'performance' || s === 'accessibility' || s === 'security',
+    );
+
+  // Boot the skeleton so harness.yaml / state.yaml / events.log exist.
+  const skel = runSkeletonInit({targetDir, pluginRoot, mode});
+  // Overwrite spec.yaml with the authored draft.
+  const generated = generateIdeaSpec({
+    name,
+    vision,
+    features,
+    mode: projectMode as ProjectMode,
+    qualityFocus,
+    deliverableType: deliverableType as DeliverableType,
+  });
+  const specPath = join(skel.harnessDir, 'spec.yaml');
+  writeFileSync(specPath, generated.specYaml, 'utf8');
+
+  if (options['json']) {
+    printJson({
+      ok: true,
+      scenario: 'idea',
+      harness_dir: skel.harnessDir,
+      spec_path: specPath,
+      content_hash: generated.contentHash,
+      confidence: generated.confidence,
+      llm_call_count: 0,
+    });
+  } else {
+    printHuman(
+      `init (scenario: idea): wrote ${specPath} · confidence ${generated.confidence} · ` +
+        `draft=true · ${features.length} features · hash ${generated.contentHash.slice(0, 19)}…\n` +
+        `next: /harness-boot:work F-1 to start the first cycle\n`,
+    );
+  }
+}
+
+function optionAsString(options: Record<string, unknown>, key: string): string | undefined {
+  const value = options[key];
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+/**
+ * Scenario-3a (existing_code → conventions + spec scaffold) CLI
+ * handler. Deterministic Layer-0: no LLM call from the binary.
+ * The slash command fills the Comments and Tests placeholders in
+ * PR 3b.
+ */
+function runExistingCodeScenario(args: IdeaScenarioArgs): void {
+  const {targetDir, pluginRoot, mode, options} = args;
+  // 1. Boot the skeleton (gives us a starter spec.yaml + harness.yaml + state.yaml).
+  const skel = runSkeletonInit({targetDir, pluginRoot, mode});
+  // 2. Walk the user project for Layer-0 signals.
+  const signals = collectSignals(targetDir);
+  // 3. Detect existing convention docs and resolve the conflict.
+  const policy = parseConflictPolicy(options);
+  const conventionsPath = join(skel.harnessDir, 'conventions.md');
+  // Render the body once so both the standalone file and the merge
+  // path see the same content.
+  const conv = writeConventions(signals, conventionsPath);
+  const resolution = resolveConventionConflict(targetDir, policy, conv.body);
+  if (!resolution.writeStandalone) {
+    // Remove the standalone file we just wrote — the merged target
+    // (or the user's existing doc, for `skip`) is the source of truth.
+    try {
+      rmSync(conventionsPath, {force: true});
+    } catch {
+      // ignore — fail-open on cleanup
+    }
+  }
+  // 4. Patch the spec.yaml to record project.name + constraints.tech_stack
+  //    (deterministic fields only — vision / features are left for the user
+  //    or the slash command's product-planner pass).
+  const specPath = join(skel.harnessDir, 'spec.yaml');
+  patchSpecWithSignals(specPath, signals);
+
+  if (options['json']) {
+    printJson({
+      ok: true,
+      scenario: 'existing_code',
+      harness_dir: skel.harnessDir,
+      conventions_path: resolution.writeStandalone ? conv.path : null,
+      conventions_fact_count: conv.factCount,
+      spec_path: specPath,
+      directory_pattern: signals.directoryPattern,
+      conflict_policy: policy,
+      conflict_detected: resolution.detected,
+      merged_into: resolution.mergedInto,
+      llm_call_count: 0,
+    });
+  } else {
+    const conflictLine =
+      resolution.detected.length > 0
+        ? `  existing convention docs: ${resolution.detected.join(', ')} → policy: ${policy}` +
+          (resolution.mergedInto ? ` (merged into ${resolution.mergedInto})` : '')
+        : '';
+    printHuman(
+      `init (scenario: existing_code): ${conv.factCount} facts ` +
+        (resolution.writeStandalone ? `written to ${conv.path}` : `merged or skipped (no standalone file)`) +
+        '\n' +
+        `  detected: ${signals.directoryPattern} layout · ` +
+        `${signals.manifests.length} manifests · ` +
+        `${signals.styleConfigs.length} style configs\n` +
+        (conflictLine ? conflictLine + '\n' : '') +
+        `next: edit .harness/spec.yaml (project.name + vision), then /harness-boot:work F-0\n`,
+    );
+  }
+}
+
+function parseConflictPolicy(options: Record<string, unknown>): ConflictPolicy {
+  const value = optionAsString(options, 'conventionsConflict');
+  if (value === 'merge' || value === 'coexist' || value === 'skip') return value;
+  return 'coexist';
+}
+
+/**
+ * Scenario-2 (plan_doc → spec) CLI handler. CLI side is
+ * deterministic: read the md, redact, seed project.name +
+ * summary + description + metadata.source. The slash command
+ * runs spec-conversion in a follow-up turn to fill features etc.
+ */
+function runPlanDocScenario(args: IdeaScenarioArgs): void {
+  const {targetDir, pluginRoot, mode, options} = args;
+  const explicit = optionAsString(options, 'plan');
+  let mdRelative: string | null = explicit ?? detectPlanDocCandidate(targetDir);
+  if (mdRelative === null) {
+    printError(
+      'init --scenario plan_doc: could not auto-detect a single plan markdown ' +
+        '(found 0 or 2+ candidates excluding README/CHANGELOG/LICENSE). ' +
+        'Pass --plan <path> explicitly.',
+    );
+    process.exit(3);
+  }
+  const mdPath = resolvePath(targetDir, mdRelative as string);
+  if (!existsSync(mdPath) || !statSync(mdPath).isFile()) {
+    printError(`init --scenario plan_doc: ${mdPath} does not exist or is not a file`);
+    process.exit(3);
+  }
+  const skel = runSkeletonInit({targetDir, pluginRoot, mode});
+  const specPath = join(skel.harnessDir, 'spec.yaml');
+  const seeded = seedSpecFromPlanDoc({mdPath, specPath, projectRoot: targetDir});
+  writeFileSync(specPath, seeded.specYaml, 'utf8');
+  if (options['json']) {
+    printJson({
+      ok: true,
+      scenario: 'plan_doc',
+      harness_dir: skel.harnessDir,
+      spec_path: specPath,
+      plan_doc_path: seeded.planDocPath,
+      project_name: seeded.projectName,
+      content_hash: seeded.contentHash,
+      llm_call_count: 0,
+    });
+  } else {
+    printHuman(
+      `init (scenario: plan_doc): seeded spec from ${seeded.planDocPath}\n` +
+        `  project: ${seeded.projectName}\n` +
+        `  summary: ${seeded.summary.slice(0, 100)}${seeded.summary.length > 100 ? '…' : ''}\n` +
+        `  next: /harness-boot:work to invoke spec-conversion for the full spec\n`,
+    );
+  }
+}
+
+function patchSpecWithSignals(specPath: string, signals: Signals): void {
+  const body = readFileSync(specPath, 'utf8');
+  const parsed = yamlParse(body) as Record<string, unknown> | null;
+  if (!parsed || typeof parsed !== 'object') return;
+
+  const constraints = (parsed['constraints'] as Record<string, unknown> | undefined) ?? {};
+  const techStack = (constraints['tech_stack'] as Record<string, unknown> | undefined) ?? {};
+  const techPairs: ReadonlyArray<readonly [string, string | undefined]> = [
+    ['runtime', signals.tech.runtime],
+    ['language', signals.tech.language],
+    ['test', signals.tech.test],
+    ['build', signals.tech.build],
+    ['min_version', signals.tech.min_version],
+  ];
+  for (const [key, value] of techPairs) {
+    if (value !== undefined && value !== null) techStack[key] = value;
+  }
+  constraints['tech_stack'] = techStack;
+  parsed['constraints'] = constraints;
+
+  // project.name from directory basename when missing.
+  const project = (parsed['project'] as Record<string, unknown> | undefined) ?? {};
+  if (typeof project['name'] !== 'string' || (project['name'] as string).length === 0) {
+    project['name'] = signals.projectRoot.split('/').filter((s) => s.length > 0).pop() ?? 'project';
+  }
+  parsed['project'] = project;
+
+  // metadata.source.origin = existing_code.
+  const metadata = (parsed['metadata'] as Record<string, unknown> | undefined) ?? {};
+  const source = (metadata['source'] as Record<string, unknown> | undefined) ?? {};
+  source['origin'] = 'existing_code';
+  metadata['source'] = source;
+  metadata['draft'] = true;
+  parsed['metadata'] = metadata;
+
+  writeFileSync(specPath, yamlStringify(parsed, {sortMapEntries: true}), 'utf8');
+}
+
+/**
+ * Best-effort resolution of the plugin root from the running `harness`
+ * binary location — climb until a `.claude-plugin/plugin.json` is found.
+ */
+function resolvePluginRootFromBinary(): string {
+  // The bundle is at <plugin-root>/dist/cli/harness.bundle.mjs and the
+  // shim at <plugin-root>/bin/harness; either way `__dirname` (or the
+  // entry script directory) sits two levels under the plugin root.
+  const entry = process.argv[1] ?? '.';
+  let dir = resolvePath(entry, '..');
+  for (let i = 0; i < 6; i += 1) {
+    if (existsSync(join(dir, '.claude-plugin', 'plugin.json'))) {
+      return dir;
+    }
+    const parent = resolvePath(dir, '..');
+    if (parent === dir) break;
+    dir = parent;
+  }
+  throw new Error(
+    `init: could not auto-resolve plugin root from ${entry}. ` +
+      'Pass --plugin-root <path> explicitly.',
+  );
 }
 
 /** Entry point — parses argv and dispatches. */

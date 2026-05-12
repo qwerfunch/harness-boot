@@ -3470,8 +3470,158 @@ features:
     summary: communication-rules §8 expanded to 4-step discipline; CLAUDE.md.template §7 bullet 7 added; parity test updated; doc-only, code 0; self_check 5/5; npm test 720/720
   started_at: 2026-05-12T07:16:50Z
   completed_at: 2026-05-12T07:18:22Z
+- id: F-158
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-12T09:33:24Z
+      note: 726 parity + 5 perf bench tests green
+    gate_1:
+      last_result: pass
+      ts: 2026-05-12T09:33:32Z
+      note: tsc --noEmit clean
+    gate_2:
+      last_result: pass
+      ts: 2026-05-12T09:33:32Z
+      note: eslint clean
+    gate_5:
+      last_result: pass
+      ts: 2026-05-12T09:33:32Z
+      note: self_check.sh 5/5
+  evidence:
+  - ts: 2026-05-12T09:33:41Z
+    kind: manual_check
+    summary: "Regression-safety net landed: harness init --skeleton-only (zero LLM, <500ms), tests/perf bench scaffold + 4 fixtures + init-baseline.json (wall +20%/tokens +30% gates), 6 parity unit tests, 5 bench tests. Future scenario 1/2/3 PRs cannot silently regress wall time or coverage."
+  started_at: 2026-05-12T09:27:20Z
+  completed_at: 2026-05-12T09:34:10Z
+- id: F-159
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-12T09:47:12Z
+      note: 745 parity tests green (19 new for F-159)
+    gate_1:
+      last_result: pass
+      ts: 2026-05-12T09:47:12Z
+      note: tsc --noEmit clean
+    gate_2:
+      last_result: pass
+      ts: 2026-05-12T09:47:12Z
+      note: eslint clean
+    gate_5:
+      last_result: pass
+      ts: 2026-05-12T09:47:12Z
+      note: self_check 5/5 + e2e CLI run produced valid spec.yaml
+  evidence:
+  - ts: 2026-05-12T09:47:21Z
+    kind: manual_check
+    summary: "scenario-1 (idea → spec) shipped. CLI: harness init --scenario idea writes draft spec.yaml with metadata.source.origin=idea + draft=true + content_hash. Work activate detects user edits via content_hash mismatch and auto-flips draft=false + emits spec_promoted event. quality_focus marker carries design/perf/a11y/security signal into work-cycle routing. End-to-end verified: CLI invocation produces valid spec.yaml; draftPromotion integration test covers all three transitions (no-edit / edited / idempotent). Token-log infrastructure landed (recordLlmCall) but unused on CLI side; slash command will record researcher/product-planner usage."
+  started_at: 2026-05-12T09:40:33Z
+  completed_at: 2026-05-12T09:48:32Z
+- id: F-160
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-12T09:58:45Z
+      note: 762 parity tests green (17 new for F-160)
+    gate_1:
+      last_result: pass
+      ts: 2026-05-12T09:58:45Z
+      note: tsc --noEmit clean
+    gate_2:
+      last_result: pass
+      ts: 2026-05-12T09:58:45Z
+      note: eslint clean
+    gate_5:
+      last_result: pass
+      ts: 2026-05-12T09:58:45Z
+      note: self_check 5/5 + e2e on npm + python fixtures (drift clean, validate pass, activate works)
+  evidence:
+  - ts: 2026-05-12T09:58:46Z
+    kind: manual_check
+    summary: "PR 3a (scenario 3 Layer-0) shipped. signals.ts collects 10 deterministic source families; conventionsWriter renders the 7-section conventions.md with harness:fact sigils + user-edit guard. CLI: harness init --scenario existing_code boots skeleton + walks signals + writes conventions.md + patches spec.yaml (project.name + tech_stack + metadata.source.origin=existing_code + draft=true). Comments / Tests sections ship as LLM hook stubs for PR 3b. Verified end-to-end on tests/perf/fixtures/{npm,python}: conventions written with 7-8 facts, spec validates, drift check clean, work activate routes correctly. Secret guard + CLAUDE.md merge land in PR 3b."
+  started_at: 2026-05-12T09:53:02Z
+  completed_at: 2026-05-12T09:59:19Z
+- id: F-161
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-12T10:10:57Z
+      note: "783 parity tests green (21 new: redact 12, conflict 9)"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-12T10:10:57Z
+      note: tsc clean
+    gate_2:
+      last_result: pass
+      ts: 2026-05-12T10:10:57Z
+      note: eslint clean
+    gate_5:
+      last_result: pass
+      ts: 2026-05-12T10:10:57Z
+      note: "self_check 5/5 + e2e: merge/coexist/skip all verified, planted sk-fake/s3cretpass redacted from all outputs"
+  evidence:
+  - ts: 2026-05-12T10:10:58Z
+    kind: manual_check
+    summary: Brownfield safety guards landed. redact.ts blocks OpenAI/GitHub/AWS/generic credential patterns + url-embedded creds; signals.ts refuses .env/.envrc/secrets.yaml/credentials.json and runs the redactor over readmePreview. conflictResolver.ts implements merge (append user-edit-bounded block to CLAUDE.md, replaces existing harness block) / coexist (default, both docs live side-by-side) / skip (no standalone conventions.md). commands/init.md scenario-3b LLM hook spec documents the codebase-archaeologist's sampling rule, single-turn prompt, and recordLlmCall handoff. End-to-end on npm fixture with planted sk-fakefakefakefakefake1234 + postgres://admin:s3cretpass@... confirmed zero leakage.
+  started_at: 2026-05-12T10:06:14Z
+  completed_at: 2026-05-12T10:11:22Z
+- id: F-162
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-12T10:23:37Z
+      note: "799 parity tests green (16 new: mdDetect 9, scenarioPlanDoc 7)"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-12T10:23:37Z
+      note: tsc clean
+    gate_2:
+      last_result: pass
+      ts: 2026-05-12T10:23:37Z
+      note: eslint clean
+    gate_5:
+      last_result: pass
+      ts: 2026-05-12T10:23:37Z
+      note: self_check 5/5 + e2e on plan-md fixture (auto-detect, name+summary extraction, redaction, ambiguous-case error)
+  evidence:
+  - ts: 2026-05-12T10:23:38Z
+    kind: manual_check
+    summary: "Scenario 2 (plan_doc) shipped. mdDetect.ts auto-detect rule: exactly one non-README/CHANGELOG/LICENSE/CONTRIBUTING/SECURITY md returns the path, 0 or 2+ returns null. scenarioPlanDoc.ts seeds project.name from first H1 (filename fallback), summary from first paragraph, description from first 500 chars; redacts secrets; stamps metadata.source.origin=plan_doc + plan_doc_path + draft + content_hash. CLI: harness init --scenario plan_doc [--plan path]. Verified end-to-end on tests/perf/fixtures/plan-md/PLAN.md: name='Pomodoro Timer for Solo Musicians', summary extracted, spec validates. Ambiguous case (2 mds) returns clear error. All 4 init scenarios (skeleton-only + idea + existing_code + plan_doc) now ship."
+  started_at: 2026-05-12T10:20:08Z
+  completed_at: 2026-05-12T10:23:53Z
+- id: F-163
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-12T14:04:31Z
+      note: 807 parity tests green (8 new conventionsFill)
+    gate_1:
+      last_result: pass
+      ts: 2026-05-12T14:04:31Z
+      note: tsc clean
+    gate_2:
+      last_result: pass
+      ts: 2026-05-12T14:04:31Z
+      note: eslint clean
+    gate_5:
+      last_result: pass
+      ts: 2026-05-12T14:04:31Z
+      note: "self_check 5/5 + e2e: fill comments + fill tests + idempotency guard + events.log llm_call recorded"
+  evidence:
+  - ts: 2026-05-12T14:04:31Z
+    kind: manual_check
+    summary: "LLM hook fill landed. harness conventions fill --section {comments|tests} --text ... replaces [pending: LLM hook stub] in .harness/conventions.md and appends llm_call event to events.log via recordLlmCall. Idempotent — re-fill on filled section returns exit 4 with clear error. End-to-end verified: scenario=existing_code init + 2 fills produced final conventions.md with both LLM-driven sections populated, events.log captured tokens_in/out/model for bench. Closes the PR 3b LLM hook contract; codebase-archaeologist slash command can now record real cost through this surface."
+  started_at: 2026-05-12T14:01:48Z
+  completed_at: 2026-05-12T14:04:47Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-157
-  last_gate_passed: gate_0
+  last_command: /harness:work F-163
+  last_gate_passed: gate_5
   active_feature_id: null
