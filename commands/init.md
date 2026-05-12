@@ -212,6 +212,73 @@ Example: `🧰 /harness-boot:init · solo · first-time scaffold into empty dir`
    cycle (F-037 fog-clear), and on-demand deep dives (Layer 2)
    land later as `harness analyze <area>`.
 
+   **Convention-doc conflict (F-161)**: when `CLAUDE.md`,
+   `.cursorrules`, or `AGENTS.md` already exists in the project
+   root, the slash command asks the user **once** which policy to
+   apply (and remembers the answer for `--reseed` later):
+
+   - `merge` — append a user-edit-bounded
+     `## Conventions (auto-extracted, harness-boot)` block to the
+     first detected doc. Skip writing a standalone
+     `.harness/conventions.md`. Good when the user wants one
+     place for all instructions.
+   - `coexist` (default) — write `.harness/conventions.md` and
+     leave the existing doc untouched. Both feed the agent
+     context.
+   - `skip` — write neither the standalone file nor any change
+     to the existing doc. The user keeps full control of the
+     existing convention.
+
+   Translate the choice into `--conventions-conflict={merge,
+   coexist,skip}` and pass it to the CLI invocation.
+
+   **Secret guard (F-161)**: the CLI applies a regex pass over
+   every text fact that lands in `.harness/conventions.md`,
+   `.harness/spec.yaml` (the tech-stack patch), and the analysis
+   report. Detected matches turn into `[REDACTED: <kind>]`
+   placeholders. `.env`, `.envrc`, `secrets.yaml`, and
+   `credentials.json` are never read. The codebase-archaeologist
+   prompt carries one extra sentence — "if you see anything
+   resembling a credential, write `<REDACTED>` instead" — as a
+   second line of defense.
+
+8. **Scenario 3b — LLM hook contract for the Comments and Tests
+   sections (F-161, slash-command side)**: after `harness init
+   --scenario existing_code` returns, the slash command invokes
+   `@harness:codebase-archaeologist` to fill the two
+   `[pending: LLM hook stub]` placeholders in
+   `.harness/conventions.md`.
+
+   **Sampling rule** (toolen-bounded):
+
+   - For the Comments section, sample up to 10 source files of
+     the dominant language (extension distribution from signals).
+     Read the first 40 lines of each (the file header plus the
+     first 1–2 docstrings / JSDoc blocks).
+   - For the Tests section, sample 1–2 representative test files
+     from the conventional `tests/` or `__tests__/` directory.
+     Read 80 lines each — enough to see the assertion style
+     (AAA / BDD), fixture pattern, and parametrize idiom.
+
+   **Single-turn prompt shape** (one LLM call only):
+
+   ```
+   You are codebase-archaeologist. Below are 5–10 source samples
+   and 1–2 test samples from a real project. In two short
+   paragraphs (≤ 80 words each), describe:
+   1) the comment style (language, English vs. local, JSDoc vs.
+      Google docstring vs. inline, presence of file headers, …)
+   2) the test pattern (test runner, structure, fixture conventions)
+
+   If any line resembles a credential or hard-coded secret,
+   write <REDACTED> in your output instead of the value.
+   ```
+
+   The model output replaces the two placeholders in
+   `conventions.md` inline. Record token usage via
+   `src/init/tokenLog.ts:recordLlmCall` so the bench's
+   `init_tokens_total` metric reflects the real cost.
+
 ### 0.5. Runtime prerequisite — Node.js 20+ (F-107)
 
 The plugin ships a single-file CLI bundle under `dist/cli/` and a

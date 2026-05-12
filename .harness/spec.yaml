@@ -1872,6 +1872,59 @@ features:
     test_strategy: smoke
     digest: "Third slice of the init UX overhaul: when the project already has code,
       the init flow runs deterministic Layer-0 sign..."
+  - id: F-161
+    name: scenario-3b secret guard + CLAUDE.md merge + LLM hook spec
+    type: feature
+    status: planned
+    release_target: v0.15.5
+    modules:
+      - init_command
+      - codebase_redact
+      - codebase_conflict
+      - cli_init
+    test_strategy: smoke
+    description: |
+      Closes the scenario-3 split. Three guards make brownfield
+      init safe to ship:
+
+      1. Secret redaction over every fact that lands in
+         conventions.md / spec.yaml / report. Regex covers
+         api/secret/token/bearer/password keys plus blanket refusal
+         to read `.env` / `.envrc` / `secrets.yaml`. Matches
+         become `[REDACTED: <kind>]`.
+      2. Convention-doc conflict resolver. When CLAUDE.md or
+         .cursorrules or AGENTS.md exists, `--conventions-conflict
+         ={merge,coexist,skip}` (default coexist). Merge appends a
+         user-edit-bounded conventions block.
+      3. commands/init.md scenario-3b LLM hook contract for the
+         Comments / Tests sections of conventions.md. The CLI
+         stays deterministic; only the slash-command's
+         codebase-archaeologist calls the model.
+    acceptance_criteria:
+      - id: AC-1
+        text: |
+          `src/init/codebase/redact.ts:redactSecrets(text)` replaces
+          api-key-shaped strings (OpenAI / AWS / generic bearer /
+          hard-coded passwords) with `[REDACTED: <kind>]`. signals.ts
+          refuses to read `.env` / `.envrc` / `secrets.yaml`.
+      - id: AC-2
+        text: |
+          When a convention doc exists, `harness init --scenario
+          existing_code` requires --conventions-conflict and produces
+          a different on-disk result for merge vs coexist vs skip.
+          Each branch is covered by a parity test.
+      - id: AC-3
+        text: |
+          commands/init.md scenario-3b section names the files the
+          codebase-archaeologist samples, the single-turn prompt
+          shape, and the recordLlmCall handoff for token accounting.
+      - id: AC-4
+        text: |
+          End-to-end: planting a fake `apiKey = "sk-fakefakefakefakefake1234"`
+          inside the npm fixture and running scenario=existing_code
+          leaves no occurrence of `sk-fakefake...` in conventions.md
+          or spec.yaml. The redaction note appears in the analysis
+          report.
 goals: []
 constraints:
   tech_stack:

@@ -3545,8 +3545,33 @@ features:
     summary: "PR 3a (scenario 3 Layer-0) shipped. signals.ts collects 10 deterministic source families; conventionsWriter renders the 7-section conventions.md with harness:fact sigils + user-edit guard. CLI: harness init --scenario existing_code boots skeleton + walks signals + writes conventions.md + patches spec.yaml (project.name + tech_stack + metadata.source.origin=existing_code + draft=true). Comments / Tests sections ship as LLM hook stubs for PR 3b. Verified end-to-end on tests/perf/fixtures/{npm,python}: conventions written with 7-8 facts, spec validates, drift check clean, work activate routes correctly. Secret guard + CLAUDE.md merge land in PR 3b."
   started_at: 2026-05-12T09:53:02Z
   completed_at: 2026-05-12T09:59:19Z
+- id: F-161
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-12T10:10:57Z
+      note: "783 parity tests green (21 new: redact 12, conflict 9)"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-12T10:10:57Z
+      note: tsc clean
+    gate_2:
+      last_result: pass
+      ts: 2026-05-12T10:10:57Z
+      note: eslint clean
+    gate_5:
+      last_result: pass
+      ts: 2026-05-12T10:10:57Z
+      note: "self_check 5/5 + e2e: merge/coexist/skip all verified, planted sk-fake/s3cretpass redacted from all outputs"
+  evidence:
+  - ts: 2026-05-12T10:10:58Z
+    kind: manual_check
+    summary: Brownfield safety guards landed. redact.ts blocks OpenAI/GitHub/AWS/generic credential patterns + url-embedded creds; signals.ts refuses .env/.envrc/secrets.yaml/credentials.json and runs the redactor over readmePreview. conflictResolver.ts implements merge (append user-edit-bounded block to CLAUDE.md, replaces existing harness block) / coexist (default, both docs live side-by-side) / skip (no standalone conventions.md). commands/init.md scenario-3b LLM hook spec documents the codebase-archaeologist's sampling rule, single-turn prompt, and recordLlmCall handoff. End-to-end on npm fixture with planted sk-fakefakefakefakefake1234 + postgres://admin:s3cretpass@... confirmed zero leakage.
+  started_at: 2026-05-12T10:06:14Z
+  completed_at: null
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-160
+  last_command: /harness:work F-161
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-161

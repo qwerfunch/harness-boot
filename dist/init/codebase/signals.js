@@ -17,6 +17,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { basename, join, relative } from 'node:path';
 import { parse as tomlParse } from 'smol-toml';
 import { extractTechStack } from '../../scan/manifest.js';
+import { isForbiddenFile, redactSecrets } from './redact.js';
 const IGNORED_DIRS = new Set([
     '.git',
     '.hg',
@@ -281,11 +282,14 @@ function readReadmePreview(root) {
     const candidates = ['README.md', 'README.rst', 'README.txt', 'readme.md'];
     for (const name of candidates) {
         const path = join(root, name);
-        if (!isFile(path))
+        if (!isFile(path) || isForbiddenFile(name))
             continue;
         try {
             const body = readFileSync(path, 'utf8');
-            return body.slice(0, 500);
+            // Apply secret redaction before returning — readmePreview flows
+            // straight into the LLM prompt for the codebase-archaeologist
+            // pass, so any leaked credential would land in the model input.
+            return redactSecrets(body.slice(0, 500)).text;
         }
         catch {
             return null;

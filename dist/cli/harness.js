@@ -25,6 +25,7 @@ import { runSkeletonInit } from '../init/skeleton.js';
 import { generateIdeaSpec, } from '../init/scenarioIdea.js';
 import { collectSignals } from '../init/codebase/signals.js';
 import { writeConventions } from '../init/codebase/conventionsWriter.js';
+import { resolveConventionConflict, } from '../init/codebase/conflictResolver.js';
 import { agentsForShapes as kickoffAgentsForShapes, detectShapes as kickoffDetectShapes, generateKickoff, hasAudioFlag as kickoffHasAudioFlag, renderStyleBlock as kickoffRenderStyleBlock, } from '../ceremonies/kickoff.js';
 import { generateRetro } from '../ceremonies/retro.js';
 import { openQuestions, scanInbox } from '../ceremonies/inbox.js';
@@ -43,7 +44,7 @@ import { exportSpec } from '../spec/exportSpec.js';
 import { State } from '../core/state.js';
 import { buildReport, formatHuman as formatStatusHuman } from '../status.js';
 import { parse as yamlParse, stringify as yamlStringify } from 'yaml';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { run as runSync, tryInitialSync } from '../sync.js';
 import { activate, addEvidence, archive, block, complete, current, deactivate, recordGate, removeFeature, runAndRecordGate, } from '../work.js';
 function printHuman(text) {
@@ -934,6 +935,7 @@ function buildProgram() {
         .option('--project-mode <mode>', '[scenario idea] prototype (default) or product', 'prototype')
         .option('--quality-focus <list>', '[scenario idea] comma-separated values from {design,performance,accessibility,security}', '')
         .option('--deliverable-type <type>', '[scenario idea] cli (default), web-service, game, worker, library, static-site, desktop, mobile-app', 'cli')
+        .option('--conventions-conflict <policy>', '[scenario existing_code] merge | coexist (default) | skip — what to do when CLAUDE.md / .cursorrules / AGENTS.md already exists', 'coexist')
         .option('--json', 'emit JSON result')
         .action((options) => {
         const wantsSkeleton = Boolean(options['skeletonOnly']);
@@ -1083,9 +1085,23 @@ function runExistingCodeScenario(args) {
     const skel = runSkeletonInit({ targetDir, pluginRoot, mode });
     // 2. Walk the user project for Layer-0 signals.
     const signals = collectSignals(targetDir);
-    // 3. Write conventions.md.
+    // 3. Detect existing convention docs and resolve the conflict.
+    const policy = parseConflictPolicy(options);
     const conventionsPath = join(skel.harnessDir, 'conventions.md');
+    // Render the body once so both the standalone file and the merge
+    // path see the same content.
     const conv = writeConventions(signals, conventionsPath);
+    const resolution = resolveConventionConflict(targetDir, policy, conv.body);
+    if (!resolution.writeStandalone) {
+        // Remove the standalone file we just wrote — the merged target
+        // (or the user's existing doc, for `skip`) is the source of truth.
+        try {
+            rmSync(conventionsPath, { force: true });
+        }
+        catch {
+            // ignore — fail-open on cleanup
+        }
+    }
     // 4. Patch the spec.yaml to record project.name + constraints.tech_stack
     //    (deterministic fields only — vision / features are left for the user
     //    or the slash command's product-planner pass).
@@ -1096,20 +1112,36 @@ function runExistingCodeScenario(args) {
             ok: true,
             scenario: 'existing_code',
             harness_dir: skel.harnessDir,
-            conventions_path: conv.path,
+            conventions_path: resolution.writeStandalone ? conv.path : null,
             conventions_fact_count: conv.factCount,
             spec_path: specPath,
             directory_pattern: signals.directoryPattern,
+            conflict_policy: policy,
+            conflict_detected: resolution.detected,
+            merged_into: resolution.mergedInto,
             llm_call_count: 0,
         });
     }
     else {
-        printHuman(`init (scenario: existing_code): ${conv.factCount} facts written to ${conv.path}\n` +
+        const conflictLine = resolution.detected.length > 0
+            ? `  existing convention docs: ${resolution.detected.join(', ')} → policy: ${policy}` +
+                (resolution.mergedInto ? ` (merged into ${resolution.mergedInto})` : '')
+            : '';
+        printHuman(`init (scenario: existing_code): ${conv.factCount} facts ` +
+            (resolution.writeStandalone ? `written to ${conv.path}` : `merged or skipped (no standalone file)`) +
+            '\n' +
             `  detected: ${signals.directoryPattern} layout · ` +
             `${signals.manifests.length} manifests · ` +
             `${signals.styleConfigs.length} style configs\n` +
+            (conflictLine ? conflictLine + '\n' : '') +
             `next: edit .harness/spec.yaml (project.name + vision), then /harness-boot:work F-0\n`);
     }
+}
+function parseConflictPolicy(options) {
+    const value = optionAsString(options, 'conventionsConflict');
+    if (value === 'merge' || value === 'coexist' || value === 'skip')
+        return value;
+    return 'coexist';
 }
 function patchSpecWithSignals(specPath, signals) {
     const body = readFileSync(specPath, 'utf8');
