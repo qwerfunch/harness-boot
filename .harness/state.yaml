@@ -3658,7 +3658,7 @@ features:
   started_at: 2026-05-12T23:21:11Z
   completed_at: 2026-05-12T23:30:49Z
 - id: F-165
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3693,7 +3693,7 @@ features:
     kind: test
     summary: logcat-on Issue 7 fix — feature-author template + SKILL.md + spec-conversion SKILL.md updated with |-/quoted scalar mandate; round-trip test parses risky multi-line ({, :, backticks, ${tpl}) byte-identically
   started_at: 2026-05-12T23:27:43Z
-  completed_at: null
+  completed_at: 2026-05-12T23:31:31Z
 - id: F-166
   status: in_progress
   gates:
