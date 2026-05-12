@@ -3360,7 +3360,7 @@ features:
   started_at: 2026-05-12T02:38:13Z
   completed_at: 2026-05-12T02:41:17Z
 - id: F-148
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3395,9 +3395,9 @@ features:
     kind: manual_check
     summary: CLAUDE.md.template §8 + §1 + commands/init.md existing-file path 모두 archive sidecar import 한 줄 추가; self_check 5/5 OK; npm test 720/720 (회귀 0)
   started_at: 2026-05-12T03:22:26Z
-  completed_at: null
+  completed_at: 2026-05-12T03:23:13Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-148
   last_gate_passed: gate_5
-  active_feature_id: F-148
+  active_feature_id: null
