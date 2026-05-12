@@ -23,6 +23,8 @@ import { Command } from 'commander';
 import { generateDesignReview } from '../ceremonies/designReview.js';
 import { runSkeletonInit } from '../init/skeleton.js';
 import { generateIdeaSpec, } from '../init/scenarioIdea.js';
+import { collectSignals } from '../init/codebase/signals.js';
+import { writeConventions } from '../init/codebase/conventionsWriter.js';
 import { agentsForShapes as kickoffAgentsForShapes, detectShapes as kickoffDetectShapes, generateKickoff, hasAudioFlag as kickoffHasAudioFlag, renderStyleBlock as kickoffRenderStyleBlock, } from '../ceremonies/kickoff.js';
 import { generateRetro } from '../ceremonies/retro.js';
 import { openQuestions, scanInbox } from '../ceremonies/inbox.js';
@@ -40,7 +42,7 @@ import { SpecValidationError, loadSpec, validate as validateSpec } from '../spec
 import { exportSpec } from '../spec/exportSpec.js';
 import { State } from '../core/state.js';
 import { buildReport, formatHuman as formatStatusHuman } from '../status.js';
-import { parse as yamlParse } from 'yaml';
+import { parse as yamlParse, stringify as yamlStringify } from 'yaml';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { run as runSync, tryInitialSync } from '../sync.js';
 import { activate, addEvidence, archive, block, complete, current, deactivate, recordGate, removeFeature, runAndRecordGate, } from '../work.js';
@@ -977,8 +979,12 @@ function buildProgram() {
                 runIdeaScenario({ targetDir, pluginRoot, mode, options });
                 return;
             }
+            if (scenario === 'existing_code') {
+                runExistingCodeScenario({ targetDir, pluginRoot, mode, options });
+                return;
+            }
             printError(`init: scenario '${scenario}' is not implemented yet. ` +
-                'Supported in v0.15.5: idea. plan_doc / existing_code land in later PRs.');
+                'Supported in v0.15.5: idea, existing_code. plan_doc lands in a later PR.');
             process.exit(3);
         }
         catch (err) {
@@ -1064,6 +1070,81 @@ function runIdeaScenario(args) {
 function optionAsString(options, key) {
     const value = options[key];
     return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+/**
+ * Scenario-3a (existing_code → conventions + spec scaffold) CLI
+ * handler. Deterministic Layer-0: no LLM call from the binary.
+ * The slash command fills the Comments and Tests placeholders in
+ * PR 3b.
+ */
+function runExistingCodeScenario(args) {
+    const { targetDir, pluginRoot, mode, options } = args;
+    // 1. Boot the skeleton (gives us a starter spec.yaml + harness.yaml + state.yaml).
+    const skel = runSkeletonInit({ targetDir, pluginRoot, mode });
+    // 2. Walk the user project for Layer-0 signals.
+    const signals = collectSignals(targetDir);
+    // 3. Write conventions.md.
+    const conventionsPath = join(skel.harnessDir, 'conventions.md');
+    const conv = writeConventions(signals, conventionsPath);
+    // 4. Patch the spec.yaml to record project.name + constraints.tech_stack
+    //    (deterministic fields only — vision / features are left for the user
+    //    or the slash command's product-planner pass).
+    const specPath = join(skel.harnessDir, 'spec.yaml');
+    patchSpecWithSignals(specPath, signals);
+    if (options['json']) {
+        printJson({
+            ok: true,
+            scenario: 'existing_code',
+            harness_dir: skel.harnessDir,
+            conventions_path: conv.path,
+            conventions_fact_count: conv.factCount,
+            spec_path: specPath,
+            directory_pattern: signals.directoryPattern,
+            llm_call_count: 0,
+        });
+    }
+    else {
+        printHuman(`init (scenario: existing_code): ${conv.factCount} facts written to ${conv.path}\n` +
+            `  detected: ${signals.directoryPattern} layout · ` +
+            `${signals.manifests.length} manifests · ` +
+            `${signals.styleConfigs.length} style configs\n` +
+            `next: edit .harness/spec.yaml (project.name + vision), then /harness-boot:work F-0\n`);
+    }
+}
+function patchSpecWithSignals(specPath, signals) {
+    const body = readFileSync(specPath, 'utf8');
+    const parsed = yamlParse(body);
+    if (!parsed || typeof parsed !== 'object')
+        return;
+    const constraints = parsed['constraints'] ?? {};
+    const techStack = constraints['tech_stack'] ?? {};
+    const techPairs = [
+        ['runtime', signals.tech.runtime],
+        ['language', signals.tech.language],
+        ['test', signals.tech.test],
+        ['build', signals.tech.build],
+        ['min_version', signals.tech.min_version],
+    ];
+    for (const [key, value] of techPairs) {
+        if (value !== undefined && value !== null)
+            techStack[key] = value;
+    }
+    constraints['tech_stack'] = techStack;
+    parsed['constraints'] = constraints;
+    // project.name from directory basename when missing.
+    const project = parsed['project'] ?? {};
+    if (typeof project['name'] !== 'string' || project['name'].length === 0) {
+        project['name'] = signals.projectRoot.split('/').filter((s) => s.length > 0).pop() ?? 'project';
+    }
+    parsed['project'] = project;
+    // metadata.source.origin = existing_code.
+    const metadata = parsed['metadata'] ?? {};
+    const source = metadata['source'] ?? {};
+    source['origin'] = 'existing_code';
+    metadata['source'] = source;
+    metadata['draft'] = true;
+    parsed['metadata'] = metadata;
+    writeFileSync(specPath, yamlStringify(parsed, { sortMapEntries: true }), 'utf8');
 }
 /**
  * Best-effort resolution of the plugin root from the running `harness`

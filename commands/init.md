@@ -180,6 +180,38 @@ Example: `🧰 /harness-boot:init · solo · first-time scaffold into empty dir`
    `src/init/tokenLog.ts:recordLlmCall`. The bench reads these
    events to compute `init_tokens_total`.
 
+7. **Scenario 3a — existing project → conventions + spec scaffold
+   (F-160, since v0.15.5)**: when routing landed on Option 3 (a
+   manifest plus source files exist), shell out to
+   `harness init --scenario existing_code` with no extra flags
+   beyond `--plugin-root` and `--harness-dir`. The CLI:
+
+   - boots the skeleton (so `harness.yaml` · `state.yaml` ·
+     `events.log` exist),
+   - walks the project for the 10 deterministic Layer-0 signal
+     families (manifest · build/deploy YAML · style configs ·
+     dependency category dictionary · directory pattern · AI-tool
+     traces · CI stages · license · i18n · quality-enforce),
+   - writes `.harness/conventions.md` with the seven fixed
+     sections, each fact wrapped in a
+     `<!-- harness:fact key=K value=V source=PATH -->` sigil,
+   - patches `.harness/spec.yaml` so `project.name` and
+     `constraints.tech_stack` reflect the manifest, and
+     `metadata.source.origin` is `existing_code` with
+     `metadata.draft: true`.
+
+   The Comments and Tests sections of `conventions.md` ship as
+   `[pending: LLM hook stub]` placeholders. The next PR (3b)
+   wires the slash command's `@harness:codebase-archaeologist`
+   pass to fill them from sample files, applies the secret-guard
+   redaction over the analysis, and resolves the
+   CLAUDE.md/.cursorrules merge prompt.
+
+   Mini-map principle: Layer 0 is the coarse outline only. Per-
+   feature deep analysis happens at Layer 1 inside the work
+   cycle (F-037 fog-clear), and on-demand deep dives (Layer 2)
+   land later as `harness analyze <area>`.
+
 ### 0.5. Runtime prerequisite — Node.js 20+ (F-107)
 
 The plugin ships a single-file CLI bundle under `dist/cli/` and a
