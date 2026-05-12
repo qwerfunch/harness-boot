@@ -37,7 +37,7 @@ import {
   PluginRootError,
   resolve as resolvePluginRoot,
 } from './core/pluginRoot.js';
-import {bulkMigrate} from './spec/archive.js';
+import {autoArchiveOpenQuestions, bulkMigrate} from './spec/archive.js';
 import {
   expand as expandIncludes,
   findIncludes,
@@ -67,6 +67,13 @@ export interface SyncOptions {
    * harness.yaml: `archive.auto_migrate: false`.
    */
   noArchiveMigrate?: boolean;
+  /**
+   * F-147 — disable the auto-archive of resolved `open_questions[]`
+   * (entries with a `*_at` timestamp older than 30 days). Default
+   * `false` means the cleanup runs. CLI: `--no-open-questions-archive`.
+   * harness.yaml: `archive.open_questions: false`.
+   */
+  noOpenQuestionsArchive?: boolean;
 }
 
 /** Summary returned by {@link run}; identical shape to Python's dict. */
@@ -83,6 +90,10 @@ export interface SyncResult {
   archive_migrated?: number;
   /** F-137 — when migration was skipped, why (dirty-tree, opt-out, none-needed). */
   archive_migrate_skip_reason?: 'dirty_tree' | 'opt_out' | null;
+  /** F-147 — count of resolved open_questions relocated to spec.archive.yaml. */
+  open_questions_archived?: number;
+  /** F-147 — when the open-questions cleanup was skipped, why. */
+  open_questions_archive_skip_reason?: 'dirty_tree' | 'opt_out' | null;
 }
 
 /** Outcome of {@link tryInitialSync}; matches Python's status dict. */
@@ -303,10 +314,15 @@ interface HarnessYaml {
   hash_protocol_version?: string;
   generation?: HarnessYamlGeneration;
   policies?: Record<string, unknown>;
-  /** F-137 — archive auto-migration toggle. */
+  /** F-137 + F-147 — archive auto-cleanup toggles. */
   archive?: {
     /** When `false`, sync skips bulk archive migration. Default `true`. */
     auto_migrate?: boolean;
+    /**
+     * F-147 — when `false`, sync skips the auto-archive of resolved
+     * open_questions. Default `true`.
+     */
+    open_questions?: boolean;
   };
   [key: string]: unknown;
 }
@@ -520,6 +536,47 @@ export function run(harnessDir: string, options: SyncOptions = {}): SyncResult {
     }
   }
 
+  // 8. F-147 — auto-archive of resolved open_questions. Same skip
+  // conditions as the bulk archive migration: dry-run, opt-out, dirty
+  // tree. Idempotent and silent when nothing is eligible (no event,
+  // no stderr line). The dirty-tree warning was already emitted by the
+  // bulk-archive step; do not echo it.
+  let openQuestionsArchived = 0;
+  let openQuestionsSkipReason: 'dirty_tree' | 'opt_out' | null = null;
+
+  if (dryRun) {
+    openQuestionsSkipReason = null;
+  } else if (
+    options.noOpenQuestionsArchive ||
+    harnessYaml.archive?.open_questions === false
+  ) {
+    openQuestionsSkipReason = 'opt_out';
+  } else if (archiveSkipReason === 'dirty_tree') {
+    // Dirty-tree warning already shown by the bulk-archive step.
+    openQuestionsSkipReason = 'dirty_tree';
+  } else {
+    try {
+      openQuestionsArchived = autoArchiveOpenQuestions(harnessDir);
+      if (openQuestionsArchived > 0) {
+        appendEvent(eventsLog, {
+          ts,
+          type: 'auto_archived_open_questions',
+          count: openQuestionsArchived,
+        });
+        process.stderr.write(
+          `[info] sync: auto-archived ${openQuestionsArchived} resolved open_question${
+            openQuestionsArchived === 1 ? '' : 's'
+          } (30+ days) → .harness/spec.archive.yaml\n`,
+        );
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(
+        `[warn] sync: open_questions auto-archive failed — ${msg}\n`,
+      );
+    }
+  }
+
   return {
     ok: true,
     spec_hash: hashRaw,
@@ -531,6 +588,8 @@ export function run(harnessDir: string, options: SyncOptions = {}): SyncResult {
     drift_status: generation.drift_status,
     archive_migrated: archiveMigrated,
     archive_migrate_skip_reason: archiveSkipReason,
+    open_questions_archived: openQuestionsArchived,
+    open_questions_archive_skip_reason: openQuestionsSkipReason,
   };
 }
 

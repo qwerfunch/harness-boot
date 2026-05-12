@@ -21,7 +21,7 @@ import { emitHalt } from './halt.js';
 import { executeAction, mapSuggestion, } from './executor.js';
 import { generateGoalRetro } from './goalRetro.js';
 import { runRealTestIfDue, readTransientRetryConfig } from './realTest.js';
-import { replanAfterCompletion } from './replan.js';
+import { replanAfterCompletion, replanAlreadyEvaluated } from './replan.js';
 /** Default consecutive-fail threshold for halt #3 (gate retry). */
 export const DEFAULT_MAX_RETRIES = 3;
 /**
@@ -320,68 +320,92 @@ export function runDriveStep(harnessDir, options) {
     else {
         ck.execute.started_at = nowIso(now);
     }
-    // (3.5) F-138 — adaptive replan hook. Fires when the previously
-    // active feature has just transitioned to done; deterministic
-    // deferral of blocked / superseded ids + optional file-drop
-    // manifest when the retro hints at a pivot. Idempotent per fid.
-    // Best-effort — never blocks the loop; replan failures fall back
-    // to the existing planner chain on the next iteration.
+    // (3.5) F-138 + F-142 — adaptive replan hook. Iterates the goal's
+    // feature_progress for every done id whose events.log lacks a
+    // `replan_evaluated` entry, calls `replanAfterCompletion` for
+    // each. The existing per-id idempotent guard inside that function
+    // makes the iteration safe — re-evaluation is a silent skip.
     //
-    // (3.6) F-139 — mid-cycle real test. After replan, runs the
-    // user-defined `harness.yaml drive.real_test.command` every N
-    // done features (default 3). Unconfigured projects skip silently.
-    // On fail, surfaces `real_test_failed` halt so the user inspects.
-    if (ck.execute.active_feature !== null) {
-        try {
-            const replanState = State.load(harnessDir);
-            const prevActive = replanState.getFeature(ck.execute.active_feature);
-            if (prevActive !== null && prevActive.status === 'done') {
-                replanAfterCompletion(harnessDir, ck.execute.active_feature, ck.goal_id);
-                const realTest = runRealTestIfDue(harnessDir, ck.goal_id, ck.execute.active_feature);
-                if (realTest.ran && realTest.passed === true) {
-                    // F-140 — pass resets the transient retry counter so a
-                    // future flake starts from zero again.
-                    if ((ck.execute.real_test_retry_count ?? 0) > 0) {
-                        ck.execute.real_test_retry_count = 0;
-                        saveCheckpoint(harnessDir, ck, now);
-                    }
-                }
-                if (realTest.ran && realTest.passed === false) {
-                    // F-140 — auto-retry once (configurable cap) before yielding.
-                    const retryCfg = readTransientRetryConfig(harnessDir);
-                    const currentCount = ck.execute.real_test_retry_count ?? 0;
-                    if (retryCfg.enabled && currentCount < retryCfg.cap) {
-                        ck.execute.real_test_retry_count = currentCount + 1;
-                        saveCheckpoint(harnessDir, ck, now);
-                        appendRealTestRetryEvent(harnessDir, {
-                            goal_id: ck.goal_id,
-                            feature_id: ck.execute.active_feature,
-                            attempt: currentCount + 1,
-                            cap: retryCfg.cap,
-                            command: realTest.command,
-                            exit_code: realTest.exit_code,
-                            ts: nowIso(now),
-                        });
-                        // Return proceed=true with no executor action — the next
-                        // iteration re-enters this hook (active_feature is still
-                        // the just-completed one) and re-runs the real test.
-                        return {
-                            proceed: true,
-                            feature_id: ck.execute.active_feature,
-                        };
-                    }
-                    return {
-                        proceed: false,
-                        halt: emitHalt(harnessDir, 'manual', `real_test_failed: ${realTest.command} (exit ${realTest.exit_code}, ` +
-                            `attempt ${currentCount + 1}/${retryCfg.cap + 1}). ` +
-                            `Inspect events.log for stderr tail.`, { goal_id: ck.goal_id, feature_id: ck.execute.active_feature, now }),
-                    };
-                }
+    // F-142 widens the trigger from "drive's own previous step" to
+    // "any pending done feature drive hasn't seen yet" so the hook
+    // also fires when the user mixes work CLI with drive --resume.
+    //
+    // (3.6) F-139 — mid-cycle real test. Runs the user-defined
+    // `harness.yaml drive.real_test.command` once per drive iteration
+    // when the cadence (`every_n_features`, default 3) divides the
+    // current done count. Unconfigured projects skip silently. On
+    // fail, surfaces `real_test_failed` halt (with F-140 transient
+    // retry first when configured).
+    try {
+        const replanState = State.load(harnessDir);
+        const goal = replanState.getGoal(ck.goal_id);
+        const unevaluatedDone = [];
+        if (goal !== null && isPlainObject(goal.feature_progress)) {
+            const progress = goal.feature_progress;
+            for (const [fid, status] of Object.entries(progress)) {
+                if (status !== 'done')
+                    continue;
+                if (replanAlreadyEvaluated(harnessDir, fid))
+                    continue;
+                unevaluatedDone.push(fid);
             }
         }
-        catch {
-            // silent — replan / real-test are auxiliary
+        for (const fid of unevaluatedDone) {
+            replanAfterCompletion(harnessDir, fid, ck.goal_id);
         }
+        // Real-test cadence: fire once when there are unevaluated done
+        // ids (or when the active_feature path matches the legacy trigger
+        // — preserves retry semantics). Picks the most recent unevaluated
+        // id as the "trigger" feature for the event payload.
+        const triggerFid = unevaluatedDone.length > 0
+            ? unevaluatedDone[unevaluatedDone.length - 1]
+            : ck.execute.active_feature;
+        const triggerActive = triggerFid !== null ? replanState.getFeature(triggerFid) : null;
+        if (triggerFid !== null && triggerActive !== null && triggerActive.status === 'done') {
+            const realTest = runRealTestIfDue(harnessDir, ck.goal_id, triggerFid);
+            if (realTest.ran && realTest.passed === true) {
+                // F-140 — pass resets the transient retry counter so a
+                // future flake starts from zero again.
+                if ((ck.execute.real_test_retry_count ?? 0) > 0) {
+                    ck.execute.real_test_retry_count = 0;
+                    saveCheckpoint(harnessDir, ck, now);
+                }
+            }
+            if (realTest.ran && realTest.passed === false) {
+                // F-140 — auto-retry once (configurable cap) before yielding.
+                const retryCfg = readTransientRetryConfig(harnessDir);
+                const currentCount = ck.execute.real_test_retry_count ?? 0;
+                if (retryCfg.enabled && currentCount < retryCfg.cap) {
+                    ck.execute.real_test_retry_count = currentCount + 1;
+                    saveCheckpoint(harnessDir, ck, now);
+                    appendRealTestRetryEvent(harnessDir, {
+                        goal_id: ck.goal_id,
+                        feature_id: triggerFid,
+                        attempt: currentCount + 1,
+                        cap: retryCfg.cap,
+                        command: realTest.command,
+                        exit_code: realTest.exit_code,
+                        ts: nowIso(now),
+                    });
+                    // Return proceed=true with no executor action — the next
+                    // iteration re-enters this hook (active_feature is still
+                    // the just-completed one) and re-runs the real test.
+                    return {
+                        proceed: true,
+                        feature_id: triggerFid,
+                    };
+                }
+                return {
+                    proceed: false,
+                    halt: emitHalt(harnessDir, 'manual', `real_test_failed: ${realTest.command} (exit ${realTest.exit_code}, ` +
+                        `attempt ${currentCount + 1}/${retryCfg.cap + 1}). ` +
+                        `Inspect events.log for stderr tail.`, { goal_id: ck.goal_id, feature_id: triggerFid, now }),
+                };
+            }
+        }
+    }
+    catch {
+        // silent — replan / real-test are auxiliary
     }
     // (4) goal completion check — emit retro + flip phase.
     const stateGoalCheck = State.load(harnessDir);

@@ -99,6 +99,9 @@ function isReplanEnabled(harnessDir) {
  * event with this `feature` id. Used for the idempotent re-call
  * short-circuit.
  */
+export function replanAlreadyEvaluated(harnessDir, completedFid) {
+    return alreadyEvaluated(harnessDir, completedFid);
+}
 function alreadyEvaluated(harnessDir, completedFid) {
     const path = join(harnessDir, 'events.log');
     if (!existsSync(path)) {

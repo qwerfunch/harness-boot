@@ -20939,6 +20939,16 @@ var init_pluginRoot = __esm({
 // src/spec/archive.ts
 import { existsSync as existsSync3, readFileSync as readFileSync13, writeFileSync as writeFileSync6 } from "node:fs";
 import { join as join14 } from "node:path";
+function condenseWhitespace(value) {
+  return value.trim().replace(/\s+/g, " ");
+}
+function deriveDigestFromDescription(description) {
+  const condensed = condenseWhitespace(description);
+  if (condensed.length <= DIGEST_AUTO_LIMIT) {
+    return condensed;
+  }
+  return `${condensed.slice(0, DIGEST_AUTO_LIMIT - 3).trimEnd()}...`;
+}
 function blankArchive() {
   return {
     version: "2.3",
@@ -20964,6 +20974,9 @@ function moveToArchive(harnessDir, fid) {
   const body = extractBody(liveEntry);
   if (body === null) {
     return;
+  }
+  if (typeof liveEntry["digest"] !== "string" && typeof liveEntry["description"] === "string" && liveEntry["description"].length > 0) {
+    liveEntry["digest"] = deriveDigestFromDescription(liveEntry["description"]);
   }
   for (const key of BODY_KEYS) {
     delete liveEntry[key];
@@ -21065,13 +21078,94 @@ function bulkMigrate(harnessDir) {
   }
   return moved;
 }
-var import_yaml9, BODY_KEYS, SHIPPED_STATUSES2;
+function autoArchiveOpenQuestions(harnessDir, options = {}) {
+  const specPath = join14(harnessDir, "spec.yaml");
+  const archivePath = join14(harnessDir, "spec.archive.yaml");
+  if (!existsSync3(specPath)) {
+    return 0;
+  }
+  const spec = (0, import_yaml9.parse)(readFileSync13(specPath, "utf-8"));
+  if (spec === null || typeof spec !== "object" || Array.isArray(spec)) {
+    return 0;
+  }
+  const liveQuestions = spec["open_questions"];
+  if (!Array.isArray(liveQuestions) || liveQuestions.length === 0) {
+    return 0;
+  }
+  const ageDays = options.ageDays ?? DEFAULT_OPEN_QUESTION_ARCHIVE_AGE_DAYS;
+  const now = options.now ?? /* @__PURE__ */ new Date();
+  const ageMillis = ageDays * 24 * 60 * 60 * 1e3;
+  const ageThreshold = now.getTime() - ageMillis;
+  const eligible = [];
+  const remaining = [];
+  for (const entry of liveQuestions) {
+    if (!isPlainRecord(entry)) {
+      remaining.push(entry);
+      continue;
+    }
+    const resolvedAt = pickResolvedTimestamp(entry);
+    if (resolvedAt === null) {
+      remaining.push(entry);
+      continue;
+    }
+    if (resolvedAt.getTime() > ageThreshold) {
+      remaining.push(entry);
+      continue;
+    }
+    eligible.push(entry);
+  }
+  if (eligible.length === 0) {
+    return 0;
+  }
+  const archive2 = loadArchive(archivePath);
+  if (!Array.isArray(archive2["open_questions"])) {
+    archive2["open_questions"] = [];
+  }
+  const archiveQuestions = archive2["open_questions"];
+  for (const entry of eligible) {
+    const id = typeof entry["id"] === "string" ? entry["id"] : null;
+    if (id === null) {
+      continue;
+    }
+    const existingIndex = archiveQuestions.findIndex(
+      (q) => isPlainRecord(q) && q["id"] === id
+    );
+    if (existingIndex === -1) {
+      archiveQuestions.push(entry);
+    } else {
+      archiveQuestions[existingIndex] = entry;
+    }
+  }
+  spec["open_questions"] = remaining;
+  writeFileSync6(specPath, (0, import_yaml9.stringify)(spec), "utf-8");
+  writeFileSync6(archivePath, (0, import_yaml9.stringify)(archive2), "utf-8");
+  return eligible.length;
+}
+function isPlainRecord(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+function pickResolvedTimestamp(entry) {
+  for (const key of ["answered_at", "resolved_at", "closed_at"]) {
+    const raw = entry[key];
+    if (typeof raw !== "string" || raw.length === 0) {
+      continue;
+    }
+    const parsed = new Date(raw);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+  return null;
+}
+var import_yaml9, BODY_KEYS, DIGEST_AUTO_LIMIT, SHIPPED_STATUSES2, DEFAULT_OPEN_QUESTION_ARCHIVE_AGE_DAYS;
 var init_archive = __esm({
   "src/spec/archive.ts"() {
     "use strict";
     import_yaml9 = __toESM(require_dist(), 1);
     BODY_KEYS = ["description", "acceptance_criteria"];
+    DIGEST_AUTO_LIMIT = 120;
     SHIPPED_STATUSES2 = /* @__PURE__ */ new Set(["done", "archived"]);
+    DEFAULT_OPEN_QUESTION_ARCHIVE_AGE_DAYS = 30;
   }
 });
 
@@ -21918,6 +22012,36 @@ function run(harnessDir, options = {}) {
       }
     }
   }
+  let openQuestionsArchived = 0;
+  let openQuestionsSkipReason = null;
+  if (dryRun) {
+    openQuestionsSkipReason = null;
+  } else if (options.noOpenQuestionsArchive || harnessYaml.archive?.open_questions === false) {
+    openQuestionsSkipReason = "opt_out";
+  } else if (archiveSkipReason === "dirty_tree") {
+    openQuestionsSkipReason = "dirty_tree";
+  } else {
+    try {
+      openQuestionsArchived = autoArchiveOpenQuestions(harnessDir);
+      if (openQuestionsArchived > 0) {
+        appendEvent4(eventsLog, {
+          ts,
+          type: "auto_archived_open_questions",
+          count: openQuestionsArchived
+        });
+        process.stderr.write(
+          `[info] sync: auto-archived ${openQuestionsArchived} resolved open_question${openQuestionsArchived === 1 ? "" : "s"} (30+ days) \u2192 .harness/spec.archive.yaml
+`
+        );
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(
+        `[warn] sync: open_questions auto-archive failed \u2014 ${msg}
+`
+      );
+    }
+  }
   return {
     ok: true,
     spec_hash: hashRaw,
@@ -21928,7 +22052,9 @@ function run(harnessDir, options = {}) {
     dry_run: dryRun,
     drift_status: generation.drift_status,
     archive_migrated: archiveMigrated,
-    archive_migrate_skip_reason: archiveSkipReason
+    archive_migrate_skip_reason: archiveSkipReason,
+    open_questions_archived: openQuestionsArchived,
+    open_questions_archive_skip_reason: openQuestionsSkipReason
   };
 }
 function workingTreeDirty(projectRoot) {
@@ -24880,6 +25006,9 @@ function isReplanEnabled(harnessDir) {
     return true;
   }
 }
+function replanAlreadyEvaluated(harnessDir, completedFid) {
+  return alreadyEvaluated(harnessDir, completedFid);
+}
 function alreadyEvaluated(harnessDir, completedFid) {
   const path = join24(harnessDir, "events.log");
   if (!existsSync10(path)) {
@@ -25287,56 +25416,63 @@ function runDriveStep(harnessDir, options) {
   } else {
     ck.execute.started_at = nowIso15(now);
   }
-  if (ck.execute.active_feature !== null) {
-    try {
-      const replanState = State.load(harnessDir);
-      const prevActive = replanState.getFeature(ck.execute.active_feature);
-      if (prevActive !== null && prevActive.status === "done") {
-        replanAfterCompletion(harnessDir, ck.execute.active_feature, ck.goal_id);
-        const realTest = runRealTestIfDue(
-          harnessDir,
-          ck.goal_id,
-          ck.execute.active_feature
-        );
-        if (realTest.ran && realTest.passed === true) {
-          if ((ck.execute.real_test_retry_count ?? 0) > 0) {
-            ck.execute.real_test_retry_count = 0;
-            saveCheckpoint(harnessDir, ck, now);
-          }
-        }
-        if (realTest.ran && realTest.passed === false) {
-          const retryCfg = readTransientRetryConfig(harnessDir);
-          const currentCount = ck.execute.real_test_retry_count ?? 0;
-          if (retryCfg.enabled && currentCount < retryCfg.cap) {
-            ck.execute.real_test_retry_count = currentCount + 1;
-            saveCheckpoint(harnessDir, ck, now);
-            appendRealTestRetryEvent(harnessDir, {
-              goal_id: ck.goal_id,
-              feature_id: ck.execute.active_feature,
-              attempt: currentCount + 1,
-              cap: retryCfg.cap,
-              command: realTest.command,
-              exit_code: realTest.exit_code,
-              ts: nowIso15(now)
-            });
-            return {
-              proceed: true,
-              feature_id: ck.execute.active_feature
-            };
-          }
-          return {
-            proceed: false,
-            halt: emitHalt(
-              harnessDir,
-              "manual",
-              `real_test_failed: ${realTest.command} (exit ${realTest.exit_code}, attempt ${currentCount + 1}/${retryCfg.cap + 1}). Inspect events.log for stderr tail.`,
-              { goal_id: ck.goal_id, feature_id: ck.execute.active_feature, now }
-            )
-          };
+  try {
+    const replanState = State.load(harnessDir);
+    const goal = replanState.getGoal(ck.goal_id);
+    const unevaluatedDone = [];
+    if (goal !== null && isPlainObject21(goal.feature_progress)) {
+      const progress = goal.feature_progress;
+      for (const [fid, status] of Object.entries(progress)) {
+        if (status !== "done") continue;
+        if (replanAlreadyEvaluated(harnessDir, fid)) continue;
+        unevaluatedDone.push(fid);
+      }
+    }
+    for (const fid of unevaluatedDone) {
+      replanAfterCompletion(harnessDir, fid, ck.goal_id);
+    }
+    const triggerFid = unevaluatedDone.length > 0 ? unevaluatedDone[unevaluatedDone.length - 1] : ck.execute.active_feature;
+    const triggerActive = triggerFid !== null ? replanState.getFeature(triggerFid) : null;
+    if (triggerFid !== null && triggerActive !== null && triggerActive.status === "done") {
+      const realTest = runRealTestIfDue(harnessDir, ck.goal_id, triggerFid);
+      if (realTest.ran && realTest.passed === true) {
+        if ((ck.execute.real_test_retry_count ?? 0) > 0) {
+          ck.execute.real_test_retry_count = 0;
+          saveCheckpoint(harnessDir, ck, now);
         }
       }
-    } catch {
+      if (realTest.ran && realTest.passed === false) {
+        const retryCfg = readTransientRetryConfig(harnessDir);
+        const currentCount = ck.execute.real_test_retry_count ?? 0;
+        if (retryCfg.enabled && currentCount < retryCfg.cap) {
+          ck.execute.real_test_retry_count = currentCount + 1;
+          saveCheckpoint(harnessDir, ck, now);
+          appendRealTestRetryEvent(harnessDir, {
+            goal_id: ck.goal_id,
+            feature_id: triggerFid,
+            attempt: currentCount + 1,
+            cap: retryCfg.cap,
+            command: realTest.command,
+            exit_code: realTest.exit_code,
+            ts: nowIso15(now)
+          });
+          return {
+            proceed: true,
+            feature_id: triggerFid
+          };
+        }
+        return {
+          proceed: false,
+          halt: emitHalt(
+            harnessDir,
+            "manual",
+            `real_test_failed: ${realTest.command} (exit ${realTest.exit_code}, attempt ${currentCount + 1}/${retryCfg.cap + 1}). Inspect events.log for stderr tail.`,
+            { goal_id: ck.goal_id, feature_id: triggerFid, now }
+          )
+        };
+      }
     }
+  } catch {
   }
   const stateGoalCheck = State.load(harnessDir);
   if (allFeaturesDone(ck, stateGoalCheck)) {
@@ -27140,7 +27276,10 @@ function buildProgram() {
     emitWork(r, json);
   });
   void work;
-  program2.command("sync").description("orchestrate Phase-0 sync (validate \u2192 expand \u2192 hash \u2192 render \u2192 events)").option("--harness-dir <dir>", "path to .harness directory", "./.harness").option("--dry-run", "compute outputs but do not touch disk").option("--force", "ignore edit-wins and overwrite domain.md / architecture.yaml").option("--soft", "F-076 fail-open mode \u2014 never exits non-zero").option("--skip-validation", "skip JSONSchema check").option("--schema <path>", "path to spec.schema.json override").option("--timestamp <iso>", "override UTC timestamp (tests)").option("--no-archive-migrate", "skip F-137 bulk archive migration this run").option("--json", "emit JSON summary").action((options) => {
+  program2.command("sync").description("orchestrate Phase-0 sync (validate \u2192 expand \u2192 hash \u2192 render \u2192 events)").option("--harness-dir <dir>", "path to .harness directory", "./.harness").option("--dry-run", "compute outputs but do not touch disk").option("--force", "ignore edit-wins and overwrite domain.md / architecture.yaml").option("--soft", "F-076 fail-open mode \u2014 never exits non-zero").option("--skip-validation", "skip JSONSchema check").option("--schema <path>", "path to spec.schema.json override").option("--timestamp <iso>", "override UTC timestamp (tests)").option("--no-archive-migrate", "skip F-137 bulk archive migration this run").option(
+    "--no-open-questions-archive",
+    "skip F-147 auto-archive of resolved open_questions this run"
+  ).option("--json", "emit JSON summary").action((options) => {
     const harnessDir = resolveHarnessDir(options["harnessDir"]);
     const json = Boolean(options["json"]);
     const soft = Boolean(options["soft"]);
@@ -27166,7 +27305,8 @@ function buildProgram() {
         skipValidation: Boolean(options["skipValidation"]),
         schemaPath: typeof options["schema"] === "string" ? options["schema"] : null,
         timestamp: typeof options["timestamp"] === "string" ? options["timestamp"] : void 0,
-        noArchiveMigrate: options["archiveMigrate"] === false
+        noArchiveMigrate: options["archiveMigrate"] === false,
+        noOpenQuestionsArchive: options["openQuestionsArchive"] === false
       });
       if (json) {
         printJson(summary);

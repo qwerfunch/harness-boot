@@ -37,6 +37,13 @@ export interface SyncOptions {
      * harness.yaml: `archive.auto_migrate: false`.
      */
     noArchiveMigrate?: boolean;
+    /**
+     * F-147 — disable the auto-archive of resolved `open_questions[]`
+     * (entries with a `*_at` timestamp older than 30 days). Default
+     * `false` means the cleanup runs. CLI: `--no-open-questions-archive`.
+     * harness.yaml: `archive.open_questions: false`.
+     */
+    noOpenQuestionsArchive?: boolean;
 }
 /** Summary returned by {@link run}; identical shape to Python's dict. */
 export interface SyncResult {
@@ -52,6 +59,10 @@ export interface SyncResult {
     archive_migrated?: number;
     /** F-137 — when migration was skipped, why (dirty-tree, opt-out, none-needed). */
     archive_migrate_skip_reason?: 'dirty_tree' | 'opt_out' | null;
+    /** F-147 — count of resolved open_questions relocated to spec.archive.yaml. */
+    open_questions_archived?: number;
+    /** F-147 — when the open-questions cleanup was skipped, why. */
+    open_questions_archive_skip_reason?: 'dirty_tree' | 'opt_out' | null;
 }
 /** Outcome of {@link tryInitialSync}; matches Python's status dict. */
 export interface InitialSyncResult {
