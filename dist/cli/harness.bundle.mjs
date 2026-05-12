@@ -10538,8 +10538,8 @@ var init_routing = __esm({
 });
 
 // src/ceremonies/kickoff.ts
-import { appendFileSync as appendFileSync3, mkdirSync as mkdirSync3, readFileSync as readFileSync5, statSync as statSync4, writeFileSync as writeFileSync5 } from "node:fs";
-import { dirname as dirname2, join as join6, relative as relative3 } from "node:path";
+import { appendFileSync as appendFileSync3, mkdirSync as mkdirSync3, readFileSync as readFileSync6, statSync as statSync4, writeFileSync as writeFileSync5 } from "node:fs";
+import { dirname as dirname2, join as join6, relative as relative4 } from "node:path";
 function isPlainObject2(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -10720,7 +10720,7 @@ function renderStyleBlock(harnessDir, feature) {
   }
   let loaded;
   try {
-    loaded = (0, import_yaml3.parse)(readFileSync5(indexPath, "utf-8"));
+    loaded = (0, import_yaml4.parse)(readFileSync6(indexPath, "utf-8"));
   } catch {
     return "";
   }
@@ -10838,22 +10838,22 @@ function generateKickoff(harnessDir, featureId2, shapes, options = {}) {
     shapes: [...shapes],
     agents,
     mode,
-    path: relative3(harnessDir, kickoffPath)
+    path: relative4(harnessDir, kickoffPath)
   });
   return kickoffPath;
 }
-var import_yaml3;
+var import_yaml4;
 var init_kickoff = __esm({
   "src/ceremonies/kickoff.ts"() {
     "use strict";
-    import_yaml3 = __toESM(require_dist(), 1);
+    import_yaml4 = __toESM(require_dist(), 1);
     init_routing();
   }
 });
 
 // src/ceremonies/retro.ts
-import { appendFileSync as appendFileSync4, mkdirSync as mkdirSync4, readFileSync as readFileSync6, statSync as statSync5, writeFileSync as writeFileSync6 } from "node:fs";
-import { dirname as dirname3, join as join7, relative as relative4 } from "node:path";
+import { appendFileSync as appendFileSync4, mkdirSync as mkdirSync4, readFileSync as readFileSync7, statSync as statSync5, writeFileSync as writeFileSync6 } from "node:fs";
+import { dirname as dirname3, join as join7, relative as relative5 } from "node:path";
 function isPlainObject3(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -10861,7 +10861,7 @@ function readEvents(harnessDir) {
   const logPath = join7(harnessDir, "events.log");
   let raw;
   try {
-    raw = readFileSync6(logPath, "utf-8");
+    raw = readFileSync7(logPath, "utf-8");
   } catch {
     return [];
   }
@@ -11079,7 +11079,7 @@ function generateRetro(harnessDir, featureId2, options = {}) {
       first_gate_fail: analysis.first_gate_fail !== null ? analysis.first_gate_fail["gate"] : null,
       questions_opened: analysis.questions_opened
     },
-    path: relative4(harnessDir, path)
+    path: relative5(harnessDir, path)
   });
   return path;
 }
@@ -11191,7 +11191,7 @@ var init_canonicalHash = __esm({
 });
 
 // src/core/state.ts
-import { existsSync as existsSync3, mkdirSync as mkdirSync5, readFileSync as readFileSync8, statSync as statSync7, writeFileSync as writeFileSync7 } from "node:fs";
+import { existsSync as existsSync3, mkdirSync as mkdirSync5, readFileSync as readFileSync9, statSync as statSync7, writeFileSync as writeFileSync7 } from "node:fs";
 import { dirname as dirname4, join as join9 } from "node:path";
 function nowIso5() {
   const d = /* @__PURE__ */ new Date();
@@ -11263,11 +11263,11 @@ function countDeclaredEvidence(feature, options = {}) {
   }
   return count;
 }
-var import_yaml5, GOAL_STATUSES, FEATURE_STATUSES, GATE_RESULTS, AUTOMATIC_EVIDENCE_KINDS, IRON_LAW_WINDOW_DAYS, State;
+var import_yaml6, GOAL_STATUSES, FEATURE_STATUSES, GATE_RESULTS, AUTOMATIC_EVIDENCE_KINDS, IRON_LAW_WINDOW_DAYS, State;
 var init_state = __esm({
   "src/core/state.ts"() {
     "use strict";
-    import_yaml5 = __toESM(require_dist(), 1);
+    import_yaml6 = __toESM(require_dist(), 1);
     GOAL_STATUSES = [
       "planning",
       "scaffolded",
@@ -11310,8 +11310,8 @@ var init_state = __esm({
         const path = join9(harnessDir, "state.yaml");
         let data;
         if (existsSync3(path) && statSync7(path).isFile()) {
-          const raw = readFileSync8(path, "utf-8");
-          const parsed = (0, import_yaml5.parse)(raw);
+          const raw = readFileSync9(path, "utf-8");
+          const parsed = (0, import_yaml6.parse)(raw);
           if (isPlainObject5(parsed)) {
             data = parsed;
           } else {
@@ -11331,7 +11331,7 @@ var init_state = __esm({
       /** Persist the in-memory shape back to disk. */
       save() {
         mkdirSync5(dirname4(this.path), { recursive: true });
-        const out = (0, import_yaml5.stringify)(this.data, {
+        const out = (0, import_yaml6.stringify)(this.data, {
           // Preserve insertion order — Python's PyYAML used `sort_keys=False`.
           sortMapEntries: false,
           // Avoid extra indent on sequences inside maps so the output stays
@@ -11693,8 +11693,8 @@ var init_state = __esm({
 });
 
 // src/spec/includeExpander.ts
-import { readFileSync as readFileSync9, statSync as statSync8 } from "node:fs";
-import { isAbsolute, join as join10, relative as relative6, resolve as resolvePath2 } from "node:path";
+import { readFileSync as readFileSync10, statSync as statSync8 } from "node:fs";
+import { isAbsolute, join as join10, relative as relative7, resolve as resolvePath3 } from "node:path";
 function isIncludeNode(value) {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     return false;
@@ -11729,12 +11729,12 @@ function readChapter(chaptersDir, rel) {
   }
   let chaptersAbs;
   try {
-    chaptersAbs = resolvePath2(chaptersDir);
+    chaptersAbs = resolvePath3(chaptersDir);
   } catch {
     chaptersAbs = chaptersDir;
   }
-  const target = resolvePath2(chaptersAbs, rel);
-  const relativeFromBase = relative6(chaptersAbs, target);
+  const target = resolvePath3(chaptersAbs, rel);
+  const relativeFromBase = relative7(chaptersAbs, target);
   if (relativeFromBase === "" || relativeFromBase.startsWith("..") || isAbsolute(relativeFromBase)) {
     throw new IncludeError(
       `$include \uACBD\uB85C\uAC00 chapters \uB514\uB809\uD130\uB9AC\uB97C \uBC97\uC5B4\uB0A8: ${rel} \u2192 ${target}`
@@ -11750,7 +11750,7 @@ function readChapter(chaptersDir, rel) {
     throw new IncludeError(`$include \uB300\uC0C1 \uD30C\uC77C \uC5C6\uC74C: ${target}`);
   }
   try {
-    return readFileSync9(target, "utf-8");
+    return readFileSync10(target, "utf-8");
   } catch (err) {
     throw new IncludeError(`$include \uD30C\uC77C \uC77D\uAE30 \uC2E4\uD328 (${target}): ${err.message}`);
   }
@@ -11820,8 +11820,8 @@ var init_includeExpander = __esm({
 
 // src/check.ts
 import { createHash as createHash3 } from "node:crypto";
-import { readFileSync as readFileSync10, readdirSync as readdirSync3, statSync as statSync9 } from "node:fs";
-import { dirname as dirname5, isAbsolute as isAbsolute2, join as join11, relative as relative7, resolve as resolvePath3 } from "node:path";
+import { readFileSync as readFileSync11, readdirSync as readdirSync4, statSync as statSync9 } from "node:fs";
+import { dirname as dirname5, isAbsolute as isAbsolute2, join as join11, relative as relative8, resolve as resolvePath4 } from "node:path";
 function isPlainObject6(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
@@ -11843,14 +11843,14 @@ function isDirectory(path) {
   }
 }
 function fileSha256(path) {
-  return createHash3("sha256").update(readFileSync10(path)).digest("hex");
+  return createHash3("sha256").update(readFileSync11(path)).digest("hex");
 }
 function loadYamlFile(path) {
   if (!isFile5(path)) {
     return null;
   }
   try {
-    const parsed = (0, import_yaml6.parse)(readFileSync10(path, "utf-8"));
+    const parsed = (0, import_yaml7.parse)(readFileSync11(path, "utf-8"));
     return isPlainObject6(parsed) ? parsed : null;
   } catch {
     return null;
@@ -11860,7 +11860,7 @@ function walkFiles(root) {
   const out = [];
   let entries;
   try {
-    entries = readdirSync3(root);
+    entries = readdirSync4(root);
   } catch {
     return out;
   }
@@ -11973,7 +11973,7 @@ function checkSpec(harnessDir, harnessYaml) {
   }
   let parsed;
   try {
-    parsed = (0, import_yaml6.parse)(readFileSync10(specPath, "utf-8"));
+    parsed = (0, import_yaml7.parse)(readFileSync11(specPath, "utf-8"));
   } catch {
     parsed = {};
   }
@@ -11998,7 +11998,7 @@ function checkIncludes(harnessDir, harnessYaml) {
   let current2 = [];
   if (isFile5(specPath)) {
     try {
-      const parsed = (0, import_yaml6.parse)(readFileSync10(specPath, "utf-8"));
+      const parsed = (0, import_yaml7.parse)(readFileSync11(specPath, "utf-8"));
       if (isPlainObject6(parsed)) {
         current2 = findIncludes(parsed).map((item) => item.target);
       }
@@ -12066,7 +12066,7 @@ function checkEvidence(harnessDir) {
 }
 function checkCode(harnessDir, spec, projectRoot = null) {
   const findings = [];
-  const root = projectRoot ?? resolvePath3(harnessDir, "..");
+  const root = projectRoot ?? resolvePath4(harnessDir, "..");
   const features = asArray2(spec["features"]);
   for (const f of features) {
     if (!isPlainObject6(f)) {
@@ -12082,7 +12082,7 @@ function checkCode(harnessDir, spec, projectRoot = null) {
       if (typeof src !== "string" || src.trim().length === 0) {
         continue;
       }
-      const target = resolvePath3(root, src);
+      const target = resolvePath4(root, src);
       if (!isFile5(target)) {
         const name = typeof m["name"] === "string" ? m["name"] : "?";
         findings.push({
@@ -12098,12 +12098,12 @@ function checkCode(harnessDir, spec, projectRoot = null) {
 }
 function checkDoc(harnessDir, projectRoot = null) {
   const findings = [];
-  const root = projectRoot ?? resolvePath3(harnessDir, "..");
+  const root = projectRoot ?? resolvePath4(harnessDir, "..");
   const claudeMd = join11(root, "CLAUDE.md");
   if (isFile5(claudeMd)) {
     let text = "";
     try {
-      text = readFileSync10(claudeMd, "utf-8");
+      text = readFileSync11(claudeMd, "utf-8");
     } catch {
       text = "";
     }
@@ -12114,7 +12114,7 @@ function checkDoc(harnessDir, projectRoot = null) {
       if (!rel || rel.startsWith("http://") || rel.startsWith("https://")) {
         continue;
       }
-      const target = isAbsolute2(rel) ? rel : resolvePath3(root, rel);
+      const target = isAbsolute2(rel) ? rel : resolvePath4(root, rel);
       try {
         statSync9(target);
       } catch {
@@ -12418,7 +12418,7 @@ function checkProtocol(harnessDir) {
   }
   let entries;
   try {
-    entries = readdirSync3(protoDir).sort();
+    entries = readdirSync4(protoDir).sort();
   } catch {
     return findings;
   }
@@ -12429,11 +12429,11 @@ function checkProtocol(harnessDir) {
     const md = join11(protoDir, name);
     let text;
     try {
-      text = readFileSync10(md, "utf-8");
+      text = readFileSync11(md, "utf-8");
     } catch {
       findings.push({
         kind: "Protocol",
-        path: relative7(harnessDir, md),
+        path: relative8(harnessDir, md),
         message: "\uD30C\uC77C \uC77D\uAE30 \uC2E4\uD328",
         severity: "error"
       });
@@ -12443,7 +12443,7 @@ function checkProtocol(harnessDir) {
     if (match === null) {
       findings.push({
         kind: "Protocol",
-        path: relative7(harnessDir, md),
+        path: relative8(harnessDir, md),
         message: "YAML frontmatter \uBD80\uC7AC \u2014 `---` \uB85C \uC2DC\uC791/\uC885\uB8CC\uB418\uB294 \uBE14\uB85D \uD544\uC694",
         severity: "error"
       });
@@ -12451,11 +12451,11 @@ function checkProtocol(harnessDir) {
     }
     let fm;
     try {
-      fm = (0, import_yaml6.parse)(match[1]);
+      fm = (0, import_yaml7.parse)(match[1]);
     } catch (err) {
       findings.push({
         kind: "Protocol",
-        path: relative7(harnessDir, md),
+        path: relative8(harnessDir, md),
         message: `frontmatter YAML \uD30C\uC2F1 \uC2E4\uD328: ${err.message}`,
         severity: "error"
       });
@@ -12464,7 +12464,7 @@ function checkProtocol(harnessDir) {
     if (!isPlainObject6(fm)) {
       findings.push({
         kind: "Protocol",
-        path: relative7(harnessDir, md),
+        path: relative8(harnessDir, md),
         message: "frontmatter \uAC00 mapping \uC774 \uC544\uB2D8",
         severity: "error"
       });
@@ -12474,7 +12474,7 @@ function checkProtocol(harnessDir) {
     if (typeof pid !== "string" || pid.length === 0) {
       findings.push({
         kind: "Protocol",
-        path: relative7(harnessDir, md),
+        path: relative8(harnessDir, md),
         message: "frontmatter.protocol_id \uB204\uB77D \uB610\uB294 \uBE48 \uAC12",
         severity: "error"
       });
@@ -12484,7 +12484,7 @@ function checkProtocol(harnessDir) {
     if (pid !== expected) {
       findings.push({
         kind: "Protocol",
-        path: relative7(harnessDir, md),
+        path: relative8(harnessDir, md),
         message: `protocol_id ('${pid}') \uAC00 \uD30C\uC77C\uBA85 stem ('${expected}') \uACFC \uBD88\uC77C\uCE58 \u2014 F-017 AC-2 \uC704\uBC18`,
         severity: "error"
       });
@@ -12494,7 +12494,7 @@ function checkProtocol(harnessDir) {
 }
 function checkStale(harnessDir, spec, projectRoot = null) {
   const findings = [];
-  const root = projectRoot ?? resolvePath3(harnessDir, "..");
+  const root = projectRoot ?? resolvePath4(harnessDir, "..");
   const features = asArray2(spec["features"]);
   const srcRoot = join11(root, "src");
   if (!isDirectory(srcRoot)) {
@@ -12521,7 +12521,7 @@ function checkStale(harnessDir, spec, projectRoot = null) {
       if (typeof src !== "string" || src.trim().length === 0) {
         continue;
       }
-      const target = resolvePath3(root, src);
+      const target = resolvePath4(root, src);
       if (isFile5(target)) {
         declaredSources.push(target);
       }
@@ -12540,7 +12540,7 @@ function checkStale(harnessDir, spec, projectRoot = null) {
         }
         let text;
         try {
-          text = readFileSync10(sf, "utf-8");
+          text = readFileSync11(sf, "utf-8");
         } catch {
           continue;
         }
@@ -12556,7 +12556,7 @@ function checkStale(harnessDir, spec, projectRoot = null) {
       if (!referenced) {
         let relStr;
         try {
-          relStr = relative7(root, target);
+          relStr = relative8(root, target);
         } catch {
           relStr = base;
         }
@@ -12573,7 +12573,7 @@ function checkStale(harnessDir, spec, projectRoot = null) {
 }
 function checkAnchorIntegration(harnessDir, spec, projectRoot = null) {
   const findings = [];
-  const root = projectRoot ?? resolvePath3(harnessDir, "..");
+  const root = projectRoot ?? resolvePath4(harnessDir, "..");
   const features = asArray2(spec["features"]);
   for (const f of features) {
     if (!isPlainObject6(f)) {
@@ -12599,7 +12599,7 @@ function checkAnchorIntegration(harnessDir, spec, projectRoot = null) {
       if (typeof src !== "string" || src.trim().length === 0) {
         continue;
       }
-      const target = resolvePath3(root, src);
+      const target = resolvePath4(root, src);
       if (isFile5(target)) {
         declaredSources.push(target);
       }
@@ -12613,7 +12613,7 @@ function checkAnchorIntegration(harnessDir, spec, projectRoot = null) {
       if (typeof anchor !== "string" || anchor.trim().length === 0) {
         continue;
       }
-      const ap = resolvePath3(root, anchor);
+      const ap = resolvePath4(root, anchor);
       if (!isFile5(ap)) {
         findings.push({
           kind: "AnchorIntegration",
@@ -12630,7 +12630,7 @@ function checkAnchorIntegration(harnessDir, spec, projectRoot = null) {
     }
     const anchorRels = anchorPaths.map((p) => {
       try {
-        return relative7(root, p);
+        return relative8(root, p);
       } catch {
         return p;
       }
@@ -12641,7 +12641,7 @@ function checkAnchorIntegration(harnessDir, spec, projectRoot = null) {
       const stem = base.replace(/\.[^.]+$/, "");
       let relStr;
       try {
-        relStr = relative7(root, target);
+        relStr = relative8(root, target);
       } catch {
         relStr = base;
       }
@@ -12649,7 +12649,7 @@ function checkAnchorIntegration(harnessDir, spec, projectRoot = null) {
       for (const ap of anchorPaths) {
         let text;
         try {
-          text = readFileSync10(ap, "utf-8");
+          text = readFileSync11(ap, "utf-8");
         } catch {
           continue;
         }
@@ -12684,7 +12684,7 @@ function checkSpecCoverage(harnessDir, _specYaml) {
   const harnessYamlPath = join11(harnessDir, "harness.yaml");
   if (isFile5(harnessYamlPath)) {
     try {
-      const cfg = (0, import_yaml6.parse)(readFileSync10(harnessYamlPath, "utf-8"));
+      const cfg = (0, import_yaml7.parse)(readFileSync11(harnessYamlPath, "utf-8"));
       if (isPlainObject6(cfg)) {
         const coverage = cfg["coverage"];
         if (isPlainObject6(coverage)) {
@@ -12702,7 +12702,7 @@ function checkSpecCoverage(harnessDir, _specYaml) {
   }
   let entries;
   try {
-    entries = readdirSync3(covDir).sort();
+    entries = readdirSync4(covDir).sort();
   } catch {
     return findings;
   }
@@ -12713,7 +12713,7 @@ function checkSpecCoverage(harnessDir, _specYaml) {
     const fpPath = join11(covDir, name);
     let fp;
     try {
-      fp = (0, import_yaml6.parse)(readFileSync10(fpPath, "utf-8"));
+      fp = (0, import_yaml7.parse)(readFileSync11(fpPath, "utf-8"));
     } catch {
       continue;
     }
@@ -12811,11 +12811,11 @@ function formatHuman(report) {
   return `${lines.join("\n")}
 `;
 }
-var import_yaml6, FEATURE_ID_PATTERN, CLAUDE_IMPORT_PATTERN, PROTOCOL_FRONTMATTER, DEFAULT_COVERAGE_THRESHOLD;
+var import_yaml7, FEATURE_ID_PATTERN, CLAUDE_IMPORT_PATTERN, PROTOCOL_FRONTMATTER, DEFAULT_COVERAGE_THRESHOLD;
 var init_check = __esm({
   "src/check.ts"() {
     "use strict";
-    import_yaml6 = __toESM(require_dist(), 1);
+    import_yaml7 = __toESM(require_dist(), 1);
     init_canonicalHash();
     init_state();
     init_includeExpander();
@@ -16609,49 +16609,49 @@ var require_fast_uri = __commonJS({
       schemelessOptions.skipEscape = true;
       return serialize(resolved, schemelessOptions);
     }
-    function resolveComponent(base, relative8, options, skipNormalization) {
+    function resolveComponent(base, relative9, options, skipNormalization) {
       const target = {};
       if (!skipNormalization) {
         base = parse2(serialize(base, options), options);
-        relative8 = parse2(serialize(relative8, options), options);
+        relative9 = parse2(serialize(relative9, options), options);
       }
       options = options || {};
-      if (!options.tolerant && relative8.scheme) {
-        target.scheme = relative8.scheme;
-        target.userinfo = relative8.userinfo;
-        target.host = relative8.host;
-        target.port = relative8.port;
-        target.path = removeDotSegments(relative8.path || "");
-        target.query = relative8.query;
+      if (!options.tolerant && relative9.scheme) {
+        target.scheme = relative9.scheme;
+        target.userinfo = relative9.userinfo;
+        target.host = relative9.host;
+        target.port = relative9.port;
+        target.path = removeDotSegments(relative9.path || "");
+        target.query = relative9.query;
       } else {
-        if (relative8.userinfo !== void 0 || relative8.host !== void 0 || relative8.port !== void 0) {
-          target.userinfo = relative8.userinfo;
-          target.host = relative8.host;
-          target.port = relative8.port;
-          target.path = removeDotSegments(relative8.path || "");
-          target.query = relative8.query;
+        if (relative9.userinfo !== void 0 || relative9.host !== void 0 || relative9.port !== void 0) {
+          target.userinfo = relative9.userinfo;
+          target.host = relative9.host;
+          target.port = relative9.port;
+          target.path = removeDotSegments(relative9.path || "");
+          target.query = relative9.query;
         } else {
-          if (!relative8.path) {
+          if (!relative9.path) {
             target.path = base.path;
-            if (relative8.query !== void 0) {
-              target.query = relative8.query;
+            if (relative9.query !== void 0) {
+              target.query = relative9.query;
             } else {
               target.query = base.query;
             }
           } else {
-            if (relative8.path[0] === "/") {
-              target.path = removeDotSegments(relative8.path);
+            if (relative9.path[0] === "/") {
+              target.path = removeDotSegments(relative9.path);
             } else {
               if ((base.userinfo !== void 0 || base.host !== void 0 || base.port !== void 0) && !base.path) {
-                target.path = "/" + relative8.path;
+                target.path = "/" + relative9.path;
               } else if (!base.path) {
-                target.path = relative8.path;
+                target.path = relative9.path;
               } else {
-                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative8.path;
+                target.path = base.path.slice(0, base.path.lastIndexOf("/") + 1) + relative9.path;
               }
               target.path = removeDotSegments(target.path);
             }
-            target.query = relative8.query;
+            target.query = relative9.query;
           }
           target.userinfo = base.userinfo;
           target.host = base.host;
@@ -16659,7 +16659,7 @@ var require_fast_uri = __commonJS({
         }
         target.scheme = base.scheme;
       }
-      target.fragment = relative8.fragment;
+      target.fragment = relative9.fragment;
       return target;
     }
     function equal(uriA, uriB, options) {
@@ -20644,11 +20644,11 @@ var require_dist2 = __commonJS({
 });
 
 // src/spec/validate.ts
-import { readFileSync as readFileSync13, statSync as statSync12 } from "node:fs";
-import { dirname as dirname6, join as join14, resolve as resolvePath4 } from "node:path";
+import { readFileSync as readFileSync14, statSync as statSync12 } from "node:fs";
+import { dirname as dirname6, join as join14, resolve as resolvePath5 } from "node:path";
 import { fileURLToPath } from "node:url";
 function defaultSchemaPath() {
-  const repoRoot = resolvePath4(__dirname, "..", "..");
+  const repoRoot = resolvePath5(__dirname, "..", "..");
   return join14(repoRoot, "docs", "schemas", "spec.schema.json");
 }
 function getValidator(schemaPath) {
@@ -20657,7 +20657,7 @@ function getValidator(schemaPath) {
   if (ajvCache !== null && ajvCache.schemaPath === schemaPath && ajvCache.schemaMtime === mtime) {
     return ajvCache.fn;
   }
-  const schemaText = readFileSync13(schemaPath, "utf-8");
+  const schemaText = readFileSync14(schemaPath, "utf-8");
   const schema = JSON.parse(schemaText);
   const ajv = new Ajv2020Ctor({ allErrors: false, strict: false });
   addFormats(ajv);
@@ -20668,7 +20668,7 @@ function getValidator(schemaPath) {
 function loadSpec(specPath) {
   let raw;
   try {
-    raw = readFileSync13(specPath, "utf-8");
+    raw = readFileSync14(specPath, "utf-8");
   } catch (err) {
     throw new SpecValidationError(
       `${specPath}: ${err.message}`,
@@ -20678,7 +20678,7 @@ function loadSpec(specPath) {
   }
   let parsed;
   try {
-    parsed = (0, import_yaml8.parse)(raw);
+    parsed = (0, import_yaml9.parse)(raw);
   } catch (err) {
     throw new SpecValidationError(
       `${specPath}: ${err.message}`,
@@ -20747,13 +20747,13 @@ function validate(spec, schemaPath = null) {
     first.keyword
   );
 }
-var import__, import_ajv_formats, import_yaml8, Ajv2020Ctor, addFormats, __filename, __dirname, SpecValidationError, ajvCache;
+var import__, import_ajv_formats, import_yaml9, Ajv2020Ctor, addFormats, __filename, __dirname, SpecValidationError, ajvCache;
 var init_validate = __esm({
   "src/spec/validate.ts"() {
     "use strict";
     import__ = __toESM(require__(), 1);
     import_ajv_formats = __toESM(require_dist2(), 1);
-    import_yaml8 = __toESM(require_dist(), 1);
+    import_yaml9 = __toESM(require_dist(), 1);
     Ajv2020Ctor = import__.default.default ?? import__.default;
     addFormats = import_ajv_formats.default.default ?? import_ajv_formats.default;
     __filename = fileURLToPath(import.meta.url);
@@ -20773,16 +20773,16 @@ var init_validate = __esm({
 });
 
 // src/core/pluginRoot.ts
-import { existsSync as existsSync4, readFileSync as readFileSync16, realpathSync, statSync as statSync14 } from "node:fs";
+import { existsSync as existsSync4, readFileSync as readFileSync17, realpathSync, statSync as statSync14 } from "node:fs";
 import { homedir } from "node:os";
-import { delimiter as pathDelimiter, join as join17, resolve as resolvePath5 } from "node:path";
+import { delimiter as pathDelimiter, join as join17, resolve as resolvePath6 } from "node:path";
 function loadPluginJson(root) {
   const manifest = join17(root, ".claude-plugin", "plugin.json");
   try {
     if (!statSync14(manifest).isFile()) {
       return null;
     }
-    const raw = readFileSync16(manifest, "utf-8");
+    const raw = readFileSync17(manifest, "utf-8");
     const parsed = JSON.parse(raw);
     if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
       return null;
@@ -20819,7 +20819,7 @@ function _strategyPathBin(pluginName) {
     if (!trimmed.endsWith("/bin")) {
       continue;
     }
-    const candidate = resolvePath5(entry, "..");
+    const candidate = resolvePath6(entry, "..");
     const real = tryRealpath(candidate);
     if (real === null) {
       continue;
@@ -20838,7 +20838,7 @@ function _strategyRegistry(pluginName) {
     if (!statSync14(registry).isFile()) {
       return null;
     }
-    parsed = JSON.parse(readFileSync16(registry, "utf-8"));
+    parsed = JSON.parse(readFileSync17(registry, "utf-8"));
   } catch {
     return null;
   }
@@ -20879,7 +20879,7 @@ function _strategyMarketplaceSource(pluginName) {
     if (!statSync14(settings).isFile()) {
       return null;
     }
-    parsed = JSON.parse(readFileSync16(settings, "utf-8"));
+    parsed = JSON.parse(readFileSync17(settings, "utf-8"));
   } catch {
     return null;
   }
@@ -20915,7 +20915,7 @@ function _strategyMarketplaceSource(pluginName) {
       if (!statSync14(mpManifestPath).isFile()) {
         continue;
       }
-      mpData = JSON.parse(readFileSync16(mpManifestPath, "utf-8"));
+      mpData = JSON.parse(readFileSync17(mpManifestPath, "utf-8"));
     } catch {
       continue;
     }
@@ -20937,7 +20937,7 @@ function _strategyMarketplaceSource(pluginName) {
       if (typeof pluginSrc !== "string") {
         continue;
       }
-      const candidate = resolvePath5(mpRoot, pluginSrc);
+      const candidate = resolvePath6(mpRoot, pluginSrc);
       if (isDirectory2(candidate)) {
         return tryRealpath(candidate) ?? candidate;
       }
@@ -20989,7 +20989,7 @@ var init_pluginRoot = __esm({
 });
 
 // src/spec/archive.ts
-import { existsSync as existsSync5, readFileSync as readFileSync17, writeFileSync as writeFileSync9 } from "node:fs";
+import { existsSync as existsSync5, readFileSync as readFileSync18, writeFileSync as writeFileSync9 } from "node:fs";
 import { join as join18 } from "node:path";
 function condenseWhitespace(value) {
   return value.trim().replace(/\s+/g, " ");
@@ -21011,7 +21011,7 @@ function blankArchive() {
 function moveToArchive(harnessDir, fid) {
   const specPath = join18(harnessDir, "spec.yaml");
   const archivePath = join18(harnessDir, "spec.archive.yaml");
-  const spec = (0, import_yaml11.parse)(readFileSync17(specPath, "utf-8"));
+  const spec = (0, import_yaml12.parse)(readFileSync18(specPath, "utf-8"));
   if (spec === null || typeof spec !== "object" || Array.isArray(spec)) {
     return;
   }
@@ -21033,10 +21033,10 @@ function moveToArchive(harnessDir, fid) {
   for (const key of BODY_KEYS) {
     delete liveEntry[key];
   }
-  writeFileSync9(specPath, (0, import_yaml11.stringify)(spec), "utf-8");
+  writeFileSync9(specPath, (0, import_yaml12.stringify)(spec), "utf-8");
   const archive2 = loadArchive(archivePath);
   upsertArchiveEntry(archive2, fid, body);
-  writeFileSync9(archivePath, (0, import_yaml11.stringify)(archive2), "utf-8");
+  writeFileSync9(archivePath, (0, import_yaml12.stringify)(archive2), "utf-8");
 }
 function extractBody(entry) {
   const description = entry["description"];
@@ -21059,7 +21059,7 @@ function loadArchive(archivePath) {
   if (!existsSync5(archivePath)) {
     return blankArchive();
   }
-  const parsed = (0, import_yaml11.parse)(readFileSync17(archivePath, "utf-8"));
+  const parsed = (0, import_yaml12.parse)(readFileSync18(archivePath, "utf-8"));
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
     return blankArchive();
   }
@@ -21086,7 +21086,7 @@ function bulkMigrate(harnessDir) {
   if (!existsSync5(statePath) || !existsSync5(specPath)) {
     return 0;
   }
-  const state = (0, import_yaml11.parse)(readFileSync17(statePath, "utf-8"));
+  const state = (0, import_yaml12.parse)(readFileSync18(statePath, "utf-8"));
   if (state === null || typeof state !== "object" || Array.isArray(state)) {
     return 0;
   }
@@ -21094,7 +21094,7 @@ function bulkMigrate(harnessDir) {
   if (!Array.isArray(stateFeatures)) {
     return 0;
   }
-  const spec = (0, import_yaml11.parse)(readFileSync17(specPath, "utf-8"));
+  const spec = (0, import_yaml12.parse)(readFileSync18(specPath, "utf-8"));
   if (spec === null || typeof spec !== "object" || Array.isArray(spec)) {
     return 0;
   }
@@ -21136,7 +21136,7 @@ function autoArchiveOpenQuestions(harnessDir, options = {}) {
   if (!existsSync5(specPath)) {
     return 0;
   }
-  const spec = (0, import_yaml11.parse)(readFileSync17(specPath, "utf-8"));
+  const spec = (0, import_yaml12.parse)(readFileSync18(specPath, "utf-8"));
   if (spec === null || typeof spec !== "object" || Array.isArray(spec)) {
     return 0;
   }
@@ -21189,8 +21189,8 @@ function autoArchiveOpenQuestions(harnessDir, options = {}) {
     }
   }
   spec["open_questions"] = remaining;
-  writeFileSync9(specPath, (0, import_yaml11.stringify)(spec), "utf-8");
-  writeFileSync9(archivePath, (0, import_yaml11.stringify)(archive2), "utf-8");
+  writeFileSync9(specPath, (0, import_yaml12.stringify)(spec), "utf-8");
+  writeFileSync9(archivePath, (0, import_yaml12.stringify)(archive2), "utf-8");
   return eligible.length;
 }
 function isPlainRecord(value) {
@@ -21209,11 +21209,11 @@ function pickResolvedTimestamp(entry) {
   }
   return null;
 }
-var import_yaml11, BODY_KEYS, DIGEST_AUTO_LIMIT, SHIPPED_STATUSES2, DEFAULT_OPEN_QUESTION_ARCHIVE_AGE_DAYS;
+var import_yaml12, BODY_KEYS, DIGEST_AUTO_LIMIT, SHIPPED_STATUSES2, DEFAULT_OPEN_QUESTION_ARCHIVE_AGE_DAYS;
 var init_archive = __esm({
   "src/spec/archive.ts"() {
     "use strict";
-    import_yaml11 = __toESM(require_dist(), 1);
+    import_yaml12 = __toESM(require_dist(), 1);
     BODY_KEYS = ["description", "acceptance_criteria"];
     DIGEST_AUTO_LIMIT = 120;
     SHIPPED_STATUSES2 = /* @__PURE__ */ new Set(["done", "archived"]);
@@ -21352,17 +21352,17 @@ function render2(spec, options = {}) {
   if (graph.length > 0) {
     out["feature_graph"] = graph;
   }
-  return (0, import_yaml12.stringify)(out, {
+  return (0, import_yaml13.stringify)(out, {
     sortMapEntries: false,
     indentSeq: false,
     lineWidth: 0
   });
 }
-var import_yaml12;
+var import_yaml13;
 var init_architecture = __esm({
   "src/render/architecture.ts"() {
     "use strict";
-    import_yaml12 = __toESM(require_dist(), 1);
+    import_yaml13 = __toESM(require_dist(), 1);
   }
 });
 
@@ -21733,18 +21733,18 @@ function stringifyValue(value) {
   }
   return String(value);
 }
-var import_yaml13;
+var import_yaml14;
 var init_domain = __esm({
   "src/render/domain.ts"() {
     "use strict";
-    import_yaml13 = __toESM(require_dist(), 1);
+    import_yaml14 = __toESM(require_dist(), 1);
   }
 });
 
 // src/sync.ts
 import { createHash as createHash4 } from "node:crypto";
-import { appendFileSync as appendFileSync6, mkdirSync as mkdirSync6, readFileSync as readFileSync18, statSync as statSync15, writeFileSync as writeFileSync10 } from "node:fs";
-import { dirname as dirname7, join as join19, resolve as resolvePath6 } from "node:path";
+import { appendFileSync as appendFileSync6, mkdirSync as mkdirSync6, readFileSync as readFileSync19, statSync as statSync15, writeFileSync as writeFileSync10 } from "node:fs";
+import { dirname as dirname7, join as join19, resolve as resolvePath7 } from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 import { spawnSync } from "node:child_process";
 function nowIso8() {
@@ -21768,7 +21768,7 @@ function isPlainObject12(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 function fileSha2562(path) {
-  return createHash4("sha256").update(readFileSync18(path)).digest("hex");
+  return createHash4("sha256").update(readFileSync19(path)).digest("hex");
 }
 function stringSha256(text) {
   return createHash4("sha256").update(text, "utf-8").digest("hex");
@@ -21777,12 +21777,12 @@ function loadYamlFile2(path) {
   if (!isFile7(path)) {
     return {};
   }
-  const parsed = (0, import_yaml14.parse)(readFileSync18(path, "utf-8"));
+  const parsed = (0, import_yaml15.parse)(readFileSync19(path, "utf-8"));
   return isPlainObject12(parsed) ? parsed : {};
 }
 function dumpYamlFile(path, data) {
   mkdirSync6(dirname7(path), { recursive: true });
-  const out = (0, import_yaml14.stringify)(data, {
+  const out = (0, import_yaml15.stringify)(data, {
     sortMapEntries: false,
     indentSeq: false,
     lineWidth: 0
@@ -21833,13 +21833,13 @@ function editWins(outputPath, previousOutputHash) {
   return fileSha2562(outputPath) !== previousOutputHash;
 }
 function scriptRepoVersion() {
-  const repo = resolvePath6(__dirname2, "..");
+  const repo = resolvePath7(__dirname2, "..");
   const manifest = join19(repo, ".claude-plugin", "plugin.json");
   if (!isFile7(manifest)) {
     return null;
   }
   try {
-    const parsed = JSON.parse(readFileSync18(manifest, "utf-8"));
+    const parsed = JSON.parse(readFileSync19(manifest, "utf-8"));
     if (isPlainObject12(parsed) && typeof parsed["version"] === "string") {
       return parsed["version"];
     }
@@ -21853,10 +21853,10 @@ function pluginVersion(harnessDir) {
   if (v) {
     return v;
   }
-  const candidates = [resolvePath6(harnessDir, ".."), process.cwd()];
+  const candidates = [resolvePath7(harnessDir, ".."), process.cwd()];
   let cur = process.cwd();
   while (true) {
-    const next = resolvePath6(cur, "..");
+    const next = resolvePath7(cur, "..");
     if (next === cur) {
       break;
     }
@@ -21869,7 +21869,7 @@ function pluginVersion(harnessDir) {
       continue;
     }
     try {
-      const parsed = JSON.parse(readFileSync18(manifest, "utf-8"));
+      const parsed = JSON.parse(readFileSync19(manifest, "utf-8"));
       if (isPlainObject12(parsed) && typeof parsed["version"] === "string") {
         return parsed["version"];
       }
@@ -21881,7 +21881,7 @@ function pluginVersion(harnessDir) {
     const root = resolve().root;
     const manifest = join19(root, ".claude-plugin", "plugin.json");
     if (isFile7(manifest)) {
-      const parsed = JSON.parse(readFileSync18(manifest, "utf-8"));
+      const parsed = JSON.parse(readFileSync19(manifest, "utf-8"));
       if (isPlainObject12(parsed) && typeof parsed["version"] === "string") {
         return parsed["version"];
       }
@@ -22037,7 +22037,7 @@ function run(harnessDir, options = {}) {
   } else if (options.noArchiveMigrate || harnessYaml.archive?.auto_migrate === false) {
     archiveSkipReason = "opt_out";
   } else {
-    const projectRoot = resolvePath6(harnessDir, "..");
+    const projectRoot = resolvePath7(harnessDir, "..");
     if (workingTreeDirty(projectRoot)) {
       archiveSkipReason = "dirty_tree";
       process.stderr.write(
@@ -22148,11 +22148,11 @@ function tryInitialSync(harnessDir) {
     return { ok: false, reason: `${cls}: ${msg}` };
   }
 }
-var import_yaml14, __filename2, __dirname2;
+var import_yaml15, __filename2, __dirname2;
 var init_sync = __esm({
   "src/sync.ts"() {
     "use strict";
-    import_yaml14 = __toESM(require_dist(), 1);
+    import_yaml15 = __toESM(require_dist(), 1);
     init_canonicalHash();
     init_pluginRoot();
     init_archive();
@@ -22167,7 +22167,7 @@ var init_sync = __esm({
 
 // src/gate/runner.ts
 import { spawnSync as spawnSync2 } from "node:child_process";
-import { existsSync as existsSync6, readFileSync as readFileSync19, readdirSync as readdirSync5, statSync as statSync16 } from "node:fs";
+import { existsSync as existsSync6, readFileSync as readFileSync20, readdirSync as readdirSync6, statSync as statSync16 } from "node:fs";
 import { delimiter as pathDelimiter2, join as join20, sep as pathSep } from "node:path";
 function which(bin) {
   const pathEnv = process.env["PATH"] ?? "";
@@ -22240,7 +22240,7 @@ function npmScriptCommand(projectRoot, scriptName) {
   }
   let parsed;
   try {
-    parsed = JSON.parse(readFileSync19(pkg, "utf-8"));
+    parsed = JSON.parse(readFileSync20(pkg, "utf-8"));
   } catch {
     return null;
   }
@@ -22263,7 +22263,7 @@ function detectGate0Command(projectRoot) {
   const pyproject = join20(projectRoot, "pyproject.toml");
   if (isFile8(pyproject)) {
     try {
-      const text = readFileSync19(pyproject, "utf-8");
+      const text = readFileSync20(pyproject, "utf-8");
       if (text.includes("[tool.pytest")) {
         const cmd = pytestCommand();
         if (cmd !== null) {
@@ -22293,7 +22293,7 @@ function detectGate0Command(projectRoot) {
     }
     let entries;
     try {
-      entries = readdirSync5(testsDir).sort();
+      entries = readdirSync6(testsDir).sort();
     } catch {
       entries = [];
     }
@@ -22308,7 +22308,7 @@ function detectGate0Command(projectRoot) {
   const makefile = join20(projectRoot, "Makefile");
   if (isFile8(makefile)) {
     try {
-      for (const line of readFileSync19(makefile, "utf-8").split("\n")) {
+      for (const line of readFileSync20(makefile, "utf-8").split("\n")) {
         if (line.trim().startsWith("test:")) {
           if (which("make") !== null) {
             return ["make", "test"];
@@ -22331,7 +22331,7 @@ function detectGate0Command(projectRoot) {
 }
 function hasTestFiles(dir) {
   try {
-    return readdirSync5(dir).some(
+    return readdirSync6(dir).some(
       (name) => name.startsWith("test_") && name.endsWith(".py") && isFile8(join20(dir, name))
     );
   } catch {
@@ -22429,7 +22429,7 @@ function detectGate3Command(projectRoot) {
     const cmd = pytestCommand();
     if (cmd !== null) {
       try {
-        const text = readFileSync19(pyproject, "utf-8");
+        const text = readFileSync20(pyproject, "utf-8");
         if (text.includes("pytest-cov") || text.includes("[tool.coverage")) {
           return [...cmd, "--cov"];
         }
@@ -22523,7 +22523,7 @@ function detectGate5Command(projectRoot) {
   const makefile = join20(projectRoot, "Makefile");
   if (isFile8(makefile)) {
     try {
-      for (const line of readFileSync19(makefile, "utf-8").split("\n")) {
+      for (const line of readFileSync20(makefile, "utf-8").split("\n")) {
         if (line.trim().startsWith("smoke:")) {
           if (which("make") !== null) {
             return ["make", "smoke"];
@@ -22549,7 +22549,7 @@ function harnessYamlOverride(harnessDir, gate) {
   }
   let data;
   try {
-    data = (0, import_yaml15.parse)(readFileSync19(path, "utf-8"));
+    data = (0, import_yaml16.parse)(readFileSync20(path, "utf-8"));
   } catch {
     return null;
   }
@@ -22802,11 +22802,11 @@ function runGate(gate, projectRoot, options = {}) {
       );
   }
 }
-var import_yaml15, DEFAULT_TIMEOUT_SEC, PW_CONFIG_NAMES, CY_CONFIG_NAMES;
+var import_yaml16, DEFAULT_TIMEOUT_SEC, PW_CONFIG_NAMES, CY_CONFIG_NAMES;
 var init_runner = __esm({
   "src/gate/runner.ts"() {
     "use strict";
-    import_yaml15 = __toESM(require_dist(), 1);
+    import_yaml16 = __toESM(require_dist(), 1);
     DEFAULT_TIMEOUT_SEC = 300;
     PW_CONFIG_NAMES = [
       "playwright.config.ts",
@@ -22824,8 +22824,8 @@ var init_runner = __esm({
 });
 
 // src/work.ts
-import { appendFileSync as appendFileSync7, mkdirSync as mkdirSync7, readFileSync as readFileSync20, statSync as statSync17, writeFileSync as writeFileSync11 } from "node:fs";
-import { dirname as dirname8, join as join21, resolve as resolvePath7 } from "node:path";
+import { appendFileSync as appendFileSync7, mkdirSync as mkdirSync7, readFileSync as readFileSync21, statSync as statSync17, writeFileSync as writeFileSync11 } from "node:fs";
+import { dirname as dirname8, join as join21, resolve as resolvePath8 } from "node:path";
 import { spawnSync as spawnSync3 } from "node:child_process";
 function friendlyGate(gateName) {
   const label = GATE_FRIENDLY[gateName];
@@ -22890,7 +22890,7 @@ function loadSpec2(harnessDir) {
     return null;
   }
   try {
-    const parsed = (0, import_yaml16.parse)(readFileSync20(path, "utf-8"));
+    const parsed = (0, import_yaml17.parse)(readFileSync21(path, "utf-8"));
     return isPlainObject13(parsed) ? parsed : null;
   } catch {
     return null;
@@ -22974,7 +22974,7 @@ function autowireDraftPromotion(harnessDir) {
   const specPath = join21(harnessDir, "spec.yaml");
   let body;
   try {
-    body = readFileSync20(specPath, "utf8");
+    body = readFileSync21(specPath, "utf8");
   } catch {
     return;
   }
@@ -22982,13 +22982,13 @@ function autowireDraftPromotion(harnessDir) {
   const matches = specMatchesRecordedHash(body);
   if (matches === null || matches === true) return;
   try {
-    const parsed = (0, import_yaml16.parse)(body);
+    const parsed = (0, import_yaml17.parse)(body);
     if (!parsed || typeof parsed !== "object") return;
     const metadata = parsed["metadata"] ?? {};
     metadata["draft"] = false;
     delete metadata["content_hash"];
     parsed["metadata"] = metadata;
-    writeFileSync11(specPath, (0, import_yaml16.stringify)(parsed, { sortMapEntries: true }), "utf8");
+    writeFileSync11(specPath, (0, import_yaml17.stringify)(parsed, { sortMapEntries: true }), "utf8");
     appendEvent5(harnessDir, {
       ts: nowIso9(),
       type: "spec_promoted",
@@ -23267,7 +23267,7 @@ function complete(harnessDir, fid, options = {}) {
     res2.message = `cannot complete \u2014 ${friendlyGate("gate_5")} is not PASS yet`;
     return res2;
   }
-  const projectRoot = resolvePath7(harnessDir, "..");
+  const projectRoot = resolvePath8(harnessDir, "..");
   if (projectIsGitRepo(projectRoot) && workingTreeDirty2(projectRoot)) {
     const res2 = summarize(state, fid);
     res2.action = "queried";
@@ -23546,7 +23546,7 @@ function formatPerformanceBudget(budget) {
   return parts.join(" \xB7 ");
 }
 function runAndRecordGate(harnessDir, fid, gateName, options = {}) {
-  const projectRoot = options.projectRoot ?? resolvePath7(harnessDir, "..");
+  const projectRoot = options.projectRoot ?? resolvePath8(harnessDir, "..");
   const addEvidenceOnPass = options.addEvidenceOnPass ?? true;
   const runResult = runGate(gateName, projectRoot, {
     overrideCommand: options.overrideCommand ?? null,
@@ -23594,11 +23594,11 @@ function runAndRecordGate(harnessDir, fid, gateName, options = {}) {
   res.message = `${friendlyGate(gateName)} ${runResult.result.toUpperCase()}` + (runResult.reason ? ` \u2014 ${runResult.reason}` : "");
   return res;
 }
-var import_yaml16, GATE_FRIENDLY, IRON_LAW_REQUIRED, BLOCKING_DRIFT_KINDS, PERF_MARKER_KINDS;
+var import_yaml17, GATE_FRIENDLY, IRON_LAW_REQUIRED, BLOCKING_DRIFT_KINDS, PERF_MARKER_KINDS;
 var init_work = __esm({
   "src/work.ts"() {
     "use strict";
-    import_yaml16 = __toESM(require_dist(), 1);
+    import_yaml17 = __toESM(require_dist(), 1);
     init_check();
     init_gates();
     init_projectMode();
@@ -23632,7 +23632,7 @@ var init_work = __esm({
 
 // src/drive/goalStore.ts
 import { createHash as createHash5 } from "node:crypto";
-import { readFileSync as readFileSync21, writeFileSync as writeFileSync12 } from "node:fs";
+import { readFileSync as readFileSync22, writeFileSync as writeFileSync12 } from "node:fs";
 function nowIso10(now = /* @__PURE__ */ new Date()) {
   const yyyy = now.getUTCFullYear().toString().padStart(4, "0");
   const mm = (now.getUTCMonth() + 1).toString().padStart(2, "0");
@@ -23669,8 +23669,8 @@ function normalizeSlug(title) {
   return `goal-${hash}`;
 }
 function readGoals(specPath) {
-  const raw = readFileSync21(specPath, "utf-8");
-  const doc = (0, import_yaml17.parse)(raw);
+  const raw = readFileSync22(specPath, "utf-8");
+  const doc = (0, import_yaml18.parse)(raw);
   if (!isPlainObject14(doc)) {
     return [];
   }
@@ -23715,11 +23715,11 @@ function createGoal(input, existingIds) {
   }
   return goal;
 }
-var import_yaml17, MAX_SLUG_LENGTH;
+var import_yaml18, MAX_SLUG_LENGTH;
 var init_goalStore = __esm({
   "src/drive/goalStore.ts"() {
     "use strict";
-    import_yaml17 = __toESM(require_dist(), 1);
+    import_yaml18 = __toESM(require_dist(), 1);
     MAX_SLUG_LENGTH = 60;
   }
 });
@@ -23916,7 +23916,7 @@ __export(statusCommand_exports, {
   composeStatusText: () => composeStatusText,
   runDriveStatus: () => runDriveStatus
 });
-import { existsSync as existsSync7, readFileSync as readFileSync22 } from "node:fs";
+import { existsSync as existsSync7, readFileSync as readFileSync23 } from "node:fs";
 import { join as join22 } from "node:path";
 function isPlainObject16(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -23926,8 +23926,8 @@ function readSpecFeatures(harnessDir) {
   if (!existsSync7(path)) {
     return [];
   }
-  const raw = readFileSync22(path, "utf-8");
-  const doc = (0, import_yaml18.parse)(raw);
+  const raw = readFileSync23(path, "utf-8");
+  const doc = (0, import_yaml19.parse)(raw);
   if (!isPlainObject16(doc)) {
     return [];
   }
@@ -24054,11 +24054,11 @@ async function runDriveStatus(options) {
     await sleep(intervalSec * 1e3);
   }
 }
-var import_yaml18;
+var import_yaml19;
 var init_statusCommand = __esm({
   "src/drive/statusCommand.ts"() {
     "use strict";
-    import_yaml18 = __toESM(require_dist(), 1);
+    import_yaml19 = __toESM(require_dist(), 1);
     init_state();
     init_goalStore();
     init_progressRenderer();
@@ -24081,7 +24081,7 @@ __export(checkpoint_exports, {
   stopFileExists: () => stopFileExists,
   stopFilePath: () => stopFilePath
 });
-import { appendFileSync as appendFileSync8, existsSync as existsSync8, mkdirSync as mkdirSync8, readFileSync as readFileSync23, statSync as statSync18, writeFileSync as writeFileSync13 } from "node:fs";
+import { appendFileSync as appendFileSync8, existsSync as existsSync8, mkdirSync as mkdirSync8, readFileSync as readFileSync24, statSync as statSync18, writeFileSync as writeFileSync13 } from "node:fs";
 import { dirname as dirname9, join as join23 } from "node:path";
 function isPlainObject17(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -24141,11 +24141,11 @@ function loadCheckpoint(harnessDir) {
   }
   let raw;
   try {
-    raw = readFileSync23(path, "utf-8");
+    raw = readFileSync24(path, "utf-8");
   } catch {
     return null;
   }
-  const parsed = (0, import_yaml19.parse)(raw);
+  const parsed = (0, import_yaml20.parse)(raw);
   if (!isPlainObject17(parsed)) {
     return null;
   }
@@ -24176,7 +24176,7 @@ function saveCheckpoint(harnessDir, checkpoint, now = /* @__PURE__ */ new Date()
   const path = checkpointPath(harnessDir);
   mkdirSync8(dirname9(path), { recursive: true });
   const out = { ...checkpoint, updated_at: nowIso11(now) };
-  const text = (0, import_yaml19.stringify)(out, {
+  const text = (0, import_yaml20.stringify)(out, {
     sortMapEntries: false,
     indentSeq: false,
     lineWidth: 0
@@ -24206,11 +24206,11 @@ function appendProgress(harnessDir, line) {
 function stopFileExists(harnessDir) {
   return existsSync8(stopFilePath(harnessDir));
 }
-var import_yaml19, DEFAULT_MAX_ITERATIONS, DEFAULT_MAX_SECONDS;
+var import_yaml20, DEFAULT_MAX_ITERATIONS, DEFAULT_MAX_SECONDS;
 var init_checkpoint = __esm({
   "src/drive/checkpoint.ts"() {
     "use strict";
-    import_yaml19 = __toESM(require_dist(), 1);
+    import_yaml20 = __toESM(require_dist(), 1);
     DEFAULT_MAX_ITERATIONS = 50;
     DEFAULT_MAX_SECONDS = 7200;
   }
@@ -24329,7 +24329,7 @@ __export(planPhase_exports, {
   readGoalContext: () => readGoalContext,
   startPhaseA: () => startPhaseA
 });
-import { existsSync as existsSync9, mkdirSync as mkdirSync10, readFileSync as readFileSync24 } from "node:fs";
+import { existsSync as existsSync9, mkdirSync as mkdirSync10, readFileSync as readFileSync25 } from "node:fs";
 import { join as join25 } from "node:path";
 function briefPathFor(harnessDir, goalId) {
   return join25(goalArtifactDir(harnessDir, goalId), "brief.md");
@@ -24505,7 +24505,7 @@ function readGoalContext(harnessDir, goalId) {
     return null;
   }
   if (existsSync9(ck.plan.brief_path)) {
-    const text = readFileSync24(ck.plan.brief_path, "utf-8");
+    const text = readFileSync25(ck.plan.brief_path, "utf-8");
     const heading = /^#\s+(.+)$/m.exec(text);
     if (heading !== null) {
       return { title: heading[1] ?? goalId };
@@ -24677,7 +24677,7 @@ var init_executor = __esm({
 });
 
 // src/drive/goalRetro.ts
-import { appendFileSync as appendFileSync10, existsSync as existsSync10, mkdirSync as mkdirSync11, readFileSync as readFileSync25, writeFileSync as writeFileSync14 } from "node:fs";
+import { appendFileSync as appendFileSync10, existsSync as existsSync10, mkdirSync as mkdirSync11, readFileSync as readFileSync26, writeFileSync as writeFileSync14 } from "node:fs";
 import { dirname as dirname11, join as join26 } from "node:path";
 function goalRetroPath(harnessDir, goalId) {
   return join26(goalArtifactDir(harnessDir, goalId), "retro.md");
@@ -24712,7 +24712,7 @@ function countHaltsFromProgressLog(harnessDir) {
   if (!existsSync10(path)) {
     return { total: 0, perReason: {} };
   }
-  const text = readFileSync25(path, "utf-8");
+  const text = readFileSync26(path, "utf-8");
   const counts = {};
   let total = 0;
   for (const line of text.split("\n")) {
@@ -24731,7 +24731,7 @@ function featureRetroPreview(harnessDir, fid) {
   if (!existsSync10(path)) {
     return null;
   }
-  const text = readFileSync25(path, "utf-8");
+  const text = readFileSync26(path, "utf-8");
   const lines = text.split("\n").slice(0, 5);
   return lines.join("\n").trim();
 }
@@ -24877,8 +24877,8 @@ var init_goalRetro = __esm({
 });
 
 // src/drive/realTest.ts
-import { appendFileSync as appendFileSync11, existsSync as existsSync11, mkdirSync as mkdirSync12, readFileSync as readFileSync26 } from "node:fs";
-import { dirname as dirname12, join as join27, resolve as resolvePath8 } from "node:path";
+import { appendFileSync as appendFileSync11, existsSync as existsSync11, mkdirSync as mkdirSync12, readFileSync as readFileSync27 } from "node:fs";
+import { dirname as dirname12, join as join27, resolve as resolvePath9 } from "node:path";
 import { spawnSync as spawnSync4 } from "node:child_process";
 function readTransientRetryConfig(harnessDir) {
   const path = join27(harnessDir, "harness.yaml");
@@ -24888,7 +24888,7 @@ function readTransientRetryConfig(harnessDir) {
   }
   let parsed;
   try {
-    parsed = (0, import_yaml20.parse)(readFileSync26(path, "utf-8"));
+    parsed = (0, import_yaml21.parse)(readFileSync27(path, "utf-8"));
   } catch {
     return fallback;
   }
@@ -24928,7 +24928,7 @@ function readConfig(harnessDir) {
   }
   let parsed;
   try {
-    parsed = (0, import_yaml20.parse)(readFileSync26(path, "utf-8"));
+    parsed = (0, import_yaml21.parse)(readFileSync27(path, "utf-8"));
   } catch {
     return null;
   }
@@ -25011,7 +25011,7 @@ function runRealTestIfDue(harnessDir, goalId, _completedFid) {
       skip_reason: "not_due"
     };
   }
-  const projectRoot = resolvePath8(harnessDir, "..");
+  const projectRoot = resolvePath9(harnessDir, "..");
   const result = spawnSync4(cfg.command, {
     cwd: projectRoot,
     shell: true,
@@ -25038,11 +25038,11 @@ function runRealTestIfDue(harnessDir, goalId, _completedFid) {
     stderr_tail: passed ? null : stderrTail
   };
 }
-var import_yaml20, DEFAULT_EVERY_N_FEATURES, DEFAULT_MAX_TRANSIENT_RETRIES;
+var import_yaml21, DEFAULT_EVERY_N_FEATURES, DEFAULT_MAX_TRANSIENT_RETRIES;
 var init_realTest = __esm({
   "src/drive/realTest.ts"() {
     "use strict";
-    import_yaml20 = __toESM(require_dist(), 1);
+    import_yaml21 = __toESM(require_dist(), 1);
     init_state();
     DEFAULT_EVERY_N_FEATURES = 3;
     DEFAULT_MAX_TRANSIENT_RETRIES = 1;
@@ -25050,7 +25050,7 @@ var init_realTest = __esm({
 });
 
 // src/drive/replan.ts
-import { appendFileSync as appendFileSync12, existsSync as existsSync12, mkdirSync as mkdirSync13, readFileSync as readFileSync27, writeFileSync as writeFileSync15 } from "node:fs";
+import { appendFileSync as appendFileSync12, existsSync as existsSync12, mkdirSync as mkdirSync13, readFileSync as readFileSync28, writeFileSync as writeFileSync15 } from "node:fs";
 import { dirname as dirname13, join as join28 } from "node:path";
 function emptyResult() {
   return { evaluated: false, deltas: { deferred: [], reordered: [] }, manifest_path: null };
@@ -25074,7 +25074,7 @@ function isReplanEnabled(harnessDir) {
     return true;
   }
   try {
-    const parsed = (0, import_yaml21.parse)(readFileSync27(path, "utf-8"));
+    const parsed = (0, import_yaml22.parse)(readFileSync28(path, "utf-8"));
     if (!isPlainObject21(parsed)) {
       return true;
     }
@@ -25099,7 +25099,7 @@ function alreadyEvaluated(harnessDir, completedFid) {
   if (!existsSync12(path)) {
     return false;
   }
-  const text = readFileSync27(path, "utf-8");
+  const text = readFileSync28(path, "utf-8");
   for (const line of text.split("\n")) {
     if (line.length === 0) {
       continue;
@@ -25119,7 +25119,7 @@ function alreadyDisabledOnce(harnessDir) {
   if (!existsSync12(path)) {
     return false;
   }
-  const text = readFileSync27(path, "utf-8");
+  const text = readFileSync28(path, "utf-8");
   return text.includes('"type":"replan_disabled"');
 }
 function appendEvent9(harnessDir, event) {
@@ -25134,7 +25134,7 @@ function readRetro(harnessDir, completedFid) {
     return null;
   }
   try {
-    return readFileSync27(path, "utf-8");
+    return readFileSync28(path, "utf-8");
   } catch {
     return null;
   }
@@ -25150,7 +25150,7 @@ function readSupersededIds(harnessDir) {
   }
   let parsed;
   try {
-    parsed = (0, import_yaml21.parse)(readFileSync27(path, "utf-8"));
+    parsed = (0, import_yaml22.parse)(readFileSync28(path, "utf-8"));
   } catch {
     return /* @__PURE__ */ new Set();
   }
@@ -25276,11 +25276,11 @@ function renderManifest(goalId, completedFid, retroText) {
   return `${lines.join("\n")}
 `;
 }
-var import_yaml21, RETRO_PIVOT_KEYWORDS;
+var import_yaml22, RETRO_PIVOT_KEYWORDS;
 var init_replan = __esm({
   "src/drive/replan.ts"() {
     "use strict";
-    import_yaml21 = __toESM(require_dist(), 1);
+    import_yaml22 = __toESM(require_dist(), 1);
     init_state();
     RETRO_PIVOT_KEYWORDS = [
       "replan",
@@ -25302,7 +25302,7 @@ __export(loop_exports, {
   runDriveStep: () => runDriveStep
 });
 import { execFileSync } from "node:child_process";
-import { appendFileSync as appendFileSync13, existsSync as existsSync13, readFileSync as readFileSync28 } from "node:fs";
+import { appendFileSync as appendFileSync13, existsSync as existsSync13, readFileSync as readFileSync29 } from "node:fs";
 import { dirname as dirname14, join as join29 } from "node:path";
 function appendRealTestRetryEvent(harnessDir, payload) {
   const path = join29(harnessDir, "events.log");
@@ -25402,7 +25402,7 @@ function loadSpecForPlanner(harnessDir) {
     return null;
   }
   try {
-    return (0, import_yaml22.parse)(readFileSync28(path, "utf-8"));
+    return (0, import_yaml23.parse)(readFileSync29(path, "utf-8"));
   } catch {
     return null;
   }
@@ -25758,11 +25758,11 @@ function countDeclaredEvidence3(feature) {
   }
   return count;
 }
-var import_yaml22, DEFAULT_MAX_RETRIES, RECENT_GATE_RESULTS_WINDOW, GATE_STAGNATION_THRESHOLD;
+var import_yaml23, DEFAULT_MAX_RETRIES, RECENT_GATE_RESULTS_WINDOW, GATE_STAGNATION_THRESHOLD;
 var init_loop = __esm({
   "src/drive/loop.ts"() {
     "use strict";
-    import_yaml22 = __toESM(require_dist(), 1);
+    import_yaml23 = __toESM(require_dist(), 1);
     init_state();
     init_intentPlanner();
     init_checkpoint();
@@ -25779,7 +25779,7 @@ var init_loop = __esm({
 
 // src/cli/harness.ts
 import { existsSync as existsSync14, statSync as statSync19 } from "node:fs";
-import { join as join30, resolve as resolvePath9 } from "node:path";
+import { join as join30, resolve as resolvePath10 } from "node:path";
 
 // node_modules/commander/esm.mjs
 var import_index = __toESM(require_commander(), 1);
@@ -27450,14 +27450,110 @@ function appendConventionsBlock(targetPath, conventionsBody) {
   appendFileSync2(targetPath, guarded, "utf8");
 }
 
+// src/init/codebase/mdDetect.ts
+import { readdirSync as readdirSync2 } from "node:fs";
+var NON_PLAN_MARKDOWN = [
+  "readme.md",
+  "changelog.md",
+  "license.md",
+  "contributing.md",
+  "code_of_conduct.md",
+  "code-of-conduct.md",
+  "security.md",
+  "authors.md",
+  "maintainers.md",
+  "support.md",
+  "governance.md",
+  "release_notes.md",
+  "release-notes.md"
+];
+function detectPlanDocCandidate(root) {
+  let entries;
+  try {
+    entries = readdirSync2(root);
+  } catch {
+    return null;
+  }
+  const candidates = entries.filter((entry) => {
+    if (!entry.toLowerCase().endsWith(".md")) return false;
+    if (NON_PLAN_MARKDOWN.includes(entry.toLowerCase())) return false;
+    return true;
+  });
+  if (candidates.length !== 1) return null;
+  return candidates[0];
+}
+
+// src/init/scenarioPlanDoc.ts
+var import_yaml3 = __toESM(require_dist(), 1);
+import { readFileSync as readFileSync5 } from "node:fs";
+import { basename as basename3, relative as relative3, resolve as resolvePath2 } from "node:path";
+init_draftLabel();
+function deriveProjectName(mdBody, mdPath) {
+  const h1Match = mdBody.match(/^#\s+(.+?)\s*$/m);
+  if (h1Match && h1Match[1]) {
+    return h1Match[1].trim();
+  }
+  const file = basename3(mdPath);
+  return file.replace(/\.md$/i, "").replace(/[_\-.]/g, " ").trim() || "project";
+}
+function deriveSummary(mdBody) {
+  const withoutFirstH1 = mdBody.replace(/^#\s+.+?\n+/, "");
+  const paragraphs = withoutFirstH1.split(/\n\s*\n/);
+  for (const p of paragraphs) {
+    const trimmed = p.trim();
+    if (trimmed.length === 0) continue;
+    if (trimmed.startsWith("#")) continue;
+    return trimmed.replace(/\s+/g, " ").slice(0, 200);
+  }
+  return "";
+}
+function deriveDescription(mdBody) {
+  return mdBody.slice(0, 500);
+}
+function seedSpecFromPlanDoc(input) {
+  const raw = readFileSync5(input.mdPath, "utf8");
+  const { text: mdBody } = redactSecrets(raw);
+  const projectName = deriveProjectName(mdBody, input.mdPath);
+  const summary = redactSecrets(deriveSummary(mdBody)).text;
+  const description = redactSecrets(deriveDescription(mdBody)).text;
+  const specBody = readFileSync5(input.specPath, "utf8");
+  const parsed = (0, import_yaml3.parse)(specBody) ?? {};
+  const project = parsed["project"] ?? {};
+  project["name"] = projectName;
+  project["summary"] = summary;
+  project["description"] = description;
+  parsed["project"] = project;
+  const planDocPath = relative3(resolvePath2(input.projectRoot), resolvePath2(input.mdPath));
+  const metadata = parsed["metadata"] ?? {};
+  const source = metadata["source"] ?? {};
+  source["origin"] = "plan_doc";
+  source["plan_doc_path"] = planDocPath;
+  metadata["source"] = source;
+  metadata["draft"] = true;
+  delete metadata["content_hash"];
+  parsed["metadata"] = metadata;
+  const intermediate = (0, import_yaml3.stringify)(parsed, { sortMapEntries: true });
+  const contentHash = computeContentHash(intermediate);
+  metadata["content_hash"] = contentHash;
+  parsed["metadata"] = metadata;
+  const finalYaml = (0, import_yaml3.stringify)(parsed, { sortMapEntries: true });
+  return {
+    specYaml: finalYaml,
+    projectName,
+    summary,
+    planDocPath,
+    contentHash
+  };
+}
+
 // src/cli/harness.ts
 init_kickoff();
 init_retro();
 
 // src/ceremonies/inbox.ts
-var import_yaml4 = __toESM(require_dist(), 1);
-import { readFileSync as readFileSync7, readdirSync as readdirSync2, statSync as statSync6 } from "node:fs";
-import { join as join8, relative as relative5 } from "node:path";
+var import_yaml5 = __toESM(require_dist(), 1);
+import { readFileSync as readFileSync8, readdirSync as readdirSync3, statSync as statSync6 } from "node:fs";
+import { join as join8, relative as relative6 } from "node:path";
 var FILENAME_RE = /^(F-\d+)--([\w-]+)--([\w-]+)\.md$/;
 var ANSWER_HEADER_RE = /^##\s+Answer\b/m;
 var FRONTMATTER_RE = /^---\s*\n([\s\S]*?)\n---/;
@@ -27470,7 +27566,7 @@ function parseFrontmatter(text) {
     return {};
   }
   try {
-    const parsed = (0, import_yaml4.parse)(match[1]);
+    const parsed = (0, import_yaml5.parse)(match[1]);
     return isPlainObject4(parsed) ? parsed : {};
   } catch {
     return {};
@@ -27483,7 +27579,7 @@ function scanInbox(harnessDir, featureId2 = null) {
     if (!statSync6(qDir).isDirectory()) {
       return [];
     }
-    entries = readdirSync2(qDir).sort();
+    entries = readdirSync3(qDir).sort();
   } catch {
     return [];
   }
@@ -27505,14 +27601,14 @@ function scanInbox(harnessDir, featureId2 = null) {
     if (featureId2 !== null && fid !== featureId2) {
       continue;
     }
-    const body = readFileSync7(fullPath, "utf-8");
+    const body = readFileSync8(fullPath, "utf-8");
     const fm = parseFrontmatter(body);
     const hasAnswer = ANSWER_HEADER_RE.test(body);
     out.push({
       feature_id: fid,
       from_agent: fromAgent,
       to_agent: toAgent,
-      path: relative5(harnessDir, fullPath),
+      path: relative6(harnessDir, fullPath),
       blocking: Boolean(fm["blocking"]),
       has_answer: hasAnswer
     });
@@ -27524,7 +27620,7 @@ function openQuestions(harnessDir, featureId2 = null) {
 }
 
 // src/cli/harness.ts
-var import_yaml23 = __toESM(require_dist(), 1);
+var import_yaml24 = __toESM(require_dist(), 1);
 init_projectMode();
 init_check();
 import { readFileSync as readSpecFile, statSync as statSpecFile } from "node:fs";
@@ -27595,7 +27691,7 @@ function formatHuman2(events) {
 }
 
 // src/core/eventLog.ts
-import { appendFileSync as appendFileSync5, readdirSync as readdirSync4, readFileSync as readFileSync11, statSync as statSync10, writeFileSync as writeFileSync8 } from "node:fs";
+import { appendFileSync as appendFileSync5, readdirSync as readdirSync5, readFileSync as readFileSync12, statSync as statSync10, writeFileSync as writeFileSync8 } from "node:fs";
 import { join as join12 } from "node:path";
 var ROTATED_FILENAME_RE = /^events\.log\.(\d{6})$/;
 var ROTATABLE_TS_RE = /^(\d{4})-(\d{2})/;
@@ -27603,7 +27699,7 @@ var UNPARSEABLE_TS_SENTINEL = "\uFFFF";
 function readJsonLines(path) {
   let raw;
   try {
-    raw = readFileSync11(path, "utf-8");
+    raw = readFileSync12(path, "utf-8");
   } catch (err) {
     if (err.code === "ENOENT") {
       return [];
@@ -27630,7 +27726,7 @@ function readJsonLines(path) {
 function rotatedPaths(harnessDir) {
   let entries;
   try {
-    entries = readdirSync4(harnessDir);
+    entries = readdirSync5(harnessDir);
   } catch (err) {
     if (err.code === "ENOENT") {
       return [];
@@ -27920,10 +28016,10 @@ function formatHuman3(report) {
 }
 
 // src/ui/dashboard.ts
-var import_yaml7 = __toESM(require_dist(), 1);
+var import_yaml8 = __toESM(require_dist(), 1);
 init_gates();
 init_kickoff();
-import { readFileSync as readFileSync12, statSync as statSync11 } from "node:fs";
+import { readFileSync as readFileSync13, statSync as statSync11 } from "node:fs";
 import { join as join13 } from "node:path";
 
 // src/ui/dashboardConfig.ts
@@ -28140,7 +28236,7 @@ function loadCoverage(harnessDir, fid) {
   }
   let fp;
   try {
-    fp = (0, import_yaml7.parse)(readFileSync12(fpPath, "utf-8"));
+    fp = (0, import_yaml8.parse)(readFileSync13(fpPath, "utf-8"));
   } catch {
     return [null, []];
   }
@@ -28484,37 +28580,37 @@ init_intentPlanner();
 init_validate();
 
 // src/spec/exportSpec.ts
-var import_yaml9 = __toESM(require_dist(), 1);
-import { readFileSync as readFileSync14 } from "node:fs";
+var import_yaml10 = __toESM(require_dist(), 1);
+import { readFileSync as readFileSync15 } from "node:fs";
 import { join as join15 } from "node:path";
 var DESCRIPTION_TRUNCATE_AT = 120;
 var SHIPPED_STATUSES = /* @__PURE__ */ new Set(["done", "archived"]);
 function exportSpec(harnessDir, options = {}) {
   const specPath = join15(harnessDir, "spec.yaml");
-  const specText = readFileSync14(specPath, "utf-8");
-  const spec = (0, import_yaml9.parse)(specText);
+  const specText = readFileSync15(specPath, "utf-8");
+  const spec = (0, import_yaml10.parse)(specText);
   if (spec === null || typeof spec !== "object" || Array.isArray(spec)) {
     throw new Error(`spec.yaml at ${specPath} did not parse to a mapping`);
   }
   if (!options.activeOnly) {
-    return (0, import_yaml9.stringify)(spec);
+    return (0, import_yaml10.stringify)(spec);
   }
   const shippedIds = readShippedIds(harnessDir);
   const features = spec["features"];
   if (Array.isArray(features)) {
     spec["features"] = features.map((entry) => compactFeature(entry, shippedIds));
   }
-  return (0, import_yaml9.stringify)(spec);
+  return (0, import_yaml10.stringify)(spec);
 }
 function readShippedIds(harnessDir) {
   const statePath = join15(harnessDir, "state.yaml");
   let raw;
   try {
-    raw = readFileSync14(statePath, "utf-8");
+    raw = readFileSync15(statePath, "utf-8");
   } catch {
     return /* @__PURE__ */ new Set();
   }
-  const state = (0, import_yaml9.parse)(raw);
+  const state = (0, import_yaml10.parse)(raw);
   if (state === null || typeof state !== "object" || Array.isArray(state)) {
     return /* @__PURE__ */ new Set();
   }
@@ -28571,9 +28667,9 @@ function compactDescription(text) {
 init_state();
 
 // src/status.ts
-var import_yaml10 = __toESM(require_dist(), 1);
+var import_yaml11 = __toESM(require_dist(), 1);
 init_state();
-import { readFileSync as readFileSync15, statSync as statSync13 } from "node:fs";
+import { readFileSync as readFileSync16, statSync as statSync13 } from "node:fs";
 import { join as join16 } from "node:path";
 function isPlainObject11(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -28587,8 +28683,8 @@ function loadHarnessYaml(harnessDir) {
   } catch {
     return {};
   }
-  const raw = readFileSync15(path, "utf-8");
-  const parsed = (0, import_yaml10.parse)(raw);
+  const raw = readFileSync16(path, "utf-8");
+  const parsed = (0, import_yaml11.parse)(raw);
   return isPlainObject11(parsed) ? parsed : {};
 }
 function tailEvents(harnessDir, n = 1) {
@@ -28600,7 +28696,7 @@ function tailEvents(harnessDir, n = 1) {
   } catch {
     return [];
   }
-  const raw = readFileSync15(path, "utf-8");
+  const raw = readFileSync16(path, "utf-8");
   const lines = raw.split("\n").filter((line) => line.trim().length > 0);
   const tail2 = lines.slice(-n);
   const out = [];
@@ -28729,10 +28825,10 @@ function formatHuman4(report) {
 }
 
 // src/cli/harness.ts
-var import_yaml24 = __toESM(require_dist(), 1);
+var import_yaml25 = __toESM(require_dist(), 1);
 init_sync();
 init_work();
-import { readFileSync as readFileSync29, rmSync, writeFileSync as writeFileSync16 } from "node:fs";
+import { readFileSync as readFileSync30, rmSync, writeFileSync as writeFileSync16 } from "node:fs";
 function printHuman(text) {
   process.stdout.write(text);
 }
@@ -28752,7 +28848,7 @@ function isDirectory4(path) {
   }
 }
 function resolveHarnessDir(opt) {
-  return resolvePath9(opt ?? join30(process.cwd(), ".harness"));
+  return resolvePath10(opt ?? join30(process.cwd(), ".harness"));
 }
 function workResultToJson(r) {
   return {
@@ -28837,7 +28933,7 @@ function buildProgram() {
       let spec = null;
       try {
         if (existsSync14(specPath)) {
-          spec = (0, import_yaml24.parse)(readFileSync29(specPath, "utf-8"));
+          spec = (0, import_yaml25.parse)(readFileSync30(specPath, "utf-8"));
         }
       } catch {
         spec = null;
@@ -28865,7 +28961,7 @@ function buildProgram() {
       const specPath = join30(harnessDir, "spec.yaml");
       try {
         if (statSpecFile(specPath).isFile()) {
-          return (0, import_yaml23.parse)(readSpecFile(specPath, "utf-8"));
+          return (0, import_yaml24.parse)(readSpecFile(specPath, "utf-8"));
         }
       } catch {
         return null;
@@ -29449,6 +29545,9 @@ ${r.halt.message}
     "--conventions-conflict <policy>",
     "[scenario existing_code] merge | coexist (default) | skip \u2014 what to do when CLAUDE.md / .cursorrules / AGENTS.md already exists",
     "coexist"
+  ).option(
+    "--plan <path>",
+    "[scenario plan_doc] explicit path to the plan markdown (auto-detects when omitted and exactly one non-README md exists)"
   ).option("--json", "emit JSON result").action((options) => {
     const wantsSkeleton = Boolean(options["skeletonOnly"]);
     const scenario = typeof options["scenario"] === "string" ? options["scenario"] : null;
@@ -29462,10 +29561,10 @@ ${r.halt.message}
       printError("init: --skeleton-only and --scenario are mutually exclusive");
       process.exit(3);
     }
-    const targetDir = resolvePath9(
+    const targetDir = resolvePath10(
       typeof options["harnessDir"] === "string" ? options["harnessDir"] : "."
     );
-    const pluginRoot = typeof options["pluginRoot"] === "string" ? resolvePath9(options["pluginRoot"]) : resolvePluginRootFromBinary();
+    const pluginRoot = typeof options["pluginRoot"] === "string" ? resolvePath10(options["pluginRoot"]) : resolvePluginRootFromBinary();
     const mode = options["mode"] === "team" || options["mode"] === "solo" ? options["mode"] : "solo";
     try {
       if (wantsSkeleton) {
@@ -29495,8 +29594,12 @@ ${r.halt.message}
         runExistingCodeScenario({ targetDir, pluginRoot, mode, options });
         return;
       }
+      if (scenario === "plan_doc") {
+        runPlanDocScenario({ targetDir, pluginRoot, mode, options });
+        return;
+      }
       printError(
-        `init: scenario '${scenario}' is not implemented yet. Supported in v0.15.5: idea, existing_code. plan_doc lands in a later PR.`
+        `init: scenario '${scenario}' is not implemented yet. Supported in v0.15.5: idea, existing_code, plan_doc.`
       );
       process.exit(3);
     } catch (err) {
@@ -29615,9 +29718,49 @@ function parseConflictPolicy(options) {
   if (value === "merge" || value === "coexist" || value === "skip") return value;
   return "coexist";
 }
+function runPlanDocScenario(args) {
+  const { targetDir, pluginRoot, mode, options } = args;
+  const explicit = optionAsString(options, "plan");
+  let mdRelative = explicit ?? detectPlanDocCandidate(targetDir);
+  if (mdRelative === null) {
+    printError(
+      "init --scenario plan_doc: could not auto-detect a single plan markdown (found 0 or 2+ candidates excluding README/CHANGELOG/LICENSE). Pass --plan <path> explicitly."
+    );
+    process.exit(3);
+  }
+  const mdPath = resolvePath10(targetDir, mdRelative);
+  if (!existsSync14(mdPath) || !statSync19(mdPath).isFile()) {
+    printError(`init --scenario plan_doc: ${mdPath} does not exist or is not a file`);
+    process.exit(3);
+  }
+  const skel = runSkeletonInit({ targetDir, pluginRoot, mode });
+  const specPath = join30(skel.harnessDir, "spec.yaml");
+  const seeded = seedSpecFromPlanDoc({ mdPath, specPath, projectRoot: targetDir });
+  writeFileSync16(specPath, seeded.specYaml, "utf8");
+  if (options["json"]) {
+    printJson({
+      ok: true,
+      scenario: "plan_doc",
+      harness_dir: skel.harnessDir,
+      spec_path: specPath,
+      plan_doc_path: seeded.planDocPath,
+      project_name: seeded.projectName,
+      content_hash: seeded.contentHash,
+      llm_call_count: 0
+    });
+  } else {
+    printHuman(
+      `init (scenario: plan_doc): seeded spec from ${seeded.planDocPath}
+  project: ${seeded.projectName}
+  summary: ${seeded.summary.slice(0, 100)}${seeded.summary.length > 100 ? "\u2026" : ""}
+  next: /harness-boot:work to invoke spec-conversion for the full spec
+`
+    );
+  }
+}
 function patchSpecWithSignals(specPath, signals) {
-  const body = readFileSync29(specPath, "utf8");
-  const parsed = (0, import_yaml24.parse)(body);
+  const body = readFileSync30(specPath, "utf8");
+  const parsed = (0, import_yaml25.parse)(body);
   if (!parsed || typeof parsed !== "object") return;
   const constraints = parsed["constraints"] ?? {};
   const techStack = constraints["tech_stack"] ?? {};
@@ -29644,16 +29787,16 @@ function patchSpecWithSignals(specPath, signals) {
   metadata["source"] = source;
   metadata["draft"] = true;
   parsed["metadata"] = metadata;
-  writeFileSync16(specPath, (0, import_yaml24.stringify)(parsed, { sortMapEntries: true }), "utf8");
+  writeFileSync16(specPath, (0, import_yaml25.stringify)(parsed, { sortMapEntries: true }), "utf8");
 }
 function resolvePluginRootFromBinary() {
   const entry = process.argv[1] ?? ".";
-  let dir = resolvePath9(entry, "..");
+  let dir = resolvePath10(entry, "..");
   for (let i = 0; i < 6; i += 1) {
     if (existsSync14(join30(dir, ".claude-plugin", "plugin.json"))) {
       return dir;
     }
-    const parent = resolvePath9(dir, "..");
+    const parent = resolvePath10(dir, "..");
     if (parent === dir) break;
     dir = parent;
   }

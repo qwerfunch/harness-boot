@@ -279,6 +279,45 @@ Example: `🧰 /harness-boot:init · solo · first-time scaffold into empty dir`
    `src/init/tokenLog.ts:recordLlmCall` so the bench's
    `init_tokens_total` metric reflects the real cost.
 
+9. **Scenario 2 — plan_doc → spec (F-162, since v0.15.5)**: when
+   routing landed on Option 2 (user pointed at a plan document
+   or the project root carries exactly one non-README markdown
+   file), shell out to:
+
+   ```bash
+   harness init --scenario plan_doc \
+     [--plan <path>] \
+     --plugin-root "$PLUGIN_ROOT" \
+     --harness-dir "$(pwd)"
+   ```
+
+   Auto-detect rule (`src/init/codebase/mdDetect.ts`): exactly
+   one `*.md` in the root that is **not** README, CHANGELOG,
+   LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, AUTHORS,
+   MAINTAINERS, SUPPORT, GOVERNANCE, or RELEASE_NOTES. Zero or
+   two-plus candidates require an explicit `--plan` path.
+
+   The CLI is deterministic:
+   - Read the markdown body with the secret-redaction pass.
+   - Copy the first H1 (or the filename) into `project.name`.
+   - Copy the first paragraph into `project.summary`.
+   - Copy the first 500 characters into `project.description`.
+   - Stamp `metadata.source.origin: plan_doc`,
+     `metadata.source.plan_doc_path: <relative>`,
+     `metadata.draft: true`, and a fresh `metadata.content_hash`.
+
+   After the CLI returns, invoke the existing
+   `skills/spec-conversion` skill on the same `plan_doc_path`.
+   The skill is the LLM-driven half — it fills `features[]`,
+   `domain.entities[]`, and the rest of v2.3.8 in a single
+   follow-up turn and writes the result back through the CLI so
+   the draft → constitution promotion (`autowireDraftPromotion`)
+   still triggers when the user edits.
+
+   `spec-conversion` records its own LLM usage via
+   `src/init/tokenLog.ts:recordLlmCall` so the bench's
+   `init_tokens_total` reflects the real cost.
+
 ### 0.5. Runtime prerequisite — Node.js 20+ (F-107)
 
 The plugin ships a single-file CLI bundle under `dist/cli/` and a

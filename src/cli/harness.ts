@@ -37,6 +37,8 @@ import {
   resolveConventionConflict,
   type ConflictPolicy,
 } from '../init/codebase/conflictResolver.js';
+import {detectPlanDocCandidate} from '../init/codebase/mdDetect.js';
+import {seedSpecFromPlanDoc} from '../init/scenarioPlanDoc.js';
 import {
   agentsForShapes as kickoffAgentsForShapes,
   detectShapes as kickoffDetectShapes,
@@ -1035,6 +1037,10 @@ function buildProgram(): Command {
       '[scenario existing_code] merge | coexist (default) | skip — what to do when CLAUDE.md / .cursorrules / AGENTS.md already exists',
       'coexist',
     )
+    .option(
+      '--plan <path>',
+      '[scenario plan_doc] explicit path to the plan markdown (auto-detects when omitted and exactly one non-README md exists)',
+    )
     .option('--json', 'emit JSON result')
     .action((options: Record<string, unknown>) => {
       const wantsSkeleton = Boolean(options['skeletonOnly']);
@@ -1097,9 +1103,14 @@ function buildProgram(): Command {
           return;
         }
 
+        if (scenario === 'plan_doc') {
+          runPlanDocScenario({targetDir, pluginRoot, mode, options});
+          return;
+        }
+
         printError(
           `init: scenario '${scenario}' is not implemented yet. ` +
-            'Supported in v0.15.5: idea, existing_code. plan_doc lands in a later PR.',
+            'Supported in v0.15.5: idea, existing_code, plan_doc.',
         );
         process.exit(3);
       } catch (err) {
@@ -1276,6 +1287,54 @@ function parseConflictPolicy(options: Record<string, unknown>): ConflictPolicy {
   const value = optionAsString(options, 'conventionsConflict');
   if (value === 'merge' || value === 'coexist' || value === 'skip') return value;
   return 'coexist';
+}
+
+/**
+ * Scenario-2 (plan_doc → spec) CLI handler. CLI side is
+ * deterministic: read the md, redact, seed project.name +
+ * summary + description + metadata.source. The slash command
+ * runs spec-conversion in a follow-up turn to fill features etc.
+ */
+function runPlanDocScenario(args: IdeaScenarioArgs): void {
+  const {targetDir, pluginRoot, mode, options} = args;
+  const explicit = optionAsString(options, 'plan');
+  let mdRelative: string | null = explicit ?? detectPlanDocCandidate(targetDir);
+  if (mdRelative === null) {
+    printError(
+      'init --scenario plan_doc: could not auto-detect a single plan markdown ' +
+        '(found 0 or 2+ candidates excluding README/CHANGELOG/LICENSE). ' +
+        'Pass --plan <path> explicitly.',
+    );
+    process.exit(3);
+  }
+  const mdPath = resolvePath(targetDir, mdRelative as string);
+  if (!existsSync(mdPath) || !statSync(mdPath).isFile()) {
+    printError(`init --scenario plan_doc: ${mdPath} does not exist or is not a file`);
+    process.exit(3);
+  }
+  const skel = runSkeletonInit({targetDir, pluginRoot, mode});
+  const specPath = join(skel.harnessDir, 'spec.yaml');
+  const seeded = seedSpecFromPlanDoc({mdPath, specPath, projectRoot: targetDir});
+  writeFileSync(specPath, seeded.specYaml, 'utf8');
+  if (options['json']) {
+    printJson({
+      ok: true,
+      scenario: 'plan_doc',
+      harness_dir: skel.harnessDir,
+      spec_path: specPath,
+      plan_doc_path: seeded.planDocPath,
+      project_name: seeded.projectName,
+      content_hash: seeded.contentHash,
+      llm_call_count: 0,
+    });
+  } else {
+    printHuman(
+      `init (scenario: plan_doc): seeded spec from ${seeded.planDocPath}\n` +
+        `  project: ${seeded.projectName}\n` +
+        `  summary: ${seeded.summary.slice(0, 100)}${seeded.summary.length > 100 ? '…' : ''}\n` +
+        `  next: /harness-boot:work to invoke spec-conversion for the full spec\n`,
+    );
+  }
 }
 
 function patchSpecWithSignals(specPath: string, signals: Signals): void {
