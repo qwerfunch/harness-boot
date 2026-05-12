@@ -5734,3 +5734,59 @@ features:
           Solo Musicians" · `project.summary` reads the first
           paragraph. Existing F-158/F-159/F-160/F-161 parity tests
           stay green.
+  - id: F-163
+    description: |
+      Closes the F-161 "[pending: LLM hook stub]" placeholders in
+      `.harness/conventions.md`. The CLI itself doesn't call any
+      model — the slash command's codebase-archaeologist samples
+      source files, runs a single LLM turn per section, and pipes
+      the result back to the CLI through a new `harness conventions
+      fill` command. The CLI replaces the placeholder in place and
+      records an `llm_call` event so the bench's
+      `init_tokens_total` baseline reflects real cost.
+
+      Why CLI side only handles the replacement: keeps deterministic
+      surface clean for parity tests + lets the slash command iterate
+      on prompt shape without breaking the bundle build.
+
+      New CLI surface:
+
+      ```bash
+      harness conventions fill \
+        --section <comments|tests> \
+        --text "<body text from the LLM turn>" \
+        --tokens-in <n> --tokens-out <n> \
+        [--model <id>] \
+        --harness-dir <dir>
+      ```
+
+      Idempotent: if the placeholder has already been replaced (the
+      sigil line no longer matches), `fill` errors with a clear
+      message instead of duplicating content. The bench picks up
+      `init_tokens_total` automatically from the appended events.
+    acceptance_criteria:
+      - id: AC-1
+        text: |
+          `src/init/codebase/conventionsFill.ts:fillConventionsSection
+          (path, section, text)` finds the `[pending: LLM hook stub]`
+          placeholder for `comments` or `tests` and replaces it with
+          the supplied text. Preserves all other content byte-for-byte.
+      - id: AC-2
+        text: |
+          `harness conventions fill --section <comments|tests>
+          --text "..."` invokes the helper and on success appends an
+          `llm_call` event to `<harness-dir>/events.log` via
+          `tokenLog.recordLlmCall`. Without `--tokens-in/--tokens-out`
+          the event records 0 (still allowed — slash command must
+          supply real counts).
+      - id: AC-3
+        text: |
+          Idempotent — calling `fill` on a section that no longer
+          carries the placeholder returns exit 4 with a clear error
+          ("section already filled"). No duplicate content.
+      - id: AC-4
+        text: |
+          Unit tests cover both replacement branches, the idempotency
+          guard, the events.log token append, and a parity test
+          rendering of the new conventions body. Existing
+          F-160/F-161/F-162 parity tests stay green.

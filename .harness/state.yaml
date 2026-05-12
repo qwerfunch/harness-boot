@@ -3596,7 +3596,7 @@ features:
   started_at: 2026-05-12T10:20:08Z
   completed_at: 2026-05-12T10:23:53Z
 - id: F-163
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3619,9 +3619,9 @@ features:
     kind: manual_check
     summary: "LLM hook fill landed. harness conventions fill --section {comments|tests} --text ... replaces [pending: LLM hook stub] in .harness/conventions.md and appends llm_call event to events.log via recordLlmCall. Idempotent — re-fill on filled section returns exit 4 with clear error. End-to-end verified: scenario=existing_code init + 2 fills produced final conventions.md with both LLM-driven sections populated, events.log captured tokens_in/out/model for bench. Closes the PR 3b LLM hook contract; codebase-archaeologist slash command can now record real cost through this surface."
   started_at: 2026-05-12T14:01:48Z
-  completed_at: null
+  completed_at: 2026-05-12T14:04:47Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-163
   last_gate_passed: gate_5
-  active_feature_id: F-163
+  active_feature_id: null
