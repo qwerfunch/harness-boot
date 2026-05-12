@@ -11,6 +11,42 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ### Queued
 
+## [0.15.4] — 2026-05-13
+
+**logcat-on ISSUES-LOG return — three contained bug fixes.** External
+dogfood's freshest issue log surfaced one blocker emitter bug and two
+ergonomic regressions; all three close in a single cycle.
+
+### Fixed
+
+- **F-164** — `harness sync`'s bulk archive step no longer blocks on
+  the derived outputs it just wrote. `workingTreeDirty` accepts a
+  whitelist of paths sync rendered this invocation
+  (`.harness/domain.md` · `.harness/architecture.yaml` ·
+  `.harness/harness.yaml` · `.harness/events.log`). Real user edits
+  elsewhere still gate the archive (safety intent preserved).
+- **F-165** — `feature-author` template + SKILL.md and
+  `spec-conversion` SKILL.md now mandate `|-` literal block scalar (or
+  double-quoted scalar) for multi-line free-text fields
+  (`description:`, `statement:`). Plain scalars wrap at line width and
+  a continuation starting with `{` or carrying `: ` made `harness sync`
+  / `harness validate` abort with PARSE error — the fix lives at the
+  emitter (the skill) since PARSE failure happens before validation
+  can warn. A round-trip test fills the updated template with risky
+  multi-line content (`{Math.round(...)}`, CSS `{...}`,
+  `transform: translateY(...)`, `` `${tpl}` ``) and asserts parser-clean
+  round-trip.
+
+### Added
+
+- **F-166** — `collectWarnings(spec)` emits the soft warning
+  `feature.name_too_long` for feature names exceeding 80 Unicode code
+  points (boundary at 80, warning at 81+). Non-blocking — layered
+  below the existing F-130 hard cap at 100. `harness validate`
+  surfaces warnings on stderr; the JSON output adds a `warnings` array.
+  Closes the readability axis from the logcat-on issue log without
+  breaking any existing spec.
+
 ## [0.15.3] — 2026-05-12
 
 **Plan-mode file hygiene.** Closes a multi-prompt friction surfaced in the v0.15.2 cycle itself: when a user iterates on the same axis across follow-up prompts (verification, regression fix, deepening analysis), the plan file accumulated section by section until it crossed two hundred lines and the answer became hard to find. The existing Family 1 §8 rule said "overwrite on task pivot" but left the *continuation* path silent on cleanup, so LLMs defaulted to appending. v0.15.3 turns §8 into an explicit 4-step discipline (read → classify → apply → write with archive reference) and propagates the rule into the starter template so every installed project inherits it.
