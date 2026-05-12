@@ -1910,6 +1910,39 @@ features:
     test_strategy: smoke
     digest: "Closes the F-161 \"[pending: LLM hook stub]\" placeholders in
       `.harness/conventions.md`. The CLI itself doesn't call an..."
+  - id: F-164
+    name: sync self-block fix — dirty-tree whitelist for render outputs
+    type: fix
+    status: planned
+    release_target: v0.15.5
+    modules:
+      - sync_command
+      - bulk_archive
+    test_strategy: tdd
+    digest: logcat-on ISSUES-LOG return (2026-05-13). The Phase 0 sync sequence runs
+      render (step 4) before bulk archive migratio...
+  - id: F-165
+    name: spec emitter YAML safety — block-scalar for multi-line free text
+    type: fix
+    status: planned
+    release_target: v0.15.5
+    modules:
+      - skill_feature_author
+      - skill_spec_conversion
+      - spec_validate
+    test_strategy: smoke
+    digest: logcat-on ISSUES-LOG return (2026-05-13). When the feature-author or
+      spec-conversion skill emits YAML directly via th...
+  - id: F-166
+    name: title length validator — soft warning for feature names over 80 chars
+    type: fix
+    status: planned
+    release_target: v0.15.5
+    modules:
+      - spec_validate
+    test_strategy: tdd
+    digest: logcat-on ISSUES-LOG return (2026-05-13). Feature `name:` values have
+      grown to 200-300 characters in some projects —...
 goals: []
 constraints:
   tech_stack:

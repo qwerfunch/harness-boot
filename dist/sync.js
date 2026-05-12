@@ -25,7 +25,7 @@
  */
 import { createHash } from 'node:crypto';
 import { appendFileSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve as resolvePath } from 'node:path';
+import { dirname, join, relative as relativePath, resolve as resolvePath, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as yamlParse, stringify as yamlStringify } from 'yaml';
 import { spawnSync } from 'node:child_process';
@@ -376,7 +376,16 @@ export function run(harnessDir, options = {}) {
     }
     else {
         const projectRoot = resolvePath(harnessDir, '..');
-        if (workingTreeDirty(projectRoot)) {
+        // F-164 — exclude the derived outputs sync just wrote this invocation
+        // from the dirty-tree check. Without the whitelist, render's
+        // timestamp updates to domain.md / harness.yaml mark them dirty and
+        // step 7 refuses to archive against files step 4 just produced.
+        // Real user edits anywhere else still block archive.
+        const renderedPaths = renderedPathsForDirtyCheck(harnessDir, {
+            domainSkipped,
+            archSkipped,
+        });
+        if (workingTreeDirty(projectRoot, renderedPaths)) {
             archiveSkipReason = 'dirty_tree';
             process.stderr.write('[warn] sync: skipping bulk archive migration — working tree is dirty. ' +
                 'Commit or stash, then re-run sync.\n');
@@ -449,8 +458,17 @@ export function run(harnessDir, options = {}) {
         open_questions_archive_skip_reason: openQuestionsSkipReason,
     };
 }
-/** Returns true when `git status --porcelain` reports any untracked or modified files. */
-function workingTreeDirty(projectRoot) {
+/**
+ * Returns true when `git status --porcelain` reports any untracked or
+ * modified files, after excluding paths in `ignorePaths`.
+ *
+ * The `ignorePaths` set carries repo-relative paths that the caller
+ * just wrote during this invocation — so render's timestamp updates to
+ * derived outputs do not falsely block the bulk archive step (F-164).
+ * An empty/omitted set preserves the original behavior. Paths use
+ * forward slashes (git's porcelain format) on all platforms.
+ */
+function workingTreeDirty(projectRoot, ignorePaths = new Set()) {
     try {
         const result = spawnSync('git', ['status', '--porcelain'], {
             cwd: projectRoot,
@@ -460,11 +478,63 @@ function workingTreeDirty(projectRoot) {
         if (result.status !== 0) {
             return false; // not a git repo, or git missing — treat as clean (safe default).
         }
-        return result.stdout.trim().length > 0;
+        const lines = result.stdout.split('\n').filter((l) => l.length > 0);
+        for (const line of lines) {
+            const path = parsePorcelainPath(line);
+            if (path !== null && ignorePaths.has(path)) {
+                continue;
+            }
+            return true;
+        }
+        return false;
     }
     catch {
         return false;
     }
+}
+/**
+ * Extracts the path portion from a `git status --porcelain=v1` line.
+ * Format: `XY path` where `XY` is a two-character status code and the
+ * path begins at column 3. Renames (`R `) carry an ` -> ` arrow; we
+ * return the post-arrow destination so the whitelist matches against
+ * the file's current name.
+ */
+function parsePorcelainPath(line) {
+    if (line.length < 4) {
+        return null;
+    }
+    const rest = line.slice(3);
+    const arrow = rest.indexOf(' -> ');
+    if (arrow >= 0) {
+        return rest.slice(arrow + 4);
+    }
+    return rest;
+}
+/**
+ * Builds the F-164 whitelist of repo-relative paths that sync just
+ * rendered. `harness.yaml` and `events.log` are always written when
+ * not dry-run; the two derived outputs are only included when render
+ * actually wrote them this invocation (the edit-wins guard may have
+ * skipped one or both).
+ */
+function renderedPathsForDirtyCheck(harnessDir, flags) {
+    const projectRoot = resolvePath(harnessDir, '..');
+    const out = new Set();
+    const add = (abs) => {
+        const rel = relativePath(projectRoot, abs).split(sep).join('/');
+        if (rel.length > 0 && !rel.startsWith('..')) {
+            out.add(rel);
+        }
+    };
+    add(join(harnessDir, 'harness.yaml'));
+    add(join(harnessDir, 'events.log'));
+    if (!flags.domainSkipped) {
+        add(join(harnessDir, 'domain.md'));
+    }
+    if (!flags.archSkipped) {
+        add(join(harnessDir, 'architecture.yaml'));
+    }
+    return out;
 }
 /**
  * F-076 fail-open wrapper. Never throws — instead returns a status

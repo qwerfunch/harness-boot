@@ -3620,8 +3620,119 @@ features:
     summary: "LLM hook fill landed. harness conventions fill --section {comments|tests} --text ... replaces [pending: LLM hook stub] in .harness/conventions.md and appends llm_call event to events.log via recordLlmCall. Idempotent — re-fill on filled section returns exit 4 with clear error. End-to-end verified: scenario=existing_code init + 2 fills produced final conventions.md with both LLM-driven sections populated, events.log captured tokens_in/out/model for bench. Closes the PR 3b LLM hook contract; codebase-archaeologist slash command can now record real cost through this surface."
   started_at: 2026-05-12T14:01:48Z
   completed_at: 2026-05-12T14:04:47Z
+- id: F-164
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-12T23:23:45Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-12T23:23:46Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-12T23:23:48Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-12T23:23:52Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-12T23:23:45Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.6s) · cmd: npm test"
+  - ts: 2026-05-12T23:23:46Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.8s) · cmd: npm run typecheck"
+  - ts: 2026-05-12T23:23:48Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.5s) · cmd: npm run lint"
+  - ts: 2026-05-12T23:23:52Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.4s) · cmd: bash self_check.sh"
+  - ts: 2026-05-12T23:23:56Z
+    kind: test
+    summary: logcat-on Issue 6 fix verified — workingTreeDirty whitelist branch tested with both whitelisted-only dirty (archive runs) and unrelated dirt (still blocks); 814 vitest pass
+  started_at: 2026-05-12T23:21:11Z
+  completed_at: 2026-05-12T23:30:49Z
+- id: F-165
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-12T23:27:50Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-12T23:27:51Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-12T23:27:53Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-12T23:27:53Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-12T23:27:50Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.6s) · cmd: npm test"
+  - ts: 2026-05-12T23:27:51Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.8s) · cmd: npm run typecheck"
+  - ts: 2026-05-12T23:27:53Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.4s) · cmd: npm run lint"
+  - ts: 2026-05-12T23:27:53Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.4s) · cmd: bash self_check.sh"
+  - ts: 2026-05-12T23:27:53Z
+    kind: test
+    summary: logcat-on Issue 7 fix — feature-author template + SKILL.md + spec-conversion SKILL.md updated with |-/quoted scalar mandate; round-trip test parses risky multi-line ({, :, backticks, ${tpl}) byte-identically
+  started_at: 2026-05-12T23:27:43Z
+  completed_at: 2026-05-12T23:31:31Z
+- id: F-166
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-12T23:30:00Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-12T23:30:01Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-12T23:30:02Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-12T23:30:03Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-12T23:30:00Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.6s) · cmd: npm test"
+  - ts: 2026-05-12T23:30:01Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.8s) · cmd: npm run typecheck"
+  - ts: 2026-05-12T23:30:02Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.1s) · cmd: npm run lint"
+  - ts: 2026-05-12T23:30:03Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.4s) · cmd: bash self_check.sh"
+  - ts: 2026-05-12T23:30:03Z
+    kind: test
+    summary: logcat-on Issue 4 fix — collectWarnings(spec) emits feature.name_too_long for names > 80 cp (Unicode-correct), non-blocking; CLI prints to stderr; real spec surfaces ~18 candidates without breaking validate
+  started_at: 2026-05-12T23:29:58Z
+  completed_at: 2026-05-12T23:31:41Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-163
+  last_command: /harness:work F-166
   last_gate_passed: gate_5
   active_feature_id: null

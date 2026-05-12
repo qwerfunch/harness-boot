@@ -136,6 +136,31 @@ python3 "$PLUGIN_ROOT/scripts/sync.py" --harness-dir "$(pwd)/.harness" --soft
 - 자기참조 스펙(P-22 적용 대상) 에서는 Stage 5 출력의 spec_hash 를
   conversion-notes 에 기록해 retro 에서 cross-reference 가능하게 한다.
 
+### Stage 5.5 — YAML emit safety (F-165, logcat-on ISSUES-LOG return)
+
+자유 텍스트 필드 (`description:` · `risks[].statement:` ·
+`business_rules[].statement:` · `acceptance_criteria[]`) 가 wrap 된
+plain scalar 로 emit 되면 continuation line 의 첫 문자가 `{` 이거나
+줄 안에 `: ` 가 있을 때 YAML 파서가 nested mapping 으로 오인하고
+`harness sync` / `harness validate` 가 즉시 PARSE 실패로 abort 한다.
+검증 단계에서 retroactive 하게 잡을 수 없다 — 파싱이 먼저 깨지기 때문.
+fix 는 **emit 측**에 있다.
+
+**규칙** (Write tool 로 spec.yaml 작성 시):
+
+- `description:` (project · features · constraints 등) → **`|-`
+  literal block scalar** 강제. 줄바꿈 보존 + flow indicator 영향 0.
+- `risks[].statement:` · `business_rules[].statement:` → 한 줄이면
+  `"..."` double-quoted, 여러 줄이면 `|-`. 백틱 (` `` `) · CSS
+  `{...}` · JS `${template}` · `transform: translateY(...)` 같이 코드
+  냄새 나는 본문이 들어갈 때 plain scalar 절대 금지.
+- `acceptance_criteria[]` · `open_questions[].options[]` → 각 entry
+  `"..."` double-quoted. 한 줄이 고유 의미인 필드라 quote 가 가장
+  안전.
+
+확신 안 서면 `|-` 또는 `"..."` 중 하나. plain scalar 는 짧고
+영문/숫자만 있을 때만.
+
 ---
 
 ## 2. 원칙 목록 (21개, 우선순위 태깅됨)

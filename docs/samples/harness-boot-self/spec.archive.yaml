@@ -5790,3 +5790,75 @@ features:
           guard, the events.log token append, and a parity test
           rendering of the new conventions body. Existing
           F-160/F-161/F-162 parity tests stay green.
+  - id: F-164
+    description: |-
+      logcat-on ISSUES-LOG return (2026-05-13). The Phase 0 sync sequence
+      runs render (step 4) before bulk archive migration (step 7). Render
+      writes timestamp updates to `domain.md` and `harness.yaml`; when the
+      user project tracks those derived files, the immediate `git status
+      --porcelain` check in step 7 sees them as dirty and refuses to
+      archive — `archive_migrate_skip_reason: "dirty_tree"`. Sync ends up
+      blocking itself.
+
+      Fix: `workingTreeDirty` accepts a whitelist of paths sync just
+      wrote, and a porcelain line matching that whitelist no longer
+      counts as dirty. Real user in-flight edits (anywhere else in the
+      tree) still block the archive — the safety intent is preserved.
+    acceptance_criteria:
+      - "AC-1: `workingTreeDirty(projectRoot, ignorePaths)` filters out any
+        porcelain entry whose path is in `ignorePaths` (relative to
+        `projectRoot`)."
+      - "AC-2: Sync passes the four derived paths it just wrote
+        (`.harness/domain.md`, `.harness/architecture.yaml`,
+        `.harness/harness.yaml`, `.harness/events.log`) as the whitelist."
+      - "AC-3: When ONLY whitelisted files are dirty, bulk archive runs and
+        emits `bulk_archive_migrated` (not `dirty_tree`)."
+      - "AC-4: When any non-whitelisted file is dirty, bulk archive still skips
+        with `dirty_tree` (safety intent preserved)."
+      - "AC-5: Test covers both branches with a temp git repo."
+  - id: F-165
+    description: |-
+      logcat-on ISSUES-LOG return (2026-05-13). When the feature-author
+      or spec-conversion skill emits YAML directly via the Write tool,
+      multi-line free-text fields (`description:`, `statement:`) are
+      sometimes written as plain scalars. If a wrapped continuation
+      line starts with `{` or contains `: `, the YAML parser reads it
+      as a nested mapping and `harness sync` / `harness validate` abort
+      with PARSE error. logcat-on accumulated ~10 such blocks before
+      detection (out of ~1292 statements).
+
+      Fix: both skills are updated to mandate `|-` block scalar (or
+      double-quoted scalar) for any multi-line free-text field, and
+      the spec validator emits a soft warning when a `description:`
+      key in `features[]` looks like a folded plain scalar with risky
+      continuation content.
+    acceptance_criteria:
+      - "AC-1: `skills/feature-author/SKILL.md` documents the block-scalar rule
+        for `description:` (and any future multi-line field) with a one-line
+        example."
+      - "AC-2: `skills/feature-author/templates/feature-entry.yaml` uses `|-`
+        for `description:`."
+      - "AC-3: `skills/spec-conversion/SKILL.md` documents the same rule for
+        `description:` and `statement:` (in `risks[]`)."
+      - "AC-4: Round-trip test fills the updated template with risky multi-line
+        content (`{`, `: `, backticks) and asserts yaml.parse round-trips
+        byte-identically — proves block-scalar usage emits parser-clean YAML."
+      - "AC-5: Skill documentation explains why the validator cannot
+        retroactively catch this (PARSE failure happens before validation) and
+        points to the round-trip test as the regression net."
+  - id: F-166
+    description: |-
+      logcat-on ISSUES-LOG return (2026-05-13). Feature `name:` values
+      have grown to 200-300 characters in some projects — they overflow
+      the dashboard `working on: "..."` line, get truncated in `git log
+      --oneline`, and bloat spec.yaml's readable surface. The fix is a
+      soft validator warning (non-blocking — backward compat) that
+      nudges authors toward a `digest:` / `description:` body for the
+      long-form content.
+    acceptance_criteria:
+      - "AC-1: Spec validator emits warning code `feature.name_too_long` when
+        `len(name) > 80` (utf-8 code points)."
+      - "AC-2: Warnings are non-blocking — `validateSpec` still returns success."
+      - "AC-3: Warning message suggests moving overflow to `digest:` or
+        `description:`."
+      - "AC-4: Unit test covers boundary 80/81 chars."

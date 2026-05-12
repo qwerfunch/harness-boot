@@ -188,6 +188,73 @@ function ajvErrorToPath(err: ErrorObject): Array<string | number> {
 }
 
 /**
+ * Soft-warning entry surfaced by {@link collectWarnings}.
+ *
+ * Distinct from {@link SpecValidationError} — warnings never throw and
+ * never gate sync / complete. They exist to nudge authors toward
+ * healthier patterns (e.g. F-166 title length).
+ */
+export interface SpecWarning {
+  /** Stable identifier — e.g. `feature.name_too_long`. */
+  code: string;
+  /** JSON-pointer-like path to the offending node. */
+  path: Array<string | number>;
+  /** Human-readable advice. */
+  message: string;
+}
+
+/** F-166 — soft cap on `feature.name` length (Unicode code points). */
+const FEATURE_NAME_MAX_LENGTH = 80;
+
+/**
+ * Collects non-blocking lint warnings from a parsed spec.
+ *
+ * Each warning is purely advisory — callers (CLI, sync, work) decide
+ * whether to print, ignore, or aggregate. The function never throws
+ * and always returns an array, even on malformed input.
+ *
+ * Current checks:
+ *
+ *   - **F-166** `feature.name_too_long`: emitted when a feature's
+ *     `name` length (Unicode code points) exceeds
+ *     {@link FEATURE_NAME_MAX_LENGTH}. The message suggests moving
+ *     overflow content into `digest:` or `description:` so the
+ *     dashboard and `git log --oneline` stay readable.
+ */
+export function collectWarnings(spec: unknown): SpecWarning[] {
+  const warnings: SpecWarning[] = [];
+  if (spec === null || typeof spec !== 'object' || Array.isArray(spec)) {
+    return warnings;
+  }
+  const features = (spec as Record<string, unknown>)['features'];
+  if (!Array.isArray(features)) {
+    return warnings;
+  }
+  features.forEach((entry, index) => {
+    if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) {
+      return;
+    }
+    const name = (entry as Record<string, unknown>)['name'];
+    if (typeof name !== 'string') {
+      return;
+    }
+    const len = [...name].length; // Unicode code points, not UTF-16 units.
+    if (len > FEATURE_NAME_MAX_LENGTH) {
+      const id = (entry as Record<string, unknown>)['id'];
+      const idPart = typeof id === 'string' ? `${id} ` : '';
+      warnings.push({
+        code: 'feature.name_too_long',
+        path: ['features', index, 'name'],
+        message:
+          `${idPart}name is ${len} chars (cap ${FEATURE_NAME_MAX_LENGTH}) — ` +
+          'move the overflow into `digest:` (one-line summary) or `description:` (multi-line body).',
+      });
+    }
+  });
+  return warnings;
+}
+
+/**
  * Validates a parsed spec against the JSONSchema.
  *
  * @param spec - Parsed `spec.yaml` object (as produced by

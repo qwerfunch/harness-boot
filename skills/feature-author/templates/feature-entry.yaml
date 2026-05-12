@@ -21,9 +21,17 @@
   - id: "<F_ID>"
     name: "<NAME>"
     type: "<TYPE>"
-    description: |
+    # F-165 — multi-line free-text MUST use `|-` (literal block scalar)
+    # not folded plain scalar. Plain scalars wrap at line width and a
+    # continuation starting with `{` or containing `: ` will be parsed
+    # as a nested mapping. `|-` preserves the body verbatim and is
+    # parser-safe regardless of `{`, `: `, or backtick content.
+    description: |-
       <DESCRIPTION>
     acceptance_criteria:
+      # F-165 — quote AC entries with `"..."` so embedded `{` · `: ` ·
+      # backticks survive parsing. Plain scalars are fragile when an
+      # AC happens to include code-flavored content.
       - "AC-1: <AC_1>"
       - "AC-2: <AC_2>"
       - "AC-3: <AC_3>"

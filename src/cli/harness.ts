@@ -64,7 +64,12 @@ import {compute as computeMetrics, formatHuman as formatMetricsHuman} from '../m
 import {render as renderDashboard} from '../ui/dashboard.js';
 import {suggest} from '../ui/intentPlanner.js';
 import {resolveLang} from '../ui/lang.js';
-import {SpecValidationError, loadSpec, validate as validateSpec} from '../spec/validate.js';
+import {
+  SpecValidationError,
+  collectWarnings as collectSpecWarnings,
+  loadSpec,
+  validate as validateSpec,
+} from '../spec/validate.js';
 import {exportSpec} from '../spec/exportSpec.js';
 import {State} from '../core/state.js';
 import {buildReport, formatHuman as formatStatusHuman} from '../status.js';
@@ -976,10 +981,15 @@ function buildProgram(): Command {
           data,
           typeof options['schema'] === 'string' ? (options['schema'] as string) : null,
         );
+        const warnings = collectSpecWarnings(data);
         if (options['json']) {
-          printJson({ok: true});
+          printJson({ok: true, warnings});
         } else {
           printHuman(`valid — ${specPath}\n`);
+          for (const w of warnings) {
+            const pathStr = w.path.map((p) => String(p)).join('.');
+            process.stderr.write(`[warn] ${w.code} (${pathStr}): ${w.message}\n`);
+          }
         }
       } catch (err) {
         if (err instanceof SpecValidationError) {
