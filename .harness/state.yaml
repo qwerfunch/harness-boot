@@ -3397,7 +3397,7 @@ features:
   started_at: 2026-05-12T03:22:26Z
   completed_at: 2026-05-12T03:23:13Z
 - id: F-156
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3432,9 +3432,9 @@ features:
     kind: manual_check
     summary: commands/work.md 28KB → 18.9KB (-32%); 두 사이드카 신설 (_work-ceremonies.md 6.4KB + _work-orchestration.md 3.4KB); self_check.sh step 5 underscore-skip 추가; self_check 5/5 + npm test 720/720; 코드/spec 회귀 0
   started_at: 2026-05-12T06:37:24Z
-  completed_at: null
+  completed_at: 2026-05-12T06:38:02Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-156
   last_gate_passed: gate_5
-  active_feature_id: F-156
+  active_feature_id: null
