@@ -3571,7 +3571,7 @@ features:
   started_at: 2026-05-12T10:06:14Z
   completed_at: 2026-05-12T10:11:22Z
 - id: F-162
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3594,9 +3594,9 @@ features:
     kind: manual_check
     summary: "Scenario 2 (plan_doc) shipped. mdDetect.ts auto-detect rule: exactly one non-README/CHANGELOG/LICENSE/CONTRIBUTING/SECURITY md returns the path, 0 or 2+ returns null. scenarioPlanDoc.ts seeds project.name from first H1 (filename fallback), summary from first paragraph, description from first 500 chars; redacts secrets; stamps metadata.source.origin=plan_doc + plan_doc_path + draft + content_hash. CLI: harness init --scenario plan_doc [--plan path]. Verified end-to-end on tests/perf/fixtures/plan-md/PLAN.md: name='Pomodoro Timer for Solo Musicians', summary extracted, spec validates. Ambiguous case (2 mds) returns clear error. All 4 init scenarios (skeleton-only + idea + existing_code + plan_doc) now ship."
   started_at: 2026-05-12T10:20:08Z
-  completed_at: null
+  completed_at: 2026-05-12T10:23:53Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-162
   last_gate_passed: gate_5
-  active_feature_id: F-162
+  active_feature_id: null
