@@ -21,7 +21,11 @@ import {join} from 'node:path';
 import {afterEach, beforeEach, describe, expect, it} from 'vitest';
 import {parse as yamlParse, stringify as yamlStringify} from 'yaml';
 
-import {bulkMigrate, moveToArchive} from '../../src/spec/archive.js';
+import {
+  autoArchiveOpenQuestions,
+  bulkMigrate,
+  moveToArchive,
+} from '../../src/spec/archive.js';
 
 interface Workspace {
   dir: string;
@@ -311,5 +315,218 @@ describe('bulkMigrate (F-137)', () => {
   it('returns 0 when state.yaml has no done features', () => {
     writeStateWithDoneIds(ws.harness, []);
     expect(bulkMigrate(ws.harness)).toBe(0);
+  });
+});
+
+/**
+ * F-145 — auto-digest backfill on `moveToArchive`.
+ *
+ * The live entry should grow a `digest` derived from `description`
+ * before the body moves out, but only when the entry has no `digest`
+ * already (user-authored values win).
+ */
+describe('moveToArchive — F-145 auto-digest', () => {
+  let ws: Workspace;
+  beforeEach(() => {
+    ws = makeWorkspace();
+  });
+  afterEach(() => {
+    rmSync(ws.dir, {recursive: true, force: true});
+  });
+
+  it('backfills `digest` from description when none is present', () => {
+    moveToArchive(ws.harness, 'F-001');
+    const spec = yamlParse(
+      readFileSync(join(ws.harness, 'spec.yaml'), 'utf-8'),
+    ) as Record<string, unknown>;
+    const live = (spec['features'] as Array<Record<string, unknown>>).find(
+      (f) => f['id'] === 'F-001',
+    )!;
+    expect(typeof live['digest']).toBe('string');
+    // Description had a newline; whitespace must be condensed.
+    expect(live['digest']).toBe('Boot the system end-to-end. Second paragraph.');
+    // And the body keys are gone.
+    expect(live['description']).toBeUndefined();
+    expect(live['acceptance_criteria']).toBeUndefined();
+  });
+
+  it('respects an existing digest (does not overwrite)', () => {
+    moveToArchive(ws.harness, 'F-002');
+    const spec = yamlParse(
+      readFileSync(join(ws.harness, 'spec.yaml'), 'utf-8'),
+    ) as Record<string, unknown>;
+    const live = (spec['features'] as Array<Record<string, unknown>>).find(
+      (f) => f['id'] === 'F-002',
+    )!;
+    // F-002 fixture already had digest = 'one-liner about F-002'.
+    expect(live['digest']).toBe('one-liner about F-002');
+  });
+
+  it('caps digest at 120 chars with an ellipsis when description is longer', () => {
+    // Augment fixture with a long-description feature.
+    const spec = yamlParse(readFileSync(join(ws.harness, 'spec.yaml'), 'utf-8')) as Record<
+      string,
+      unknown
+    >;
+    const features = spec['features'] as Array<Record<string, unknown>>;
+    const longText = 'a'.repeat(200);
+    features.push({
+      id: 'F-099',
+      name: 'long',
+      type: 'feature',
+      description: longText,
+    });
+    writeFileSync(join(ws.harness, 'spec.yaml'), yamlStringify(spec), 'utf-8');
+
+    moveToArchive(ws.harness, 'F-099');
+    const after = yamlParse(readFileSync(join(ws.harness, 'spec.yaml'), 'utf-8')) as Record<
+      string,
+      unknown
+    >;
+    const live = (after['features'] as Array<Record<string, unknown>>).find(
+      (f) => f['id'] === 'F-099',
+    )!;
+    const digest = live['digest'] as string;
+    expect(digest.length).toBe(120);
+    expect(digest.endsWith('...')).toBe(true);
+  });
+
+  it('leaves digest absent when the entry has no description and no AC', () => {
+    // Insert an empty-body entry; moveToArchive should be a no-op.
+    const spec = yamlParse(readFileSync(join(ws.harness, 'spec.yaml'), 'utf-8')) as Record<
+      string,
+      unknown
+    >;
+    const features = spec['features'] as Array<Record<string, unknown>>;
+    features.push({id: 'F-088', name: 'empty', type: 'feature'});
+    writeFileSync(join(ws.harness, 'spec.yaml'), yamlStringify(spec), 'utf-8');
+
+    moveToArchive(ws.harness, 'F-088');
+    const after = yamlParse(readFileSync(join(ws.harness, 'spec.yaml'), 'utf-8')) as Record<
+      string,
+      unknown
+    >;
+    const live = (after['features'] as Array<Record<string, unknown>>).find(
+      (f) => f['id'] === 'F-088',
+    )!;
+    expect(live['digest']).toBeUndefined();
+  });
+});
+
+/**
+ * F-147 — auto-archive of resolved open_questions older than the cool-down
+ * window (default 30 days).
+ */
+describe('autoArchiveOpenQuestions — F-147', () => {
+  let ws: Workspace;
+  beforeEach(() => {
+    ws = makeWorkspace();
+  });
+  afterEach(() => {
+    rmSync(ws.dir, {recursive: true, force: true});
+  });
+
+  function seedOpenQuestions(entries: Array<Record<string, unknown>>): void {
+    const spec = yamlParse(readFileSync(join(ws.harness, 'spec.yaml'), 'utf-8')) as Record<
+      string,
+      unknown
+    >;
+    spec['open_questions'] = entries;
+    writeFileSync(join(ws.harness, 'spec.yaml'), yamlStringify(spec), 'utf-8');
+  }
+
+  it('moves entries with answered_at older than 30 days into the archive', () => {
+    const old = '2026-01-01T00:00:00Z';
+    const recent = '2026-05-10T00:00:00Z';
+    seedOpenQuestions([
+      {id: 'OQ-1', title: 'old answered', status: 'answered', answered_at: old},
+      {id: 'OQ-2', title: 'recent answered', status: 'answered', answered_at: recent},
+      {id: 'OQ-3', title: 'still open'},
+    ]);
+
+    const moved = autoArchiveOpenQuestions(ws.harness, {
+      now: new Date('2026-05-12T00:00:00Z'),
+    });
+    expect(moved).toBe(1);
+
+    const spec = yamlParse(
+      readFileSync(join(ws.harness, 'spec.yaml'), 'utf-8'),
+    ) as Record<string, unknown>;
+    const liveIds = (spec['open_questions'] as Array<Record<string, unknown>>).map(
+      (q) => q['id'],
+    );
+    expect(liveIds).toEqual(['OQ-2', 'OQ-3']);
+
+    const archive = yamlParse(
+      readFileSync(join(ws.harness, 'spec.archive.yaml'), 'utf-8'),
+    ) as Record<string, unknown>;
+    const archivedIds = (archive['open_questions'] as Array<Record<string, unknown>>).map(
+      (q) => q['id'],
+    );
+    expect(archivedIds).toEqual(['OQ-1']);
+  });
+
+  it('returns 0 when no entry is eligible (idempotent on a clean spec)', () => {
+    seedOpenQuestions([{id: 'OQ-1', title: 'still open'}]);
+    expect(autoArchiveOpenQuestions(ws.harness)).toBe(0);
+    expect(existsSync(join(ws.harness, 'spec.archive.yaml'))).toBe(false);
+  });
+
+  it('upserts on the archive — second relocation of the same id replaces in place', () => {
+    seedOpenQuestions([
+      {
+        id: 'OQ-1',
+        title: 'first',
+        status: 'answered',
+        answered_at: '2026-01-01T00:00:00Z',
+      },
+    ]);
+    autoArchiveOpenQuestions(ws.harness, {now: new Date('2026-05-12T00:00:00Z')});
+
+    // Resurface the same id with a newer body, then re-archive.
+    seedOpenQuestions([
+      {
+        id: 'OQ-1',
+        title: 'second',
+        status: 'answered',
+        answered_at: '2026-01-01T00:00:00Z',
+      },
+    ]);
+    autoArchiveOpenQuestions(ws.harness, {now: new Date('2026-05-12T00:00:00Z')});
+
+    const archive = yamlParse(
+      readFileSync(join(ws.harness, 'spec.archive.yaml'), 'utf-8'),
+    ) as Record<string, unknown>;
+    const oqs = archive['open_questions'] as Array<Record<string, unknown>>;
+    expect(oqs.length).toBe(1);
+    expect(oqs[0]['title']).toBe('second');
+  });
+
+  it('accepts resolved_at and closed_at as fallback timestamps', () => {
+    seedOpenQuestions([
+      {id: 'OQ-1', title: 'a', resolved_at: '2026-01-01T00:00:00Z'},
+      {id: 'OQ-2', title: 'b', closed_at: '2026-01-01T00:00:00Z'},
+      {id: 'OQ-3', title: 'c'},
+    ]);
+    const moved = autoArchiveOpenQuestions(ws.harness, {
+      now: new Date('2026-05-12T00:00:00Z'),
+    });
+    expect(moved).toBe(2);
+  });
+
+  it('respects the ageDays cap — recent entries stay live', () => {
+    seedOpenQuestions([
+      {id: 'OQ-1', title: 'two days ago', answered_at: '2026-05-10T00:00:00Z'},
+    ]);
+    const moved = autoArchiveOpenQuestions(ws.harness, {
+      now: new Date('2026-05-12T00:00:00Z'),
+      ageDays: 30,
+    });
+    expect(moved).toBe(0);
+  });
+
+  it('returns 0 when spec.yaml is missing', () => {
+    rmSync(join(ws.harness, 'spec.yaml'));
+    expect(autoArchiveOpenQuestions(ws.harness)).toBe(0);
   });
 });

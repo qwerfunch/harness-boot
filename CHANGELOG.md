@@ -11,6 +11,21 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ### Queued
 
+## [0.15.2] — 2026-05-12
+
+**Self-managing spec.** Three additive behaviours close the long-running spec.yaml bloat axis end to end. `complete()` now backfills the live entry's `digest` (capped at 120 chars) from the description before the body relocates to `spec.archive.yaml`, so dashboards and external `@import` readers retain a meaningful one-line label after archive. `harness sync` gains an 8th step that auto-archives resolved `open_questions[]` whose `*_at` timestamp is older than 30 days. The harness-boot self spec finally caught up: `.harness/spec.yaml` shrunk from 7028 to 2512 lines (-64%) as `harness sync` migrated 128 accumulated done feature bodies that F-137 had been silently skipping on every dirty-tree run.
+
+### Added
+
+- **F-143** — auto-digest backfill on `moveToArchive`. `src/spec/archive.ts` derives `digest` from the first ~120 chars of `description` (whitespace-condensed, ellipsis-suffixed when truncated) when the entry has no digest already. Existing user-authored digests are respected. Effect: dashboard / kickoff / external `@import` see meaningful labels for done features even after the body moves to `spec.archive.yaml`.
+- **F-143** — auto-archive of resolved `open_questions[]`. `harness sync` runs `autoArchiveOpenQuestions()` after the bulk archive migration: entries with `answered_at` (or `resolved_at` / `closed_at`) older than 30 days move to `spec.archive.yaml.open_questions[]` with per-id upsert. Honours `--no-open-questions-archive` and `harness.yaml: archive.open_questions: false`. Idempotent and silent when nothing is eligible.
+
+### Changed
+
+- **F-143** — retroactive catch-up of harness-boot self spec. The first clean-tree `harness sync` after the upgrade emitted `[info] sync: auto-archived 128 done feature bodies → .harness/spec.archive.yaml`; the lockstep mirror under `docs/samples/harness-boot-self/` was updated in the same commit. `self_check.sh` 5/5 OK, `npm test` 720/720 (10 new vitest cases for F-145 + F-147 covered behaviours).
+- **F-148** — starter `CLAUDE.md.template` §8 and `commands/init.md` existing-file path now register `@.harness/spec.archive.yaml` alongside `@.harness/spec.yaml`. Closes the v0.15.2 follow-up gap where every Claude session in a user's project lost done-feature bodies the moment they relocated to the sidecar; reviewer / audit / human grep now retain full done detail at +1% token cost vs full inline (-73% vs the legacy spec.yaml-only flow).
+- **F-156** — `commands/work.md` slimmed from 28 KB to ~19 KB (-32%) by splitting ceremony auto-wire detail (Kickoff · Q&A · Design Review · Retro) into `commands/_work-ceremonies.md` and orchestration operational detail (conflict resolution · skip policy · feature-context payload · routing transparency · parallel-dispatch safety) into `commands/_work-orchestration.md`. The primary file keeps every per-call essential (subcommand specs · Iron Law · 6-row routing contract · free-text intent routing). Per-call LLM input shrinks ~2.5 K tokens on every `/harness-boot:work` invocation. `self_check.sh` step 5 now skips underscore-prefixed sidecars so reference docs do not need the Preamble / anti-rationalization markers. Source code change 0; parity tests 720/720 still pass.
+
 ## [0.15.1] — 2026-05-11
 
 **Drive hook trigger fix.** The validation cycle on the v0.15.0 sample project surfaced that F-138 / F-139 / F-140 hooks never fired when a user mixed `harness work` CLI calls with `harness drive --resume` (the common pattern for any cycle that needs human-driven coding between drive iterations). The fix widens the trigger window so the hooks fire on **any pending done feature drive hasn't seen yet**, not just transitions drive itself owned.

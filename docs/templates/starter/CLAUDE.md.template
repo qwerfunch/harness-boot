@@ -9,6 +9,7 @@
 - 제품 설명·엔티티·BR·기능 요구·배포 계약을 YAML 로 기록.
 - 채우는 법이 막히면 `/harness-boot:work` 의 자연어 진입점으로 시작 (현재 spec 상태 + 다음 후보 대시보드).
 - 기존 `plan.md` 가 있으면 `/harness-boot:init plan.md 기반으로 시작` 으로 자연어 진입.
+- `.harness/spec.archive.yaml` 은 *편집하지 않음* — done feature 의 description / AC 를 `harness sync` 가 자동으로 옮겨오는 사이드카. 위 §8 import 에는 spec.yaml 과 함께 등록 (Claude 가 done detail 을 잃지 않도록).
 
 ## 2. 자동 생성되는 것 (당신이 편집하지 않는 것)
 
@@ -83,10 +84,11 @@ Full text + per-language reference patterns: `docs/communication-rules.md` in th
 ## 8. Import
 
 @.harness/spec.yaml
+@.harness/spec.archive.yaml
 @.harness/architecture.yaml
 @.harness/domain.md
 
-(위 import 들은 Claude Code 가 자동 로드. spec 변경 시 Claude 세션 재시작 권장.)
+(위 import 들은 Claude Code 가 자동 로드. spec 변경 시 Claude 세션 재시작 권장. `spec.archive.yaml` 은 done feature 의 description / AC 가 누적되는 사이드카 — `spec.yaml` 과 함께 import 해야 reviewer / audit 시 done detail 이 보존됨. F-143 의 자동 archive 흐름과 짝.)
 
 ---
 

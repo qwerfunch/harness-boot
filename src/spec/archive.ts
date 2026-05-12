@@ -43,6 +43,39 @@ import {parse as yamlParse, stringify as yamlStringify} from 'yaml';
 /** The two body keys the archive separates out. */
 const BODY_KEYS: readonly string[] = ['description', 'acceptance_criteria'] as const;
 
+/**
+ * F-145 — when archiving a feature whose `digest` is unset, auto-extract
+ * the first {@link DIGEST_AUTO_LIMIT} characters of `description` so the
+ * dashboard / kickoff template / external `@import` reader still has a
+ * meaningful one-line label after the body moves to spec.archive.yaml.
+ *
+ * The cap matches the `name` schema cap (100 chars) plus a small
+ * margin so a digest that *expands* on the name still fits in a
+ * single dashboard row. Lower than 80 reads as truncated; higher than
+ * ~140 starts wrapping in narrow terminals.
+ */
+const DIGEST_AUTO_LIMIT = 120;
+
+/** Compresses internal whitespace runs so a multi-line description fits in one line. */
+function condenseWhitespace(value: string): string {
+  return value.trim().replace(/\s+/g, ' ');
+}
+
+/**
+ * Returns a digest derived from `description`, capped at
+ * {@link DIGEST_AUTO_LIMIT}. When the description does not exceed the
+ * limit the original (whitespace-condensed) text is returned without an
+ * ellipsis; longer descriptions are truncated and suffixed with `...`.
+ */
+function deriveDigestFromDescription(description: string): string {
+  const condensed = condenseWhitespace(description);
+  if (condensed.length <= DIGEST_AUTO_LIMIT) {
+    return condensed;
+  }
+  // Reserve 3 chars for the ellipsis so the total stays at the limit.
+  return `${condensed.slice(0, DIGEST_AUTO_LIMIT - 3).trimEnd()}...`;
+}
+
 /** Default top-level shape for a freshly created archive file. */
 function blankArchive(): Record<string, unknown> {
   return {
@@ -98,6 +131,18 @@ export function moveToArchive(harnessDir: string, fid: string): void {
   const body = extractBody(liveEntry);
   if (body === null) {
     return;
+  }
+
+  // F-145 — backfill the live entry's `digest` from the description before
+  // the body moves out, so dashboards / kickoff / external @import readers
+  // still see a meaningful one-line label. Existing digest is respected
+  // (user-authored or already-auto-filled values are not overwritten).
+  if (
+    typeof liveEntry['digest'] !== 'string' &&
+    typeof liveEntry['description'] === 'string' &&
+    liveEntry['description'].length > 0
+  ) {
+    liveEntry['digest'] = deriveDigestFromDescription(liveEntry['description']);
   }
 
   // Strip the body keys from the live entry, in place on the loaded tree.
@@ -267,4 +312,158 @@ export function bulkMigrate(harnessDir: string): number {
     moved += 1;
   }
   return moved;
+}
+
+/**
+ * Default minimum age (in days) before a resolved open question becomes
+ * eligible for relocation to `spec.archive.yaml`. The cap protects users
+ * who answer a question and then re-open it within a few days from
+ * losing the live entry. 30 days mirrors the typical sprint cadence.
+ */
+const DEFAULT_OPEN_QUESTION_ARCHIVE_AGE_DAYS = 30;
+
+/** Optional input for {@link autoArchiveOpenQuestions}. */
+export interface OpenQuestionArchiveOptions {
+  /** Override the {@link DEFAULT_OPEN_QUESTION_ARCHIVE_AGE_DAYS} cap. */
+  ageDays?: number;
+  /** Override the wall clock — primarily for tests. */
+  now?: Date;
+}
+
+/**
+ * F-147 — relocates resolved `open_questions[]` entries from `spec.yaml`
+ * into `spec.archive.yaml` when the resolution is older than
+ * `ageDays` (default 30). Two reasons for the delay window:
+ *
+ *   1. Allows a small reopen / second-thoughts window.
+ *   2. Lets adjacent CI / review traffic reference the live entry
+ *      before it disappears.
+ *
+ * Eligibility:
+ *   - `status === 'answered'`, **or** the entry carries any of
+ *     `answered_at` · `resolved_at` · `closed_at` (free-form fields the
+ *     schema does not enforce; the timestamp wins when status is absent).
+ *   - The chosen timestamp is older than `ageDays` from `now`.
+ *
+ * Behaviour:
+ *   - Idempotent: archive entries are upserted by `id`.
+ *   - Stable order in spec.archive.yaml — append at the end for new ids,
+ *     in-place replace for existing ones (mirrors {@link moveToArchive}).
+ *   - Returns the count actually moved (0 on no-op).
+ *
+ * Boundaries:
+ *   - This function never reads `state.yaml` (open_questions live in
+ *     spec.yaml only); the caller in `sync.ts` is responsible for the
+ *     dirty-tree guard and the opt-out check.
+ *   - On a malformed spec or archive shape the function returns 0
+ *     without throwing — caller wraps in try/catch as a defence in depth.
+ *
+ * @returns the count of `open_questions[]` entries actually relocated.
+ */
+export function autoArchiveOpenQuestions(
+  harnessDir: string,
+  options: OpenQuestionArchiveOptions = {},
+): number {
+  const specPath = join(harnessDir, 'spec.yaml');
+  const archivePath = join(harnessDir, 'spec.archive.yaml');
+
+  if (!existsSync(specPath)) {
+    return 0;
+  }
+  const spec = yamlParse(readFileSync(specPath, 'utf-8')) as
+    | Record<string, unknown>
+    | null;
+  if (spec === null || typeof spec !== 'object' || Array.isArray(spec)) {
+    return 0;
+  }
+  const liveQuestions = spec['open_questions'];
+  if (!Array.isArray(liveQuestions) || liveQuestions.length === 0) {
+    return 0;
+  }
+
+  const ageDays = options.ageDays ?? DEFAULT_OPEN_QUESTION_ARCHIVE_AGE_DAYS;
+  const now = options.now ?? new Date();
+  const ageMillis = ageDays * 24 * 60 * 60 * 1000;
+  const ageThreshold = now.getTime() - ageMillis;
+
+  const eligible: Array<Record<string, unknown>> = [];
+  const remaining: unknown[] = [];
+  for (const entry of liveQuestions) {
+    if (!isPlainRecord(entry)) {
+      remaining.push(entry);
+      continue;
+    }
+    const resolvedAt = pickResolvedTimestamp(entry);
+    if (resolvedAt === null) {
+      remaining.push(entry);
+      continue;
+    }
+    if (resolvedAt.getTime() > ageThreshold) {
+      remaining.push(entry);
+      continue;
+    }
+    eligible.push(entry);
+  }
+
+  if (eligible.length === 0) {
+    return 0;
+  }
+
+  // Move eligible entries into the archive. Mutation strategy mirrors
+  // {@link moveToArchive}: load → upsert → write.
+  const archive = loadArchive(archivePath);
+  if (!Array.isArray(archive['open_questions'])) {
+    archive['open_questions'] = [];
+  }
+  const archiveQuestions = archive['open_questions'] as Array<Record<string, unknown>>;
+  for (const entry of eligible) {
+    const id = typeof entry['id'] === 'string' ? entry['id'] : null;
+    if (id === null) {
+      continue;
+    }
+    const existingIndex = archiveQuestions.findIndex(
+      (q) => isPlainRecord(q) && q['id'] === id,
+    );
+    if (existingIndex === -1) {
+      archiveQuestions.push(entry);
+    } else {
+      archiveQuestions[existingIndex] = entry;
+    }
+  }
+
+  spec['open_questions'] = remaining;
+  writeFileSync(specPath, yamlStringify(spec), 'utf-8');
+  writeFileSync(archivePath, yamlStringify(archive), 'utf-8');
+  return eligible.length;
+}
+
+/** Local guard reused inside {@link autoArchiveOpenQuestions}. */
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * Picks the resolution timestamp for an open question. Order:
+ *
+ *   1. `answered_at` — explicit field favoured by F-147 docs.
+ *   2. `resolved_at` — common synonym in adjacent OSS schemas.
+ *   3. `closed_at`   — fallback for ticket-system imports.
+ *
+ * When `status === 'answered'` is present *without* a timestamp, the
+ * function falls back to the file's mtime — but that requires a path,
+ * which the per-entry call does not have, so the path-less code path
+ * returns `null` and the entry stays live until a timestamp is added.
+ */
+function pickResolvedTimestamp(entry: Record<string, unknown>): Date | null {
+  for (const key of ['answered_at', 'resolved_at', 'closed_at']) {
+    const raw = entry[key];
+    if (typeof raw !== 'string' || raw.length === 0) {
+      continue;
+    }
+    const parsed = new Date(raw);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+  return null;
 }

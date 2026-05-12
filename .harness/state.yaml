@@ -3322,8 +3322,119 @@ features:
     summary: loop.ts step 3.5 widened to iterate unevaluated done features; replanAlreadyEvaluated helper exported; 2 new vitest cases
   started_at: 2026-05-11T06:57:26Z
   completed_at: 2026-05-11T07:01:28Z
+- id: F-143
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-12T02:39:11Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-12T02:39:18Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-12T02:39:20Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-12T02:39:24Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-12T02:39:11Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.5s) · cmd: npm test"
+  - ts: 2026-05-12T02:39:18Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.9s) · cmd: npm run typecheck"
+  - ts: 2026-05-12T02:39:20Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.4s) · cmd: npm run lint"
+  - ts: 2026-05-12T02:39:24Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.4s) · cmd: bash self_check.sh"
+  - ts: 2026-05-12T02:39:30Z
+    kind: manual_check
+    summary: spec.yaml 7028 → 2512 lines (-64%); 128 done bodies + 0 open_q archived; 720/720 vitest (10 new); self_check 5/5; lockstep mirror OK
+  started_at: 2026-05-12T02:38:13Z
+  completed_at: 2026-05-12T02:41:17Z
+- id: F-148
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-12T03:22:32Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-12T03:22:33Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-12T03:22:35Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-12T03:22:35Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-12T03:22:32Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.6s) · cmd: npm test"
+  - ts: 2026-05-12T03:22:33Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.9s) · cmd: npm run typecheck"
+  - ts: 2026-05-12T03:22:35Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.4s) · cmd: npm run lint"
+  - ts: 2026-05-12T03:22:35Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.4s) · cmd: bash self_check.sh"
+  - ts: 2026-05-12T03:22:41Z
+    kind: manual_check
+    summary: CLAUDE.md.template §8 + §1 + commands/init.md existing-file path 모두 archive sidecar import 한 줄 추가; self_check 5/5 OK; npm test 720/720 (회귀 0)
+  started_at: 2026-05-12T03:22:26Z
+  completed_at: 2026-05-12T03:23:13Z
+- id: F-156
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-12T06:37:26Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-12T06:37:27Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-12T06:37:29Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-12T06:37:29Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-12T06:37:26Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.5s) · cmd: npm test"
+  - ts: 2026-05-12T06:37:27Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.8s) · cmd: npm run typecheck"
+  - ts: 2026-05-12T06:37:29Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.5s) · cmd: npm run lint"
+  - ts: 2026-05-12T06:37:29Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.4s) · cmd: bash self_check.sh"
+  - ts: 2026-05-12T06:37:36Z
+    kind: manual_check
+    summary: commands/work.md 28KB → 18.9KB (-32%); 두 사이드카 신설 (_work-ceremonies.md 6.4KB + _work-orchestration.md 3.4KB); self_check.sh step 5 underscore-skip 추가; self_check 5/5 + npm test 720/720; 코드/spec 회귀 0
+  started_at: 2026-05-12T06:37:24Z
+  completed_at: 2026-05-12T06:38:02Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-142
+  last_command: /harness:work F-156
   last_gate_passed: gate_5
   active_feature_id: null

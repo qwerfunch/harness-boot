@@ -79,10 +79,16 @@ if [ "$ERR_COUNT" != "0" ]; then
     fail "check 에 error severity $ERR_COUNT 건 — 위 stderr 참조"
 fi
 
-# --- Step 5: commands/*.md 규약 grep ---
+# --- Step 5: commands/*.md 규약 grep (F-156 — underscore-prefixed sidecars are skipped) ---
 step 5 "commands/*.md preamble · anti-rationalization · CLI 위임"
 MISSING=0
 for f in commands/*.md; do
+    # F-156 — sidecar files (e.g. commands/_work-ceremonies.md) carry no
+    # Preamble or anti-rationalization line. They are reference docs the
+    # primary command may link to, not self-contained slash commands.
+    case "$(basename "$f")" in
+        _*) continue ;;
+    esac
     if ! grep -q "^## Preamble" "$f"; then
         echo "  [$f] '## Preamble' 섹션 누락" >&2
         MISSING=$((MISSING + 1))

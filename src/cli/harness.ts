@@ -423,6 +423,10 @@ function buildProgram(): Command {
     .option('--schema <path>', 'path to spec.schema.json override')
     .option('--timestamp <iso>', 'override UTC timestamp (tests)')
     .option('--no-archive-migrate', 'skip F-137 bulk archive migration this run')
+    .option(
+      '--no-open-questions-archive',
+      'skip F-147 auto-archive of resolved open_questions this run',
+    )
     .option('--json', 'emit JSON summary')
     .action((options: Record<string, unknown>) => {
       const harnessDir = resolveHarnessDir(options['harnessDir'] as string | undefined);
@@ -455,6 +459,7 @@ function buildProgram(): Command {
           timestamp:
             typeof options['timestamp'] === 'string' ? (options['timestamp'] as string) : undefined,
           noArchiveMigrate: options['archiveMigrate'] === false,
+          noOpenQuestionsArchive: options['openQuestionsArchive'] === false,
         });
         if (json) {
           printJson(summary);

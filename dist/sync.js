@@ -31,7 +31,7 @@ import { parse as yamlParse, stringify as yamlStringify } from 'yaml';
 import { spawnSync } from 'node:child_process';
 import { canonicalHash, merkleRoot, subtreeHashes } from './core/canonicalHash.js';
 import { PluginRootError, resolve as resolvePluginRoot, } from './core/pluginRoot.js';
-import { bulkMigrate } from './spec/archive.js';
+import { autoArchiveOpenQuestions, bulkMigrate } from './spec/archive.js';
 import { expand as expandIncludes, findIncludes, } from './spec/includeExpander.js';
 import { SpecValidationError, validate as validateSpec, } from './spec/validate.js';
 import { render as renderArchitecture } from './render/architecture.js';
@@ -399,6 +399,41 @@ export function run(harnessDir, options = {}) {
             }
         }
     }
+    // 8. F-147 — auto-archive of resolved open_questions. Same skip
+    // conditions as the bulk archive migration: dry-run, opt-out, dirty
+    // tree. Idempotent and silent when nothing is eligible (no event,
+    // no stderr line). The dirty-tree warning was already emitted by the
+    // bulk-archive step; do not echo it.
+    let openQuestionsArchived = 0;
+    let openQuestionsSkipReason = null;
+    if (dryRun) {
+        openQuestionsSkipReason = null;
+    }
+    else if (options.noOpenQuestionsArchive ||
+        harnessYaml.archive?.open_questions === false) {
+        openQuestionsSkipReason = 'opt_out';
+    }
+    else if (archiveSkipReason === 'dirty_tree') {
+        // Dirty-tree warning already shown by the bulk-archive step.
+        openQuestionsSkipReason = 'dirty_tree';
+    }
+    else {
+        try {
+            openQuestionsArchived = autoArchiveOpenQuestions(harnessDir);
+            if (openQuestionsArchived > 0) {
+                appendEvent(eventsLog, {
+                    ts,
+                    type: 'auto_archived_open_questions',
+                    count: openQuestionsArchived,
+                });
+                process.stderr.write(`[info] sync: auto-archived ${openQuestionsArchived} resolved open_question${openQuestionsArchived === 1 ? '' : 's'} (30+ days) → .harness/spec.archive.yaml\n`);
+            }
+        }
+        catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            process.stderr.write(`[warn] sync: open_questions auto-archive failed — ${msg}\n`);
+        }
+    }
     return {
         ok: true,
         spec_hash: hashRaw,
@@ -410,6 +445,8 @@ export function run(harnessDir, options = {}) {
         drift_status: generation.drift_status,
         archive_migrated: archiveMigrated,
         archive_migrate_skip_reason: archiveSkipReason,
+        open_questions_archived: openQuestionsArchived,
+        open_questions_archive_skip_reason: openQuestionsSkipReason,
     };
 }
 /** Returns true when `git status --porcelain` reports any untracked or modified files. */

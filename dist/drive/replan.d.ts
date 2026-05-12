@@ -50,6 +50,12 @@ export interface ReplanResult {
     skip_reason?: 'opt_out' | 'already_evaluated' | 'no_goal' | 'no_active' | 'no_state';
 }
 /**
+ * Returns true when events.log already carries a `replan_evaluated`
+ * event with this `feature` id. Used for the idempotent re-call
+ * short-circuit.
+ */
+export declare function replanAlreadyEvaluated(harnessDir: string, completedFid: string): boolean;
+/**
  * F-138 — adaptive replan after a feature transitions to `done`.
  *
  * Pipeline:

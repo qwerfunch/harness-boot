@@ -92,4 +92,42 @@ export declare function moveToArchive(harnessDir: string, fid: string): void;
  *         caller is expected to catch.
  */
 export declare function bulkMigrate(harnessDir: string): number;
+/** Optional input for {@link autoArchiveOpenQuestions}. */
+export interface OpenQuestionArchiveOptions {
+    /** Override the {@link DEFAULT_OPEN_QUESTION_ARCHIVE_AGE_DAYS} cap. */
+    ageDays?: number;
+    /** Override the wall clock — primarily for tests. */
+    now?: Date;
+}
+/**
+ * F-147 — relocates resolved `open_questions[]` entries from `spec.yaml`
+ * into `spec.archive.yaml` when the resolution is older than
+ * `ageDays` (default 30). Two reasons for the delay window:
+ *
+ *   1. Allows a small reopen / second-thoughts window.
+ *   2. Lets adjacent CI / review traffic reference the live entry
+ *      before it disappears.
+ *
+ * Eligibility:
+ *   - `status === 'answered'`, **or** the entry carries any of
+ *     `answered_at` · `resolved_at` · `closed_at` (free-form fields the
+ *     schema does not enforce; the timestamp wins when status is absent).
+ *   - The chosen timestamp is older than `ageDays` from `now`.
+ *
+ * Behaviour:
+ *   - Idempotent: archive entries are upserted by `id`.
+ *   - Stable order in spec.archive.yaml — append at the end for new ids,
+ *     in-place replace for existing ones (mirrors {@link moveToArchive}).
+ *   - Returns the count actually moved (0 on no-op).
+ *
+ * Boundaries:
+ *   - This function never reads `state.yaml` (open_questions live in
+ *     spec.yaml only); the caller in `sync.ts` is responsible for the
+ *     dirty-tree guard and the opt-out check.
+ *   - On a malformed spec or archive shape the function returns 0
+ *     without throwing — caller wraps in try/catch as a defence in depth.
+ *
+ * @returns the count of `open_questions[]` entries actually relocated.
+ */
+export declare function autoArchiveOpenQuestions(harnessDir: string, options?: OpenQuestionArchiveOptions): number;
 //# sourceMappingURL=archive.d.ts.map
