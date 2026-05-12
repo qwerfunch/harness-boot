@@ -1822,6 +1822,40 @@ features:
     test_strategy: smoke
     digest: 'Closes the v0.15.2 follow-up gap surfaced by the A/B "작업 결과물" audit:
       every plugin-shipped import recommendation (`doc...'
+  - id: F-156
+    name: commands/work.md slim — ceremony + orchestration detail to sidecars
+    type: feature
+    test_strategy: smoke
+    description: |
+      Cuts the single largest per-call input cost in the plugin —
+      `commands/work.md` was 28 KB / ~8 K tokens, paid on every
+      `/harness-boot:work` invocation. ~60% of the file (Kickoff ·
+      Q&A · Design Review · Retro ceremony auto-wire + Orchestration
+      conflict / skip / payload / parallel detail) was rarely-needed
+      reference: work.py fires the ceremonies, the orchestrator
+      agent owns the routing, so the LLM does not consult on a
+      routine call.
+
+      Splits to two sidecars: `commands/_work-ceremonies.md` and
+      `commands/_work-orchestration.md`. The primary `commands/work.md`
+      keeps the per-call essentials — Preamble · subcommand specs ·
+      Iron Law · failure modes · 6-row routing contract · free-text
+      intent routing — plus short link blocks.
+
+      `self_check.sh` step 5 extended to skip underscore-prefixed
+      filenames so sidecars do not need the Preamble /
+      anti-rationalization / harness CLI markers — they are
+      reference docs, not self-contained slash commands.
+
+      Net: 28 KB → ~19 KB on the primary file (-32%); per-call LLM
+      input shrinks by ~9 KB / ~2.5 K tokens. Each sidecar stays
+      ~5-7 KB and is read only on demand. Source code change 0,
+      parity-test movement 0.
+    acceptance_criteria:
+      - "AC-1: `commands/work.md` 28 KB → 18-20 KB; ceremony + orchestration detail 은 `commands/_work-ceremonies.md` + `commands/_work-orchestration.md` 로 이동."
+      - "AC-2: `self_check.sh` step 5 가 underscore-prefixed sidecar 파일을 skip; primary `commands/work.md` 는 Preamble · NO skip · NO shortcut · harness CLI 위임 4 표식 모두 보유."
+      - "AC-3: `npm test` 720/720 + `bash self_check.sh` 5/5 OK — 코드/spec 변경 0, parity tests 그대로 통과."
+      - "AC-4: 사이드카 헤더에 'sidecar of commands/work.md' 표기 + 'LLMs invoking /harness-boot:work do not need this file in their input window' 운영 지침 명시."
 goals: []
 constraints:
   tech_stack:
