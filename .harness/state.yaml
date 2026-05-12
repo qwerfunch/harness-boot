@@ -3595,8 +3595,33 @@ features:
     summary: "Scenario 2 (plan_doc) shipped. mdDetect.ts auto-detect rule: exactly one non-README/CHANGELOG/LICENSE/CONTRIBUTING/SECURITY md returns the path, 0 or 2+ returns null. scenarioPlanDoc.ts seeds project.name from first H1 (filename fallback), summary from first paragraph, description from first 500 chars; redacts secrets; stamps metadata.source.origin=plan_doc + plan_doc_path + draft + content_hash. CLI: harness init --scenario plan_doc [--plan path]. Verified end-to-end on tests/perf/fixtures/plan-md/PLAN.md: name='Pomodoro Timer for Solo Musicians', summary extracted, spec validates. Ambiguous case (2 mds) returns clear error. All 4 init scenarios (skeleton-only + idea + existing_code + plan_doc) now ship."
   started_at: 2026-05-12T10:20:08Z
   completed_at: 2026-05-12T10:23:53Z
+- id: F-163
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-12T14:04:31Z
+      note: 807 parity tests green (8 new conventionsFill)
+    gate_1:
+      last_result: pass
+      ts: 2026-05-12T14:04:31Z
+      note: tsc clean
+    gate_2:
+      last_result: pass
+      ts: 2026-05-12T14:04:31Z
+      note: eslint clean
+    gate_5:
+      last_result: pass
+      ts: 2026-05-12T14:04:31Z
+      note: "self_check 5/5 + e2e: fill comments + fill tests + idempotency guard + events.log llm_call recorded"
+  evidence:
+  - ts: 2026-05-12T14:04:31Z
+    kind: manual_check
+    summary: "LLM hook fill landed. harness conventions fill --section {comments|tests} --text ... replaces [pending: LLM hook stub] in .harness/conventions.md and appends llm_call event to events.log via recordLlmCall. Idempotent — re-fill on filled section returns exit 4 with clear error. End-to-end verified: scenario=existing_code init + 2 fills produced final conventions.md with both LLM-driven sections populated, events.log captured tokens_in/out/model for bench. Closes the PR 3b LLM hook contract; codebase-archaeologist slash command can now record real cost through this surface."
+  started_at: 2026-05-12T14:01:48Z
+  completed_at: null
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-162
+  last_command: /harness:work F-163
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-163

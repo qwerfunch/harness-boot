@@ -275,9 +275,26 @@ Example: `🧰 /harness-boot:init · solo · first-time scaffold into empty dir`
    ```
 
    The model output replaces the two placeholders in
-   `conventions.md` inline. Record token usage via
-   `src/init/tokenLog.ts:recordLlmCall` so the bench's
-   `init_tokens_total` metric reflects the real cost.
+   `conventions.md` inline via the new CLI surface (F-163):
+
+   ```bash
+   harness conventions fill \
+     --section comments \
+     --text "<the LLM's output for the Comments section>" \
+     --tokens-in <input tokens> --tokens-out <output tokens> \
+     --model <model id> \
+     --harness-dir "$(pwd)/.harness"
+   ```
+
+   The CLI replaces `[pending: LLM hook stub …]` with the supplied
+   text, records an `llm_call` event in `events.log`, and refuses
+   re-fill on already-filled sections (exit 4) — idempotent. Repeat
+   the same command with `--section tests` for the test-pattern
+   section.
+
+   Token accounting flows through `src/init/tokenLog.ts:recordLlmCall`
+   automatically, so the bench's `init_tokens_total` metric reflects
+   the real cost of the codebase-archaeologist's two LLM turns.
 
 9. **Scenario 2 — plan_doc → spec (F-162, since v0.15.5)**: when
    routing landed on Option 2 (user pointed at a plan document

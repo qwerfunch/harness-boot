@@ -28,6 +28,8 @@ import { writeConventions } from '../init/codebase/conventionsWriter.js';
 import { resolveConventionConflict, } from '../init/codebase/conflictResolver.js';
 import { detectPlanDocCandidate } from '../init/codebase/mdDetect.js';
 import { seedSpecFromPlanDoc } from '../init/scenarioPlanDoc.js';
+import { fillConventionsSection, SectionAlreadyFilledError, } from '../init/codebase/conventionsFill.js';
+import { recordLlmCall } from '../init/tokenLog.js';
 import { agentsForShapes as kickoffAgentsForShapes, detectShapes as kickoffDetectShapes, generateKickoff, hasAudioFlag as kickoffHasAudioFlag, renderStyleBlock as kickoffRenderStyleBlock, } from '../ceremonies/kickoff.js';
 import { generateRetro } from '../ceremonies/retro.js';
 import { openQuestions, scanInbox } from '../ceremonies/inbox.js';
@@ -1004,6 +1006,81 @@ function buildProgram() {
             else {
                 printError(`error: ${message}`);
             }
+            process.exit(2);
+        }
+    });
+    // -----------------------------------------------------------------
+    // conventions  (F-163 — LLM hook fill for scenario-3b)
+    // -----------------------------------------------------------------
+    const conventions = program
+        .command('conventions')
+        .description('manage .harness/conventions.md (currently only `fill` subcommand)');
+    conventions
+        .command('fill')
+        .description('replace a [pending: LLM hook stub] placeholder in conventions.md with text the ' +
+        'slash command produced from sampling source files')
+        .requiredOption('--section <name>', 'comments | tests')
+        .requiredOption('--text <body>', 'the markdown body to inject')
+        .option('--harness-dir <dir>', 'path to .harness directory', './.harness')
+        .option('--tokens-in <n>', 'LLM input tokens (for the bench)', '0')
+        .option('--tokens-out <n>', 'LLM output tokens (for the bench)', '0')
+        .option('--model <id>', 'model identifier (recorded in the llm_call event)')
+        .option('--json', 'emit JSON result')
+        .action((options) => {
+        const sectionRaw = options['section'];
+        if (sectionRaw !== 'comments' && sectionRaw !== 'tests') {
+            printError(`conventions fill: --section must be 'comments' or 'tests' (got '${String(sectionRaw)}')`);
+            process.exit(3);
+        }
+        const section = sectionRaw;
+        const text = typeof options['text'] === 'string' ? options['text'] : '';
+        if (text.trim().length === 0) {
+            printError('conventions fill: --text must be non-empty');
+            process.exit(3);
+        }
+        const harnessDir = resolvePath(typeof options['harnessDir'] === 'string' ? options['harnessDir'] : './.harness');
+        const conventionsPath = join(harnessDir, 'conventions.md');
+        const tokensIn = Number(options['tokensIn'] ?? 0);
+        const tokensOut = Number(options['tokensOut'] ?? 0);
+        const model = typeof options['model'] === 'string' ? options['model'] : undefined;
+        try {
+            const result = fillConventionsSection(conventionsPath, section, text);
+            const eventsPath = join(harnessDir, 'events.log');
+            recordLlmCall({
+                eventsPath,
+                event: {
+                    scenario: 'existing_code',
+                    agent: 'codebase-archaeologist',
+                    tokens_in: Number.isFinite(tokensIn) ? tokensIn : 0,
+                    tokens_out: Number.isFinite(tokensOut) ? tokensOut : 0,
+                    ...(model !== undefined ? { model } : {}),
+                },
+            });
+            if (options['json']) {
+                printJson({
+                    ok: true,
+                    path: result.path,
+                    section: result.section,
+                    tokens_in: tokensIn,
+                    tokens_out: tokensOut,
+                });
+            }
+            else {
+                printHuman(`conventions fill: ${result.section} section replaced in ${result.path} ` +
+                    `(llm_call recorded: in=${tokensIn} out=${tokensOut})\n`);
+            }
+        }
+        catch (err) {
+            if (err instanceof SectionAlreadyFilledError) {
+                if (options['json']) {
+                    printJson({ ok: false, error: err.message });
+                }
+                else {
+                    printError(`error: ${err.message}`);
+                }
+                process.exit(4);
+            }
+            printError(`error: ${err.message}`);
             process.exit(2);
         }
     });
