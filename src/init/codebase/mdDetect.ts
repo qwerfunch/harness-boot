@@ -33,6 +33,11 @@ export const NON_PLAN_MARKDOWN: ReadonlyArray<string> = [
   'governance.md',
   'release_notes.md',
   'release-notes.md',
+  // F-171 — never treat CLAUDE.md as a plan doc candidate. It's the
+  // Claude Code context file the harness itself installs; mistaking
+  // it for an intent doc would make `harness init` auto-route to
+  // plan_doc scenario on any project that already has the context.
+  'claude.md',
 ];
 
 /**

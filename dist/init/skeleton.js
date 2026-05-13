@@ -19,6 +19,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve as resolvePath } from 'node:path';
+import { copyClaudeMdIfAbsent } from './claudeMd.js';
 const STARTER_FILES = [
     ['spec.yaml.template', 'spec.yaml'],
     ['harness.yaml.template', 'harness.yaml'],
@@ -80,6 +81,13 @@ export function runSkeletonInit(input) {
     }) + '\n';
     writeFileSync(eventsPath, eventLine, 'utf8');
     written.push(eventsPath);
+    // F-171 — every init scenario installs the starter CLAUDE.md at
+    // the project root unless one already exists. Skeleton-only used
+    // to skip this and CLI-direct users got no Claude Code context.
+    const claudeMd = copyClaudeMdIfAbsent(target, pluginRoot);
+    if (claudeMd.wrote) {
+        written.push(claudeMd.targetPath);
+    }
     const end = process.hrtime.bigint();
     const wallTimeMs = Number(end - start) / 1_000_000;
     return {
@@ -87,6 +95,7 @@ export function runSkeletonInit(input) {
         filesWritten: written,
         wallTimeMs,
         llmCallCount: 0,
+        claudeMdWritten: claudeMd.wrote,
     };
 }
 //# sourceMappingURL=skeleton.js.map

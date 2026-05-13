@@ -21,6 +21,8 @@
 import {existsSync, mkdirSync, readFileSync, writeFileSync} from 'node:fs';
 import {join, resolve as resolvePath} from 'node:path';
 
+import {copyClaudeMdIfAbsent} from './claudeMd.js';
+
 /** Required input for {@link runSkeletonInit}. */
 export interface SkeletonInitInput {
   /** Target project directory; `.harness/` is created beneath it. */
@@ -45,6 +47,12 @@ export interface SkeletonInitResult {
   readonly wallTimeMs: number;
   /** Always `0` — the skeleton path makes no LLM calls (F-158 invariant). */
   readonly llmCallCount: 0;
+  /**
+   * F-171 — true when this call wrote a fresh `<target>/CLAUDE.md`,
+   * false when an existing CLAUDE.md was preserved. Lets the CLI
+   * surface the "preserved" notice without re-reading the filesystem.
+   */
+  readonly claudeMdWritten: boolean;
 }
 
 const STARTER_FILES: ReadonlyArray<readonly [string, string]> = [
@@ -118,6 +126,14 @@ export function runSkeletonInit(input: SkeletonInitInput): SkeletonInitResult {
   writeFileSync(eventsPath, eventLine, 'utf8');
   written.push(eventsPath);
 
+  // F-171 — every init scenario installs the starter CLAUDE.md at
+  // the project root unless one already exists. Skeleton-only used
+  // to skip this and CLI-direct users got no Claude Code context.
+  const claudeMd = copyClaudeMdIfAbsent(target, pluginRoot);
+  if (claudeMd.wrote) {
+    written.push(claudeMd.targetPath);
+  }
+
   const end = process.hrtime.bigint();
   const wallTimeMs = Number(end - start) / 1_000_000;
 
@@ -126,5 +142,6 @@ export function runSkeletonInit(input: SkeletonInitInput): SkeletonInitResult {
     filesWritten: written,
     wallTimeMs,
     llmCallCount: 0,
+    claudeMdWritten: claudeMd.wrote,
   };
 }

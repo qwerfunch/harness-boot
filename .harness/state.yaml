@@ -3899,8 +3899,50 @@ features:
     author: human
   started_at: 2026-05-13T01:34:29Z
   completed_at: 2026-05-13T01:34:46Z
+- id: F-171
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-13T02:29:30Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-13T02:29:31Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-13T02:29:32Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-13T02:29:33Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-13T02:29:30Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.7s) · cmd: npm test"
+    author: llm
+  - ts: 2026-05-13T02:29:31Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.9s) · cmd: npm run typecheck"
+    author: llm
+  - ts: 2026-05-13T02:29:32Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.5s) · cmd: npm run lint"
+    author: llm
+  - ts: 2026-05-13T02:29:33Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.5s) · cmd: bash self_check.sh"
+    author: llm
+  - ts: 2026-05-13T02:29:33Z
+    kind: test
+    summary: F-171 starter automation — autoDetect.ts (4 branches) + claudeMd.ts skip-if-exists + skeleton.ts CLAUDE.md auto-copy + CLI no-flag auto-routing + idea smart defaults + NON_PLAN_MARKDOWN excludes claude.md; 854/854 + 14 new init tests; 4-scenario empirical reproduction pass
+    author: human
+  started_at: 2026-05-13T02:20:23Z
+  completed_at: 2026-05-13T02:29:52Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-170
+  last_command: /harness:work F-171
   last_gate_passed: gate_5
   active_feature_id: null

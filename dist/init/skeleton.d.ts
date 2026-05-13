@@ -40,6 +40,12 @@ export interface SkeletonInitResult {
     readonly wallTimeMs: number;
     /** Always `0` — the skeleton path makes no LLM calls (F-158 invariant). */
     readonly llmCallCount: 0;
+    /**
+     * F-171 — true when this call wrote a fresh `<target>/CLAUDE.md`,
+     * false when an existing CLAUDE.md was preserved. Lets the CLI
+     * surface the "preserved" notice without re-reading the filesystem.
+     */
+    readonly claudeMdWritten: boolean;
 }
 /**
  * Copy starter templates plus events.log into `<targetDir>/.harness/`.

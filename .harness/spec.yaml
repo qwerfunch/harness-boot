@@ -1991,6 +1991,19 @@ features:
     test_strategy: tdd
     digest: "Empirical reproduction of F-167/F-168/F-169 caught a small UX bug in
       the F-168 AcceptanceTrace detector: when an expl..."
+  - id: F-171
+    name: starter automation — init auto-routing + CLAUDE.md auto-copy
+    type: feature
+    status: planned
+    release_target: v0.15.6
+    modules:
+      - init_command
+      - cli_init
+      - skeleton
+      - scenario_idea
+    test_strategy: tdd
+    digest: 'Direct response to the user motive surfaced after the v0.15.5
+      multi-aspect verification: "모든 것은 사용자가 요청하는 것이 아니라, 내부적...'
 goals: []
 constraints:
   tech_stack:
