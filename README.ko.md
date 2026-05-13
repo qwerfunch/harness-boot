@@ -6,8 +6,8 @@
 
 Claude Code 위에서 도는 multi-agent 개발 하네스. 다른 AI 도구가 *능력* 을 더할 때, harness-boot 는 *방향* 을 만듭니다.
 
-[![plugin](https://img.shields.io/badge/plugin-v0.15.0-blue)](.claude-plugin/plugin.json)
-[![tests](https://img.shields.io/badge/tests-467%20passing-brightgreen)](tests/parity)
+[![plugin](https://img.shields.io/badge/plugin-v0.15.4-blue)](.claude-plugin/plugin.json)
+[![tests](https://img.shields.io/badge/tests-822%20passing-brightgreen)](tests/parity)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 ---
