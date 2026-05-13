@@ -3858,7 +3858,7 @@ features:
   started_at: 2026-05-13T01:17:58Z
   completed_at: 2026-05-13T01:23:51Z
 - id: F-170
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3898,9 +3898,9 @@ features:
     summary: F-170 empirical reproduction caught explicit test_refs message bug; acTraceFailure now returns shape-specific message; 846/846 + 1 new test asserting both 'testMissing' name and 'test_ref' keyword present in explicit-shape failure
     author: human
   started_at: 2026-05-13T01:34:29Z
-  completed_at: null
+  completed_at: 2026-05-13T01:34:46Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-170
   last_gate_passed: gate_5
-  active_feature_id: F-170
+  active_feature_id: null
