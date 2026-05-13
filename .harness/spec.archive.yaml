@@ -5862,3 +5862,34 @@ features:
       - "AC-3: Warning message suggests moving overflow to `digest:` or
         `description:`."
       - "AC-4: Unit test covers boundary 80/81 chars."
+  - id: F-167
+    description: |-
+      Tier 1 — distinguishes "machine self-evaluation" from "human
+      verification" inside the Iron Law evidence ledger. Today every
+      `evidence[]` entry counts the same toward the threshold, so a
+      feature that only ran auto gates (5 entries of `gate_auto_run`,
+      0 declared human checks) can satisfy BR-004. F-122 was exactly
+      that case.
+
+      Adds `author: "human" | "llm"` to every evidence entry — derived
+      automatically from `kind`: gate_auto_run / gate_run → `llm`;
+      anything else (test · manual_check · user_feedback · trivial ·
+      hotfix · perf_regression · perf_resolved · …) → `human`. Surface
+      the split in the dashboard and `harness metrics`. Optional opt-in
+      `harness.yaml.iron_law.require_human_evidence: true` makes
+      complete() refuse when human evidence count is zero (default
+      false — backward compat).
+    acceptance_criteria:
+      - "AC-1: events.log evidence_added events carry `author` field; value
+        derived from kind (gate_auto_run/gate_run → llm, all other kinds →
+        human)."
+      - "AC-2: state.yaml features[].evidence[] entries carry the same `author`
+        field, updated on every transition."
+      - "AC-3: dashboard renders evidence count as `N entries (X human, Y llm)`
+        when both > 0; falls back to plain `N entries` when single-source."
+      - "AC-4: `harness metrics` JSON output adds `evidence_by_author: {human,
+        llm}` per feature aggregate."
+      - "AC-5: When `harness.yaml.iron_law.require_human_evidence: true`,
+        complete() rejects with reason `no_human_evidence` if the feature has
+        zero human-authored evidence (latest 7 days window — same as the
+        existing declared check). Default unset keeps existing semantics."
