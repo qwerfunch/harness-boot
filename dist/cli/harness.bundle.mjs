@@ -12787,44 +12787,50 @@ function checkAcceptanceTrace(harnessDir, spec, projectRoot = null) {
     for (let i = 0; i < acs.length; i++) {
       const ac = acs[i];
       const acN = `AC-${i + 1}`;
-      if (acTraceMatches(ac, fid, acN, testContents)) {
+      const failure = acTraceFailure(ac, fid, acN, testContents);
+      if (failure === null) {
         continue;
       }
       findings.push({
         kind: "AcceptanceTrace",
         path: `${fid}.acceptance_criteria[${i}]`,
-        message: `no test references both ${fid} and ${acN}. Add a test whose name or body contains both ids, or set \`acceptance_criteria[i].test_refs: [...]\` explicitly.`,
+        message: failure,
         severity
       });
     }
   }
   return findings;
 }
-function acTraceMatches(ac, fid, acN, testContents) {
+function acTraceFailure(ac, fid, acN, testContents) {
   if (isPlainObject6(ac)) {
     const refs = asArray2(ac["test_refs"]);
     if (refs.length > 0) {
-      return refs.every((ref) => {
+      for (const ref of refs) {
         if (typeof ref !== "string" || ref.length === 0) {
-          return false;
+          return `test_refs entry must be a non-empty string (got ${JSON.stringify(ref)})`;
         }
+        let found = false;
         for (const content of testContents.values()) {
           if (content.includes(ref)) {
-            return true;
+            found = true;
+            break;
           }
         }
-        return false;
-      });
+        if (!found) {
+          return `${fid} ${acN}: test_ref \`${ref}\` not found in any tests/ file`;
+        }
+      }
+      return null;
     }
   }
   const fidRe = new RegExp(escapeRegExp(fid));
   const acRe = new RegExp(escapeRegExp(acN));
   for (const content of testContents.values()) {
     if (fidRe.test(content) && acRe.test(content)) {
-      return true;
+      return null;
     }
   }
-  return false;
+  return `no test references both ${fid} and ${acN}. Add a test whose name or body contains both ids, or set \`acceptance_criteria[i].test_refs: [...]\` explicitly.`;
 }
 function collectTestFileContents(root) {
   const out = /* @__PURE__ */ new Map();

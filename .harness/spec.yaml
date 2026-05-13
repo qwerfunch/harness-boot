@@ -1980,6 +1980,36 @@ features:
     test_strategy: tdd
     digest: Tier 1 — 15th drift kind `ContentDrift`. Validates the `<!--
       harness:fact key=X value=V source=Y -->` sigil regions a...
+  - id: F-170
+    name: AcceptanceTrace message UX — surface missing test_ref name
+    type: fix
+    status: planned
+    release_target: v0.15.5
+    modules:
+      - check_command
+      - drift_detector
+    test_strategy: tdd
+    description: |-
+      Empirical reproduction of F-167/F-168/F-169 caught a small UX
+      bug in the F-168 AcceptanceTrace detector: when an explicit
+      `acceptance_criteria[].test_refs` ref was missing, the drift
+      message still used the implicit-shape phrasing instead of
+      naming the missing ref. The detector itself caught the drift
+      correctly; only the message hid which ref was at fault.
+
+      Fix splits the helper into `acTraceFailure(...)` returning a
+      shape-specific message — explicit failures cite the missing
+      ref by name (`F-N AC-N: test_ref backtick-X-backtick not found
+      in any tests/ file`), implicit failures keep the existing
+      prompt.
+    acceptance_criteria:
+      - "AC-1: explicit test_refs missing → message contains the
+        verbatim ref name."
+      - "AC-2: implicit failure → message unchanged from F-168 (no
+        ref name, asks user to add a test or switch to explicit
+        mapping)."
+      - "AC-3: invalid test_refs entry (non-string / empty) → message
+        cites the offending value."
 goals: []
 constraints:
   tech_stack:

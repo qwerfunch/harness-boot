@@ -534,7 +534,7 @@ describe('check.checkAcceptanceTrace (F-168)', () => {
     expect(findings[0]!.severity).toBe('error');
   });
 
-  it('explicit test_refs — missing ref triggers drift', () => {
+  it('explicit test_refs — missing ref triggers drift with explicit-shape message', () => {
     writeYaml(join(p.harness, 'harness.yaml'), {
       detectors: {acceptance_trace: {enabled: true}},
     });
@@ -559,6 +559,11 @@ describe('check.checkAcceptanceTrace (F-168)', () => {
     const findings = checkAcceptanceTrace(p.harness, objSpec, p.root);
     expect(findings).toHaveLength(1);
     expect(findings[0]!.path).toContain('acceptance_criteria[1]');
+    // Message must name the missing ref verbatim — distinguishes
+    // explicit-shape failure from implicit-shape failure (empirical
+    // UX finding from the F-167/F-168/F-169 verification cycle).
+    expect(findings[0]!.message).toContain('testMissing');
+    expect(findings[0]!.message).toContain('test_ref');
   });
 
   it('skips archived features', () => {

@@ -3857,8 +3857,50 @@ features:
     author: human
   started_at: 2026-05-13T01:17:58Z
   completed_at: 2026-05-13T01:23:51Z
+- id: F-170
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-13T01:34:31Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-13T01:34:32Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-13T01:34:33Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-13T01:34:34Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-13T01:34:31Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.6s) · cmd: npm test"
+    author: llm
+  - ts: 2026-05-13T01:34:32Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.9s) · cmd: npm run typecheck"
+    author: llm
+  - ts: 2026-05-13T01:34:33Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.4s) · cmd: npm run lint"
+    author: llm
+  - ts: 2026-05-13T01:34:34Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.5s) · cmd: bash self_check.sh"
+    author: llm
+  - ts: 2026-05-13T01:34:34Z
+    kind: test
+    summary: F-170 empirical reproduction caught explicit test_refs message bug; acTraceFailure now returns shape-specific message; 846/846 + 1 new test asserting both 'testMissing' name and 'test_ref' keyword present in explicit-shape failure
+    author: human
+  started_at: 2026-05-13T01:34:29Z
+  completed_at: null
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-169
+  last_command: /harness:work F-170
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-170
