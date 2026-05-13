@@ -58,6 +58,32 @@ export interface MetricsReport {
         human: number;
         llm: number;
     };
+    /**
+     * F-172 — aggregated LLM token usage from `llm_call` events.
+     *
+     * Sourced from `src/init/tokenLog.ts::recordLlmCall` writes, which
+     * the init scenarios already use and `harness token` (v0.15.7+) +
+     * future hook automation will also feed. Zero when no `llm_call`
+     * event sits in the window — the harness CLI itself makes no LLM
+     * calls, so a fresh project starts at all-zeros.
+     */
+    tokens: {
+        /** Sum of `tokens_in` across all `llm_call` events. */
+        input_total: number;
+        /** Sum of `tokens_out` across all `llm_call` events. */
+        output_total: number;
+        /** Number of `llm_call` events observed. */
+        call_count: number;
+        /**
+         * Per-model breakdown. Key = model id (or `'unknown'` when the
+         * event omits the field). Value = same triple as the top-level.
+         */
+        by_model: Record<string, {
+            input: number;
+            output: number;
+            calls: number;
+        }>;
+    };
 }
 /** Optional input for {@link compute}. */
 export interface ComputeOptions {

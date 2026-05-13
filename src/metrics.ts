@@ -72,6 +72,28 @@ export interface MetricsReport {
     human: number;
     llm: number;
   };
+  /**
+   * F-172 — aggregated LLM token usage from `llm_call` events.
+   *
+   * Sourced from `src/init/tokenLog.ts::recordLlmCall` writes, which
+   * the init scenarios already use and `harness token` (v0.15.7+) +
+   * future hook automation will also feed. Zero when no `llm_call`
+   * event sits in the window — the harness CLI itself makes no LLM
+   * calls, so a fresh project starts at all-zeros.
+   */
+  tokens: {
+    /** Sum of `tokens_in` across all `llm_call` events. */
+    input_total: number;
+    /** Sum of `tokens_out` across all `llm_call` events. */
+    output_total: number;
+    /** Number of `llm_call` events observed. */
+    call_count: number;
+    /**
+     * Per-model breakdown. Key = model id (or `'unknown'` when the
+     * event omits the field). Value = same triple as the top-level.
+     */
+    by_model: Record<string, {input: number; output: number; calls: number}>;
+  };
 }
 
 /** Optional input for {@link compute}. */
@@ -115,6 +137,20 @@ function parseTs(ts: unknown): Date | null {
     return null;
   }
   return new Date(ms);
+}
+
+/**
+ * F-172 — coerces an event field to a non-negative integer. Used by
+ * `llm_call` aggregation; out-of-range or missing fields contribute 0
+ * (events.log is append-only and trusted, but token counts may be
+ * supplied by hooks with sloppy schemas).
+ */
+function numberFromEvent(ev: HarnessEvent, field: string): number {
+  const value = ev[field];
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    return 0;
+  }
+  return Math.floor(value);
 }
 
 function featureId(ev: HarnessEvent): string | null {
@@ -168,6 +204,7 @@ export function aggregate(
     gate_stats: {},
     drift_incidents: 0,
     evidence_by_author: {human: 0, llm: 0},
+    tokens: {input_total: 0, output_total: 0, call_count: 0, by_model: {}},
   };
 
   const activatedLast = new Map<string, Date>();
@@ -196,6 +233,22 @@ export function aggregate(
       if (fid !== null && dt !== null && !doneFirst.has(fid)) {
         doneFirst.set(fid, dt);
       }
+    } else if (typ === 'llm_call') {
+      // F-172 — sum tokens + count + per-model breakdown.
+      const tIn = numberFromEvent(ev, 'tokens_in');
+      const tOut = numberFromEvent(ev, 'tokens_out');
+      const model = typeof ev['model'] === 'string' && (ev['model'] as string).length > 0
+        ? (ev['model'] as string)
+        : 'unknown';
+      report.tokens.input_total += tIn;
+      report.tokens.output_total += tOut;
+      report.tokens.call_count += 1;
+      const bucket =
+        report.tokens.by_model[model] ??
+        (report.tokens.by_model[model] = {input: 0, output: 0, calls: 0});
+      bucket.input += tIn;
+      bucket.output += tOut;
+      bucket.calls += 1;
     } else if (typ === 'evidence_added') {
       // F-167 — partition declared evidence by author. Prefer the
       // explicit `author` field; fall back to a kind-based derivation

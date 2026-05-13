@@ -3941,8 +3941,50 @@ features:
     author: human
   started_at: 2026-05-13T02:20:23Z
   completed_at: 2026-05-13T02:29:52Z
+- id: F-172
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-13T03:07:07Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-13T03:07:08Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-13T03:07:09Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-13T03:07:10Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-13T03:07:07Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.7s) · cmd: npm test"
+    author: llm
+  - ts: 2026-05-13T03:07:08Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.9s) · cmd: npm run typecheck"
+    author: llm
+  - ts: 2026-05-13T03:07:09Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.6s) · cmd: npm run lint"
+    author: llm
+  - ts: 2026-05-13T03:07:10Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.5s) · cmd: bash self_check.sh"
+    author: llm
+  - ts: 2026-05-13T03:07:10Z
+    kind: test
+    summary: F-172 token tracking infrastructure — harness token CLI + LlmCallEvent.feature 확장 + scenario=work · metrics.tokens 누적 + per-model breakdown · dashboard token_line · 862/862 tests + 9 new (5 tokenLog · 2 metrics · 2 dashboard) · 실증 4 시나리오 (CLI happy + metrics 집계 + dashboard 표시 + invalid input 차단)
+    author: human
+  started_at: 2026-05-13T03:07:38Z
+  completed_at: null
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-171
+  last_command: /harness:work F-172
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-172

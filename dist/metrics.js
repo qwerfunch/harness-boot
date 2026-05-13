@@ -47,6 +47,19 @@ function parseTs(ts) {
     }
     return new Date(ms);
 }
+/**
+ * F-172 — coerces an event field to a non-negative integer. Used by
+ * `llm_call` aggregation; out-of-range or missing fields contribute 0
+ * (events.log is append-only and trusted, but token counts may be
+ * supplied by hooks with sloppy schemas).
+ */
+function numberFromEvent(ev, field) {
+    const value = ev[field];
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+        return 0;
+    }
+    return Math.floor(value);
+}
 function featureId(ev) {
     let fid = ev['feature'] ?? ev['feature_id'];
     if ((fid === undefined || fid === null) && isPlainObject(ev['payload'])) {
@@ -91,6 +104,7 @@ export function aggregate(events, options = {}) {
         gate_stats: {},
         drift_incidents: 0,
         evidence_by_author: { human: 0, llm: 0 },
+        tokens: { input_total: 0, output_total: 0, call_count: 0, by_model: {} },
     };
     const activatedLast = new Map();
     const doneFirst = new Map();
@@ -119,6 +133,22 @@ export function aggregate(events, options = {}) {
             if (fid !== null && dt !== null && !doneFirst.has(fid)) {
                 doneFirst.set(fid, dt);
             }
+        }
+        else if (typ === 'llm_call') {
+            // F-172 — sum tokens + count + per-model breakdown.
+            const tIn = numberFromEvent(ev, 'tokens_in');
+            const tOut = numberFromEvent(ev, 'tokens_out');
+            const model = typeof ev['model'] === 'string' && ev['model'].length > 0
+                ? ev['model']
+                : 'unknown';
+            report.tokens.input_total += tIn;
+            report.tokens.output_total += tOut;
+            report.tokens.call_count += 1;
+            const bucket = report.tokens.by_model[model] ??
+                (report.tokens.by_model[model] = { input: 0, output: 0, calls: 0 });
+            bucket.input += tIn;
+            bucket.output += tOut;
+            bucket.calls += 1;
         }
         else if (typ === 'evidence_added') {
             // F-167 — partition declared evidence by author. Prefer the

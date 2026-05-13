@@ -107,6 +107,23 @@ function formatWorkHuman(r) {
     }
     return `${lines.join('\n')}\n`;
 }
+/**
+ * F-172 — parses a CLI flag as a non-negative integer. Used by
+ * `harness token --in/--out`. Calls `process.exit(3)` on invalid input
+ * (consistent with the validate / work failure-condition contract).
+ */
+function parsePositiveInt(value, flag) {
+    if (typeof value !== 'string' && typeof value !== 'number') {
+        printError(`error: ${flag} requires a non-negative integer`);
+        process.exit(3);
+    }
+    const parsed = typeof value === 'number' ? value : Number(value);
+    if (!Number.isInteger(parsed) || parsed < 0) {
+        printError(`error: ${flag} must be a non-negative integer (got ${String(value)})`);
+        process.exit(3);
+    }
+    return parsed;
+}
 function emitWork(result, json) {
     if (json) {
         printJson(workResultToJson(result));
@@ -606,6 +623,63 @@ function buildProgram() {
         }
         else {
             printHuman(formatMetricsHuman(report));
+        }
+    });
+    // -----------------------------------------------------------------
+    // token — F-172 LLM token self-report
+    // -----------------------------------------------------------------
+    program
+        .command('token')
+        .description('record an llm_call event with token usage (F-172 measurement infra)')
+        .option('--harness-dir <dir>', 'path to .harness directory', './.harness')
+        .requiredOption('--in <num>', 'input tokens (integer ≥ 0)')
+        .requiredOption('--out <num>', 'output tokens (integer ≥ 0)')
+        .requiredOption('--model <id>', 'model identifier (e.g. claude-sonnet-4-6)')
+        .option('--feature <fid>', 'feature this call belongs to (F-NNN)')
+        .option('--kind <kind>', 'caller kind — `subagent` (automated), `user` (manual self-report)', 'user')
+        .option('--json', 'emit JSON result')
+        .action((options) => {
+        const harnessDir = resolveHarnessDir(options['harnessDir']);
+        if (!isDirectory(harnessDir)) {
+            printError(`error: ${harnessDir} not found`);
+            process.exit(2);
+        }
+        const tokensIn = parsePositiveInt(options['in'], '--in');
+        const tokensOut = parsePositiveInt(options['out'], '--out');
+        const model = typeof options['model'] === 'string' ? options['model'].trim() : '';
+        if (model.length === 0) {
+            printError('error: --model cannot be empty');
+            process.exit(3);
+        }
+        const kind = typeof options['kind'] === 'string' ? options['kind'].trim() : 'user';
+        const feature = typeof options['feature'] === 'string' && options['feature'].length > 0
+            ? options['feature']
+            : undefined;
+        recordLlmCall({
+            eventsPath: join(harnessDir, 'events.log'),
+            event: {
+                scenario: 'work',
+                agent: kind,
+                tokens_in: tokensIn,
+                tokens_out: tokensOut,
+                model,
+                feature,
+            },
+        });
+        if (options['json']) {
+            printJson({
+                ok: true,
+                scenario: 'work',
+                agent: kind,
+                tokens_in: tokensIn,
+                tokens_out: tokensOut,
+                model,
+                feature: feature ?? null,
+            });
+        }
+        else {
+            printHuman(`token: recorded llm_call · ${tokensIn} in / ${tokensOut} out · ` +
+                `model=${model}${feature ? ` · feature=${feature}` : ''}\n`);
         }
     });
     // -----------------------------------------------------------------
