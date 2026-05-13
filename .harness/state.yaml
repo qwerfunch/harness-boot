@@ -3984,7 +3984,7 @@ features:
   started_at: 2026-05-13T03:07:38Z
   completed_at: 2026-05-13T03:07:39Z
 - id: F-173
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -4024,9 +4024,9 @@ features:
     summary: F-173 SWE-bench Verified A/B framework — docs/benchmark/swe-bench-verified/ 8 files re-applied on develop (v0.15.7 baseline · F-172 token CLI 활용) · aggregate.py --help smoke pass · 862/862 vitest · self_check 6/6
     author: human
   started_at: 2026-05-13T03:35:50Z
-  completed_at: null
+  completed_at: 2026-05-13T03:36:13Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-173
   last_gate_passed: gate_5
-  active_feature_id: F-173
+  active_feature_id: null
