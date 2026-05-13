@@ -3941,8 +3941,50 @@ features:
     author: human
   started_at: 2026-05-13T02:20:23Z
   completed_at: 2026-05-13T02:29:52Z
+- id: F-173
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-13T03:29:22Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-13T03:29:23Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-13T03:29:24Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-13T03:29:25Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-13T03:29:22Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.7s) · cmd: npm test"
+    author: llm
+  - ts: 2026-05-13T03:29:23Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.9s) · cmd: npm run typecheck"
+    author: llm
+  - ts: 2026-05-13T03:29:24Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.5s) · cmd: npm run lint"
+    author: llm
+  - ts: 2026-05-13T03:29:25Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.5s) · cmd: bash self_check.sh"
+    author: llm
+  - ts: 2026-05-13T03:29:25Z
+    kind: manual_check
+    summary: F-173 SWE-bench Verified A/B benchmark framework — docs/benchmark/swe-bench-verified/ 8 files (README · REPORT skeleton · tasks.json 20 picks · scripts 4 · analysis/threats-to-validity.md) · aggregate.py --help smoke pass · self_check 6/6 + 854/854 vitest · framework only, 실측 데이터는 외부 환경에서 누적
+    author: human
+  started_at: 2026-05-13T03:23:26Z
+  completed_at: null
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-171
+  last_command: /harness:work F-173
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-173

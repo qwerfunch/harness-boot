@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1",
+  "source": "princeton-nlp/SWE-bench Verified (500 tasks)",
+  "subset_size": 20,
+  "selection_criteria": {
+    "repo_diversity": "10 different repos to avoid one project's idiosyncrasies dominating the result",
+    "difficulty_mix": "4 hard, 12 medium, 4 easy (per Verified's `difficulty` field)",
+    "harness_fit_mix": "10 multi-step (harness should win) + 6 medium-step + 4 single-fix (vanilla should win or tie)",
+    "task_type_mix": "bug fix · feature · refactor · test addition · doc fix · API design tweak"
+  },
+  "notes": "These 20 task_ids are sampled from SWE-bench Verified to give a first-order signal. The 500-task full run is queued under follow-up. Task IDs follow the Verified naming: <org>__<repo>-<issue#>.",
+  "tasks": [
+    {
+      "task_id": "django__django-13551",
+      "repo": "django/django",
+      "difficulty": "medium",
+      "harness_fit": "multi-step",
+      "summary": "Changing user's email could invalidate password reset tokens — touch contrib/auth/tokens.py + 1-2 helper changes + test"
+    },
+    {
+      "task_id": "django__django-15347",
+      "repo": "django/django",
+      "difficulty": "easy",
+      "harness_fit": "single-fix",
+      "summary": "Messages framework incorrectly serializes/deserializes extra_tags when it's an empty string — one-line fix + regression test"
+    },
+    {
+      "task_id": "sympy__sympy-13031",
+      "repo": "sympy/sympy",
+      "difficulty": "medium",
+      "harness_fit": "multi-step",
+      "summary": "Matrix hstack/vstack regression with empty matrices in 1.1 — touch Matrix base + tests"
+    },
+    {
+      "task_id": "sympy__sympy-20639",
+      "repo": "sympy/sympy",
+      "difficulty": "hard",
+      "harness_fit": "multi-step",
+      "summary": "Inaccurate rendering of pi**(1/E) — pretty printing edge case touching multiple modules"
+    },
+    {
+      "task_id": "scikit-learn__scikit-learn-13497",
+      "repo": "scikit-learn/scikit-learn",
+      "difficulty": "medium",
+      "harness_fit": "medium-step",
+      "summary": "Comparing string to array in _estimate_mi raises TypeError — input validation + test"
+    },
+    {
+      "task_id": "scikit-learn__scikit-learn-25500",
+      "repo": "scikit-learn/scikit-learn",
+      "difficulty": "medium",
+      "harness_fit": "multi-step",
+      "summary": "CalibratedClassifierCV doesn't work with set_config(transform_output='pandas') — config plumbing + test"
+    },
+    {
+      "task_id": "matplotlib__matplotlib-23314",
+      "repo": "matplotlib/matplotlib",
+      "difficulty": "easy",
+      "harness_fit": "single-fix",
+      "summary": "set_visible() not working for 3d projection — one method override + test"
+    },
+    {
+      "task_id": "matplotlib__matplotlib-23987",
+      "repo": "matplotlib/matplotlib",
+      "difficulty": "medium",
+      "harness_fit": "medium-step",
+      "summary": "Constrained layout UserWarning even when explicitly setting subplots_adjust — warning gate + test"
+    },
+    {
+      "task_id": "sphinx-doc__sphinx-8721",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "medium",
+      "harness_fit": "multi-step",
+      "summary": "viewcode creates pages for epub even if viewcode_enable_epub=False — config wiring + builder check + test"
+    },
+    {
+      "task_id": "sphinx-doc__sphinx-10325",
+      "repo": "sphinx-doc/sphinx",
+      "difficulty": "hard",
+      "harness_fit": "multi-step",
+      "summary": "inherited-members should support multiple classes — directive parsing + autodoc plumbing + tests"
+    },
+    {
+      "task_id": "pytest-dev__pytest-7220",
+      "repo": "pytest-dev/pytest",
+      "difficulty": "medium",
+      "harness_fit": "medium-step",
+      "summary": "Wrong path to test file when directory changed in fixture — _pytest/config.py + tests"
+    },
+    {
+      "task_id": "pytest-dev__pytest-11148",
+      "repo": "pytest-dev/pytest",
+      "difficulty": "hard",
+      "harness_fit": "multi-step",
+      "summary": "Module imported twice under import-mode=importlib — importer logic + tests + doc note"
+    },
+    {
+      "task_id": "psf__requests-1142",
+      "repo": "psf/requests",
+      "difficulty": "easy",
+      "harness_fit": "single-fix",
+      "summary": "requests.get always sends Content-Length header — one branch fix + test"
+    },
+    {
+      "task_id": "psf__requests-2317",
+      "repo": "psf/requests",
+      "difficulty": "easy",
+      "harness_fit": "single-fix",
+      "summary": "method = builtin_str(method) in sessions.py converts bytes - fix encoding + test"
+    },
+    {
+      "task_id": "pallets__flask-4045",
+      "repo": "pallets/flask",
+      "difficulty": "medium",
+      "harness_fit": "medium-step",
+      "summary": "Raise error when blueprint name contains a dot — validation + test + doc"
+    },
+    {
+      "task_id": "pylint-dev__pylint-7080",
+      "repo": "pylint-dev/pylint",
+      "difficulty": "hard",
+      "harness_fit": "multi-step",
+      "summary": "Ignoring entire directory with --ignore-paths doesn't work — pattern matching + tests + doc"
+    },
+    {
+      "task_id": "astropy__astropy-12907",
+      "repo": "astropy/astropy",
+      "difficulty": "medium",
+      "harness_fit": "multi-step",
+      "summary": "Modeling's separability_matrix doesn't compute correctly for nested CompoundModels — recursion + tests"
+    },
+    {
+      "task_id": "astropy__astropy-14182",
+      "repo": "astropy/astropy",
+      "difficulty": "medium",
+      "harness_fit": "medium-step",
+      "summary": "Please support header rows in RestructuredText output — io.ascii + tests"
+    },
+    {
+      "task_id": "pandas-dev__pandas-50266",
+      "repo": "pandas-dev/pandas",
+      "difficulty": "medium",
+      "harness_fit": "medium-step",
+      "summary": "DataFrame.style.format raises AttributeError for ExtensionArray-backed DataFrame — formatter path + tests"
+    },
+    {
+      "task_id": "pydata__xarray-4094",
+      "repo": "pydata/xarray",
+      "difficulty": "medium",
+      "harness_fit": "medium-step",
+      "summary": "to_unstacked_dataset broken for single-dim variables — reindex logic + tests"
+    }
+  ]
+}
