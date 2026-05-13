@@ -11,6 +11,58 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ### Queued
 
+## [0.15.8] — 2026-05-13
+
+**SWE-bench Verified A/B benchmark framework.** Direct response to
+the user question "어떤 benchmark 로 객관 평가할 수 있을까". This
+release lands the *framework* (methodology · 20-task selection ·
+reproduction scripts · result schema · honest limits doc) for a
+side-by-side comparison of harness-boot against vanilla Claude
+Code. The actual 20-task runs are external (Docker-per-task, hours
+of wall time, $30-200 model cost) and the maintainer fills
+`REPORT.md` incrementally as data arrives.
+
+Note: v0.15.7 (F-172 token tracking) is the dependency in spirit
+but the F-173 docs do not require its code to be merged — the
+benchmark scripts call `harness token` only when the harness side
+runs, which inherits whatever plugin version is installed at run
+time.
+
+### Added
+
+- **F-173** — `docs/benchmark/swe-bench-verified/` directory
+  (tracked so the project README can link to it for the marketing
+  axis the user mentioned):
+  - `README.md` — methodology (why SWE-bench Verified · 4
+    measurement axes · 5 known limits).
+  - `tasks.json` — 20-task selection across 9 repos (django ·
+    sympy · scikit-learn · matplotlib · sphinx · pytest · requests
+    · flask · pylint · astropy · pandas · xarray) with explicit
+    selection criteria (difficulty mix · harness-fit mix · task
+    type mix).
+  - `REPORT.md` — skeleton tables (§2 per-task · §2.2 aggregate ·
+    §2.3 harness-only signals · §3 by harness-fit slice). Cells
+    start as `—` and fill as runs complete.
+  - `scripts/run-vanilla.sh` — Claude Code vanilla side runner.
+  - `scripts/run-harness.sh` — harness-boot side runner (uses
+    `harness token` from F-172).
+  - `scripts/aggregate.py` — per-task JSON → REPORT.md tables.
+    `--help` smoke-tested.
+  - `scripts/setup.md` — end-to-end external setup walkthrough.
+  - `analysis/threats-to-validity.md` — construct · internal ·
+    external · conclusion validity. Spells out single-model /
+    single-author / benchmark-contamination / weak-N caveats so
+    null results stay honest (BR-014).
+
+### Follow-up (not in this release)
+
+- Pilot run (5 tasks) — maintainer fills REPORT.md row by row.
+- Full 20-task run.
+- Hook automation for token capture (F-172 follow-up) — removes
+  the manual `/cost` input requirement during vanilla runs.
+- Multi-author run via external dogfood (logcat-on, cosmic-suika)
+  to address the single-author validity threat.
+
 ## [0.15.6] — 2026-05-13
 
 **Starter automation.** Direct response to the user motive surfaced
