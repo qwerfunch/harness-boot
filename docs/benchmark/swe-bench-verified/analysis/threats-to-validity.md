@@ -2,6 +2,10 @@
 
 > 이 benchmark 의 신뢰도를 약화시킬 수 있는 모든 요인을 명시. 이를 모르고 결과를 마케팅 narrative 로 사용하는 건 부정직.
 
+## Change history
+
+- **2026-05-13 (v0.15.10 hotfix · F-176)** — pilot 준비 단계에서 dataset 실측 검증을 돌렸더니 v0.15.8 가 함께 ship 한 `tasks.json` 20 개 중 10 개의 `task_id` 가 SWE-bench Verified 의 500 개 task 안에 존재하지 않음. `pandas-dev/pandas` 는 아예 Verified 에 entry 가 없었음. 10 개 모두 동일 repo + 비슷한 difficulty 의 검증된 task 로 치환, pandas slot 은 pylint 추가 task 로 재배정. 이 문서는 이제 두 가지 difficulty 라벨 (authorial `easy/medium/hard` + Verified 의 `verified_difficulty` 원본 라벨) 을 둘 다 명시. 이 미스는 v0.15.9 의 audit-before-merge 패턴 (F-175) 이 바로 다음 사이클에서 잡아낸 사례.
+
 ---
 
 ## 1. Construct validity (측정 axis 가 진짜 그걸 재는가)

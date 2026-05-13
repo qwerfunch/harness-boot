@@ -4109,8 +4109,50 @@ features:
     author: human
   started_at: 2026-05-13T04:39:41Z
   completed_at: 2026-05-13T04:40:14Z
+- id: F-176
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-13T04:49:55Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-13T04:49:56Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-13T04:49:58Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-13T04:49:58Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-13T04:49:55Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (2.4s) · cmd: npm test"
+    author: llm
+  - ts: 2026-05-13T04:49:56Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.9s) · cmd: npm run typecheck"
+    author: llm
+  - ts: 2026-05-13T04:49:58Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.4s) · cmd: npm run lint"
+    author: llm
+  - ts: 2026-05-13T04:49:58Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.5s) · cmd: bash self_check.sh"
+    author: llm
+  - ts: 2026-05-13T04:50:03Z
+    kind: user_feedback
+    summary: All 20 task_ids in tasks.json verified against princeton-nlp/SWE-bench_Verified dataset (500 rows); 10 invalid ids replaced with same-repo+difficulty candidates; pandas slot reassigned (no pandas in Verified); summaries rederived from problem_statement; REPORT.md §2.1 + §3 and threats-to-validity.md aligned
+    author: human
+  started_at: 2026-05-13T04:47:59Z
+  completed_at: 2026-05-13T04:50:22Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-175
+  last_command: /harness:work F-176
   last_gate_passed: gate_5
   active_feature_id: null

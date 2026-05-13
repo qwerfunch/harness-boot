@@ -11,6 +11,51 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ### Queued
 
+## [0.15.10] — 2026-05-13
+
+**SWE-bench task list dataset-validated.** Pilot prep ran the
+`tasks.json` from v0.15.8 against the real
+`princeton-nlp/SWE-bench_Verified` dataset (500 rows) and found that
+10 of the 20 task ids did not exist. The entire `pandas-dev/pandas`
+repo turned out to have 0 entries in Verified. Every invalid id is
+replaced with the closest verified candidate from the same repo +
+difficulty bucket; the pandas slot is reassigned to a second `pylint`
+task to preserve N=20 with real ids. The pre-merge audit pattern
+introduced in v0.15.9 (F-175) caught this on the very next cycle —
+exactly the friction the ISSUES-LOG return loop is meant to surface
+before users hit it.
+
+### Fixed
+
+- **F-176** — `docs/benchmark/swe-bench-verified/tasks.json` rewritten
+  from the actual dataset. All 20 `task_id` values verified to exist
+  in Verified. New columns: `base_commit_short` (12 chars) and
+  `verified_difficulty` (Verified's original `<15 min fix` /
+  `15 min - 1 hour` / `1-4 hours` / `>4 hours` label). `summary` is
+  rederived from each task's `problem_statement` first line so the
+  text accurately reflects the issue.
+- **F-176** — `docs/benchmark/swe-bench-verified/REPORT.md` §2.1
+  per-task table updated to the new task list. §3 by-slice section's
+  `multi-step` / `medium-step` / `single-fix` task lists rebuilt to
+  match. `Last updated` line annotated with the dataset-validation
+  milestone.
+- **F-176** — `docs/benchmark/swe-bench-verified/analysis/threats-to-validity.md`
+  gains a `Change history` section documenting this hotfix and why
+  it matters for future readers comparing rows in REPORT.md.
+
+### Changed
+
+- **Plugin manifest** — `.claude-plugin/plugin.json`,
+  `.claude-plugin/marketplace.json`, `package.json` bumped to 0.15.10.
+  README badges updated.
+
+### Follow-up (not in this release)
+
+- The pilot run itself (5 tasks) — still requires external Docker +
+  per-task Claude Code session + API budget; cannot happen inside the
+  plugin dev session.
+- F-028 prompt-log production verification.
+
 ## [0.15.9] — 2026-05-13
 
 **Stop-hook auto token capture.** Closes the first follow-up item
