@@ -45,6 +45,19 @@ export interface MetricsReport {
         pass_rate: number;
     }>;
     drift_incidents: number;
+    /**
+     * F-167 — evidence count partitioned by author. Counted from
+     * `evidence_added` events: kinds `gate_auto_run` and `gate_run`
+     * (which never surface as `evidence_added`) attribute to `llm`;
+     * everything else (`test`, `manual_check`, `user_feedback`,
+     * `hotfix`, `trivial`, `perf_*`, …) attributes to `human`. The
+     * `evidence_added` event itself carries an explicit `author` field
+     * since v0.15.5; older lines fall back to a kind-based derivation.
+     */
+    evidence_by_author: {
+        human: number;
+        llm: number;
+    };
 }
 /** Optional input for {@link compute}. */
 export interface ComputeOptions {

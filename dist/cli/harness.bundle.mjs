@@ -11193,6 +11193,12 @@ var init_canonicalHash = __esm({
 // src/core/state.ts
 import { existsSync as existsSync3, mkdirSync as mkdirSync5, readFileSync as readFileSync10, statSync as statSync7, writeFileSync as writeFileSync8 } from "node:fs";
 import { dirname as dirname4, join as join9 } from "node:path";
+function deriveEvidenceAuthor(kind) {
+  if (kind === "gate_auto_run" || kind === "gate_run") {
+    return "llm";
+  }
+  return "human";
+}
 function nowIso6() {
   const d = /* @__PURE__ */ new Date();
   const yyyy = d.getUTCFullYear().toString().padStart(4, "0");
@@ -11447,7 +11453,8 @@ var init_state = __esm({
         f.evidence.push({
           ts: options.ts ?? nowIso6(),
           kind,
-          summary
+          summary,
+          author: deriveEvidenceAuthor(kind)
         });
       }
       /**
@@ -22914,6 +22921,61 @@ function isFile9(path) {
     return false;
   }
 }
+function ironLawRequireHumanEvidence(harnessDir) {
+  const path = join21(harnessDir, "harness.yaml");
+  if (!isFile9(path)) {
+    return false;
+  }
+  let data;
+  try {
+    data = (0, import_yaml17.parse)(readFileSync22(path, "utf-8"));
+  } catch {
+    return false;
+  }
+  if (!isPlainObject13(data)) {
+    return false;
+  }
+  const ironLaw = data["iron_law"];
+  if (!isPlainObject13(ironLaw)) {
+    return false;
+  }
+  return ironLaw["require_human_evidence"] === true;
+}
+function countDeclaredEvidenceByAuthor(feature, options) {
+  const out = { human: 0, llm: 0 };
+  const evidence = feature.evidence;
+  if (!Array.isArray(evidence)) {
+    return out;
+  }
+  const cutoffMs = (options.now ?? /* @__PURE__ */ new Date()).getTime() - options.windowDays * 864e5;
+  for (const entry of evidence) {
+    if (!isPlainObject13(entry)) {
+      continue;
+    }
+    const kind = typeof entry["kind"] === "string" ? entry["kind"] : "";
+    if (kind === "gate_auto_run" || kind === "gate_run") {
+      const author2 = entry["author"];
+      if (author2 !== "human") {
+        continue;
+      }
+    }
+    const ts = entry["ts"];
+    if (typeof ts === "string") {
+      const t2 = Date.parse(ts);
+      if (Number.isFinite(t2) && t2 < cutoffMs) {
+        continue;
+      }
+    }
+    const author = entry["author"];
+    const resolved = author === "human" || author === "llm" ? author : deriveEvidenceAuthor(kind);
+    if (resolved === "human") {
+      out.human += 1;
+    } else {
+      out.llm += 1;
+    }
+  }
+  return out;
+}
 function nowIso10() {
   const d = /* @__PURE__ */ new Date();
   const yyyy = d.getUTCFullYear().toString().padStart(4, "0");
@@ -23251,7 +23313,8 @@ function addEvidence(harnessDir, fid, kind, summary) {
     type: "evidence_added",
     feature: fid,
     kind,
-    summary
+    summary,
+    author: deriveEvidenceAuthor(kind)
   });
   autowireDesignReview(harnessDir, fid);
   const res = summarize(state, fid);
@@ -23406,6 +23469,17 @@ function complete(harnessDir, fid, options = {}) {
     const reasonSuffix = hotfixReason !== null ? ", hotfix" : "";
     res2.message = `cannot complete \u2014 Iron Law: ${declared}/${required} declared evidence in last ${IRON_LAW_WINDOW_DAYS} days (mode: ${mode}${reasonSuffix}). Add more with --evidence, or use --hotfix-reason for emergency override.`;
     return res2;
+  }
+  if (!hotfixReason && ironLawRequireHumanEvidence(harnessDir)) {
+    const byAuthor = countDeclaredEvidenceByAuthor(featureNow, {
+      windowDays: IRON_LAW_WINDOW_DAYS
+    });
+    if (byAuthor.human === 0) {
+      const res2 = summarize(state, fid);
+      res2.action = "queried";
+      res2.message = `cannot complete \u2014 Iron Law: 0 human-authored evidence in last ${IRON_LAW_WINDOW_DAYS} days (require_human_evidence enabled). Auto gate runs do not satisfy this; add at least one --evidence with a non-gate kind, or use --hotfix-reason for emergency override.`;
+      return res2;
+    }
   }
   if (!hotfixReason) {
     const blockingPerf = findUnresolvedPerfRegression(featureNow);
@@ -27967,7 +28041,8 @@ function aggregate(events, options = {}) {
     features: { activated: 0, done: 0, blocked: 0 },
     lead_time_sec: { count: 0, min: null, median: null, mean: null, max: null },
     gate_stats: {},
-    drift_incidents: 0
+    drift_incidents: 0,
+    evidence_by_author: { human: 0, llm: 0 }
   };
   const activatedLast = /* @__PURE__ */ new Map();
   const doneFirst = /* @__PURE__ */ new Map();
@@ -27993,6 +28068,11 @@ function aggregate(events, options = {}) {
       if (fid !== null && dt !== null && !doneFirst.has(fid)) {
         doneFirst.set(fid, dt);
       }
+    } else if (typ === "evidence_added") {
+      const author = ev["author"];
+      const kind = typeof ev["kind"] === "string" ? ev["kind"] : "";
+      const resolved = author === "human" || author === "llm" ? author : kind === "gate_auto_run" || kind === "gate_run" ? "llm" : "human";
+      report.evidence_by_author[resolved] += 1;
     } else if (typ === "gate_recorded" || typ === "gate_auto_run") {
       const gate = ev["gate"];
       if (typeof gate !== "string") {
@@ -28139,6 +28219,7 @@ function formatHuman3(report) {
 // src/ui/dashboard.ts
 var import_yaml8 = __toESM(require_dist(), 1);
 init_gates();
+init_state();
 init_kickoff();
 import { readFileSync as readFileSync14, statSync as statSync11 } from "node:fs";
 import { join as join13 } from "node:path";
@@ -28223,6 +28304,7 @@ var EN = {
   walking_skeleton: "walking skeleton",
   active_feature: 'working on: "{title}"',
   progress_line: "  progress: {passed}/{total} gates passed \xB7 {evidence} evidence entries",
+  progress_line_split: "  progress: {passed}/{total} gates passed \xB7 {evidence} evidence ({human} human, {llm} llm)",
   blocker_line: "  blocker: {note}",
   dashboard_title: "harness-boot",
   no_active: "no active feature.",
@@ -28258,6 +28340,7 @@ var KO = {
   walking_skeleton: "\uAE30\uBCF8 \uACE8\uACA9",
   active_feature: '\uC791\uC5C5 \uC911: "{title}"',
   progress_line: "  \uC9C4\uD589: \uAC80\uC99D {passed}/{total} \uD1B5\uACFC \xB7 \uADFC\uAC70 {evidence} \uAC1C",
+  progress_line_split: "  \uC9C4\uD589: \uAC80\uC99D {passed}/{total} \uD1B5\uACFC \xB7 \uADFC\uAC70 {evidence} \uAC1C (\uC0AC\uB78C {human}, \uAE30\uACC4 {llm})",
   blocker_line: "  \uCC28\uB2E8: {note}",
   dashboard_title: "harness-boot",
   no_active: "\uD604\uC7AC \uC791\uC5C5 \uC911\uC778 \uD53C\uCC98 \uC5C6\uC74C.",
@@ -28418,6 +28501,24 @@ function countGatesPassed(gates) {
   }
   return count;
 }
+function countEvidenceByAuthor(evidence) {
+  let human = 0;
+  let llm = 0;
+  for (const ev of evidence) {
+    if (!isPlainObject9(ev)) {
+      continue;
+    }
+    const author = ev["author"];
+    const kind = typeof ev["kind"] === "string" ? ev["kind"] : "";
+    const resolved = author === "human" || author === "llm" ? author : deriveEvidenceAuthor(kind);
+    if (resolved === "human") {
+      human += 1;
+    } else {
+      llm += 1;
+    }
+  }
+  return { human, llm };
+}
 function latestBlockerNote(feature) {
   const evidence = asArray3(feature["evidence"]);
   for (let i = evidence.length - 1; i >= 0; i--) {
@@ -28461,10 +28562,19 @@ function renderActiveBlock(feature, spec, lang, harnessDir) {
   const title = featureTitle(fid, spec);
   const gates = isPlainObject9(feature["gates"]) ? feature["gates"] : {};
   const passed = countGatesPassed(gates);
-  const evidenceCount = asArray3(feature["evidence"]).length;
+  const evidenceArr = asArray3(feature["evidence"]);
+  const evidenceCount = evidenceArr.length;
+  const evidenceByAuthor = countEvidenceByAuthor(evidenceArr);
+  const showSplit = evidenceByAuthor.human > 0 && evidenceByAuthor.llm > 0;
   const lines = [t("active_feature", lang, { title })];
   lines.push(
-    t("progress_line", lang, {
+    showSplit ? t("progress_line_split", lang, {
+      passed,
+      total: STANDARD_GATES.length,
+      evidence: evidenceCount,
+      human: evidenceByAuthor.human,
+      llm: evidenceByAuthor.llm
+    }) : t("progress_line", lang, {
       passed,
       total: STANDARD_GATES.length,
       evidence: evidenceCount

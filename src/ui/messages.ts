@@ -34,6 +34,8 @@ const EN: Readonly<Record<string, string>> = {
   walking_skeleton: 'walking skeleton',
   active_feature: 'working on: "{title}"',
   progress_line: '  progress: {passed}/{total} gates passed · {evidence} evidence entries',
+  progress_line_split:
+    '  progress: {passed}/{total} gates passed · {evidence} evidence ({human} human, {llm} llm)',
   blocker_line: '  blocker: {note}',
   dashboard_title: 'harness-boot',
   no_active: 'no active feature.',
@@ -71,6 +73,8 @@ const KO: Readonly<Record<string, string>> = {
   walking_skeleton: '기본 골격',
   active_feature: '작업 중: "{title}"',
   progress_line: '  진행: 검증 {passed}/{total} 통과 · 근거 {evidence} 개',
+  progress_line_split:
+    '  진행: 검증 {passed}/{total} 통과 · 근거 {evidence} 개 (사람 {human}, 기계 {llm})',
   blocker_line: '  차단: {note}',
   dashboard_title: 'harness-boot',
   no_active: '현재 작업 중인 피처 없음.',

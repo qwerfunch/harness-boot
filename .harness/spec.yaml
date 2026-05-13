@@ -1943,6 +1943,146 @@ features:
     test_strategy: tdd
     digest: logcat-on ISSUES-LOG return (2026-05-13). Feature `name:` values have
       grown to 200-300 characters in some projects —...
+  - id: F-167
+    name: LLM author attribution on evidence
+    type: feature
+    status: planned
+    release_target: v0.15.5
+    modules:
+      - work_command
+      - state_transitioner
+      - dashboard
+      - metrics
+    test_strategy: tdd
+    description: |-
+      Tier 1 — distinguishes "machine self-evaluation" from "human
+      verification" inside the Iron Law evidence ledger. Today every
+      `evidence[]` entry counts the same toward the threshold, so a
+      feature that only ran auto gates (5 entries of `gate_auto_run`,
+      0 declared human checks) can satisfy BR-004. F-122 was exactly
+      that case.
+
+      Adds `author: "human" | "llm"` to every evidence entry — derived
+      automatically from `kind`: gate_auto_run / gate_run → `llm`;
+      anything else (test · manual_check · user_feedback · trivial ·
+      hotfix · perf_regression · perf_resolved · …) → `human`. Surface
+      the split in the dashboard and `harness metrics`. Optional opt-in
+      `harness.yaml.iron_law.require_human_evidence: true` makes
+      complete() refuse when human evidence count is zero (default
+      false — backward compat).
+    acceptance_criteria:
+      - "AC-1: events.log evidence_added events carry `author` field;
+        value derived from kind (gate_auto_run/gate_run → llm, all
+        other kinds → human)."
+      - "AC-2: state.yaml features[].evidence[] entries carry the same
+        `author` field, updated on every transition."
+      - "AC-3: dashboard renders evidence count as `N entries (X human,
+        Y llm)` when both > 0; falls back to plain `N entries` when
+        single-source."
+      - "AC-4: `harness metrics` JSON output adds `evidence_by_author:
+        {human, llm}` per feature aggregate."
+      - "AC-5: When `harness.yaml.iron_law.require_human_evidence:
+        true`, complete() rejects with reason `no_human_evidence` if
+        the feature has zero human-authored evidence (latest 7 days
+        window — same as the existing declared check). Default unset
+        keeps existing semantics."
+  - id: F-168
+    name: AC ↔ Test traceability detector
+    type: feature
+    status: planned
+    release_target: v0.15.5
+    modules:
+      - check_command
+      - drift_detector
+      - spec_schema
+    test_strategy: tdd
+    description: |-
+      Tier 1 — 14th drift kind `AcceptanceTrace`. Maps every
+      `acceptance_criteria[]` entry to at least one concrete test
+      function. Distinct from the existing `Coverage` detector
+      (description-vs-fingerprint): Coverage only checks "does the
+      AC's keywords appear somewhere"; AcceptanceTrace checks "does a
+      specific test reference this exact AC-N".
+
+      Two mapping mechanisms are accepted (either is enough):
+
+        1. Explicit — spec.yaml adds
+           `features[].acceptance_criteria[].test_refs: ["name", ...]`
+           array. Each ref resolves to a test function in any tracked
+           test file.
+        2. Implicit — a test function's name or docstring contains
+           the literal substring `AC-N` (where N matches the feature
+           id's AC number). The agents/software-engineer.md style guide
+           already recommends this pattern.
+
+      Drift severity: `warn` by default; `error` when
+      `harness.yaml.detectors.acceptance_trace.strict: true`.
+    acceptance_criteria:
+      - "AC-1: spec.schema.json adds optional
+        `acceptance_criteria[].test_refs: array<string>` (when AC is
+        an object; the existing string-array shape stays supported)."
+      - "AC-2: src/check.ts adds `AcceptanceTrace` to the DriftKind
+        enum; runCheck() now iterates over each feature's AC entries
+        and scans the configured test directories for matching
+        functions (name or docstring contains `AC-N` literal)."
+      - "AC-3: When a feature has any AC with neither explicit
+        test_refs nor implicit AC-N reference, a drift entry is
+        emitted; severity follows the strict flag."
+      - "AC-4: CLAUDE.md drift_kinds_count sigil updates 13 → 14;
+        BLOCKING_DRIFT_KINDS unchanged (AcceptanceTrace is advisory
+        by default — adding it to blocking is a separate cycle once
+        external adopters validate the noise level)."
+      - "AC-5: Test scans cover both string-array and object-array AC
+        shapes; positive and negative cases asserted."
+  - id: F-169
+    name: Content drift detector — CLAUDE.md sigil region SSoT check
+    type: feature
+    status: planned
+    release_target: v0.15.5
+    modules:
+      - check_command
+      - drift_detector
+      - self_check
+    test_strategy: tdd
+    description: |-
+      Tier 1 — 15th drift kind `ContentDrift`. Validates the
+      `<!-- harness:fact key=X value=V source=Y -->` sigil regions
+      against the cited code SSoT, auto-rejecting stale facts.
+
+      Sigil format (already in use throughout CLAUDE.md):
+
+        <!-- harness:fact key=drift_kinds_count value=14 \
+             source=src/check.ts:runCheck -->
+        14 kinds <!-- /harness:fact -->
+
+      Detector parses every sigil pair, resolves the `source` to a
+      concrete measurement (initial scope: count-of-enum-members in a
+      named symbol), compares against the declared `value`, and emits
+      drift on mismatch. The marketplace.json version drift that
+      slipped into PR #72 is exactly the class this catches.
+
+      self_check.sh gains a 6th step that runs the same check on every
+      commit. BLOCKING_DRIFT_KINDS adds ContentDrift (errors here mean
+      the doc lies to future Claude sessions — block the merge).
+    acceptance_criteria:
+      - "AC-1: src/check.ts adds `ContentDrift` to the DriftKind enum;
+        a new module parses `<!-- harness:fact ... -->` sigils from a
+        configurable list of doc files (default: `CLAUDE.md` only)."
+      - "AC-2: Sigil parser supports three source kinds in v1:
+        (a) `path:enumName` (count enum members),
+        (b) `path:CONST_NAME` (literal scalar value),
+        (c) `path:fieldName` (top-level JSON field, for
+        `.claude-plugin/plugin.json:version` etc.)."
+      - "AC-3: Mismatched value → drift entry with severity `error`;
+        path identifies the file + line of the sigil; message names the
+        sigil key, claimed value, and actual value."
+      - "AC-4: self_check.sh adds step 6 that runs `harness check`
+        and fails the script if any ContentDrift error surfaces."
+      - "AC-5: ContentDrift joins BLOCKING_DRIFT_KINDS (the existing
+        list of 4 wire-integrity kinds becomes 5); CLAUDE.md sigil
+        `blocking_drift_kinds_count` updates 4 → 5 in the same commit."
+      - "AC-6: Test covers all three source kinds with both matching
+        and mismatched fixtures."
 goals: []
 constraints:
   tech_stack:

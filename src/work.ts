@@ -37,6 +37,7 @@ import {
   IRON_LAW_WINDOW_DAYS,
   State,
   countDeclaredEvidence,
+  deriveEvidenceAuthor,
   type Feature,
 } from './core/state.js';
 import {generateDesignReview} from './ceremonies/designReview.js';
@@ -148,6 +149,81 @@ function isFile(path: string): boolean {
   } catch {
     return false;
   }
+}
+
+/**
+ * F-167 — reads `harness.yaml.iron_law.require_human_evidence`.
+ * Default `false` keeps the v0.15.4 semantics; when explicitly `true`,
+ * complete() refuses transitions whose feature has zero human-authored
+ * evidence in the Iron Law window.
+ */
+function ironLawRequireHumanEvidence(harnessDir: string): boolean {
+  const path = join(harnessDir, 'harness.yaml');
+  if (!isFile(path)) {
+    return false;
+  }
+  let data: unknown;
+  try {
+    data = yamlParse(readFileSync(path, 'utf-8'));
+  } catch {
+    return false;
+  }
+  if (!isPlainObject(data)) {
+    return false;
+  }
+  const ironLaw = data['iron_law'];
+  if (!isPlainObject(ironLaw)) {
+    return false;
+  }
+  return ironLaw['require_human_evidence'] === true;
+}
+
+/**
+ * F-167 — partitions a feature's recent (`windowDays` window) evidence
+ * by author. Used by the optional `require_human_evidence` Iron Law
+ * gate: a feature with zero human evidence cannot complete.
+ */
+function countDeclaredEvidenceByAuthor(
+  feature: Feature,
+  options: {windowDays: number; now?: Date},
+): {human: number; llm: number} {
+  const out = {human: 0, llm: 0};
+  const evidence = feature.evidence;
+  if (!Array.isArray(evidence)) {
+    return out;
+  }
+  const cutoffMs = (options.now ?? new Date()).getTime() - options.windowDays * 86400_000;
+  for (const entry of evidence) {
+    if (!isPlainObject(entry)) {
+      continue;
+    }
+    const kind = typeof entry['kind'] === 'string' ? entry['kind'] : '';
+    if (kind === 'gate_auto_run' || kind === 'gate_run') {
+      // Match countDeclaredEvidence: machine-emitted evidence does not
+      // count toward declared totals, but if the user explicitly set
+      // `author: human` on one (manual ledger correction) we honour it.
+      const author = entry['author'];
+      if (author !== 'human') {
+        continue;
+      }
+    }
+    const ts = entry['ts'];
+    if (typeof ts === 'string') {
+      const t = Date.parse(ts);
+      if (Number.isFinite(t) && t < cutoffMs) {
+        continue;
+      }
+    }
+    const author = entry['author'];
+    const resolved: 'human' | 'llm' =
+      author === 'human' || author === 'llm' ? author : deriveEvidenceAuthor(kind);
+    if (resolved === 'human') {
+      out.human += 1;
+    } else {
+      out.llm += 1;
+    }
+  }
+  return out;
 }
 
 function nowIso(): string {
@@ -555,6 +631,7 @@ export function addEvidence(
     feature: fid,
     kind,
     summary,
+    author: deriveEvidenceAuthor(kind),
   });
   autowireDesignReview(harnessDir, fid);
   const res = summarize(state, fid);
@@ -760,6 +837,26 @@ export function complete(
       `in last ${IRON_LAW_WINDOW_DAYS} days (mode: ${mode}${reasonSuffix}). ` +
       'Add more with --evidence, or use --hotfix-reason for emergency override.';
     return res;
+  }
+
+  // F-167 — optional `require_human_evidence` gate. When activated in
+  // harness.yaml, complete() refuses transitions whose feature has zero
+  // human-authored evidence in the Iron Law window. Skipped under
+  // --hotfix-reason since the hotfix entry itself counts as human.
+  if (!hotfixReason && ironLawRequireHumanEvidence(harnessDir)) {
+    const byAuthor = countDeclaredEvidenceByAuthor(featureNow, {
+      windowDays: IRON_LAW_WINDOW_DAYS,
+    });
+    if (byAuthor.human === 0) {
+      const res = summarize(state, fid);
+      res.action = 'queried';
+      res.message =
+        `cannot complete — Iron Law: 0 human-authored evidence in last ${IRON_LAW_WINDOW_DAYS} ` +
+        'days (require_human_evidence enabled). Auto gate runs do not satisfy this; ' +
+        'add at least one --evidence with a non-gate kind, or use --hotfix-reason for ' +
+        'emergency override.';
+      return res;
+    }
   }
 
   // F-129 perf-regression guard. Runs after the declared-evidence check

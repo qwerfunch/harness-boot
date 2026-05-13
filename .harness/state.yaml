@@ -3731,8 +3731,50 @@ features:
     summary: logcat-on Issue 4 fix — collectWarnings(spec) emits feature.name_too_long for names > 80 cp (Unicode-correct), non-blocking; CLI prints to stderr; real spec surfaces ~18 candidates without breaking validate
   started_at: 2026-05-12T23:29:58Z
   completed_at: 2026-05-12T23:31:41Z
+- id: F-167
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-13T01:12:12Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-13T01:12:13Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-13T01:12:15Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-13T01:12:16Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-13T01:12:12Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.8s) · cmd: npm test"
+    author: llm
+  - ts: 2026-05-13T01:12:13Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.9s) · cmd: npm run typecheck"
+    author: llm
+  - ts: 2026-05-13T01:12:15Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (2.5s) · cmd: npm run lint"
+    author: llm
+  - ts: 2026-05-13T01:12:16Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.7s) · cmd: bash self_check.sh"
+    author: llm
+  - ts: 2026-05-13T01:12:17Z
+    kind: test
+    summary: F-167 author attribution — state.ts EvidenceEntry.author + deriveEvidenceAuthor() · work.ts evidence_added event emits author · dashboard split count · metrics.evidence_by_author · iron_law.require_human_evidence opt-in · 830/830 tests
+    author: human
+  started_at: 2026-05-13T01:04:01Z
+  completed_at: null
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-166
+  last_command: /harness:work F-167
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-167

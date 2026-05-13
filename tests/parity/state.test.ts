@@ -219,6 +219,30 @@ describe('state mutators', () => {
     rmSync(workDir, {recursive: true, force: true});
   });
 
+  it('F-167 — addEvidence tags author=human for declared kinds', () => {
+    const state = State.load(workDir);
+    state.addEvidence('F-100', 'manual_check', 'reviewer eyeballed UI');
+    state.addEvidence('F-100', 'test', 'unit suite green');
+    state.addEvidence('F-100', 'hotfix', 'redis race');
+    const f = state.getFeature('F-100')!;
+    for (const ev of f.evidence) {
+      expect(ev.author).toBe('human');
+    }
+
+    rmSync(workDir, {recursive: true, force: true});
+  });
+
+  it('F-167 — addEvidence tags author=llm for gate_auto_run / gate_run', () => {
+    const state = State.load(workDir);
+    state.addEvidence('F-100', 'gate_auto_run', 'tests (gate_0) PASS');
+    state.addEvidence('F-100', 'gate_run', 'manual gate_5 record');
+    const f = state.getFeature('F-100')!;
+    expect(f.evidence[0]!.author).toBe('llm');
+    expect(f.evidence[1]!.author).toBe('llm');
+
+    rmSync(workDir, {recursive: true, force: true});
+  });
+
   it('addSkippedAgent rejects empty agent or reason', () => {
     const state = State.load(workDir);
     expect(() => state.addSkippedAgent('F-100', '', 'no reason')).toThrow(/agent name/);
