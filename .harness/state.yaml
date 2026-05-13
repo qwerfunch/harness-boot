@@ -3942,7 +3942,7 @@ features:
   started_at: 2026-05-13T02:20:23Z
   completed_at: 2026-05-13T02:29:52Z
 - id: F-172
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3982,9 +3982,9 @@ features:
     summary: F-172 token tracking infrastructure — harness token CLI + LlmCallEvent.feature 확장 + scenario=work · metrics.tokens 누적 + per-model breakdown · dashboard token_line · 862/862 tests + 9 new (5 tokenLog · 2 metrics · 2 dashboard) · 실증 4 시나리오 (CLI happy + metrics 집계 + dashboard 표시 + invalid input 차단)
     author: human
   started_at: 2026-05-13T03:07:38Z
-  completed_at: null
+  completed_at: 2026-05-13T03:07:39Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-172
   last_gate_passed: gate_5
-  active_feature_id: F-172
+  active_feature_id: null

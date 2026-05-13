@@ -2015,50 +2015,8 @@ features:
       - metrics
       - dashboard
     test_strategy: tdd
-    description: |-
-      Direct response to the v0.15.6 post-release verification gap.
-      The user's real question — "harness vs 그냥 Claude — 작업
-      퀄리티 결과물, 토큰 소비량" — could not be answered because
-      `src/init/tokenLog.ts::recordLlmCall` only fires in init
-      scenarios. General `harness work` cycles never record LLM
-      usage, so we have zero data on per-cycle token consumption
-      across the 162 done features.
-
-      v0.15.7 closes that gap with three additions:
-      1. `harness token --in <num> --out <num> --model <id>` CLI —
-         deterministic write into events.log via the existing
-         `recordLlmCall` helper. Caller-provided values (manual
-         self-report or hook-driven auto-capture).
-      2. `harness metrics` JSON output adds `tokens_input_total`,
-         `tokens_output_total`, `llm_call_count`, and a per-model
-         breakdown — aggregated from `llm_call` events.
-      3. Dashboard surfaces cumulative tokens for the active feature
-         when any llm_call event exists.
-
-      Phase 3 work (A/B case study comparing harness vs vanilla
-      Claude on the same task) becomes feasible once this lands —
-      the measurement plumbing is the gating dependency.
-    acceptance_criteria:
-      - "AC-1: `harness token --in <num> --out <num> --model <id>
-        [--feature F-N] [--kind <subagent|user>]` writes a single
-        `llm_call` event to events.log via `recordLlmCall`. Required
-        flags: --in, --out, --model."
-      - "AC-2: `harness metrics --json` adds `tokens_input_total`,
-        `tokens_output_total`, `llm_call_count`, and
-        `tokens_by_model: {<model_id>: {in, out, calls}}` aggregated
-        from `llm_call` events in the window."
-      - "AC-3: Dashboard active block renders an extra line `tokens:
-        <total_in> in / <total_out> out (<calls> calls)` when the
-        active feature has ≥ 1 llm_call event. Hidden otherwise."
-      - "AC-4: Invalid input (non-integer tokens, empty model, etc.)
-        exits with status 3 and a clear error message."
-      - "AC-5: Tests cover the CLI happy path, metrics aggregation
-        (single + multi-model), dashboard render condition (on/off),
-        and the input-validation rejections."
-      - "AC-6: Documentation — `commands/work.md` (sidecar mention)
-        or a new `commands/token.md` short note explaining manual
-        self-report flow. Slash-command UX stays out of scope (TS
-        CLI surface only; hook automation is a follow-up)."
+    digest: Direct response to the v0.15.6 post-release verification gap. The user's
+      real question — "harness vs 그냥 Claude — 작업 퀄...
 goals: []
 constraints:
   tech_stack:
