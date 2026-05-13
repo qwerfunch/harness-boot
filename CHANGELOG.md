@@ -21,6 +21,18 @@ maintainer's chat language. F-178 rewrites every doc + script comment +
 emitted table label in English. No CLI or runtime behavior changes; the
 aggregate.py auto-write semantics and sentinel anchors are preserved.
 
+### Fixed
+
+- **F-179** — Pre-merge audit of F-178 surfaced that the project root
+  `README.md` and `README.ko.md` Benchmarks section was stale from
+  before F-176: the copy claimed "9 popular Python repos" but listed
+  12 entries including `pandas`, which F-176 dropped (the
+  `pandas-dev/pandas` repo has 0 entries in SWE-bench Verified). Both
+  READMEs now correctly say 11 repos and omit pandas. Same audit
+  pattern as F-175; the F-178 cycle itself only touched
+  `docs/benchmark/swe-bench-verified/`, which is why the
+  cross-reference stayed stale until this audit ran.
+
 ### Changed
 
 - **F-178** — Full English rewrite of:

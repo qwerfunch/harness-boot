@@ -2128,6 +2128,24 @@ features:
       and translates the Korean cell labels emitted by scripts/aggregate.py so
       regenerated tables match. Sentinel anchors and aggregate.py write semantics
       remain unchanged. No CLI or runtime change.'
+  - id: F-179
+    name: F-178 audit follow-up — project README repo count + pandas drop sync
+    type: fix
+    status: planned
+    release_target: v0.15.12
+    modules:
+      - docs_marketing
+    test_strategy: smoke
+    digest: 'Pre-merge audit of F-178 (the benchmark suite English rewrite)
+      found that the project root README.md and README.ko.md Benchmarks
+      sections still claim "9 popular Python repos" and list 12 entries
+      including `pandas`. The actual tasks.json after F-176 has 11 repos
+      and no pandas (pandas-dev/pandas has 0 entries in Verified, so the
+      slot was reassigned to pylint). F-178 itself only touched
+      docs/benchmark/swe-bench-verified/, so the project root README
+      stayed stale. F-179 is the cross-reference fix discovered through
+      the audit pattern that F-175 introduced — same pattern, smaller
+      scope, two line edits in two files.'
 goals: []
 constraints:
   tech_stack:
