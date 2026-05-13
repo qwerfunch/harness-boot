@@ -6,7 +6,7 @@
 
 Claude Code 위에서 도는 multi-agent 개발 하네스. 다른 AI 도구가 *능력* 을 더할 때, harness-boot 는 *방향* 을 만듭니다.
 
-[![plugin](https://img.shields.io/badge/plugin-v0.15.11-blue)](.claude-plugin/plugin.json)
+[![plugin](https://img.shields.io/badge/plugin-v0.15.12-blue)](.claude-plugin/plugin.json)
 [![tests](https://img.shields.io/badge/tests-866%20passing-brightgreen)](tests/parity)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
@@ -198,7 +198,7 @@ harness-boot
 
 harness-boot 를 쓰면 정말 더 적은 토큰으로 더 많은 이슈를 해결할까요? 그냥 Claude Code 와 1:1 로 비교할 수 있는 프레임워크를 공개해 두었습니다 — 방법론·태스크 목록·재현 스크립트 전부 열어 두었으니 직접 검증하실 수 있습니다.
 
-- **벤치마크**: SWE-bench Verified · 인기 Python 레포 9 개 (django · sympy · scikit-learn · matplotlib · sphinx · pytest · requests · flask · pylint · astropy · pandas · xarray) 에서 고른 20 태스크
+- **벤치마크**: SWE-bench Verified · 인기 Python 레포 11 개 (django · sympy · scikit-learn · matplotlib · sphinx · pytest · requests · flask · pylint · astropy · xarray) 에서 고른 20 태스크
 - **측정 4 축**: 이슈 해결률 · 토큰 소비량 · 처리 시간 · 코드 품질 지표 (LOC · 추가 테스트 · drift 적발 수)
 - **현재 상태**: 프레임워크 공개, 실측 진행 중
 - **결과 보기**: [`docs/benchmark/swe-bench-verified/REPORT.md`](docs/benchmark/swe-bench-verified/REPORT.md) — 실측 진행에 따라 row 단위로 채워집니다

@@ -11,6 +11,45 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ### Queued
 
+## [0.15.12] — 2026-05-13
+
+**Benchmark suite docs are English-only.** The `docs/benchmark/swe-bench-verified/`
+directory will be linked from the project root README's Benchmarks section
+and consumed by an international audience. The earlier cycles (F-173 →
+F-177) authored everything in a Korean-mixed style that matched the
+maintainer's chat language. F-178 rewrites every doc + script comment +
+emitted table label in English. No CLI or runtime behavior changes; the
+aggregate.py auto-write semantics and sentinel anchors are preserved.
+
+### Fixed
+
+- **F-179** — Pre-merge audit of F-178 surfaced that the project root
+  `README.md` and `README.ko.md` Benchmarks section was stale from
+  before F-176: the copy claimed "9 popular Python repos" but listed
+  12 entries including `pandas`, which F-176 dropped (the
+  `pandas-dev/pandas` repo has 0 entries in SWE-bench Verified). Both
+  READMEs now correctly say 11 repos and omit pandas. Same audit
+  pattern as F-175; the F-178 cycle itself only touched
+  `docs/benchmark/swe-bench-verified/`, which is why the
+  cross-reference stayed stale until this audit ran.
+
+### Changed
+
+- **F-178** — Full English rewrite of:
+  - `docs/benchmark/swe-bench-verified/README.md`
+  - `docs/benchmark/swe-bench-verified/REPORT.md`
+  - `docs/benchmark/swe-bench-verified/analysis/threats-to-validity.md`
+  - `docs/benchmark/swe-bench-verified/scripts/setup.md`
+  - `docs/benchmark/swe-bench-verified/scripts/run-vanilla.sh`
+  - `docs/benchmark/swe-bench-verified/scripts/run-harness.sh`
+  - `docs/benchmark/swe-bench-verified/scripts/aggregate.py`
+    (module docstring · CLI help · per-function docstrings · emitted
+    §2.3 cell labels). `aggregate.py` re-run regenerates the §2.3
+    table with the new English labels in place.
+- **Plugin manifest** — `.claude-plugin/plugin.json`,
+  `.claude-plugin/marketplace.json`, `package.json` bumped to 0.15.12.
+  README badges follow.
+
 ## [0.15.11] — 2026-05-13
 
 **SWE-bench pilot ledger now actually writeable.** During an attempt

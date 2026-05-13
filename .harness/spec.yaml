@@ -2111,6 +2111,41 @@ features:
       success or hard-errors when a sentinel is missing. Real measurement still
       requires external Docker + per-task sessions; this cycle just ensures the
       ledger can actually be filled when those runs happen.'
+  - id: F-178
+    name: Benchmark suite docs — Korean-mixed → English-only
+    type: docs
+    status: planned
+    release_target: v0.15.12
+    modules:
+      - docs_benchmark
+    test_strategy: smoke
+    digest: 'The benchmark suite (docs/benchmark/swe-bench-verified/) was authored
+      in a Korean-mixed style during the F-173 → F-177 cycles, matching the
+      maintainer chat language. It will be linked from README marketing copy and
+      consumed by an international audience, so it has to stand alone in English.
+      F-178 rewrites README.md, REPORT.md, analysis/threats-to-validity.md,
+      scripts/setup.md, scripts/run-vanilla.sh, scripts/run-harness.sh in English,
+      and translates the Korean cell labels emitted by scripts/aggregate.py so
+      regenerated tables match. Sentinel anchors and aggregate.py write semantics
+      remain unchanged. No CLI or runtime change.'
+  - id: F-179
+    name: F-178 audit follow-up — project README repo count + pandas drop sync
+    type: fix
+    status: planned
+    release_target: v0.15.12
+    modules:
+      - docs_marketing
+    test_strategy: smoke
+    digest: 'Pre-merge audit of F-178 (the benchmark suite English rewrite)
+      found that the project root README.md and README.ko.md Benchmarks
+      sections still claim "9 popular Python repos" and list 12 entries
+      including `pandas`. The actual tasks.json after F-176 has 11 repos
+      and no pandas (pandas-dev/pandas has 0 entries in Verified, so the
+      slot was reassigned to pylint). F-178 itself only touched
+      docs/benchmark/swe-bench-verified/, so the project root README
+      stayed stale. F-179 is the cross-reference fix discovered through
+      the audit pattern that F-175 introduced — same pattern, smaller
+      scope, two line edits in two files.'
 goals: []
 constraints:
   tech_stack:

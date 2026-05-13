@@ -6,7 +6,7 @@
 
 harness-boot is a multi-agent development harness for Claude Code. Where most AI tools add *capability*, we add *focus*.
 
-[![plugin](https://img.shields.io/badge/plugin-v0.15.11-blue)](.claude-plugin/plugin.json)
+[![plugin](https://img.shields.io/badge/plugin-v0.15.12-blue)](.claude-plugin/plugin.json)
 [![tests](https://img.shields.io/badge/tests-866%20passing-brightgreen)](tests/parity)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
@@ -195,7 +195,7 @@ Send any image, GIF, or screenshot that shows the project — plus a one-liner a
 
 Does harness-boot actually produce better output than vanilla Claude Code — fewer tokens, more issues resolved? The framework for an apples-to-apples comparison is public, with the methodology, task list, and reproduction scripts open for inspection.
 
-- **Suite**: SWE-bench Verified (20-task subset across 9 popular Python repos: django, sympy, scikit-learn, matplotlib, sphinx, pytest, requests, flask, pylint, astropy, pandas, xarray)
+- **Suite**: SWE-bench Verified (20-task subset across 11 popular Python repos: django, sympy, scikit-learn, matplotlib, sphinx, pytest, requests, flask, pylint, astropy, xarray)
 - **Measures**: resolve rate · token consumption · wall time · code quality signals (LOC, tests added, drift catches)
 - **Status**: framework public, measurement in progress
 - **Read**: [`docs/benchmark/swe-bench-verified/REPORT.md`](docs/benchmark/swe-bench-verified/REPORT.md) — results table fills in row-by-row as runs complete

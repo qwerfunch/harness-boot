@@ -1,113 +1,118 @@
 # Threats to Validity — SWE-bench Verified A/B
 
-> 이 benchmark 의 신뢰도를 약화시킬 수 있는 모든 요인을 명시. 이를 모르고 결과를 마케팅 narrative 로 사용하는 건 부정직.
+> Every factor that could weaken the credibility of this benchmark, written down on purpose. Using results as marketing narrative without knowing these is dishonest.
 
 ## Change history
 
-- **2026-05-13 (v0.15.10 hotfix · F-176)** — pilot 준비 단계에서 dataset 실측 검증을 돌렸더니 v0.15.8 가 함께 ship 한 `tasks.json` 20 개 중 10 개의 `task_id` 가 SWE-bench Verified 의 500 개 task 안에 존재하지 않음. `pandas-dev/pandas` 는 아예 Verified 에 entry 가 없었음. 10 개 모두 동일 repo + 비슷한 difficulty 의 검증된 task 로 치환, pandas slot 은 pylint 추가 task 로 재배정. 이 문서는 이제 두 가지 difficulty 라벨 (authorial `easy/medium/hard` + Verified 의 `verified_difficulty` 원본 라벨) 을 둘 다 명시. 이 미스는 v0.15.9 의 audit-before-merge 패턴 (F-175) 이 바로 다음 사이클에서 잡아낸 사례.
+- **2026-05-13 (v0.15.10 hotfix · F-176)** — Pilot prep validated the v0.15.8-shipped `tasks.json` against the actual Verified dataset (500 rows) and found 10 of 20 `task_id`s did not exist. The entire `pandas-dev/pandas` repo had 0 entries in Verified. All 10 invalid ids were replaced with verified candidates from the same repo + difficulty bucket; the pandas slot was reassigned to a second `pylint` task. This document now carries both labels (authorial `easy/medium/hard` + Verified's native `verified_difficulty`). The miss was caught on the very next cycle by the v0.15.9 audit-before-merge pattern (F-175).
+- **2026-05-13 (v0.15.11 · F-177)** — `scripts/aggregate.py` had a stub non-dry-run write path that printed warnings instead of updating REPORT.md, and REPORT.md had no sentinel anchors. Both were fixed in the same cycle, and a heavily-captioned demo row (`psf__requests-2317`) was added to validate the writer end-to-end.
 
 ---
 
-## 1. Construct validity (측정 axis 가 진짜 그걸 재는가)
+## 1. Construct validity (does the measurement axis actually measure what it claims?)
 
-### 1.1 SWE-bench 의 "resolve" = 정말 사용자가 받을 가치인가?
+### 1.1 Does SWE-bench's "resolve" equal user-perceived value?
 
-SWE-bench 의 채점 기준: PR 의 patch 가 hidden test 를 PASS. 즉:
-- **잡는 것**: API contract 만족, regression test 통과
-- **못 잡는 것**: 코드 가독성, 유지보수성, 비기능 요구사항 (perf, a11y, security), 디자인 적합도
+SWE-bench's grading rule: the PR's patch makes the hidden test pass. That means it captures:
 
-**위협**: harness 가 "test 는 통과하지만 코드가 더 깔끔" 한 경우 SWE-bench resolve rate 는 동일 표시. **harness 의 ceremony · drift 가치가 metric 에 미반영**.
+- API contract correctness and regression-test pass-through
+- but **not** code readability, maintainability, non-functional requirements (perf, a11y, security), or design fit
 
-**완화**: §2.1 의 "Code LOC" 와 §4 의 정성적 관찰이 이 gap 을 부분적으로 보완. 단 정량 수치만 인용하면 misleading 가능.
+**Threat**: if harness produces "tests pass but the code is cleaner", SWE-bench's resolve rate shows them tied. The harness's ceremony / drift value never reaches the metric.
 
-### 1.2 Token 측정의 정확도
+**Mitigation**: §2.1's `code_loc` column and §4's qualitative observations partially close the gap. But citing only the quantitative columns will mislead.
 
-- **vanilla**: Claude Code 의 `/cost` 수기 입력. 사용자가 잊거나 잘못 입력 가능.
-- **harness**: `harness token` 으로 입력. **agent / subagent 호출의 모든 token 이 capture 되는지는 hook 자동화 (F-172 follow-up) 가 land 한 후에야 보장**. 현재는 매 turn 끝에 수기 입력 필요.
+### 1.2 Token measurement accuracy
 
-**위협**: 양쪽 다 self-report. underreport 가 같은 방향이면 상쇄, 다른 방향이면 결과 bias.
+- **Vanilla**: typed in from Claude Code's `/cost`. Users forget or mistype.
+- **Harness**: written via `harness token`. Whether every subagent / agent call is captured depends on the F-172 hook automation; F-174 made that automatic for `Stop` events, but transcripts still depend on Claude Code's internal JSONL schema.
 
-**완화**: setup.md 의 procedure 가 정확한 측정 시점 (turn 끝 직후) 명시. 양쪽 동일 방식 적용해 bias 최소화.
+**Threat**: both sides self-report. If under-reporting bias is symmetric it cancels; if asymmetric it skews the result.
 
-### 1.3 "Code quality" 의 정의 모호
+**Mitigation**: `setup.md` specifies the exact moment to record (immediately after each turn). Applying the same procedure on both sides minimizes asymmetric bias.
 
-`code_loc · tests_added` 만으로 quality 추정 어려움. lint score / type check / cyclomatic complexity 같은 정량은 SWE-bench 의 채점에 포함 X.
+### 1.3 "Code quality" is poorly defined
 
-**위협**: harness 가 "더 짧고 더 명료한 코드" 를 만든다 해도 LOC 만 보면 같음.
+`code_loc` + `tests_added` alone is a weak proxy for quality. Lint score, type-check pass rate, cyclomatic complexity — none of these enter SWE-bench's grade.
 
-**완화**: §2.1 에 추가 metric (cyclomatic complexity, lint warnings 등) 도입 가능. 단 현재 framework 는 LOC 만. 결과 안정화되면 metric 확장.
+**Threat**: if harness produces shorter, clearer code, LOC alone shows the same number.
+
+**Mitigation**: §2.1 can grow additional metrics (cyclomatic complexity, lint warning count) later. Current framework only measures LOC. Expand once the results stabilize.
 
 ---
 
-## 2. Internal validity (측정 자체가 정확한가)
+## 2. Internal validity (is the measurement itself accurate?)
 
 ### 2.1 Confounders
 
-| Confounder | 영향 | 완화 |
+| Confounder | Effect | Mitigation |
 |---|---|---|
-| **Same author (Claude)** | vanilla 와 harness 양쪽 모두 같은 모델 인스턴스. 사람 user 가 작성하는 prompt 차이는 통제 X. | setup.md 에서 같은 prompt template 사용 의무화. 단 sub-conversation 의 turn 별 차이 통제 어려움. |
-| **Same time / model version** | v0.15.8 의 token 측정 시점 + 특정 모델 release. 6개월 후 같은 비교 해도 결과 다를 수 있음. | result JSON 에 `model · plugin_version · run_date` 메타데이터 필수. |
-| **Order effect** | vanilla 먼저 / harness 먼저 의 순서에 따라 task context 가 누적. | 각 task 는 fresh 환경 (Docker / 빈 workdir) 으로 reset. setup.md 강제. |
-| **Sample selection bias** | tasks.json 의 20 pick 이 harness-fit task 에 치우치면 결과 bias. | tasks.json 의 selection_criteria 가 명시 — fit-mix (10 multi / 6 medium / 4 single). public 검토 가능. |
+| **Same author (Claude)** | Both vanilla and harness use the same model instance; prompt differences from the human driver are uncontrolled. | `setup.md` requires the same prompt template. Per-turn variation inside the conversation is still hard to control. |
+| **Same time / model version** | Token measurement + a specific model release. Re-running in 6 months may give different numbers. | The per-task JSON carries `model`, `plugin_version`, `run_date` metadata. |
+| **Order effect** | If vanilla runs before harness on the same task, the conversation accumulates context. | Each task is reset to a fresh environment (Docker / clean workdir); `setup.md` enforces this. |
+| **Sample selection bias** | If `tasks.json`'s 20-pick skews toward harness-fit tasks, the result is biased. | `tasks.json`'s `selection_criteria` is explicit — fit-mix (9 multi-step / 7 medium-step / 4 single-fix). Publicly auditable. |
 
-### 2.2 SWE-bench 의 task 자체 confound
+### 2.2 SWE-bench task-level confounds
 
-- **Contamination**: SWE-bench Verified 의 일부 task 가 모델 training 에 포함됐을 가능성. resolve rate 절대값 자체를 신뢰 X.
-- **Patch grading 의 non-determinism**: hidden test 자체에 flake (timing, env) 가 있음. 한 task 가 resolve / non-resolve 사이 boundary 일 수 있음.
+- **Contamination**: some Verified tasks are likely in the model's training data. Don't trust the absolute resolve rate.
+- **Non-deterministic grading**: hidden tests can have flakes (timing, env). A borderline task may flicker between resolve and non-resolve.
 
-**완화**: vanilla 와 harness 모두 같은 SWE-bench tasks 사용 → 양쪽 같은 confounder 영향. **상대 차이** 만 유의미하게 해석. 절대값은 외부 인용 시 주의.
-
----
-
-## 3. External validity (결과를 다른 상황으로 일반화 가능한가)
-
-### 3.1 도메인 일반화
-
-20 task = 9 repo (django · sympy · scikit-learn · matplotlib · sphinx · pytest · requests · flask · pylint · astropy · pandas · xarray). **모두 Python · 모두 OSS · 대부분 mature 라이브러리**.
-
-**위협**: 다음 도메인에 일반화 불가:
-- 다른 언어 (TS / Rust / Go) — harness 의 toolchain auto-detect 가 다른 환경에서 어떻게 작동하는지 미측정
-- 새 프로젝트 vs 기존 프로젝트 — SWE-bench 의 모든 task 가 mature 라이브러리에 적용. harness 의 `init --scenario idea` 가치는 측정 X
-- 상용 프로젝트의 multi-feature workflow — SWE-bench 의 한 task = single issue. harness 의 강점인 누적 retro / Iron Law 매 cycle 검증은 단일 task 측정에 미발현
-
-### 3.2 시간 일반화
-
-이 결과는 v0.15.8 시점 plugin + 특정 모델 release 의 snapshot. v1.0 이후 다시 측정 권장.
-
-### 3.3 사용자 일반화
-
-사용자가 harness 와 vanilla 를 똑같이 능숙하게 사용한다는 가정. 실 사용자는:
-- harness 명령 외워야 함 (`harness init` · `harness work` 등)
-- vanilla 는 자유 자연어 — 학습 비용 0
-
-→ harness 우위가 정량 수치보다 작을 가능성 (사용자 학습 곡선의 비용 미반영).
+**Mitigation**: vanilla and harness use the same SWE-bench tasks, so both sides share the same confounders. Interpret **relative difference** only. Treat absolute numbers with care in external citations.
 
 ---
 
-## 4. Conclusion validity (결론을 어떻게 표현해야 정직한가)
+## 3. External validity (does this generalize?)
 
-### 4.1 표현 가이드
+### 3.1 Domain generalization
 
-- "harness 가 더 좋다" ← 위험. axis 명시 필수.
-- "20-task SWE-bench Verified subset 에서, single-fix 가 아닌 multi-step task 의 token 평균이 harness N% 감소" ← OK.
-- "harness 가 vanilla 대비 우월" ← 위험. dimensional caveat 없음.
-- "이 benchmark suite 의 N=20 subset 결과로는, harness 의 우위가 multi-step task 에서 통계적으로 약하게 관찰됨. full 500 run 또는 다른 모델로 확인 권장" ← OK.
+The 20 tasks span 11 repos (django · sympy · scikit-learn · matplotlib · sphinx · pytest · requests · flask · pylint · astropy · xarray). **All Python · all OSS · mostly mature libraries.**
 
-### 4.2 null result 정직성
+**Threat**: results may not generalize to:
 
-만약 measure 후 "차이 거의 없음" 이면:
-- 그 자체가 가치 있는 발견 (harness 의 process metric 우위는 outcome metric 으로 자동 환원 X)
-- 마케팅 위해 spin 금지 (BR-014 anti-rationalization)
-- 결과 안정화 후 README 의 marketing 자리에는 "outcome metric A/B 결과는 mixed — process metric 우위는 명확" 식의 정직 narrative
+- Other languages (TS / Rust / Go) — the harness toolchain auto-detect is unmeasured in those environments.
+- Greenfield vs brownfield — every SWE-bench task lives on top of a mature library. The value of harness's `init --scenario idea` flow is not measured here.
+- Commercial multi-feature workflows — a SWE-bench task is one issue. The harness's cumulative retro and per-cycle Iron Law validation can't manifest in a single-task experiment.
+
+### 3.2 Time generalization
+
+These numbers are a snapshot of the plugin at this version plus the model release present at run time. Re-measure after v1.0.
+
+### 3.3 User generalization
+
+Assumes the user is equally fluent in both harness and vanilla flows. Real users:
+
+- have to learn the harness commands (`harness init` · `harness work`, etc.)
+- get vanilla for free with no special learning cost
+
+→ The harness advantage in real-world numbers may be smaller than the framework measures, because user learning cost is not accounted for.
 
 ---
 
-## 5. 후속 작업
+## 4. Conclusion validity (how should the result be phrased honestly?)
 
-이 framework 가 land 한 후, 결과 신뢰도 ↑ 를 위한 다음 cycle 권장:
+### 4.1 Phrasing guide
 
-1. **Hook 자동화** (F-172 follow-up) — Claude Code session boundary 의 token 자동 capture. 수기 입력 confounder 제거.
-2. **Multi-author run** — 외부 dogfood 사용자 (logcat-on · cosmic-suika) 가 같은 framework 로 시도. single-author bias 완화.
-3. **Multi-model run** — Sonnet 4.6 · Opus 4.7 · Haiku 4.5 양쪽 비교. 모델 size 가 결과에 미치는 영향 측정.
-4. **Code quality metric 추가** — lint score · cyclomatic complexity · type check 통과율 added to schema.
-5. **Full 500 run** — pilot 결과 보고 시간/예산 budget 결정 후 진행.
+- "harness is better" → risky. Always specify the axis.
+- "On a 20-task SWE-bench Verified subset, mean tokens dropped by N% on multi-step tasks with harness" → OK.
+- "harness is superior to vanilla" → risky. No dimensional caveat.
+- "On this benchmark suite's N=20 subset, harness wins on multi-step tasks were weakly observed; full 500-task run or a different model would clarify" → OK.
+
+### 4.2 Null-result honesty
+
+If the measurement yields "no meaningful difference":
+
+- That itself is a valuable finding (a process-metric win does not automatically reduce to an outcome-metric win).
+- Do not spin for marketing (BR-014 anti-rationalization).
+- The README marketing copy should be something like: "Outcome A/B is mixed; process-metric wins are clear" — phrased honestly.
+
+---
+
+## 5. Follow-up
+
+After this framework lands, recommended next cycles to raise confidence in the results:
+
+1. **Hook automation** (F-172 / F-174 follow-up) — auto-capture token usage at Claude Code session boundary. Removes the manual-entry confounder. F-174 already covers `Stop` events.
+2. **Multi-author run** — external dogfooders (`logcat-on`, `cosmic-suika`) run the same framework. Mitigates single-author bias.
+3. **Multi-model run** — compare Sonnet 4.6 · Opus 4.7 · Haiku 4.5 on the same subset. Measures whether model size flips the result.
+4. **Add code-quality metrics** — lint score · cyclomatic complexity · type-check pass rate into the per-task schema.
+5. **Full 500 run** — decide time/budget based on pilot outcome, then proceed.
