@@ -11,6 +11,53 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ### Queued
 
+## [0.15.5] — 2026-05-13
+
+**Tier 1 trio — Iron Law trust axis.** Three additive features
+strengthen what "verification evidence" means: F-167 surfaces who
+actually verified (human vs llm) inside the evidence ledger, F-168
+checks that each AC has a real test mapping (14th drift kind), and
+F-169 keeps CLAUDE.md sigil facts in lockstep with the cited code
+SSoT (15th drift kind, blocking).
+
+### Added
+
+- **F-167** — `evidence[]` entries carry `author: "human" | "llm"`,
+  auto-derived from `kind` (gate_auto_run / gate_run → llm; all
+  declared kinds → human). `events.log` evidence_added events emit
+  the same field. Dashboard renders `N evidence (X human, Y llm)`
+  when both > 0. `harness metrics` JSON adds
+  `evidence_by_author: {human, llm}`. Optional opt-in
+  `harness.yaml.iron_law.require_human_evidence: true` makes
+  complete() refuse when human-authored evidence count is zero
+  (default unset = v0.15.4 semantics).
+- **F-168** — `AcceptanceTrace` drift detector (14th kind). Maps
+  each `acceptance_criteria[]` entry to at least one test. Two
+  mechanisms: explicit (`test_refs: ["name", ...]` on object ACs) or
+  implicit (a tests/ file mentions both the feature id and `AC-N`
+  literal). Opt-in via `harness.yaml.detectors.acceptance_trace.enabled`;
+  severity `warn` unless `strict: true`. Advisory by default —
+  promotion to BLOCKING_DRIFT_KINDS waits on external-adopter noise
+  feedback.
+- **F-169** — `ContentDrift` drift detector (15th kind, blocking).
+  Parses `<!-- harness:fact key=X value=V source=path:symbol -->`
+  sigils in CLAUDE.md and validates against the cited code SSoT.
+  Three source kinds: TS enum-like (union/Set/array member count),
+  TS scalar const, JSON top-level field. Doc-example placeholders
+  (`source=Y`) auto-skip. Joins BLOCKING_DRIFT_KINDS (4 → 5) and
+  self_check.sh step 6.
+
+### Changed
+
+- CLAUDE.md sigils self-update: `drift_kinds_count` 13 → 15,
+  `blocking_drift_kinds_count` 4 → 5. The sigil source for
+  `drift_kinds_count` moves from `runCheck` (a function name with
+  no resolver semantics) to `DriftKind` (the union type that
+  ContentDrift can actually count).
+- `self_check.sh` grows from 5 to 6 steps. Step 6 surfaces
+  ContentDrift errors explicitly (step 4 already catches them but
+  the dedicated step makes the F-169 contract visible).
+
 ## [0.15.4] — 2026-05-13
 
 **logcat-on ISSUES-LOG return — three contained bug fixes.** External
