@@ -3816,7 +3816,7 @@ features:
   started_at: 2026-05-13T01:12:57Z
   completed_at: 2026-05-13T01:17:44Z
 - id: F-169
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3856,9 +3856,9 @@ features:
     summary: F-169 ContentDrift detector — 15th DriftKind · sigil parser + 3 source resolvers (JSON field · TS union/Set/array · TS scalar const) · doc-example placeholder skip · self_check.sh step 6 · BLOCKING_DRIFT_KINDS 4→5 · CLAUDE.md sigils 14→15/4→5 · 9 new tests · 846/846 · self_check 6/6 OK
     author: human
   started_at: 2026-05-13T01:17:58Z
-  completed_at: null
+  completed_at: 2026-05-13T01:23:51Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-169
   last_gate_passed: gate_5
-  active_feature_id: F-169
+  active_feature_id: null

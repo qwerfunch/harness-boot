@@ -1978,44 +1978,8 @@ features:
       - drift_detector
       - self_check
     test_strategy: tdd
-    description: |-
-      Tier 1 — 15th drift kind `ContentDrift`. Validates the
-      `<!-- harness:fact key=X value=V source=Y -->` sigil regions
-      against the cited code SSoT, auto-rejecting stale facts.
-
-      Sigil format (already in use throughout CLAUDE.md):
-
-        <!-- harness:fact key=drift_kinds_count value=14 \
-             source=src/check.ts:runCheck -->
-        14 kinds <!-- /harness:fact -->
-
-      Detector parses every sigil pair, resolves the `source` to a
-      concrete measurement (initial scope: count-of-enum-members in a
-      named symbol), compares against the declared `value`, and emits
-      drift on mismatch. The marketplace.json version drift that
-      slipped into PR #72 is exactly the class this catches.
-
-      self_check.sh gains a 6th step that runs the same check on every
-      commit. BLOCKING_DRIFT_KINDS adds ContentDrift (errors here mean
-      the doc lies to future Claude sessions — block the merge).
-    acceptance_criteria:
-      - "AC-1: src/check.ts adds `ContentDrift` to the DriftKind enum; a new
-        module parses `<!-- harness:fact ... -->` sigils from a configurable
-        list of doc files (default: `CLAUDE.md` only)."
-      - "AC-2: Sigil parser supports three source kinds in v1: (a)
-        `path:enumName` (count enum members), (b) `path:CONST_NAME` (literal
-        scalar value), (c) `path:fieldName` (top-level JSON field, for
-        `.claude-plugin/plugin.json:version` etc.)."
-      - "AC-3: Mismatched value → drift entry with severity `error`; path
-        identifies the file + line of the sigil; message names the sigil key,
-        claimed value, and actual value."
-      - "AC-4: self_check.sh adds step 6 that runs `harness check` and fails the
-        script if any ContentDrift error surfaces."
-      - "AC-5: ContentDrift joins BLOCKING_DRIFT_KINDS (the existing list of 4
-        wire-integrity kinds becomes 5); CLAUDE.md sigil
-        `blocking_drift_kinds_count` updates 4 → 5 in the same commit."
-      - "AC-6: Test covers all three source kinds with both matching and
-        mismatched fixtures."
+    digest: Tier 1 — 15th drift kind `ContentDrift`. Validates the `<!--
+      harness:fact key=X value=V source=Y -->` sigil regions a...
 goals: []
 constraints:
   tech_stack:
