@@ -1966,44 +1966,8 @@ features:
       - drift_detector
       - spec_schema
     test_strategy: tdd
-    description: |-
-      Tier 1 — 14th drift kind `AcceptanceTrace`. Maps every
-      `acceptance_criteria[]` entry to at least one concrete test
-      function. Distinct from the existing `Coverage` detector
-      (description-vs-fingerprint): Coverage only checks "does the
-      AC's keywords appear somewhere"; AcceptanceTrace checks "does a
-      specific test reference this exact AC-N".
-
-      Two mapping mechanisms are accepted (either is enough):
-
-        1. Explicit — spec.yaml adds
-           `features[].acceptance_criteria[].test_refs: ["name", ...]`
-           array. Each ref resolves to a test function in any tracked
-           test file.
-        2. Implicit — a test function's name or docstring contains
-           the literal substring `AC-N` (where N matches the feature
-           id's AC number). The agents/software-engineer.md style guide
-           already recommends this pattern.
-
-      Drift severity: `warn` by default; `error` when
-      `harness.yaml.detectors.acceptance_trace.strict: true`.
-    acceptance_criteria:
-      - "AC-1: spec.schema.json adds optional `acceptance_criteria[].test_refs:
-        array<string>` (when AC is an object; the existing string-array shape
-        stays supported)."
-      - "AC-2: src/check.ts adds `AcceptanceTrace` to the DriftKind enum;
-        runCheck() now iterates over each feature's AC entries and scans the
-        configured test directories for matching functions (name or docstring
-        contains `AC-N` literal)."
-      - "AC-3: When a feature has any AC with neither explicit test_refs nor
-        implicit AC-N reference, a drift entry is emitted; severity follows the
-        strict flag."
-      - "AC-4: CLAUDE.md drift_kinds_count sigil updates 13 → 14;
-        BLOCKING_DRIFT_KINDS unchanged (AcceptanceTrace is advisory by default —
-        adding it to blocking is a separate cycle once external adopters
-        validate the noise level)."
-      - "AC-5: Test scans cover both string-array and object-array AC shapes;
-        positive and negative cases asserted."
+    digest: Tier 1 — 14th drift kind `AcceptanceTrace`. Maps every
+      `acceptance_criteria[]` entry to at least one concrete test fu...
   - id: F-169
     name: Content drift detector — CLAUDE.md sigil region SSoT check
     type: feature

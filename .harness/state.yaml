@@ -3774,7 +3774,7 @@ features:
   started_at: 2026-05-13T01:04:01Z
   completed_at: 2026-05-13T01:12:37Z
 - id: F-168
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3814,9 +3814,9 @@ features:
     summary: F-168 AcceptanceTrace detector — 14th DriftKind · checkAcceptanceTrace explicit (test_refs) + implicit (fid+AC-N) mapping · opt-in via harness.yaml.detectors.acceptance_trace.enabled · CLAUDE.md sigil 13→14 · 7 new tests · 837/837
     author: human
   started_at: 2026-05-13T01:12:57Z
-  completed_at: null
+  completed_at: 2026-05-13T01:17:44Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-168
   last_gate_passed: gate_5
-  active_feature_id: F-168
+  active_feature_id: null
