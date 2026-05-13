@@ -4151,8 +4151,50 @@ features:
     author: human
   started_at: 2026-05-13T04:47:59Z
   completed_at: 2026-05-13T04:50:22Z
+- id: F-177
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-13T05:05:52Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-13T05:05:53Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-13T05:05:54Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-13T05:05:55Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-13T05:05:52Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (2.3s) · cmd: npm test"
+    author: llm
+  - ts: 2026-05-13T05:05:53Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.9s) · cmd: npm run typecheck"
+    author: llm
+  - ts: 2026-05-13T05:05:54Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.5s) · cmd: npm run lint"
+    author: llm
+  - ts: 2026-05-13T05:05:55Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.5s) · cmd: bash self_check.sh"
+    author: llm
+  - ts: 2026-05-13T05:06:00Z
+    kind: user_feedback
+    summary: aggregate.py sentinel-aware write path implemented; REPORT.md gains aggregate:per-task/aggregate/harness-signals sentinel anchors; first demo row psf__requests-2317.json landed with 5 caveats; logic verified b'GET' → 'GET'; framework end-to-end now actually writes a non-placeholder REPORT.md
+    author: human
+  started_at: 2026-05-13T05:05:12Z
+  completed_at: 2026-05-13T05:06:40Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-176
+  last_command: /harness:work F-177
   last_gate_passed: gate_5
   active_feature_id: null

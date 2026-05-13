@@ -1,0 +1,34 @@
+{
+  "task_id": "psf__requests-2317",
+  "approach": "vanilla",
+  "resolved": "logic-verified-not-test-verified",
+  "tokens_input": null,
+  "tokens_output": null,
+  "wall_time_sec": null,
+  "attempts": 1,
+  "code_loc": 2,
+  "tests_added": 0,
+  "tests_passed": "unverified",
+  "model": "claude-opus-4-7",
+  "run_kind": "in_session_demo",
+  "framework_validated": true,
+  "caveats": [
+    "Same-session contamination — this conversation handled F-176 (the tasks.json hotfix) + this pilot back to back, so per-task token / wall-time isolation is impossible. tokens_input / tokens_out / wall_time_sec are left null rather than fabricated.",
+    "Tests not actually executed — running requests 2.4-era tests on macOS Python 3.14 would require setting up an era-appropriate Python (3.3-3.4) venv and the SWE-bench Docker image. Docker daemon is off in this environment; that work belongs to the external pilot.",
+    "Logic-only verification — in an isolated Python snippet I confirmed `b'GET'` → `'GET'` with the applied patch (`if isinstance(method, bytes): method = method.decode('ascii')` before `builtin_str(method)`). This proves the bug is functionally fixed, not that all 8 FAIL_TO_PASS tests now pass under the SWE-bench harness.",
+    "Style differs from golden — golden patch replaces `builtin_str(method)` with `to_native_string(method)` (already imported via `requests.utils`) and removes the `builtin_str` import. Both fixes are functionally equivalent for bytes input; golden is cleaner.",
+    "N=1 is statistically meaningless — this row exists to validate that the framework produces non-placeholder rows in REPORT.md end-to-end, not to claim a benchmark result."
+  ],
+  "fix_summary": "Added `if isinstance(method, bytes): method = method.decode('ascii')` guard before `method = builtin_str(method)` in `requests/sessions.py::Session.request`. The pre-existing call passed bytes through `builtin_str` (which is `str` in Py3), producing the literal repr `\"b'GET'\"` instead of `'GET'`.",
+  "fix_diff": [
+    "diff --git a/requests/sessions.py b/requests/sessions.py",
+    "@@ -425,6 +425,8 @@",
+    "             If Tuple, ('cert', 'key') pair.",
+    "         \"\"\"",
+    " ",
+    "+        if isinstance(method, bytes):",
+    "+            method = method.decode(\"ascii\")",
+    "         method = builtin_str(method)"
+  ],
+  "notes": "Pilot demo run for F-177 in v0.15.11. Logged as the first non-placeholder row in REPORT.md to prove the framework end-to-end works. Real measurements require external Docker + per-task sessions; see scripts/setup.md."
+}

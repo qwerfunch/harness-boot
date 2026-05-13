@@ -1,6 +1,6 @@
 # SWE-bench Verified A/B — REPORT
 
-> 실측 결과 누적 문서. **이 파일의 표는 실측 시점에 채워집니다.** Framework 만 landed (F-173, v0.15.8). Pilot run + full run 은 maintainer 가 외부 환경에서 진행하며 row 단위로 갱신.
+> 실측 결과 누적 문서. **이 파일의 표는 실측 시점에 자동 채워집니다.** Framework 가 v0.15.8 (F-173) 에 landed, v0.15.10 (F-176) 에서 task 목록 dataset 검증, v0.15.11 (F-177) 에서 aggregate.py 의 REPORT.md 자동 갱신이 실제로 작동하도록 fix + 첫 demo row 추가.
 
 **Methodology**: see [`README.md`](./README.md). **Validity threats**: see [`analysis/threats-to-validity.md`](./analysis/threats-to-validity.md).
 
@@ -11,11 +11,13 @@
 | Stage | 상태 | 비고 |
 |---|---|---|
 | Framework | ✅ landed | v0.15.8 / F-173 |
-| Pilot run (5 task) | ⏳ pending | maintainer 가 외부 환경에서 실측 후 결과 row 채움 |
+| Task list dataset-validated | ✅ landed | v0.15.10 / F-176 |
+| aggregate.py 자동 write | ✅ landed | v0.15.11 / F-177 |
+| Pilot run (5 task) | ⏳ 1/5 (demo row only) | requests-2317 (same-session demo · caveats in JSON) — 진짜 pilot 은 외부 Docker 환경 |
 | Full run (20 task) | ⏳ pending | pilot 결과 보고 진행 결정 |
 | README link | ⏳ pending | 결과 안정화 후 project root README 의 marketing 자리에 link |
 
-**Last updated**: 2026-05-13 (framework landed; task list dataset-validated v0.15.10) · runs: 0 / 20
+**Last updated**: 2026-05-13 · runs: 1 / 20 (1 demo)
 
 ---
 
@@ -25,6 +27,7 @@
 
 ### 2.1 Per-task
 
+<!-- aggregate:per-task:start -->
 | Task ID | Difficulty | Harness fit | Vanilla resolved | Vanilla tokens | Vanilla wall (s) | Harness resolved | Harness tokens | Harness wall (s) | Δ tokens | Δ resolve |
 |---|---|---|---|---|---|---|---|---|---|---|
 | django__django-13551 | easy | multi-step | — | — | — | — | — | — | — | — |
@@ -40,33 +43,37 @@
 | pytest-dev__pytest-7236 | medium | medium-step | — | — | — | — | — | — | — | — |
 | pytest-dev__pytest-6197 | hard | multi-step | — | — | — | — | — | — | — | — |
 | psf__requests-1142 | easy | single-fix | — | — | — | — | — | — | — | — |
-| psf__requests-2317 | easy | single-fix | — | — | — | — | — | — | — | — |
+| psf__requests-2317 | easy | single-fix | logic-verified-not-test-verified | 0 | — | — | — | — | — | — |
 | pallets__flask-5014 | easy | medium-step | — | — | — | — | — | — | — | — |
 | pylint-dev__pylint-7080 | medium | multi-step | — | — | — | — | — | — | — | — |
 | astropy__astropy-12907 | medium | multi-step | — | — | — | — | — | — | — | — |
 | astropy__astropy-14182 | medium | medium-step | — | — | — | — | — | — | — | — |
 | pylint-dev__pylint-6386 | medium | medium-step | — | — | — | — | — | — | — | — |
 | pydata__xarray-4094 | easy | medium-step | — | — | — | — | — | — | — | — |
+<!-- aggregate:per-task:end -->
 
 ### 2.2 Aggregate
 
+<!-- aggregate:aggregate:start -->
 | Metric | Vanilla | Harness | Δ (harness − vanilla) | Significance (qualitative) |
 |---|---|---|---|---|
-| **Resolve rate** (N=20) | —/20 (—%) | —/20 (—%) | — | — |
-| **Mean tokens / task** | — | — | — | — |
-| **Median tokens / task** | — | — | — | — |
+| **Resolve rate** (N=20) | 0/20 (0%) | 0/20 (0%) | +0 | — |
+| **Mean tokens / task (in+out)** | 0 | — | — | — |
 | **Mean wall time (s) / task** | — | — | — | — |
-| **Mean attempts / task** | — | — | — | — |
-| **Mean code LOC / patch** | — | — | — | — |
-| **Mean tests added / task** | — | — | — | — |
+| **Mean attempts / task** | 1 | — | — | — |
+| **Mean code LOC / patch** | 2 | — | — | — |
+| **Mean tests added / task** | 0 | — | — | — |
+<!-- aggregate:aggregate:end -->
 
 ### 2.3 Harness-only signals
 
+<!-- aggregate:harness-signals:start -->
 | Metric | Total | Per resolved task | 비고 |
 |---|---|---|---|
-| Drift catches | — | — | 15-detector 가 잡은 issue 수 |
-| Evidence kinds used | — | — | manual_check / test / reviewer_check 등 분포 |
-| Iron Law 차단 발생 | — | — | declared evidence 부족으로 reject 된 횟수 (F-172 후속 작업의 데이터) |
+| Drift catches | 0 | 0.0 | 15-detector 가 잡은 issue 수 |
+| Evidence kinds used | 0 | — | 분포: — |
+| Iron Law 차단 발생 | — | — | F-172 follow-up (hook 자동화) 이후 자동 capture |
+<!-- aggregate:harness-signals:end -->
 
 ---
 

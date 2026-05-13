@@ -2088,6 +2088,29 @@ features:
       authorial-vs-real difficulty mapping. The pre-merge audit pattern
       (F-175) caught this on the very next cycle — validates the
       ISSUES-LOG return loop.'
+  - id: F-177
+    name: SWE-bench pilot N=1 + aggregate.py auto-write fix
+    type: feature
+    status: planned
+    release_target: v0.15.11
+    modules:
+      - docs_benchmark
+    test_strategy: smoke
+    digest: 'When the maintainer attempted "benchmark a/b 이어서 쭉 진행" in-session,
+      two real gaps surfaced: (1) aggregate.py claimed to update REPORT.md but the
+      sentinel-substitution code path was not implemented — it only printed a
+      warning and dumped tables to stdout, so even a real pilot run would have to
+      paste tables manually. (2) REPORT.md had no sentinel comments, so even if
+      the script worked, there was no anchor to substitute into. F-177 implements
+      the sentinel-aware write path (3 blocks: per-task / aggregate /
+      harness-signals), adds the matching sentinels to REPORT.md, and records the
+      first non-placeholder row from an in-session demo on psf__requests-2317
+      (clearly labelled as same-session contamination · logic-verified-not-test-verified
+      · N=1 demo, not a clean benchmark sample). The aggregate.py now writes
+      atomically and reports `updated <path> — N sentinel blocks rewritten` on
+      success or hard-errors when a sentinel is missing. Real measurement still
+      requires external Docker + per-task sessions; this cycle just ensures the
+      ledger can actually be filled when those runs happen.'
 goals: []
 constraints:
   tech_stack:
