@@ -4025,8 +4025,92 @@ features:
     author: human
   started_at: 2026-05-13T03:35:50Z
   completed_at: 2026-05-13T03:36:13Z
+- id: F-174
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-13T04:28:30Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-13T04:28:31Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-13T04:28:36Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-13T04:28:37Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-13T04:28:30Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (3.0s) · cmd: npm test"
+    author: llm
+  - ts: 2026-05-13T04:28:31Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.9s) · cmd: npm run typecheck"
+    author: llm
+  - ts: 2026-05-13T04:28:36Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.5s) · cmd: npm run lint"
+    author: llm
+  - ts: 2026-05-13T04:28:37Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.5s) · cmd: bash self_check.sh"
+    author: llm
+  - ts: 2026-05-13T04:28:41Z
+    kind: test
+    summary: Stop hook auto-captures token usage from transcript JSONL; 7 vitest cases lock the fail-open contract
+    author: human
+  started_at: 2026-05-13T04:28:23Z
+  completed_at: 2026-05-13T04:28:59Z
+- id: F-175
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-13T04:39:48Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-13T04:39:49Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-13T04:39:51Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-13T04:39:51Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-13T04:39:48Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (2.4s) · cmd: npm test"
+    author: llm
+  - ts: 2026-05-13T04:39:49Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.9s) · cmd: npm run typecheck"
+    author: llm
+  - ts: 2026-05-13T04:39:51Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.5s) · cmd: npm run lint"
+    author: llm
+  - ts: 2026-05-13T04:39:51Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.5s) · cmd: bash self_check.sh"
+    author: llm
+  - ts: 2026-05-13T04:39:56Z
+    kind: user_feedback
+    summary: "Pre-merge audit findings: non-harness latency cut 148ms→3ms via CLAUDE_PROJECT_DIR fast-path; HARNESS_DISABLE_TOKEN_HOOK opt-out env honored; README privacy + opt-out lines added EN+KO"
+    author: human
+  started_at: 2026-05-13T04:39:41Z
+  completed_at: 2026-05-13T04:40:14Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-173
+  last_command: /harness:work F-175
   last_gate_passed: gate_5
   active_feature_id: null

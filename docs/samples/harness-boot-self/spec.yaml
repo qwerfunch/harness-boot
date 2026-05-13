@@ -2028,6 +2028,43 @@ features:
     test_strategy: smoke
     digest: Direct response to "어떤 benchmark 로 객관 평가" — user picked SWE-bench
       Verified 20-task subset (option A). This feature la...
+  - id: F-174
+    name: Stop-hook auto token capture — vanilla benchmark accuracy
+    type: feature
+    status: planned
+    release_target: v0.15.9
+    modules:
+      - hooks
+      - token_log
+      - cli_token
+    test_strategy: tdd
+    digest: 'F-172 follow-up. Surfaced when SWE-bench Verified framework (F-173)
+      landed but vanilla token measurement still depended on manual /cost typing.
+      A Stop-event hook parses the Claude Code transcript JSONL, extracts the
+      latest assistant message.usage, locates the active feature in
+      .harness/state.yaml, and invokes the existing `harness token` CLI to
+      append a typed llm_call event. Silent fail-open everywhere — no .harness
+      dir / no active feature / no usage in transcript → exit 0. Closes the
+      measurement-accuracy validity threat in
+      docs/benchmark/swe-bench-verified/analysis/threats-to-validity.md.'
+  - id: F-175
+    name: F-174 audit follow-up — fast-path + opt-out + privacy doc
+    type: fix
+    status: planned
+    release_target: v0.15.9
+    modules:
+      - hooks
+      - docs
+    test_strategy: tdd
+    digest: 'Pre-merge audit of F-174 surfaced three real concerns: (1)
+      non-harness sessions paid ~148 ms per turn for the hook to discover
+      they had no .harness/, (2) no opt-out for users who do not want the
+      auto-capture, (3) the privacy and brittleness contract was buried in
+      the source comment. This follow-up adds an env-driven fast-path
+      (CLAUDE_PROJECT_DIR check before any node spawn — 148 ms → 3 ms),
+      honors HARNESS_DISABLE_TOKEN_HOOK=1 for a hard opt-out, and surfaces
+      both the privacy stance and the opt-out flag in README + CHANGELOG.
+      Locks both behaviors with 2 new parity cases (total 866).'
 goals: []
 constraints:
   tech_stack:
