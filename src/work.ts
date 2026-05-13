@@ -74,12 +74,13 @@ function friendlyGate(gateName: string): string {
 /** Iron Law minimum declared-evidence count per project mode. */
 const IRON_LAW_REQUIRED: Readonly<Record<string, number>> = {prototype: 1, product: 3};
 
-/** F-048 blocking drift kinds for the complete() fast path. */
+/** F-048 + F-169 blocking drift kinds for the complete() fast path. */
 const BLOCKING_DRIFT_KINDS: ReadonlySet<string> = new Set([
   'Code',
   'Stale',
   'AnchorIntegration',
   'Coverage',
+  'ContentDrift',
 ]);
 
 /**

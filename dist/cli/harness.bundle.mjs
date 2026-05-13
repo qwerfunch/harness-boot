@@ -12843,6 +12843,154 @@ function collectTestFileContents(root) {
   }
   return out;
 }
+function checkContentDrift(harnessDir, projectRoot = null) {
+  const findings = [];
+  const root = projectRoot ?? resolvePath4(harnessDir, "..");
+  for (const rel of DEFAULT_SIGIL_DOCS) {
+    const docPath = join11(root, rel);
+    if (!isFile5(docPath)) {
+      continue;
+    }
+    let text;
+    try {
+      text = readFileSync12(docPath, "utf-8");
+    } catch {
+      continue;
+    }
+    SIGIL_RE.lastIndex = 0;
+    let match;
+    while ((match = SIGIL_RE.exec(text)) !== null) {
+      const [full, key, declaredValue, source] = match;
+      const line = lineOfOffset(text, match.index);
+      const finding = resolveSigil(root, key, declaredValue, source);
+      if (finding === null) {
+        continue;
+      }
+      findings.push({
+        kind: "ContentDrift",
+        path: `${rel}:${line}`,
+        message: finding,
+        severity: "error"
+      });
+      void full;
+    }
+  }
+  return findings;
+}
+function lineOfOffset(text, offset) {
+  let line = 1;
+  for (let i = 0; i < offset && i < text.length; i++) {
+    if (text[i] === "\n") {
+      line += 1;
+    }
+  }
+  return line;
+}
+function resolveSigil(root, key, declaredValue, source) {
+  if (declaredValue.length === 1 && /^[A-Z]$/.test(declaredValue) || source.length === 1 && /^[A-Z]$/.test(source) || key.length === 1 && /^[A-Z]$/.test(key)) {
+    return null;
+  }
+  const sep2 = source.indexOf(":");
+  if (sep2 <= 0) {
+    return `sigil key=${key}: source must be \`path:symbol\` (got \`${source}\`)`;
+  }
+  const relPath2 = source.slice(0, sep2);
+  const symbol = source.slice(sep2 + 1);
+  const abs = join11(root, relPath2);
+  if (!isFile5(abs)) {
+    return `sigil key=${key}: source file not found: ${relPath2}`;
+  }
+  let content;
+  try {
+    content = readFileSync12(abs, "utf-8");
+  } catch {
+    return `sigil key=${key}: cannot read source file ${relPath2}`;
+  }
+  let actual = null;
+  if (/\.json$/.test(relPath2)) {
+    actual = resolveJsonField(content, symbol);
+  } else {
+    actual = resolveTsEnumLike(content, symbol);
+    if (actual === null) {
+      actual = resolveTsScalarConst(content, symbol);
+    }
+  }
+  if (actual === null) {
+    return `sigil key=${key}: symbol \`${symbol}\` not found in ${relPath2}`;
+  }
+  if (actual !== declaredValue) {
+    return `sigil key=${key}: declared \`${declaredValue}\`, actual \`${actual}\` (source: ${source})`;
+  }
+  return null;
+}
+function resolveJsonField(content, field) {
+  try {
+    const obj = JSON.parse(content);
+    if (obj === null || typeof obj !== "object" || Array.isArray(obj)) {
+      return null;
+    }
+    const value = obj[field];
+    if (value === void 0) {
+      return null;
+    }
+    if (typeof value === "string") {
+      return value;
+    }
+    if (typeof value === "number" || typeof value === "boolean") {
+      return String(value);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+function resolveTsEnumLike(content, name) {
+  const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const unionRe = new RegExp(
+    `(?:export\\s+)?type\\s+${esc}\\s*=\\s*((?:[^;]|\\n)*?);`,
+    "m"
+  );
+  const unionMatch = unionRe.exec(content);
+  if (unionMatch !== null) {
+    const body = unionMatch[1];
+    const literals = body.match(/['"`][^'"`]+['"`]/g);
+    if (literals !== null && literals.length > 0) {
+      return String(literals.length);
+    }
+  }
+  const collectionRe = new RegExp(
+    `(?:export\\s+)?const\\s+${esc}\\b[^=]*=\\s*(?:new\\s+Set\\s*\\(\\s*\\[([\\s\\S]*?)\\]\\s*\\)|\\[([\\s\\S]*?)\\])`,
+    "m"
+  );
+  const collMatch = collectionRe.exec(content);
+  if (collMatch !== null) {
+    const body = (collMatch[1] ?? collMatch[2] ?? "").trim();
+    if (body.length === 0) {
+      return "0";
+    }
+    const literals = body.match(/['"`][^'"`]+['"`]/g);
+    if (literals !== null) {
+      return String(literals.length);
+    }
+  }
+  return null;
+}
+function resolveTsScalarConst(content, name) {
+  const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(
+    `(?:export\\s+)?(?:const|let|var)\\s+${esc}\\s*(?::\\s*[^=]+)?=\\s*([^;\\n]+);?`,
+    "m"
+  );
+  const match = re.exec(content);
+  if (match === null) {
+    return null;
+  }
+  let value = match[1].trim();
+  if (value.startsWith("'") && value.endsWith("'") || value.startsWith('"') && value.endsWith('"') || value.startsWith("`") && value.endsWith("`")) {
+    return value.slice(1, -1);
+  }
+  return value;
+}
 function runCheck(harnessDir, projectRoot = null) {
   const report = { findings: [], checked: [] };
   const harnessYaml = loadYamlFile(join11(harnessDir, "harness.yaml"));
@@ -12879,6 +13027,8 @@ function runCheck(harnessDir, projectRoot = null) {
   report.checked.push("Coverage");
   report.findings.push(...checkAcceptanceTrace(harnessDir, specYaml, projectRoot));
   report.checked.push("AcceptanceTrace");
+  report.findings.push(...checkContentDrift(harnessDir, projectRoot));
+  report.checked.push("ContentDrift");
   return report;
 }
 function runBlockingCheck(harnessDir, projectRoot = null) {
@@ -12890,7 +13040,8 @@ function runBlockingCheck(harnessDir, projectRoot = null) {
     report.findings.push(...checkAnchorIntegration(harnessDir, specYaml, projectRoot));
   }
   report.findings.push(...checkSpecCoverage(harnessDir, specYaml));
-  report.checked.push("Code", "Stale", "AnchorIntegration", "Coverage");
+  report.findings.push(...checkContentDrift(harnessDir, projectRoot));
+  report.checked.push("Code", "Stale", "AnchorIntegration", "Coverage", "ContentDrift");
   return report;
 }
 function formatHuman(report) {
@@ -12911,7 +13062,7 @@ function formatHuman(report) {
   return `${lines.join("\n")}
 `;
 }
-var import_yaml7, FEATURE_ID_PATTERN, CLAUDE_IMPORT_PATTERN, PROTOCOL_FRONTMATTER, DEFAULT_COVERAGE_THRESHOLD;
+var import_yaml7, FEATURE_ID_PATTERN, CLAUDE_IMPORT_PATTERN, PROTOCOL_FRONTMATTER, DEFAULT_COVERAGE_THRESHOLD, SIGIL_RE, DEFAULT_SIGIL_DOCS;
 var init_check = __esm({
   "src/check.ts"() {
     "use strict";
@@ -12923,6 +13074,8 @@ var init_check = __esm({
     CLAUDE_IMPORT_PATTERN = /^@([^\s]+)/gm;
     PROTOCOL_FRONTMATTER = /^---\s*\n([\s\S]*?)\n---/;
     DEFAULT_COVERAGE_THRESHOLD = 0.8;
+    SIGIL_RE = /<!--\s*harness:fact\s+key=(\S+)\s+value=(\S+)\s+source=(\S+)\s*-->/g;
+    DEFAULT_SIGIL_DOCS = ["CLAUDE.md"];
   }
 });
 
@@ -23864,7 +24017,8 @@ var init_work = __esm({
       "Code",
       "Stale",
       "AnchorIntegration",
-      "Coverage"
+      "Coverage",
+      "ContentDrift"
     ]);
     PERF_MARKER_KINDS = /* @__PURE__ */ new Set(["perf_regression", "perf_resolved"]);
   }

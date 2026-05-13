@@ -21,6 +21,7 @@ import {
   checkAnchor,
   checkAnchorIntegration,
   checkCode,
+  checkContentDrift,
   checkDerived,
   checkDoc,
   checkEvidence,
@@ -577,6 +578,139 @@ describe('check.checkAcceptanceTrace (F-168)', () => {
   });
 });
 
+describe('check.checkContentDrift (F-169)', () => {
+  let p: Project;
+  beforeEach(() => {
+    p = makeProject();
+  });
+  afterEach(() => {
+    rmSync(p.root, {recursive: true, force: true});
+  });
+
+  it('no CLAUDE.md → no findings (idempotent)', () => {
+    expect(checkContentDrift(p.harness, p.root)).toHaveLength(0);
+  });
+
+  it('JSON source — version field match', () => {
+    mkdirSync(join(p.root, '.claude-plugin'), {recursive: true});
+    writeFileSync(
+      join(p.root, '.claude-plugin', 'plugin.json'),
+      JSON.stringify({name: 'foo', version: '1.2.3'}),
+      'utf-8',
+    );
+    writeFileSync(
+      join(p.root, 'CLAUDE.md'),
+      '<!-- harness:fact key=plugin_version value=1.2.3 source=.claude-plugin/plugin.json:version --> v1.2.3 <!-- /harness:fact -->',
+      'utf-8',
+    );
+    expect(checkContentDrift(p.harness, p.root)).toHaveLength(0);
+  });
+
+  it('JSON source — version field mismatch flagged', () => {
+    mkdirSync(join(p.root, '.claude-plugin'), {recursive: true});
+    writeFileSync(
+      join(p.root, '.claude-plugin', 'plugin.json'),
+      JSON.stringify({name: 'foo', version: '1.2.4'}),
+      'utf-8',
+    );
+    writeFileSync(
+      join(p.root, 'CLAUDE.md'),
+      '<!-- harness:fact key=plugin_version value=1.2.3 source=.claude-plugin/plugin.json:version --> v1.2.3 <!-- /harness:fact -->',
+      'utf-8',
+    );
+    const findings = checkContentDrift(p.harness, p.root);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.kind).toBe('ContentDrift');
+    expect(findings[0]!.severity).toBe('error');
+    expect(findings[0]!.message).toContain('1.2.3');
+    expect(findings[0]!.message).toContain('1.2.4');
+  });
+
+  it('TS union type — member count match', () => {
+    mkdirSync(join(p.root, 'src'), {recursive: true});
+    writeFileSync(
+      join(p.root, 'src', 'kinds.ts'),
+      "export type Color = 'red' | 'green' | 'blue';\n",
+      'utf-8',
+    );
+    writeFileSync(
+      join(p.root, 'CLAUDE.md'),
+      '<!-- harness:fact key=color_count value=3 source=src/kinds.ts:Color --> 3 colors <!-- /harness:fact -->',
+      'utf-8',
+    );
+    expect(checkContentDrift(p.harness, p.root)).toHaveLength(0);
+  });
+
+  it('TS union type — member count mismatch flagged', () => {
+    mkdirSync(join(p.root, 'src'), {recursive: true});
+    writeFileSync(
+      join(p.root, 'src', 'kinds.ts'),
+      "export type Color = 'red' | 'green' | 'blue' | 'yellow';\n",
+      'utf-8',
+    );
+    writeFileSync(
+      join(p.root, 'CLAUDE.md'),
+      '<!-- harness:fact key=color_count value=3 source=src/kinds.ts:Color --> 3 colors <!-- /harness:fact -->',
+      'utf-8',
+    );
+    const findings = checkContentDrift(p.harness, p.root);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.message).toContain('actual `4`');
+  });
+
+  it('TS scalar const — match', () => {
+    mkdirSync(join(p.root, 'src'), {recursive: true});
+    writeFileSync(
+      join(p.root, 'src', 'consts.ts'),
+      "export const MAX_RETRIES = 5;\n",
+      'utf-8',
+    );
+    writeFileSync(
+      join(p.root, 'CLAUDE.md'),
+      '<!-- harness:fact key=max_retries value=5 source=src/consts.ts:MAX_RETRIES --> 5 retries <!-- /harness:fact -->',
+      'utf-8',
+    );
+    expect(checkContentDrift(p.harness, p.root)).toHaveLength(0);
+  });
+
+  it('TS Set literal — member count match', () => {
+    mkdirSync(join(p.root, 'src'), {recursive: true});
+    writeFileSync(
+      join(p.root, 'src', 'sets.ts'),
+      "const KINDS: ReadonlySet<string> = new Set(['a', 'b', 'c']);\n",
+      'utf-8',
+    );
+    writeFileSync(
+      join(p.root, 'CLAUDE.md'),
+      '<!-- harness:fact key=kinds_count value=3 source=src/sets.ts:KINDS --> 3 kinds <!-- /harness:fact -->',
+      'utf-8',
+    );
+    expect(checkContentDrift(p.harness, p.root)).toHaveLength(0);
+  });
+
+  it('Documentation placeholder (single-letter uppercase) is skipped', () => {
+    writeFileSync(
+      join(p.root, 'CLAUDE.md'),
+      'Sigil example: <!-- harness:fact key=X value=V source=Y --> placeholder <!-- /harness:fact -->',
+      'utf-8',
+    );
+    // Doc example shape — should NOT trigger a finding even though
+    // the `source=Y` is unresolvable.
+    expect(checkContentDrift(p.harness, p.root)).toHaveLength(0);
+  });
+
+  it('Missing source file flagged with clear message', () => {
+    writeFileSync(
+      join(p.root, 'CLAUDE.md'),
+      '<!-- harness:fact key=foo value=1 source=src/missing.ts:foo --> x <!-- /harness:fact -->',
+      'utf-8',
+    );
+    const findings = checkContentDrift(p.harness, p.root);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.message).toContain('source file not found');
+  });
+});
+
 describe('check orchestrators', () => {
   let p: Project;
   beforeEach(() => {
@@ -586,16 +720,18 @@ describe('check orchestrators', () => {
     rmSync(p.root, {recursive: true, force: true});
   });
 
-  it('runCheck reports all 14 categories (F-168)', () => {
+  it('runCheck reports all 15 categories (F-168 + F-169)', () => {
     const r = runCheck(p.harness);
     // Some may be skipped when their inputs are missing — but Generated +
-    // Evidence + Doc + Protocol + Coverage + AcceptanceTrace always fire.
+    // Evidence + Doc + Protocol + Coverage + AcceptanceTrace +
+    // ContentDrift always fire.
     expect(r.checked).toContain('Generated');
     expect(r.checked).toContain('Evidence');
     expect(r.checked).toContain('Doc');
     expect(r.checked).toContain('Protocol');
     expect(r.checked).toContain('Coverage');
     expect(r.checked).toContain('AcceptanceTrace');
+    expect(r.checked).toContain('ContentDrift');
   });
 
   it('runCheck on a populated harness returns clean = false when drift exists', () => {
@@ -604,10 +740,16 @@ describe('check orchestrators', () => {
     expect(isClean(r)).toBe(false);
   });
 
-  it('runBlockingCheck only inspects Code/Stale/AnchorIntegration/Coverage', () => {
+  it('runBlockingCheck inspects Code/Stale/AnchorIntegration/Coverage/ContentDrift (F-169)', () => {
     writeYaml(join(p.harness, 'spec.yaml'), {features: []});
     const r = runBlockingCheck(p.harness);
-    expect(r.checked).toEqual(['Code', 'Stale', 'AnchorIntegration', 'Coverage']);
+    expect(r.checked).toEqual([
+      'Code',
+      'Stale',
+      'AnchorIntegration',
+      'Coverage',
+      'ContentDrift',
+    ]);
   });
 
   it('formatHuman emits canonical header + clean line', () => {

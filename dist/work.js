@@ -55,12 +55,13 @@ function friendlyGate(gateName) {
 }
 /** Iron Law minimum declared-evidence count per project mode. */
 const IRON_LAW_REQUIRED = { prototype: 1, product: 3 };
-/** F-048 blocking drift kinds for the complete() fast path. */
+/** F-048 + F-169 blocking drift kinds for the complete() fast path. */
 const BLOCKING_DRIFT_KINDS = new Set([
     'Code',
     'Stale',
     'AnchorIntegration',
     'Coverage',
+    'ContentDrift',
 ]);
 /**
  * F-129 — paired evidence kinds the perf-regression guard inspects.

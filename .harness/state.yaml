@@ -3815,8 +3815,50 @@ features:
     author: human
   started_at: 2026-05-13T01:12:57Z
   completed_at: 2026-05-13T01:17:44Z
+- id: F-169
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-13T01:23:30Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-13T01:23:31Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-13T01:23:32Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-13T01:23:33Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-13T01:23:30Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.7s) · cmd: npm test"
+    author: llm
+  - ts: 2026-05-13T01:23:31Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.9s) · cmd: npm run typecheck"
+    author: llm
+  - ts: 2026-05-13T01:23:32Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.4s) · cmd: npm run lint"
+    author: llm
+  - ts: 2026-05-13T01:23:33Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.5s) · cmd: bash self_check.sh"
+    author: llm
+  - ts: 2026-05-13T01:23:33Z
+    kind: test
+    summary: F-169 ContentDrift detector — 15th DriftKind · sigil parser + 3 source resolvers (JSON field · TS union/Set/array · TS scalar const) · doc-example placeholder skip · self_check.sh step 6 · BLOCKING_DRIFT_KINDS 4→5 · CLAUDE.md sigils 14→15/4→5 · 9 new tests · 846/846 · self_check 6/6 OK
+    author: human
+  started_at: 2026-05-13T01:17:58Z
+  completed_at: null
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-168
+  last_command: /harness:work F-169
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-169

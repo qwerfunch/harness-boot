@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # self_check.sh — harness-boot 자체 도그푸드 검증 (TS-only since F-107)
 #
-# 5 단계 검증 (모두 `node bin/harness` 경유):
+# 6 단계 검증 (모두 `node bin/harness` 경유):
 #   1. .harness/spec.yaml == docs/samples/harness-boot-self/spec.yaml (SSoT 동기성)
 #   2. validate spec — JSONSchema 통과
 #   3. sync (--soft) — 변경 없으면 skip · derived 파일 보장
-#   4. check 13/13 drift 에러 없음
+#   4. check 15/15 drift 에러 없음
 #   5. commands/*.md 규약 (Preamble + Anti-rationalization + harness CLI 위임)
+#   6. ContentDrift — CLAUDE.md sigil 영역이 코드 SSoT 와 일치 (F-169)
 #
 # 하나라도 fail 시 non-zero exit · 실패 지점 stderr 출력.
 # 실행 위치: 레포 루트 cwd.
@@ -23,7 +24,7 @@ fail() {
 }
 
 step() {
-    echo "self_check [${1}/5] $2"
+    echo "self_check [${1}/6] $2"
 }
 
 HARNESS_BIN="$REPO_ROOT/bin/harness"
@@ -110,4 +111,18 @@ if [ "$MISSING" != "0" ]; then
     fail "commands/*.md 규약 위반 $MISSING 건"
 fi
 
-echo "self_check: all 5 steps OK"
+# --- Step 6: ContentDrift — CLAUDE.md sigil ↔ code SSoT (F-169) ---
+step 6 "ContentDrift — CLAUDE.md sigil 일치 (F-169)"
+CONTENT_ERRS=$(node -e "
+const d = JSON.parse(\`$CHECK_OUT\`);
+const errs = (d.findings || []).filter(f => f.kind === 'ContentDrift' && f.severity === 'error');
+console.log(errs.length);
+for (const f of errs) {
+  console.error(\`  [\${f.kind}] \${f.path}: \${f.message}\`);
+}
+")
+if [ "$CONTENT_ERRS" != "0" ]; then
+    fail "ContentDrift error $CONTENT_ERRS 건 — 위 stderr 의 sigil ↔ source 불일치 참조"
+fi
+
+echo "self_check: all 6 steps OK"

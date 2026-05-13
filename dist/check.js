@@ -1202,9 +1202,216 @@ function collectTestFileContents(root) {
     return out;
 }
 // --------------------------------------------------------------------
+// F-169 — ContentDrift (15th detector): sigil-region SSoT validation
+// --------------------------------------------------------------------
+/**
+ * Regex for `<!-- harness:fact key=X value=V source=path:symbol -->`.
+ * `value` and `source` may contain anything except whitespace; the
+ * closing `-->` is captured to ensure we matched a real sigil opener.
+ */
+const SIGIL_RE = /<!--\s*harness:fact\s+key=(\S+)\s+value=(\S+)\s+source=(\S+)\s*-->/g;
+/** Default doc files whose sigils get validated. */
+const DEFAULT_SIGIL_DOCS = ['CLAUDE.md'];
+/**
+ * F-169 — Content drift detector.
+ *
+ * Parses every `<!-- harness:fact key=X value=V source=path:symbol -->`
+ * sigil region across the configured doc files (default: `CLAUDE.md`)
+ * and validates the declared `value` against the code SSoT cited in
+ * `source`. Mismatches emit `ContentDrift` findings at `severity:
+ * error` — these block complete() and self_check.
+ *
+ * v1 supports three `source` kinds, distinguished by the file
+ * extension and the symbol shape:
+ *
+ *   1. `path:enumName` — for TypeScript union types, const arrays,
+ *      and `new Set([...])` declarations. Returns the member count.
+ *      Example: `src/check.ts:DriftKind` → 15.
+ *   2. `path:CONST_NAME` — for `const X = <scalar>;` declarations.
+ *      Returns the literal value as a string (numbers and strings
+ *      stringify uniformly).
+ *   3. `path:fieldName` — for JSON files. Returns the top-level
+ *      field's value. Example:
+ *      `.claude-plugin/plugin.json:version` → "0.15.4".
+ *
+ * Sigils that can't be resolved (missing file, unknown symbol,
+ * unparseable source) emit a single warn entry — the surface lets
+ * the author fix or remove the broken sigil.
+ */
+export function checkContentDrift(harnessDir, projectRoot = null) {
+    const findings = [];
+    const root = projectRoot ?? resolvePath(harnessDir, '..');
+    for (const rel of DEFAULT_SIGIL_DOCS) {
+        const docPath = join(root, rel);
+        if (!isFile(docPath)) {
+            continue;
+        }
+        let text;
+        try {
+            text = readFileSync(docPath, 'utf-8');
+        }
+        catch {
+            continue;
+        }
+        SIGIL_RE.lastIndex = 0;
+        let match;
+        while ((match = SIGIL_RE.exec(text)) !== null) {
+            const [full, key, declaredValue, source] = match;
+            const line = lineOfOffset(text, match.index);
+            const finding = resolveSigil(root, key, declaredValue, source);
+            if (finding === null) {
+                continue;
+            }
+            findings.push({
+                kind: 'ContentDrift',
+                path: `${rel}:${line}`,
+                message: finding,
+                severity: 'error',
+            });
+            // suppress unused-warning on `full`
+            void full;
+        }
+    }
+    return findings;
+}
+/** Line number (1-based) of a string offset inside `text`. */
+function lineOfOffset(text, offset) {
+    let line = 1;
+    for (let i = 0; i < offset && i < text.length; i++) {
+        if (text[i] === '\n') {
+            line += 1;
+        }
+    }
+    return line;
+}
+/**
+ * Returns the drift message when the sigil's declared value doesn't
+ * match the resolved code value, or `null` when they agree.
+ */
+function resolveSigil(root, key, declaredValue, source) {
+    // Documentation examples — `<!-- harness:fact key=X value=V source=Y -->`
+    // in inline prose explaining the sigil format. Skip when any
+    // attribute looks like a single-letter uppercase placeholder.
+    if ((declaredValue.length === 1 && /^[A-Z]$/.test(declaredValue)) ||
+        (source.length === 1 && /^[A-Z]$/.test(source)) ||
+        (key.length === 1 && /^[A-Z]$/.test(key))) {
+        return null;
+    }
+    const sep = source.indexOf(':');
+    if (sep <= 0) {
+        return `sigil key=${key}: source must be \`path:symbol\` (got \`${source}\`)`;
+    }
+    const relPath = source.slice(0, sep);
+    const symbol = source.slice(sep + 1);
+    const abs = join(root, relPath);
+    if (!isFile(abs)) {
+        return `sigil key=${key}: source file not found: ${relPath}`;
+    }
+    let content;
+    try {
+        content = readFileSync(abs, 'utf-8');
+    }
+    catch {
+        return `sigil key=${key}: cannot read source file ${relPath}`;
+    }
+    let actual = null;
+    if (/\.json$/.test(relPath)) {
+        actual = resolveJsonField(content, symbol);
+    }
+    else {
+        // Try TS/JS enum-like first (multi-member shapes); fall back to scalar const.
+        actual = resolveTsEnumLike(content, symbol);
+        if (actual === null) {
+            actual = resolveTsScalarConst(content, symbol);
+        }
+    }
+    if (actual === null) {
+        return `sigil key=${key}: symbol \`${symbol}\` not found in ${relPath}`;
+    }
+    if (actual !== declaredValue) {
+        return `sigil key=${key}: declared \`${declaredValue}\`, actual \`${actual}\` (source: ${source})`;
+    }
+    return null;
+}
+/** Reads a top-level JSON field as a string. Returns null when missing. */
+function resolveJsonField(content, field) {
+    try {
+        const obj = JSON.parse(content);
+        if (obj === null || typeof obj !== 'object' || Array.isArray(obj)) {
+            return null;
+        }
+        const value = obj[field];
+        if (value === undefined) {
+            return null;
+        }
+        if (typeof value === 'string') {
+            return value;
+        }
+        if (typeof value === 'number' || typeof value === 'boolean') {
+            return String(value);
+        }
+        return null;
+    }
+    catch {
+        return null;
+    }
+}
+/**
+ * Counts members of a TypeScript union type, a `Set` literal, or an
+ * array literal under the given symbol name. Returns the count as a
+ * string. `null` when the symbol isn't found or its shape isn't one
+ * of the supported enum-like forms.
+ */
+function resolveTsEnumLike(content, name) {
+    const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Union type: `export type Name =\s*'a' | 'b' | ... ;`
+    const unionRe = new RegExp(`(?:export\\s+)?type\\s+${esc}\\s*=\\s*((?:[^;]|\\n)*?);`, 'm');
+    const unionMatch = unionRe.exec(content);
+    if (unionMatch !== null) {
+        const body = unionMatch[1];
+        // Count quoted string literals — accepts 'foo' or "foo" or `foo`.
+        const literals = body.match(/['"`][^'"`]+['"`]/g);
+        if (literals !== null && literals.length > 0) {
+            return String(literals.length);
+        }
+    }
+    // Set / array: `(?:const|export const) name ... = new Set([...]) | = [...]`
+    const collectionRe = new RegExp(`(?:export\\s+)?const\\s+${esc}\\b[^=]*=\\s*(?:new\\s+Set\\s*\\(\\s*\\[([\\s\\S]*?)\\]\\s*\\)|\\[([\\s\\S]*?)\\])`, 'm');
+    const collMatch = collectionRe.exec(content);
+    if (collMatch !== null) {
+        const body = (collMatch[1] ?? collMatch[2] ?? '').trim();
+        if (body.length === 0) {
+            return '0';
+        }
+        // Count quoted strings inside the body (handles trailing commas).
+        const literals = body.match(/['"`][^'"`]+['"`]/g);
+        if (literals !== null) {
+            return String(literals.length);
+        }
+    }
+    return null;
+}
+/** Returns the literal scalar value of a `const NAME = <value>;` declaration. */
+function resolveTsScalarConst(content, name) {
+    const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(?:export\\s+)?(?:const|let|var)\\s+${esc}\\s*(?::\\s*[^=]+)?=\\s*([^;\\n]+);?`, 'm');
+    const match = re.exec(content);
+    if (match === null) {
+        return null;
+    }
+    let value = match[1].trim();
+    // Strip surrounding quotes if present.
+    if ((value.startsWith("'") && value.endsWith("'")) ||
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith('`') && value.endsWith('`'))) {
+        return value.slice(1, -1);
+    }
+    return value;
+}
+// --------------------------------------------------------------------
 // Orchestrators
 // --------------------------------------------------------------------
-/** Full 14-detector run. */
+/** Full 15-detector run. */
 export function runCheck(harnessDir, projectRoot = null) {
     const report = { findings: [], checked: [] };
     const harnessYaml = loadYamlFile(join(harnessDir, 'harness.yaml'));
@@ -1241,11 +1448,14 @@ export function runCheck(harnessDir, projectRoot = null) {
     report.checked.push('Coverage');
     report.findings.push(...checkAcceptanceTrace(harnessDir, specYaml, projectRoot));
     report.checked.push('AcceptanceTrace');
+    report.findings.push(...checkContentDrift(harnessDir, projectRoot));
+    report.checked.push('ContentDrift');
     return report;
 }
 /**
- * Drift fast path used by complete()'s F-048 wire-integrity gate —
- * inspects only Code · Stale · AnchorIntegration · Coverage.
+ * Drift fast path used by complete()'s F-048 + F-169 wire-integrity
+ * gate — inspects only Code · Stale · AnchorIntegration · Coverage ·
+ * ContentDrift.
  */
 export function runBlockingCheck(harnessDir, projectRoot = null) {
     const report = { findings: [], checked: [] };
@@ -1256,7 +1466,8 @@ export function runBlockingCheck(harnessDir, projectRoot = null) {
         report.findings.push(...checkAnchorIntegration(harnessDir, specYaml, projectRoot));
     }
     report.findings.push(...checkSpecCoverage(harnessDir, specYaml));
-    report.checked.push('Code', 'Stale', 'AnchorIntegration', 'Coverage');
+    report.findings.push(...checkContentDrift(harnessDir, projectRoot));
+    report.checked.push('Code', 'Stale', 'AnchorIntegration', 'Coverage', 'ContentDrift');
     return report;
 }
 /** Renders a CheckReport for the `/harness:check` CLI. */
