@@ -3773,8 +3773,50 @@ features:
     author: human
   started_at: 2026-05-13T01:04:01Z
   completed_at: 2026-05-13T01:12:37Z
+- id: F-168
+  status: in_progress
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-13T01:17:25Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-13T01:17:26Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-13T01:17:28Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-13T01:17:28Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-13T01:17:25Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (1.7s) · cmd: npm test"
+    author: llm
+  - ts: 2026-05-13T01:17:26Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.9s) · cmd: npm run typecheck"
+    author: llm
+  - ts: 2026-05-13T01:17:28Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.2s) · cmd: npm run lint"
+    author: llm
+  - ts: 2026-05-13T01:17:28Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.4s) · cmd: bash self_check.sh"
+    author: llm
+  - ts: 2026-05-13T01:17:28Z
+    kind: test
+    summary: F-168 AcceptanceTrace detector — 14th DriftKind · checkAcceptanceTrace explicit (test_refs) + implicit (fid+AC-N) mapping · opt-in via harness.yaml.detectors.acceptance_trace.enabled · CLAUDE.md sigil 13→14 · 7 new tests · 837/837
+    author: human
+  started_at: 2026-05-13T01:12:57Z
+  completed_at: null
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-167
+  last_command: /harness:work F-168
   last_gate_passed: gate_5
-  active_feature_id: null
+  active_feature_id: F-168

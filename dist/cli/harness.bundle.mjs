@@ -12752,6 +12752,97 @@ function checkSpecCoverage(harnessDir, _specYaml) {
   }
   return findings;
 }
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function checkAcceptanceTrace(harnessDir, spec, projectRoot = null) {
+  if (spec === null) {
+    return [];
+  }
+  const harnessYaml = loadYamlFile(join11(harnessDir, "harness.yaml"));
+  const detector = harnessYaml?.["detectors"];
+  const acTrace = isPlainObject6(detector) ? detector["acceptance_trace"] : null;
+  if (!isPlainObject6(acTrace) || acTrace["enabled"] !== true) {
+    return [];
+  }
+  const strict = acTrace["strict"] === true;
+  const severity = strict ? "error" : "warn";
+  const findings = [];
+  const features = asArray2(spec["features"]);
+  const root = projectRoot ?? resolvePath4(harnessDir, "..");
+  const testContents = collectTestFileContents(root);
+  for (const feature of features) {
+    if (!isPlainObject6(feature)) {
+      continue;
+    }
+    const fid = feature["id"];
+    if (typeof fid !== "string") {
+      continue;
+    }
+    const status = feature["status"];
+    if (status === "archived" || status === "skipped") {
+      continue;
+    }
+    const acs = asArray2(feature["acceptance_criteria"]);
+    for (let i = 0; i < acs.length; i++) {
+      const ac = acs[i];
+      const acN = `AC-${i + 1}`;
+      if (acTraceMatches(ac, fid, acN, testContents)) {
+        continue;
+      }
+      findings.push({
+        kind: "AcceptanceTrace",
+        path: `${fid}.acceptance_criteria[${i}]`,
+        message: `no test references both ${fid} and ${acN}. Add a test whose name or body contains both ids, or set \`acceptance_criteria[i].test_refs: [...]\` explicitly.`,
+        severity
+      });
+    }
+  }
+  return findings;
+}
+function acTraceMatches(ac, fid, acN, testContents) {
+  if (isPlainObject6(ac)) {
+    const refs = asArray2(ac["test_refs"]);
+    if (refs.length > 0) {
+      return refs.every((ref) => {
+        if (typeof ref !== "string" || ref.length === 0) {
+          return false;
+        }
+        for (const content of testContents.values()) {
+          if (content.includes(ref)) {
+            return true;
+          }
+        }
+        return false;
+      });
+    }
+  }
+  const fidRe = new RegExp(escapeRegExp(fid));
+  const acRe = new RegExp(escapeRegExp(acN));
+  for (const content of testContents.values()) {
+    if (fidRe.test(content) && acRe.test(content)) {
+      return true;
+    }
+  }
+  return false;
+}
+function collectTestFileContents(root) {
+  const out = /* @__PURE__ */ new Map();
+  const testsRoot = join11(root, "tests");
+  if (!isDirectory(testsRoot)) {
+    return out;
+  }
+  for (const file of walkFiles(testsRoot)) {
+    if (!/\.(test|spec)\.(ts|js)$/.test(file) && !/_test\.(ts|js|py)$/.test(file)) {
+      continue;
+    }
+    try {
+      out.set(file, readFileSync12(file, "utf-8"));
+    } catch {
+    }
+  }
+  return out;
+}
 function runCheck(harnessDir, projectRoot = null) {
   const report = { findings: [], checked: [] };
   const harnessYaml = loadYamlFile(join11(harnessDir, "harness.yaml"));
@@ -12786,6 +12877,8 @@ function runCheck(harnessDir, projectRoot = null) {
   report.checked.push("Protocol");
   report.findings.push(...checkSpecCoverage(harnessDir, specYaml));
   report.checked.push("Coverage");
+  report.findings.push(...checkAcceptanceTrace(harnessDir, specYaml, projectRoot));
+  report.checked.push("AcceptanceTrace");
   return report;
 }
 function runBlockingCheck(harnessDir, projectRoot = null) {

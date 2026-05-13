@@ -1069,9 +1069,142 @@ export function checkSpecCoverage(harnessDir, _specYaml) {
     return findings;
 }
 // --------------------------------------------------------------------
+// F-168 — AcceptanceTrace drift (14th detector)
+// --------------------------------------------------------------------
+/**
+ * Escapes a string for safe use inside a {@link RegExp} body.
+ */
+function escapeRegExp(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+/**
+ * F-168 — AC ↔ Test traceability detector.
+ *
+ * Distinct from {@link checkSpecCoverage} (description-vs-fingerprint
+ * substantive coverage): AcceptanceTrace asks the stronger question —
+ * does a specific test reference this exact AC-N for this exact
+ * feature?
+ *
+ * Two mapping mechanisms (either is enough):
+ *
+ *   1. **Explicit** — when the AC entry is an object with
+ *      `test_refs: ["name", ...]`, each ref must appear somewhere in
+ *      the project's test files.
+ *   2. **Implicit** — at least one test file must contain both the
+ *      feature id (`F-NNN`) and `AC-N` literal somewhere in its
+ *      content. Sufficient signal that the test references the AC,
+ *      without paying for an AST parse.
+ *
+ * **Opt-in by default.** Set
+ * `harness.yaml.detectors.acceptance_trace.enabled: true` to activate.
+ * Reason: the existing 150+ harness-boot self spec features all carry
+ * string ACs without test_refs; turning the detector on globally
+ * would emit too much noise on first run. External adopters opt in
+ * after their tests pass the implicit pattern.
+ *
+ * Severity stays `warn` until `strict: true` is also set (planned for
+ * a follow-up cycle once real-world noise levels are known).
+ */
+export function checkAcceptanceTrace(harnessDir, spec, projectRoot = null) {
+    if (spec === null) {
+        return [];
+    }
+    const harnessYaml = loadYamlFile(join(harnessDir, 'harness.yaml'));
+    const detector = harnessYaml?.['detectors'];
+    const acTrace = isPlainObject(detector) ? detector['acceptance_trace'] : null;
+    if (!isPlainObject(acTrace) || acTrace['enabled'] !== true) {
+        return [];
+    }
+    const strict = acTrace['strict'] === true;
+    const severity = strict ? 'error' : 'warn';
+    const findings = [];
+    const features = asArray(spec['features']);
+    const root = projectRoot ?? resolvePath(harnessDir, '..');
+    const testContents = collectTestFileContents(root);
+    for (const feature of features) {
+        if (!isPlainObject(feature)) {
+            continue;
+        }
+        const fid = feature['id'];
+        if (typeof fid !== 'string') {
+            continue;
+        }
+        const status = feature['status'];
+        if (status === 'archived' || status === 'skipped') {
+            continue;
+        }
+        const acs = asArray(feature['acceptance_criteria']);
+        for (let i = 0; i < acs.length; i++) {
+            const ac = acs[i];
+            const acN = `AC-${i + 1}`;
+            if (acTraceMatches(ac, fid, acN, testContents)) {
+                continue;
+            }
+            findings.push({
+                kind: 'AcceptanceTrace',
+                path: `${fid}.acceptance_criteria[${i}]`,
+                message: `no test references both ${fid} and ${acN}. Add a test whose ` +
+                    'name or body contains both ids, or set ' +
+                    '`acceptance_criteria[i].test_refs: [...]` explicitly.',
+                severity,
+            });
+        }
+    }
+    return findings;
+}
+/** Returns true when the AC entry has an explicit or implicit test trace. */
+function acTraceMatches(ac, fid, acN, testContents) {
+    // Explicit mapping — every test_refs entry must appear somewhere.
+    if (isPlainObject(ac)) {
+        const refs = asArray(ac['test_refs']);
+        if (refs.length > 0) {
+            return refs.every((ref) => {
+                if (typeof ref !== 'string' || ref.length === 0) {
+                    return false;
+                }
+                for (const content of testContents.values()) {
+                    if (content.includes(ref)) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+        }
+    }
+    // Implicit mapping — at least one file mentions both fid and AC-N.
+    const fidRe = new RegExp(escapeRegExp(fid));
+    const acRe = new RegExp(escapeRegExp(acN));
+    for (const content of testContents.values()) {
+        if (fidRe.test(content) && acRe.test(content)) {
+            return true;
+        }
+    }
+    return false;
+}
+/** Collects test file contents under `<root>/tests/`. */
+function collectTestFileContents(root) {
+    const out = new Map();
+    const testsRoot = join(root, 'tests');
+    if (!isDirectory(testsRoot)) {
+        return out;
+    }
+    for (const file of walkFiles(testsRoot)) {
+        if (!/\.(test|spec)\.(ts|js)$/.test(file) && !/_test\.(ts|js|py)$/.test(file)) {
+            continue;
+        }
+        try {
+            out.set(file, readFileSync(file, 'utf-8'));
+        }
+        catch {
+            // ignore unreadable files
+        }
+    }
+    return out;
+}
+// --------------------------------------------------------------------
 // Orchestrators
 // --------------------------------------------------------------------
-/** Full 13-detector run. */
+/** Full 14-detector run. */
 export function runCheck(harnessDir, projectRoot = null) {
     const report = { findings: [], checked: [] };
     const harnessYaml = loadYamlFile(join(harnessDir, 'harness.yaml'));
@@ -1106,6 +1239,8 @@ export function runCheck(harnessDir, projectRoot = null) {
     report.checked.push('Protocol');
     report.findings.push(...checkSpecCoverage(harnessDir, specYaml));
     report.checked.push('Coverage');
+    report.findings.push(...checkAcceptanceTrace(harnessDir, specYaml, projectRoot));
+    report.checked.push('AcceptanceTrace');
     return report;
 }
 /**

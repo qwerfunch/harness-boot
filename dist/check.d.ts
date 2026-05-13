@@ -30,7 +30,7 @@
  * @module check
  */
 /** Drift category. */
-export type DriftKind = 'Generated' | 'Derived' | 'Spec' | 'Include' | 'Evidence' | 'Code' | 'Doc' | 'Anchor' | 'Protocol' | 'Adr' | 'Stale' | 'AnchorIntegration' | 'Coverage';
+export type DriftKind = 'Generated' | 'Derived' | 'Spec' | 'Include' | 'Evidence' | 'Code' | 'Doc' | 'Anchor' | 'Protocol' | 'Adr' | 'Stale' | 'AnchorIntegration' | 'Coverage' | 'AcceptanceTrace';
 /** Severity tags. `'error'` blocks complete(); `'warn'` notifies only. */
 export type Severity = 'warn' | 'error';
 /** One drift finding. */
@@ -82,7 +82,36 @@ export declare function checkAnchorIntegration(harnessDir: string, spec: Record<
  * `harness.yaml.coverage.threshold`.
  */
 export declare function checkSpecCoverage(harnessDir: string, _specYaml: Record<string, unknown> | null): DriftFinding[];
-/** Full 13-detector run. */
+/**
+ * F-168 — AC ↔ Test traceability detector.
+ *
+ * Distinct from {@link checkSpecCoverage} (description-vs-fingerprint
+ * substantive coverage): AcceptanceTrace asks the stronger question —
+ * does a specific test reference this exact AC-N for this exact
+ * feature?
+ *
+ * Two mapping mechanisms (either is enough):
+ *
+ *   1. **Explicit** — when the AC entry is an object with
+ *      `test_refs: ["name", ...]`, each ref must appear somewhere in
+ *      the project's test files.
+ *   2. **Implicit** — at least one test file must contain both the
+ *      feature id (`F-NNN`) and `AC-N` literal somewhere in its
+ *      content. Sufficient signal that the test references the AC,
+ *      without paying for an AST parse.
+ *
+ * **Opt-in by default.** Set
+ * `harness.yaml.detectors.acceptance_trace.enabled: true` to activate.
+ * Reason: the existing 150+ harness-boot self spec features all carry
+ * string ACs without test_refs; turning the detector on globally
+ * would emit too much noise on first run. External adopters opt in
+ * after their tests pass the implicit pattern.
+ *
+ * Severity stays `warn` until `strict: true` is also set (planned for
+ * a follow-up cycle once real-world noise levels are known).
+ */
+export declare function checkAcceptanceTrace(harnessDir: string, spec: Record<string, unknown> | null, projectRoot?: string | null): DriftFinding[];
+/** Full 14-detector run. */
 export declare function runCheck(harnessDir: string, projectRoot?: string | null): CheckReport;
 /**
  * Drift fast path used by complete()'s F-048 wire-integrity gate —
