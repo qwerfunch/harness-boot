@@ -58,6 +58,14 @@ SSoT (15th drift kind, blocking).
   ContentDrift errors explicitly (step 4 already catches them but
   the dedicated step makes the F-169 contract visible).
 
+### Fixed
+
+- **F-170** — AcceptanceTrace explicit-shape failure now names the
+  missing test_ref verbatim (`F-N AC-N: test_ref \`X\` not found`)
+  instead of falling back to the implicit-shape prompt. Caught by
+  the empirical reproduction cycle that ran after F-167/F-168/F-169
+  shipped.
+
 ## [0.15.4] — 2026-05-13
 
 **logcat-on ISSUES-LOG return — three contained bug fixes.** External
