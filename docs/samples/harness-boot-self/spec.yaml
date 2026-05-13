@@ -2028,6 +2028,25 @@ features:
     test_strategy: smoke
     digest: Direct response to "어떤 benchmark 로 객관 평가" — user picked SWE-bench
       Verified 20-task subset (option A). This feature la...
+  - id: F-174
+    name: Stop-hook auto token capture — vanilla benchmark accuracy
+    type: feature
+    status: planned
+    release_target: v0.15.9
+    modules:
+      - hooks
+      - token_log
+      - cli_token
+    test_strategy: tdd
+    digest: 'F-172 follow-up. Surfaced when SWE-bench Verified framework (F-173)
+      landed but vanilla token measurement still depended on manual /cost typing.
+      A Stop-event hook parses the Claude Code transcript JSONL, extracts the
+      latest assistant message.usage, locates the active feature in
+      .harness/state.yaml, and invokes the existing `harness token` CLI to
+      append a typed llm_call event. Silent fail-open everywhere — no .harness
+      dir / no active feature / no usage in transcript → exit 0. Closes the
+      measurement-accuracy validity threat in
+      docs/benchmark/swe-bench-verified/analysis/threats-to-validity.md.'
 goals: []
 constraints:
   tech_stack:

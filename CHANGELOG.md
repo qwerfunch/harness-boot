@@ -11,6 +11,62 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ### Queued
 
+## [0.15.9] — 2026-05-13
+
+**Stop-hook auto token capture.** Closes the first follow-up item
+of v0.15.8 — vanilla benchmark token measurement no longer depends on
+the user remembering to read `/cost` between turns. A new
+`Stop` hook on the plugin reads the Claude Code transcript JSONL,
+extracts the latest assistant `message.usage`, locates the active
+feature in `.harness/state.yaml`, and writes a typed `llm_call`
+event through the existing F-172 `harness token` CLI. Fail-open
+everywhere: no `.harness/` in cwd, no active feature, malformed stdin,
+or missing `usage` field → silent exit 0.
+
+The hook also adds value to live harness cycles, not just the
+benchmark: a `tokens: X in / Y out` line now accumulates on the
+dashboard automatically for every assistant turn while a feature is
+active, so the F-172 metrics stop being write-only.
+
+### Added
+
+- **F-174** — `hooks/capture-tokens.sh` registered on the `Stop`
+  event in `hooks/hooks.json`. Resolves `cwd` + `transcript_path`
+  from the hook payload (with `$CLAUDE_PROJECT_DIR` / `pwd` fallback),
+  walks the transcript bottom-up for the most recent assistant
+  message that carries `usage.input_tokens` + `usage.output_tokens`,
+  reads the active feature id via `harness work --current --json`,
+  and invokes `harness token` with `--kind subagent`.
+- **F-174** — Test override hooks: `HARNESS_BIN` (default `harness`)
+  + `CAPTURE_TOKENS_KIND` (default `subagent`) so the new parity test
+  can pipe synthetic Stop payloads through the real script without
+  needing the plugin install.
+- **F-174** — `tests/parity/captureTokensHook.test.ts` (7 cases) —
+  happy path · multi-turn latest-usage selection · all four fail-open
+  paths (no `.harness/`, no active feature, no usage, missing
+  transcript) · malformed stdin.
+
+### Changed
+
+- **README marketing** — added a `## Benchmarks` section to both
+  `README.md` and `README.ko.md` linking to
+  `docs/benchmark/swe-bench-verified/` (REPORT · methodology ·
+  reproduction · validity caveats). Status labelled "framework
+  public, measurement in progress" so the link is honest while
+  results stabilize.
+- **Plugin manifest** — `.claude-plugin/plugin.json`,
+  `.claude-plugin/marketplace.json`, and `package.json` bumped to
+  0.15.9. README badges updated (864 tests passing).
+
+### Follow-up (not in this release)
+
+- Pilot run (5 tasks) on the SWE-bench Verified subset — the
+  measurement accuracy improvement from F-174 makes this run more
+  honest, but the run itself still happens in the maintainer's
+  external Docker environment.
+- Full 20-task run.
+- Multi-author run via external dogfood (logcat-on, cosmic-suika).
+
 ## [0.15.8] — 2026-05-13
 
 **SWE-bench Verified A/B benchmark framework.** Direct response to

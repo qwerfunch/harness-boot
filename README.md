@@ -6,8 +6,8 @@
 
 harness-boot is a multi-agent development harness for Claude Code. Where most AI tools add *capability*, we add *focus*.
 
-[![plugin](https://img.shields.io/badge/plugin-v0.15.8-blue)](.claude-plugin/plugin.json)
-[![tests](https://img.shields.io/badge/tests-862%20passing-brightgreen)](tests/parity)
+[![plugin](https://img.shields.io/badge/plugin-v0.15.9-blue)](.claude-plugin/plugin.json)
+[![tests](https://img.shields.io/badge/tests-864%20passing-brightgreen)](tests/parity)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 ---
@@ -188,6 +188,20 @@ Next: (1) run the next gate (recommended)
 **Built something?** Open a [PR](https://github.com/qwerfunch/harness-boot/pulls) adding your project to the table — copy an existing row as a template. Or open an [issue](https://github.com/qwerfunch/harness-boot/issues) with the image and a one-liner if a PR is overkill.
 
 Send any image, GIF, or screenshot that shows the project — plus a one-liner and a link. We'll optimize and place it on merge. Full guide: [`docs/assets/README.md`](docs/assets/README.md).
+
+---
+
+## Benchmarks
+
+Does harness-boot actually produce better output than vanilla Claude Code — fewer tokens, more issues resolved? The framework for an apples-to-apples comparison is public, with the methodology, task list, and reproduction scripts open for inspection.
+
+- **Suite**: SWE-bench Verified (20-task subset across 9 popular Python repos: django, sympy, scikit-learn, matplotlib, sphinx, pytest, requests, flask, pylint, astropy, pandas, xarray)
+- **Measures**: resolve rate · token consumption · wall time · code quality signals (LOC, tests added, drift catches)
+- **Status**: framework public, measurement in progress
+- **Read**: [`docs/benchmark/swe-bench-verified/REPORT.md`](docs/benchmark/swe-bench-verified/REPORT.md) — results table fills in row-by-row as runs complete
+- **Methodology**: [`docs/benchmark/swe-bench-verified/README.md`](docs/benchmark/swe-bench-verified/README.md) — why SWE-bench Verified, why 20 tasks, what's measured
+- **Reproduce**: [`docs/benchmark/swe-bench-verified/scripts/setup.md`](docs/benchmark/swe-bench-verified/scripts/setup.md) — end-to-end external setup
+- **Validity caveats**: [`docs/benchmark/swe-bench-verified/analysis/threats-to-validity.md`](docs/benchmark/swe-bench-verified/analysis/threats-to-validity.md)
 
 ---
 
