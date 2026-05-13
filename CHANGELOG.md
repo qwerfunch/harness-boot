@@ -11,6 +11,54 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ### Queued
 
+## [0.15.11] — 2026-05-13
+
+**SWE-bench pilot ledger now actually writeable.** During an attempt
+to run the SWE-bench A/B in-session, two real gaps surfaced. First,
+`scripts/aggregate.py` claimed to update `REPORT.md` but the
+sentinel-aware write path was a stub — it only printed warnings and
+dumped the tables to stdout. Second, `REPORT.md` had no sentinel
+comments to substitute into anyway. So even a real external pilot run
+would have hit "results computed, REPORT.md unchanged, paste it
+yourself" the moment data arrived. F-177 closes both ends. The first
+demo row (`psf__requests-2317`) also lands, clearly labelled as
+in-session same-session contamination · logic-verified-not-test-verified
+· N=1 (so it cannot accidentally be cited as a benchmark result).
+
+### Added
+
+- **F-177** — `scripts/aggregate.py` non-dry-run write path now
+  performs sentinel-aware substitution of `<!-- aggregate:<key>:start -->`
+  / `<!-- aggregate:<key>:end -->` pairs for three blocks: `per-task`,
+  `aggregate`, `harness-signals`. Atomic file write. Hard-errors when
+  a sentinel is missing. Reports `updated <path> — N sentinel blocks
+  rewritten` on success.
+- **F-177** — `REPORT.md` gains matching sentinel anchors around the
+  §2.1 / §2.2 / §2.3 tables. The script can now fill them.
+- **F-177** — `results/vanilla/psf__requests-2317.json` — first
+  non-placeholder per-task row. Strongly captioned with five caveats
+  in the JSON itself (same-session contamination · tests not executed ·
+  logic-only verification · style differs from golden · N=1 demo) so
+  the row exists to validate the writer pipeline, not to claim a
+  benchmark result.
+- **F-177** — `REPORT.md` §1 progress table updated to show
+  `Pilot run: 1/5 (demo row only)` with explicit pointer to the JSON
+  caveat block.
+
+### Changed
+
+- **Plugin manifest** — `.claude-plugin/plugin.json`,
+  `.claude-plugin/marketplace.json`, `package.json` bumped to 0.15.11.
+  README badges follow.
+
+### Follow-up (not in this release)
+
+- Real pilot run (5 tasks) — still requires external Docker + per-task
+  Claude Code session + model API budget.
+- Full 20-task run.
+- A clean A/B comparison requires distinct sessions per
+  approach + per task to avoid same-session model-context contamination.
+
 ## [0.15.10] — 2026-05-13
 
 **SWE-bench task list dataset-validated.** Pilot prep ran the

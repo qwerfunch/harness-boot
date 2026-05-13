@@ -250,39 +250,41 @@ def main() -> int:
         print(signals)
         return 0
 
-    # REPORT.md 의 표 자리를 sentinel 로 찾아서 교체.
-    # 현재 REPORT.md 는 skeleton 이라 "—" 로 채워진 placeholder. sentinel 부재.
-    # 이 스크립트가 첫 자동 갱신 시 §2.1 ~ §2.3 의 표를 통째로 교체할 수 있는 sentinel pair 를 REPORT.md 에 미리 추가하는 것이 정직.
-    # → 첫 run 의 결과 우선 stdout 출력, 사람이 REPORT.md 에 sentinel 추가 후 재실행 권장.
-    print(
-        "[warn] REPORT.md 자동 갱신은 sentinel comment 필요. 현재 skeleton 에는 없음.",
-        file=sys.stderr,
-    )
-    print(
-        "[warn] sentinel 추가 가이드: REPORT.md 의 §2.1 표 위/아래에",
-        file=sys.stderr,
-    )
-    print(
-        '[warn]   <!-- aggregate:per-task:start --> ... <!-- aggregate:per-task:end -->',
-        file=sys.stderr,
-    )
-    print(
-        "[warn] 같은 패턴으로 :aggregate, :harness-signals 도. 그 후 이 스크립트가 두 sentinel 사이를 자동 교체.",
-        file=sys.stderr,
-    )
-    print(
-        "[info] 일단 결과를 stdout 으로 출력 (사람이 보고 REPORT.md 에 paste 가능):",
-        file=sys.stderr,
-    )
-    print()
-    print("=== §2.1 Per-task ===")
-    print(per_task)
-    print()
-    print("=== §2.2 Aggregate ===")
-    print(agg)
-    print()
-    print("=== §2.3 Harness signals ===")
-    print(signals)
+    # REPORT.md 의 §2.1 / §2.2 / §2.3 표 자리를 sentinel comment 로 찾아서
+    # 통째로 교체. F-177 에서 구현 완료 — 이전엔 stdout 출력만 되고 실제
+    # 파일은 갱신되지 않던 부분을 막음.
+    report_path = args.report
+    if not report_path.exists():
+        print(f"error: REPORT.md not found at {report_path}", file=sys.stderr)
+        return 3
+    report = report_path.read_text()
+    blocks = {
+        "per-task": per_task,
+        "aggregate": agg,
+        "harness-signals": signals,
+    }
+    missing = []
+    for key, body in blocks.items():
+        start = f"<!-- aggregate:{key}:start -->"
+        end = f"<!-- aggregate:{key}:end -->"
+        if start not in report or end not in report:
+            missing.append(key)
+            continue
+        head, _, rest = report.partition(start)
+        _, _, tail = rest.partition(end)
+        report = f"{head}{start}\n{body}\n{end}{tail}"
+    if missing:
+        print(
+            f"error: REPORT.md missing sentinel block(s) for: {', '.join(missing)}",
+            file=sys.stderr,
+        )
+        print(
+            "[hint] add `<!-- aggregate:<key>:start -->` / `:end` around each table.",
+            file=sys.stderr,
+        )
+        return 3
+    report_path.write_text(report)
+    print(f"updated {report_path} — {len(blocks)} sentinel blocks rewritten")
     return 0
 
 
