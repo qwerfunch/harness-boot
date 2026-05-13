@@ -48,15 +48,29 @@ active, so the F-172 metrics stop being write-only.
 
 ### Changed
 
+- **F-174 fast-path** — added in pre-merge audit. The Stop hook now
+  exits in ~3 ms when `CLAUDE_PROJECT_DIR` is set and the project has
+  no `.harness/` directory (the steady state for users who installed
+  the plugin only for the slash commands). Measured per-turn overhead
+  drops from 148 ms to 3 ms on macOS for that path. The harness happy
+  path also tightened (340 ms → 253 ms) by collapsing duplicate JSON
+  parses. We deliberately do not fall back to `pwd` for the probe —
+  it can point at an unrelated parent `.harness/` and misattribute
+  token events.
+- **F-174 opt-out** — `HARNESS_DISABLE_TOKEN_HOOK=1` (or any non-empty
+  value) makes the Stop hook exit 0 immediately. The 3 ms fast-path
+  drops to ~1 ms with the env var set, and no events.log is touched.
 - **README marketing** — added a `## Benchmarks` section to both
   `README.md` and `README.ko.md` linking to
   `docs/benchmark/swe-bench-verified/` (REPORT · methodology ·
   reproduction · validity caveats). Status labelled "framework
   public, measurement in progress" so the link is honest while
-  results stabilize.
+  results stabilize. One line each notes the hook is local-only: it
+  reads the transcript file already on disk and never makes a network
+  call.
 - **Plugin manifest** — `.claude-plugin/plugin.json`,
   `.claude-plugin/marketplace.json`, and `package.json` bumped to
-  0.15.9. README badges updated (864 tests passing).
+  0.15.9. README badges updated (866 tests passing).
 
 ### Follow-up (not in this release)
 

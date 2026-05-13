@@ -7,7 +7,7 @@
 harness-boot is a multi-agent development harness for Claude Code. Where most AI tools add *capability*, we add *focus*.
 
 [![plugin](https://img.shields.io/badge/plugin-v0.15.9-blue)](.claude-plugin/plugin.json)
-[![tests](https://img.shields.io/badge/tests-864%20passing-brightgreen)](tests/parity)
+[![tests](https://img.shields.io/badge/tests-866%20passing-brightgreen)](tests/parity)
 [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 ---
@@ -202,6 +202,7 @@ Does harness-boot actually produce better output than vanilla Claude Code — fe
 - **Methodology**: [`docs/benchmark/swe-bench-verified/README.md`](docs/benchmark/swe-bench-verified/README.md) — why SWE-bench Verified, why 20 tasks, what's measured
 - **Reproduce**: [`docs/benchmark/swe-bench-verified/scripts/setup.md`](docs/benchmark/swe-bench-verified/scripts/setup.md) — end-to-end external setup
 - **Validity caveats**: [`docs/benchmark/swe-bench-verified/analysis/threats-to-validity.md`](docs/benchmark/swe-bench-verified/analysis/threats-to-validity.md)
+- **Privacy**: the auto token capture (Stop hook · F-174) reads only the local transcript file Claude Code already wrote and appends token counts + the model id to your local `events.log`. No network access. Set `HARNESS_DISABLE_TOKEN_HOOK=1` to opt out entirely.
 
 ---
 

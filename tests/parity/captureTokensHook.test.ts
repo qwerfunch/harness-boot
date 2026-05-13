@@ -193,4 +193,44 @@ describe('capture-tokens.sh (F-174 Stop hook)', () => {
     });
     expect(result.status).toBe(0);
   });
+
+  it('HARNESS_DISABLE_TOKEN_HOOK=1 → exits 0 with no work, even on a happy path', () => {
+    // Same setup as the first happy-path case — active feature, usage
+    // in transcript — but the opt-out env disables every side effect.
+    writeTranscript(ws.transcript, [
+      {
+        type: 'assistant',
+        message: {model: 'claude-opus-4-7', usage: {input_tokens: 1, output_tokens: 1}},
+      },
+    ]);
+    const r = runHook(
+      {cwd: ws.dir, transcript_path: ws.transcript},
+      {HARNESS_DISABLE_TOKEN_HOOK: '1'},
+    );
+    expect(r.status).toBe(0);
+    expect(existsSync(join(ws.harness, 'events.log'))).toBe(false);
+  });
+
+  it('fast-path: foreign cwd via CLAUDE_PROJECT_DIR short-circuits without invoking the CLI', () => {
+    // Point CLAUDE_PROJECT_DIR at a dir with no `.harness/` AND make
+    // the stdin payload claim the same (so neither probe finds harness).
+    // The hook should exit 0 without ever calling `harness`. To prove
+    // it didn't reach the CLI, point HARNESS_BIN at a non-existent
+    // executable — if the fast-path is wired, the hook never tries to
+    // run it and exit stays 0.
+    const foreign = mkdtempSync(join(tmpdir(), 'capture-tokens-foreign-fast-'));
+    try {
+      writeTranscript(join(foreign, 'transcript.jsonl'), [
+        {type: 'assistant', message: {model: 'm', usage: {input_tokens: 1, output_tokens: 1}}},
+      ]);
+      const r = runHook(
+        {cwd: foreign, transcript_path: join(foreign, 'transcript.jsonl')},
+        {CLAUDE_PROJECT_DIR: foreign, HARNESS_BIN: '/nonexistent/harness-' + Date.now()},
+      );
+      expect(r.status).toBe(0);
+      expect(existsSync(join(foreign, '.harness'))).toBe(false);
+    } finally {
+      rmSync(foreign, {recursive: true, force: true});
+    }
+  });
 });
