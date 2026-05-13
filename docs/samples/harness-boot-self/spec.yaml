@@ -2017,6 +2017,55 @@ features:
     test_strategy: tdd
     digest: Direct response to the v0.15.6 post-release verification gap. The user's
       real question — "harness vs 그냥 Claude — 작업 퀄...
+  - id: F-173
+    name: SWE-bench Verified A/B benchmark suite — methodology + scripts + report skeleton
+    type: docs
+    status: planned
+    release_target: v0.15.8
+    modules:
+      - docs_benchmark
+    test_strategy: smoke
+    description: |-
+      Direct response to "어떤 benchmark 로 객관 평가" — user picked
+      SWE-bench Verified 20-task subset (option A). This feature
+      lands the suite framework, not the run results: the
+      methodology, task selection criteria, reproduction scripts,
+      and a fillable REPORT.md skeleton. Running the actual 20
+      tasks (each Docker-isolated, $30-200 of model calls, hours of
+      wall time) is a follow-up the maintainer executes offline;
+      the artifact is the framework that makes the comparison
+      reproducible by anyone.
+
+      Output lives in `docs/benchmark/swe-bench-verified/` (tracked
+      so README.md can link to it for the marketing axis the user
+      mentioned).
+    acceptance_criteria:
+      - "AC-1: `docs/benchmark/swe-bench-verified/` directory exists
+        with README.md (methodology + harness fit + limits),
+        REPORT.md (results skeleton), tasks.json (20-task selection
+        with criteria), scripts/{run-vanilla.sh, run-harness.sh,
+        aggregate.py, setup.md}, analysis/threats-to-validity.md."
+      - "AC-2: README.md documents the 4 measurement axes
+        (resolve-rate · token consumption · code quality · wall
+        time), the harness-side capture path (`harness token`), and
+        the vanilla-side capture path (Claude Code `/cost` manual
+        log)."
+      - "AC-3: tasks.json carries selection rationale per pick (repo
+        diversity, difficulty mix, harness-fit axis). 20 task rows
+        with task_id + repo + base_commit + brief summary."
+      - "AC-4: Per-task result schema is a documented JSON shape
+        (task_id, approach=vanilla|harness, resolved, tokens_in,
+        tokens_out, wall_time_sec, attempts, code_loc, tests_added,
+        tests_passed, harness_drift_catches, harness_evidence_kinds,
+        notes). Both run scripts emit this schema."
+      - "AC-5: threats-to-validity.md spells out the limits — single
+        model, single author (Claude), benchmark contamination
+        risk, harness-fit bias per task, single-time confounder."
+      - "AC-6: A repro path verifiable without running tasks — the
+        scripts/setup.md walks a user through Docker setup, model
+        config, output collection, and aggregation. Smoke check:
+        `bash docs/benchmark/swe-bench-verified/scripts/aggregate.py
+        --help` exits 0 with usage."
 goals: []
 constraints:
   tech_stack:
