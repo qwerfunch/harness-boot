@@ -4193,8 +4193,50 @@ features:
     author: human
   started_at: 2026-05-13T05:05:12Z
   completed_at: 2026-05-13T05:06:40Z
+- id: F-178
+  status: done
+  gates:
+    gate_0:
+      last_result: pass
+      ts: 2026-05-13T05:17:40Z
+      note: "cmd: npm test"
+    gate_1:
+      last_result: pass
+      ts: 2026-05-13T05:17:41Z
+      note: "cmd: npm run typecheck"
+    gate_2:
+      last_result: pass
+      ts: 2026-05-13T05:17:43Z
+      note: "cmd: npm run lint"
+    gate_5:
+      last_result: pass
+      ts: 2026-05-13T05:17:44Z
+      note: "cmd: bash self_check.sh"
+  evidence:
+  - ts: 2026-05-13T05:17:40Z
+    kind: gate_run
+    summary: "Gate gate_0 pass (2.3s) · cmd: npm test"
+    author: llm
+  - ts: 2026-05-13T05:17:41Z
+    kind: gate_run
+    summary: "Gate gate_1 pass (0.9s) · cmd: npm run typecheck"
+    author: llm
+  - ts: 2026-05-13T05:17:43Z
+    kind: gate_run
+    summary: "Gate gate_2 pass (1.4s) · cmd: npm run lint"
+    author: llm
+  - ts: 2026-05-13T05:17:44Z
+    kind: gate_run
+    summary: "Gate gate_5 pass (0.5s) · cmd: bash self_check.sh"
+    author: llm
+  - ts: 2026-05-13T05:17:52Z
+    kind: user_feedback
+    summary: Benchmark suite docs (README.md · REPORT.md · analysis/threats-to-validity.md · scripts/setup.md · scripts/run-vanilla.sh · scripts/run-harness.sh · scripts/aggregate.py docstrings + emitted table labels) translated to English; Korean trace count = 0 across all 7 files; aggregate.py re-run shows English §2.3 cells now rendering correctly
+    author: human
+  started_at: 2026-05-13T05:12:44Z
+  completed_at: 2026-05-13T05:18:28Z
 session:
   started_at: 2026-04-23T13:02:49Z
-  last_command: /harness:work F-177
+  last_command: /harness:work F-178
   last_gate_passed: gate_5
   active_feature_id: null
