@@ -59,6 +59,19 @@ export interface MetricsReport {
     }
   >;
   drift_incidents: number;
+  /**
+   * F-167 — evidence count partitioned by author. Counted from
+   * `evidence_added` events: kinds `gate_auto_run` and `gate_run`
+   * (which never surface as `evidence_added`) attribute to `llm`;
+   * everything else (`test`, `manual_check`, `user_feedback`,
+   * `hotfix`, `trivial`, `perf_*`, …) attributes to `human`. The
+   * `evidence_added` event itself carries an explicit `author` field
+   * since v0.15.5; older lines fall back to a kind-based derivation.
+   */
+  evidence_by_author: {
+    human: number;
+    llm: number;
+  };
 }
 
 /** Optional input for {@link compute}. */
@@ -154,6 +167,7 @@ export function aggregate(
     lead_time_sec: {count: 0, min: null, median: null, mean: null, max: null},
     gate_stats: {},
     drift_incidents: 0,
+    evidence_by_author: {human: 0, llm: 0},
   };
 
   const activatedLast = new Map<string, Date>();
@@ -182,6 +196,19 @@ export function aggregate(
       if (fid !== null && dt !== null && !doneFirst.has(fid)) {
         doneFirst.set(fid, dt);
       }
+    } else if (typ === 'evidence_added') {
+      // F-167 — partition declared evidence by author. Prefer the
+      // explicit `author` field; fall back to a kind-based derivation
+      // for older events that predate the field.
+      const author = ev['author'];
+      const kind = typeof ev['kind'] === 'string' ? ev['kind'] : '';
+      const resolved: 'human' | 'llm' =
+        author === 'human' || author === 'llm'
+          ? author
+          : kind === 'gate_auto_run' || kind === 'gate_run'
+            ? 'llm'
+            : 'human';
+      report.evidence_by_author[resolved] += 1;
     } else if (typ === 'gate_recorded' || typ === 'gate_auto_run') {
       const gate = ev['gate'];
       if (typeof gate !== 'string') {

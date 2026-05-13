@@ -16,10 +16,12 @@ import {afterEach, beforeEach, describe, expect, it} from 'vitest';
 import {stringify as yamlStringify} from 'yaml';
 
 import {
+  checkAcceptanceTrace,
   checkAdrSupersedes,
   checkAnchor,
   checkAnchorIntegration,
   checkCode,
+  checkContentDrift,
   checkDerived,
   checkDoc,
   checkEvidence,
@@ -466,6 +468,254 @@ describe('check.checkSpecCoverage (F-078)', () => {
   });
 });
 
+describe('check.checkAcceptanceTrace (F-168)', () => {
+  let p: Project;
+  beforeEach(() => {
+    p = makeProject();
+  });
+  afterEach(() => {
+    rmSync(p.root, {recursive: true, force: true});
+  });
+
+  const baseSpec = {
+    features: [
+      {
+        id: 'F-001',
+        status: 'in_progress',
+        acceptance_criteria: ['AC-1: first AC', 'AC-2: second AC'],
+      },
+    ],
+  };
+
+  it('opt-in by default — disabled when harness.yaml flag is absent', () => {
+    const findings = checkAcceptanceTrace(p.harness, baseSpec, p.root);
+    expect(findings).toHaveLength(0);
+  });
+
+  it('disabled explicitly returns no findings', () => {
+    writeYaml(join(p.harness, 'harness.yaml'), {
+      detectors: {acceptance_trace: {enabled: false}},
+    });
+    expect(checkAcceptanceTrace(p.harness, baseSpec, p.root)).toHaveLength(0);
+  });
+
+  it('enabled — implicit mapping passes when test file references both fid + AC-N', () => {
+    writeYaml(join(p.harness, 'harness.yaml'), {
+      detectors: {acceptance_trace: {enabled: true}},
+    });
+    mkdirSync(join(p.root, 'tests'), {recursive: true});
+    writeFileSync(
+      join(p.root, 'tests', 'a.test.ts'),
+      "describe('F-001 — first thing', () => { it('AC-1 covered', () => {}); it('AC-2 covered', () => {}); });",
+      'utf-8',
+    );
+    const findings = checkAcceptanceTrace(p.harness, baseSpec, p.root);
+    expect(findings).toHaveLength(0);
+  });
+
+  it('enabled — implicit mapping warns when no test references both', () => {
+    writeYaml(join(p.harness, 'harness.yaml'), {
+      detectors: {acceptance_trace: {enabled: true}},
+    });
+    // No tests/ — every AC fails the implicit check.
+    const findings = checkAcceptanceTrace(p.harness, baseSpec, p.root);
+    expect(findings).toHaveLength(2);
+    expect(findings[0]!.kind).toBe('AcceptanceTrace');
+    expect(findings[0]!.severity).toBe('warn');
+    expect(findings[0]!.message).toContain('F-001');
+    expect(findings[0]!.message).toContain('AC-1');
+  });
+
+  it('strict mode escalates severity to error', () => {
+    writeYaml(join(p.harness, 'harness.yaml'), {
+      detectors: {acceptance_trace: {enabled: true, strict: true}},
+    });
+    const findings = checkAcceptanceTrace(p.harness, baseSpec, p.root);
+    expect(findings[0]!.severity).toBe('error');
+  });
+
+  it('explicit test_refs — missing ref triggers drift with explicit-shape message', () => {
+    writeYaml(join(p.harness, 'harness.yaml'), {
+      detectors: {acceptance_trace: {enabled: true}},
+    });
+    mkdirSync(join(p.root, 'tests'), {recursive: true});
+    writeFileSync(
+      join(p.root, 'tests', 'a.test.ts'),
+      "it('testKnown', () => {});",
+      'utf-8',
+    );
+    const objSpec = {
+      features: [
+        {
+          id: 'F-001',
+          status: 'in_progress',
+          acceptance_criteria: [
+            {statement: 'first', test_refs: ['testKnown']},
+            {statement: 'second', test_refs: ['testMissing']},
+          ],
+        },
+      ],
+    };
+    const findings = checkAcceptanceTrace(p.harness, objSpec, p.root);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.path).toContain('acceptance_criteria[1]');
+    // Message must name the missing ref verbatim — distinguishes
+    // explicit-shape failure from implicit-shape failure (empirical
+    // UX finding from the F-167/F-168/F-169 verification cycle).
+    expect(findings[0]!.message).toContain('testMissing');
+    expect(findings[0]!.message).toContain('test_ref');
+  });
+
+  it('skips archived features', () => {
+    writeYaml(join(p.harness, 'harness.yaml'), {
+      detectors: {acceptance_trace: {enabled: true}},
+    });
+    const archivedSpec = {
+      features: [
+        {
+          id: 'F-099',
+          status: 'archived',
+          acceptance_criteria: ['AC-1: legacy'],
+        },
+      ],
+    };
+    expect(checkAcceptanceTrace(p.harness, archivedSpec, p.root)).toHaveLength(0);
+  });
+});
+
+describe('check.checkContentDrift (F-169)', () => {
+  let p: Project;
+  beforeEach(() => {
+    p = makeProject();
+  });
+  afterEach(() => {
+    rmSync(p.root, {recursive: true, force: true});
+  });
+
+  it('no CLAUDE.md → no findings (idempotent)', () => {
+    expect(checkContentDrift(p.harness, p.root)).toHaveLength(0);
+  });
+
+  it('JSON source — version field match', () => {
+    mkdirSync(join(p.root, '.claude-plugin'), {recursive: true});
+    writeFileSync(
+      join(p.root, '.claude-plugin', 'plugin.json'),
+      JSON.stringify({name: 'foo', version: '1.2.3'}),
+      'utf-8',
+    );
+    writeFileSync(
+      join(p.root, 'CLAUDE.md'),
+      '<!-- harness:fact key=plugin_version value=1.2.3 source=.claude-plugin/plugin.json:version --> v1.2.3 <!-- /harness:fact -->',
+      'utf-8',
+    );
+    expect(checkContentDrift(p.harness, p.root)).toHaveLength(0);
+  });
+
+  it('JSON source — version field mismatch flagged', () => {
+    mkdirSync(join(p.root, '.claude-plugin'), {recursive: true});
+    writeFileSync(
+      join(p.root, '.claude-plugin', 'plugin.json'),
+      JSON.stringify({name: 'foo', version: '1.2.4'}),
+      'utf-8',
+    );
+    writeFileSync(
+      join(p.root, 'CLAUDE.md'),
+      '<!-- harness:fact key=plugin_version value=1.2.3 source=.claude-plugin/plugin.json:version --> v1.2.3 <!-- /harness:fact -->',
+      'utf-8',
+    );
+    const findings = checkContentDrift(p.harness, p.root);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.kind).toBe('ContentDrift');
+    expect(findings[0]!.severity).toBe('error');
+    expect(findings[0]!.message).toContain('1.2.3');
+    expect(findings[0]!.message).toContain('1.2.4');
+  });
+
+  it('TS union type — member count match', () => {
+    mkdirSync(join(p.root, 'src'), {recursive: true});
+    writeFileSync(
+      join(p.root, 'src', 'kinds.ts'),
+      "export type Color = 'red' | 'green' | 'blue';\n",
+      'utf-8',
+    );
+    writeFileSync(
+      join(p.root, 'CLAUDE.md'),
+      '<!-- harness:fact key=color_count value=3 source=src/kinds.ts:Color --> 3 colors <!-- /harness:fact -->',
+      'utf-8',
+    );
+    expect(checkContentDrift(p.harness, p.root)).toHaveLength(0);
+  });
+
+  it('TS union type — member count mismatch flagged', () => {
+    mkdirSync(join(p.root, 'src'), {recursive: true});
+    writeFileSync(
+      join(p.root, 'src', 'kinds.ts'),
+      "export type Color = 'red' | 'green' | 'blue' | 'yellow';\n",
+      'utf-8',
+    );
+    writeFileSync(
+      join(p.root, 'CLAUDE.md'),
+      '<!-- harness:fact key=color_count value=3 source=src/kinds.ts:Color --> 3 colors <!-- /harness:fact -->',
+      'utf-8',
+    );
+    const findings = checkContentDrift(p.harness, p.root);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.message).toContain('actual `4`');
+  });
+
+  it('TS scalar const — match', () => {
+    mkdirSync(join(p.root, 'src'), {recursive: true});
+    writeFileSync(
+      join(p.root, 'src', 'consts.ts'),
+      "export const MAX_RETRIES = 5;\n",
+      'utf-8',
+    );
+    writeFileSync(
+      join(p.root, 'CLAUDE.md'),
+      '<!-- harness:fact key=max_retries value=5 source=src/consts.ts:MAX_RETRIES --> 5 retries <!-- /harness:fact -->',
+      'utf-8',
+    );
+    expect(checkContentDrift(p.harness, p.root)).toHaveLength(0);
+  });
+
+  it('TS Set literal — member count match', () => {
+    mkdirSync(join(p.root, 'src'), {recursive: true});
+    writeFileSync(
+      join(p.root, 'src', 'sets.ts'),
+      "const KINDS: ReadonlySet<string> = new Set(['a', 'b', 'c']);\n",
+      'utf-8',
+    );
+    writeFileSync(
+      join(p.root, 'CLAUDE.md'),
+      '<!-- harness:fact key=kinds_count value=3 source=src/sets.ts:KINDS --> 3 kinds <!-- /harness:fact -->',
+      'utf-8',
+    );
+    expect(checkContentDrift(p.harness, p.root)).toHaveLength(0);
+  });
+
+  it('Documentation placeholder (single-letter uppercase) is skipped', () => {
+    writeFileSync(
+      join(p.root, 'CLAUDE.md'),
+      'Sigil example: <!-- harness:fact key=X value=V source=Y --> placeholder <!-- /harness:fact -->',
+      'utf-8',
+    );
+    // Doc example shape — should NOT trigger a finding even though
+    // the `source=Y` is unresolvable.
+    expect(checkContentDrift(p.harness, p.root)).toHaveLength(0);
+  });
+
+  it('Missing source file flagged with clear message', () => {
+    writeFileSync(
+      join(p.root, 'CLAUDE.md'),
+      '<!-- harness:fact key=foo value=1 source=src/missing.ts:foo --> x <!-- /harness:fact -->',
+      'utf-8',
+    );
+    const findings = checkContentDrift(p.harness, p.root);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]!.message).toContain('source file not found');
+  });
+});
+
 describe('check orchestrators', () => {
   let p: Project;
   beforeEach(() => {
@@ -475,15 +725,18 @@ describe('check orchestrators', () => {
     rmSync(p.root, {recursive: true, force: true});
   });
 
-  it('runCheck reports all 13 categories', () => {
+  it('runCheck reports all 15 categories (F-168 + F-169)', () => {
     const r = runCheck(p.harness);
     // Some may be skipped when their inputs are missing — but Generated +
-    // Evidence + Doc + Protocol + Coverage always fire.
+    // Evidence + Doc + Protocol + Coverage + AcceptanceTrace +
+    // ContentDrift always fire.
     expect(r.checked).toContain('Generated');
     expect(r.checked).toContain('Evidence');
     expect(r.checked).toContain('Doc');
     expect(r.checked).toContain('Protocol');
     expect(r.checked).toContain('Coverage');
+    expect(r.checked).toContain('AcceptanceTrace');
+    expect(r.checked).toContain('ContentDrift');
   });
 
   it('runCheck on a populated harness returns clean = false when drift exists', () => {
@@ -492,10 +745,16 @@ describe('check orchestrators', () => {
     expect(isClean(r)).toBe(false);
   });
 
-  it('runBlockingCheck only inspects Code/Stale/AnchorIntegration/Coverage', () => {
+  it('runBlockingCheck inspects Code/Stale/AnchorIntegration/Coverage/ContentDrift (F-169)', () => {
     writeYaml(join(p.harness, 'spec.yaml'), {features: []});
     const r = runBlockingCheck(p.harness);
-    expect(r.checked).toEqual(['Code', 'Stale', 'AnchorIntegration', 'Coverage']);
+    expect(r.checked).toEqual([
+      'Code',
+      'Stale',
+      'AnchorIntegration',
+      'Coverage',
+      'ContentDrift',
+    ]);
   });
 
   it('formatHuman emits canonical header + clean line', () => {

@@ -1943,6 +1943,54 @@ features:
     test_strategy: tdd
     digest: logcat-on ISSUES-LOG return (2026-05-13). Feature `name:` values have
       grown to 200-300 characters in some projects —...
+  - id: F-167
+    name: LLM author attribution on evidence
+    type: feature
+    status: planned
+    release_target: v0.15.5
+    modules:
+      - work_command
+      - state_transitioner
+      - dashboard
+      - metrics
+    test_strategy: tdd
+    digest: Tier 1 — distinguishes "machine self-evaluation" from "human
+      verification" inside the Iron Law evidence ledger. Today...
+  - id: F-168
+    name: AC ↔ Test traceability detector
+    type: feature
+    status: planned
+    release_target: v0.15.5
+    modules:
+      - check_command
+      - drift_detector
+      - spec_schema
+    test_strategy: tdd
+    digest: Tier 1 — 14th drift kind `AcceptanceTrace`. Maps every
+      `acceptance_criteria[]` entry to at least one concrete test fu...
+  - id: F-169
+    name: Content drift detector — CLAUDE.md sigil region SSoT check
+    type: feature
+    status: planned
+    release_target: v0.15.5
+    modules:
+      - check_command
+      - drift_detector
+      - self_check
+    test_strategy: tdd
+    digest: Tier 1 — 15th drift kind `ContentDrift`. Validates the `<!--
+      harness:fact key=X value=V source=Y -->` sigil regions a...
+  - id: F-170
+    name: AcceptanceTrace message UX — surface missing test_ref name
+    type: fix
+    status: planned
+    release_target: v0.15.5
+    modules:
+      - check_command
+      - drift_detector
+    test_strategy: tdd
+    digest: "Empirical reproduction of F-167/F-168/F-169 caught a small UX bug in
+      the F-168 AcceptanceTrace detector: when an expl..."
 goals: []
 constraints:
   tech_stack:

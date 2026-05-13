@@ -11193,6 +11193,12 @@ var init_canonicalHash = __esm({
 // src/core/state.ts
 import { existsSync as existsSync3, mkdirSync as mkdirSync5, readFileSync as readFileSync10, statSync as statSync7, writeFileSync as writeFileSync8 } from "node:fs";
 import { dirname as dirname4, join as join9 } from "node:path";
+function deriveEvidenceAuthor(kind) {
+  if (kind === "gate_auto_run" || kind === "gate_run") {
+    return "llm";
+  }
+  return "human";
+}
 function nowIso6() {
   const d = /* @__PURE__ */ new Date();
   const yyyy = d.getUTCFullYear().toString().padStart(4, "0");
@@ -11447,7 +11453,8 @@ var init_state = __esm({
         f.evidence.push({
           ts: options.ts ?? nowIso6(),
           kind,
-          summary
+          summary,
+          author: deriveEvidenceAuthor(kind)
         });
       }
       /**
@@ -12745,6 +12752,251 @@ function checkSpecCoverage(harnessDir, _specYaml) {
   }
   return findings;
 }
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function checkAcceptanceTrace(harnessDir, spec, projectRoot = null) {
+  if (spec === null) {
+    return [];
+  }
+  const harnessYaml = loadYamlFile(join11(harnessDir, "harness.yaml"));
+  const detector = harnessYaml?.["detectors"];
+  const acTrace = isPlainObject6(detector) ? detector["acceptance_trace"] : null;
+  if (!isPlainObject6(acTrace) || acTrace["enabled"] !== true) {
+    return [];
+  }
+  const strict = acTrace["strict"] === true;
+  const severity = strict ? "error" : "warn";
+  const findings = [];
+  const features = asArray2(spec["features"]);
+  const root = projectRoot ?? resolvePath4(harnessDir, "..");
+  const testContents = collectTestFileContents(root);
+  for (const feature of features) {
+    if (!isPlainObject6(feature)) {
+      continue;
+    }
+    const fid = feature["id"];
+    if (typeof fid !== "string") {
+      continue;
+    }
+    const status = feature["status"];
+    if (status === "archived" || status === "skipped") {
+      continue;
+    }
+    const acs = asArray2(feature["acceptance_criteria"]);
+    for (let i = 0; i < acs.length; i++) {
+      const ac = acs[i];
+      const acN = `AC-${i + 1}`;
+      const failure = acTraceFailure(ac, fid, acN, testContents);
+      if (failure === null) {
+        continue;
+      }
+      findings.push({
+        kind: "AcceptanceTrace",
+        path: `${fid}.acceptance_criteria[${i}]`,
+        message: failure,
+        severity
+      });
+    }
+  }
+  return findings;
+}
+function acTraceFailure(ac, fid, acN, testContents) {
+  if (isPlainObject6(ac)) {
+    const refs = asArray2(ac["test_refs"]);
+    if (refs.length > 0) {
+      for (const ref of refs) {
+        if (typeof ref !== "string" || ref.length === 0) {
+          return `test_refs entry must be a non-empty string (got ${JSON.stringify(ref)})`;
+        }
+        let found = false;
+        for (const content of testContents.values()) {
+          if (content.includes(ref)) {
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          return `${fid} ${acN}: test_ref \`${ref}\` not found in any tests/ file`;
+        }
+      }
+      return null;
+    }
+  }
+  const fidRe = new RegExp(escapeRegExp(fid));
+  const acRe = new RegExp(escapeRegExp(acN));
+  for (const content of testContents.values()) {
+    if (fidRe.test(content) && acRe.test(content)) {
+      return null;
+    }
+  }
+  return `no test references both ${fid} and ${acN}. Add a test whose name or body contains both ids, or set \`acceptance_criteria[i].test_refs: [...]\` explicitly.`;
+}
+function collectTestFileContents(root) {
+  const out = /* @__PURE__ */ new Map();
+  const testsRoot = join11(root, "tests");
+  if (!isDirectory(testsRoot)) {
+    return out;
+  }
+  for (const file of walkFiles(testsRoot)) {
+    if (!/\.(test|spec)\.(ts|js)$/.test(file) && !/_test\.(ts|js|py)$/.test(file)) {
+      continue;
+    }
+    try {
+      out.set(file, readFileSync12(file, "utf-8"));
+    } catch {
+    }
+  }
+  return out;
+}
+function checkContentDrift(harnessDir, projectRoot = null) {
+  const findings = [];
+  const root = projectRoot ?? resolvePath4(harnessDir, "..");
+  for (const rel of DEFAULT_SIGIL_DOCS) {
+    const docPath = join11(root, rel);
+    if (!isFile5(docPath)) {
+      continue;
+    }
+    let text;
+    try {
+      text = readFileSync12(docPath, "utf-8");
+    } catch {
+      continue;
+    }
+    SIGIL_RE.lastIndex = 0;
+    let match;
+    while ((match = SIGIL_RE.exec(text)) !== null) {
+      const [full, key, declaredValue, source] = match;
+      const line = lineOfOffset(text, match.index);
+      const finding = resolveSigil(root, key, declaredValue, source);
+      if (finding === null) {
+        continue;
+      }
+      findings.push({
+        kind: "ContentDrift",
+        path: `${rel}:${line}`,
+        message: finding,
+        severity: "error"
+      });
+      void full;
+    }
+  }
+  return findings;
+}
+function lineOfOffset(text, offset) {
+  let line = 1;
+  for (let i = 0; i < offset && i < text.length; i++) {
+    if (text[i] === "\n") {
+      line += 1;
+    }
+  }
+  return line;
+}
+function resolveSigil(root, key, declaredValue, source) {
+  if (declaredValue.length === 1 && /^[A-Z]$/.test(declaredValue) || source.length === 1 && /^[A-Z]$/.test(source) || key.length === 1 && /^[A-Z]$/.test(key)) {
+    return null;
+  }
+  const sep2 = source.indexOf(":");
+  if (sep2 <= 0) {
+    return `sigil key=${key}: source must be \`path:symbol\` (got \`${source}\`)`;
+  }
+  const relPath2 = source.slice(0, sep2);
+  const symbol = source.slice(sep2 + 1);
+  const abs = join11(root, relPath2);
+  if (!isFile5(abs)) {
+    return `sigil key=${key}: source file not found: ${relPath2}`;
+  }
+  let content;
+  try {
+    content = readFileSync12(abs, "utf-8");
+  } catch {
+    return `sigil key=${key}: cannot read source file ${relPath2}`;
+  }
+  let actual = null;
+  if (/\.json$/.test(relPath2)) {
+    actual = resolveJsonField(content, symbol);
+  } else {
+    actual = resolveTsEnumLike(content, symbol);
+    if (actual === null) {
+      actual = resolveTsScalarConst(content, symbol);
+    }
+  }
+  if (actual === null) {
+    return `sigil key=${key}: symbol \`${symbol}\` not found in ${relPath2}`;
+  }
+  if (actual !== declaredValue) {
+    return `sigil key=${key}: declared \`${declaredValue}\`, actual \`${actual}\` (source: ${source})`;
+  }
+  return null;
+}
+function resolveJsonField(content, field) {
+  try {
+    const obj = JSON.parse(content);
+    if (obj === null || typeof obj !== "object" || Array.isArray(obj)) {
+      return null;
+    }
+    const value = obj[field];
+    if (value === void 0) {
+      return null;
+    }
+    if (typeof value === "string") {
+      return value;
+    }
+    if (typeof value === "number" || typeof value === "boolean") {
+      return String(value);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+function resolveTsEnumLike(content, name) {
+  const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const unionRe = new RegExp(
+    `(?:export\\s+)?type\\s+${esc}\\s*=\\s*((?:[^;]|\\n)*?);`,
+    "m"
+  );
+  const unionMatch = unionRe.exec(content);
+  if (unionMatch !== null) {
+    const body = unionMatch[1];
+    const literals = body.match(/['"`][^'"`]+['"`]/g);
+    if (literals !== null && literals.length > 0) {
+      return String(literals.length);
+    }
+  }
+  const collectionRe = new RegExp(
+    `(?:export\\s+)?const\\s+${esc}\\b[^=]*=\\s*(?:new\\s+Set\\s*\\(\\s*\\[([\\s\\S]*?)\\]\\s*\\)|\\[([\\s\\S]*?)\\])`,
+    "m"
+  );
+  const collMatch = collectionRe.exec(content);
+  if (collMatch !== null) {
+    const body = (collMatch[1] ?? collMatch[2] ?? "").trim();
+    if (body.length === 0) {
+      return "0";
+    }
+    const literals = body.match(/['"`][^'"`]+['"`]/g);
+    if (literals !== null) {
+      return String(literals.length);
+    }
+  }
+  return null;
+}
+function resolveTsScalarConst(content, name) {
+  const esc = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(
+    `(?:export\\s+)?(?:const|let|var)\\s+${esc}\\s*(?::\\s*[^=]+)?=\\s*([^;\\n]+);?`,
+    "m"
+  );
+  const match = re.exec(content);
+  if (match === null) {
+    return null;
+  }
+  let value = match[1].trim();
+  if (value.startsWith("'") && value.endsWith("'") || value.startsWith('"') && value.endsWith('"') || value.startsWith("`") && value.endsWith("`")) {
+    return value.slice(1, -1);
+  }
+  return value;
+}
 function runCheck(harnessDir, projectRoot = null) {
   const report = { findings: [], checked: [] };
   const harnessYaml = loadYamlFile(join11(harnessDir, "harness.yaml"));
@@ -12779,6 +13031,10 @@ function runCheck(harnessDir, projectRoot = null) {
   report.checked.push("Protocol");
   report.findings.push(...checkSpecCoverage(harnessDir, specYaml));
   report.checked.push("Coverage");
+  report.findings.push(...checkAcceptanceTrace(harnessDir, specYaml, projectRoot));
+  report.checked.push("AcceptanceTrace");
+  report.findings.push(...checkContentDrift(harnessDir, projectRoot));
+  report.checked.push("ContentDrift");
   return report;
 }
 function runBlockingCheck(harnessDir, projectRoot = null) {
@@ -12790,7 +13046,8 @@ function runBlockingCheck(harnessDir, projectRoot = null) {
     report.findings.push(...checkAnchorIntegration(harnessDir, specYaml, projectRoot));
   }
   report.findings.push(...checkSpecCoverage(harnessDir, specYaml));
-  report.checked.push("Code", "Stale", "AnchorIntegration", "Coverage");
+  report.findings.push(...checkContentDrift(harnessDir, projectRoot));
+  report.checked.push("Code", "Stale", "AnchorIntegration", "Coverage", "ContentDrift");
   return report;
 }
 function formatHuman(report) {
@@ -12811,7 +13068,7 @@ function formatHuman(report) {
   return `${lines.join("\n")}
 `;
 }
-var import_yaml7, FEATURE_ID_PATTERN, CLAUDE_IMPORT_PATTERN, PROTOCOL_FRONTMATTER, DEFAULT_COVERAGE_THRESHOLD;
+var import_yaml7, FEATURE_ID_PATTERN, CLAUDE_IMPORT_PATTERN, PROTOCOL_FRONTMATTER, DEFAULT_COVERAGE_THRESHOLD, SIGIL_RE, DEFAULT_SIGIL_DOCS;
 var init_check = __esm({
   "src/check.ts"() {
     "use strict";
@@ -12823,6 +13080,8 @@ var init_check = __esm({
     CLAUDE_IMPORT_PATTERN = /^@([^\s]+)/gm;
     PROTOCOL_FRONTMATTER = /^---\s*\n([\s\S]*?)\n---/;
     DEFAULT_COVERAGE_THRESHOLD = 0.8;
+    SIGIL_RE = /<!--\s*harness:fact\s+key=(\S+)\s+value=(\S+)\s+source=(\S+)\s*-->/g;
+    DEFAULT_SIGIL_DOCS = ["CLAUDE.md"];
   }
 });
 
@@ -22914,6 +23173,61 @@ function isFile9(path) {
     return false;
   }
 }
+function ironLawRequireHumanEvidence(harnessDir) {
+  const path = join21(harnessDir, "harness.yaml");
+  if (!isFile9(path)) {
+    return false;
+  }
+  let data;
+  try {
+    data = (0, import_yaml17.parse)(readFileSync22(path, "utf-8"));
+  } catch {
+    return false;
+  }
+  if (!isPlainObject13(data)) {
+    return false;
+  }
+  const ironLaw = data["iron_law"];
+  if (!isPlainObject13(ironLaw)) {
+    return false;
+  }
+  return ironLaw["require_human_evidence"] === true;
+}
+function countDeclaredEvidenceByAuthor(feature, options) {
+  const out = { human: 0, llm: 0 };
+  const evidence = feature.evidence;
+  if (!Array.isArray(evidence)) {
+    return out;
+  }
+  const cutoffMs = (options.now ?? /* @__PURE__ */ new Date()).getTime() - options.windowDays * 864e5;
+  for (const entry of evidence) {
+    if (!isPlainObject13(entry)) {
+      continue;
+    }
+    const kind = typeof entry["kind"] === "string" ? entry["kind"] : "";
+    if (kind === "gate_auto_run" || kind === "gate_run") {
+      const author2 = entry["author"];
+      if (author2 !== "human") {
+        continue;
+      }
+    }
+    const ts = entry["ts"];
+    if (typeof ts === "string") {
+      const t2 = Date.parse(ts);
+      if (Number.isFinite(t2) && t2 < cutoffMs) {
+        continue;
+      }
+    }
+    const author = entry["author"];
+    const resolved = author === "human" || author === "llm" ? author : deriveEvidenceAuthor(kind);
+    if (resolved === "human") {
+      out.human += 1;
+    } else {
+      out.llm += 1;
+    }
+  }
+  return out;
+}
 function nowIso10() {
   const d = /* @__PURE__ */ new Date();
   const yyyy = d.getUTCFullYear().toString().padStart(4, "0");
@@ -23251,7 +23565,8 @@ function addEvidence(harnessDir, fid, kind, summary) {
     type: "evidence_added",
     feature: fid,
     kind,
-    summary
+    summary,
+    author: deriveEvidenceAuthor(kind)
   });
   autowireDesignReview(harnessDir, fid);
   const res = summarize(state, fid);
@@ -23406,6 +23721,17 @@ function complete(harnessDir, fid, options = {}) {
     const reasonSuffix = hotfixReason !== null ? ", hotfix" : "";
     res2.message = `cannot complete \u2014 Iron Law: ${declared}/${required} declared evidence in last ${IRON_LAW_WINDOW_DAYS} days (mode: ${mode}${reasonSuffix}). Add more with --evidence, or use --hotfix-reason for emergency override.`;
     return res2;
+  }
+  if (!hotfixReason && ironLawRequireHumanEvidence(harnessDir)) {
+    const byAuthor = countDeclaredEvidenceByAuthor(featureNow, {
+      windowDays: IRON_LAW_WINDOW_DAYS
+    });
+    if (byAuthor.human === 0) {
+      const res2 = summarize(state, fid);
+      res2.action = "queried";
+      res2.message = `cannot complete \u2014 Iron Law: 0 human-authored evidence in last ${IRON_LAW_WINDOW_DAYS} days (require_human_evidence enabled). Auto gate runs do not satisfy this; add at least one --evidence with a non-gate kind, or use --hotfix-reason for emergency override.`;
+      return res2;
+    }
   }
   if (!hotfixReason) {
     const blockingPerf = findUnresolvedPerfRegression(featureNow);
@@ -23697,7 +24023,8 @@ var init_work = __esm({
       "Code",
       "Stale",
       "AnchorIntegration",
-      "Coverage"
+      "Coverage",
+      "ContentDrift"
     ]);
     PERF_MARKER_KINDS = /* @__PURE__ */ new Set(["perf_regression", "perf_resolved"]);
   }
@@ -27967,7 +28294,8 @@ function aggregate(events, options = {}) {
     features: { activated: 0, done: 0, blocked: 0 },
     lead_time_sec: { count: 0, min: null, median: null, mean: null, max: null },
     gate_stats: {},
-    drift_incidents: 0
+    drift_incidents: 0,
+    evidence_by_author: { human: 0, llm: 0 }
   };
   const activatedLast = /* @__PURE__ */ new Map();
   const doneFirst = /* @__PURE__ */ new Map();
@@ -27993,6 +28321,11 @@ function aggregate(events, options = {}) {
       if (fid !== null && dt !== null && !doneFirst.has(fid)) {
         doneFirst.set(fid, dt);
       }
+    } else if (typ === "evidence_added") {
+      const author = ev["author"];
+      const kind = typeof ev["kind"] === "string" ? ev["kind"] : "";
+      const resolved = author === "human" || author === "llm" ? author : kind === "gate_auto_run" || kind === "gate_run" ? "llm" : "human";
+      report.evidence_by_author[resolved] += 1;
     } else if (typ === "gate_recorded" || typ === "gate_auto_run") {
       const gate = ev["gate"];
       if (typeof gate !== "string") {
@@ -28139,6 +28472,7 @@ function formatHuman3(report) {
 // src/ui/dashboard.ts
 var import_yaml8 = __toESM(require_dist(), 1);
 init_gates();
+init_state();
 init_kickoff();
 import { readFileSync as readFileSync14, statSync as statSync11 } from "node:fs";
 import { join as join13 } from "node:path";
@@ -28223,6 +28557,7 @@ var EN = {
   walking_skeleton: "walking skeleton",
   active_feature: 'working on: "{title}"',
   progress_line: "  progress: {passed}/{total} gates passed \xB7 {evidence} evidence entries",
+  progress_line_split: "  progress: {passed}/{total} gates passed \xB7 {evidence} evidence ({human} human, {llm} llm)",
   blocker_line: "  blocker: {note}",
   dashboard_title: "harness-boot",
   no_active: "no active feature.",
@@ -28258,6 +28593,7 @@ var KO = {
   walking_skeleton: "\uAE30\uBCF8 \uACE8\uACA9",
   active_feature: '\uC791\uC5C5 \uC911: "{title}"',
   progress_line: "  \uC9C4\uD589: \uAC80\uC99D {passed}/{total} \uD1B5\uACFC \xB7 \uADFC\uAC70 {evidence} \uAC1C",
+  progress_line_split: "  \uC9C4\uD589: \uAC80\uC99D {passed}/{total} \uD1B5\uACFC \xB7 \uADFC\uAC70 {evidence} \uAC1C (\uC0AC\uB78C {human}, \uAE30\uACC4 {llm})",
   blocker_line: "  \uCC28\uB2E8: {note}",
   dashboard_title: "harness-boot",
   no_active: "\uD604\uC7AC \uC791\uC5C5 \uC911\uC778 \uD53C\uCC98 \uC5C6\uC74C.",
@@ -28418,6 +28754,24 @@ function countGatesPassed(gates) {
   }
   return count;
 }
+function countEvidenceByAuthor(evidence) {
+  let human = 0;
+  let llm = 0;
+  for (const ev of evidence) {
+    if (!isPlainObject9(ev)) {
+      continue;
+    }
+    const author = ev["author"];
+    const kind = typeof ev["kind"] === "string" ? ev["kind"] : "";
+    const resolved = author === "human" || author === "llm" ? author : deriveEvidenceAuthor(kind);
+    if (resolved === "human") {
+      human += 1;
+    } else {
+      llm += 1;
+    }
+  }
+  return { human, llm };
+}
 function latestBlockerNote(feature) {
   const evidence = asArray3(feature["evidence"]);
   for (let i = evidence.length - 1; i >= 0; i--) {
@@ -28461,10 +28815,19 @@ function renderActiveBlock(feature, spec, lang, harnessDir) {
   const title = featureTitle(fid, spec);
   const gates = isPlainObject9(feature["gates"]) ? feature["gates"] : {};
   const passed = countGatesPassed(gates);
-  const evidenceCount = asArray3(feature["evidence"]).length;
+  const evidenceArr = asArray3(feature["evidence"]);
+  const evidenceCount = evidenceArr.length;
+  const evidenceByAuthor = countEvidenceByAuthor(evidenceArr);
+  const showSplit = evidenceByAuthor.human > 0 && evidenceByAuthor.llm > 0;
   const lines = [t("active_feature", lang, { title })];
   lines.push(
-    t("progress_line", lang, {
+    showSplit ? t("progress_line_split", lang, {
+      passed,
+      total: STANDARD_GATES.length,
+      evidence: evidenceCount,
+      human: evidenceByAuthor.human,
+      llm: evidenceByAuthor.llm
+    }) : t("progress_line", lang, {
       passed,
       total: STANDARD_GATES.length,
       evidence: evidenceCount

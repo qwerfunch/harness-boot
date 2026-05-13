@@ -74,11 +74,31 @@ export interface GateRecord {
     ts: string;
     note: string;
 }
+/**
+ * Author of an evidence entry — distinguishes machine self-evaluation
+ * (gate runner) from human-declared verification (F-167).
+ *
+ * Derived automatically from `kind` at write time: `gate_auto_run` and
+ * `gate_run` are `llm`; every other kind (`test`, `manual_check`,
+ * `user_feedback`, `reviewer_check`, `blocker`, `hotfix`, `trivial`,
+ * `perf_regression`, `perf_resolved`, `generic`, …) is `human`.
+ */
+export type EvidenceAuthor = 'human' | 'llm';
+/**
+ * Returns the {@link EvidenceAuthor} for a given evidence `kind`.
+ *
+ * Machine-emitted kinds (`gate_auto_run`, `gate_run`) attribute to
+ * `llm`; every other kind reflects an intentional declaration by the
+ * developer running the cycle.
+ */
+export declare function deriveEvidenceAuthor(kind: string): EvidenceAuthor;
 /** One evidence row under a feature's `evidence` array. */
 export interface EvidenceEntry {
     ts: string;
     kind: string;
     summary: string;
+    /** F-167 — `human` for declared kinds, `llm` for `gate_*` auto kinds. */
+    author?: EvidenceAuthor;
     [key: string]: unknown;
 }
 /** One row under a feature's optional `skipped_agents` array. */

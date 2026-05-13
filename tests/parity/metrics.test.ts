@@ -89,6 +89,20 @@ describe('metrics.aggregate', () => {
     const r = aggregate(events);
     expect(r.drift_incidents).toBe(1);
   });
+
+  it('F-167 — partitions evidence_added events by author', () => {
+    const evidenceEvents = [
+      {ts: '2026-05-13T08:00:00Z', type: 'evidence_added', feature: 'F-200', kind: 'manual_check', summary: 'reviewer ok', author: 'human'},
+      {ts: '2026-05-13T08:01:00Z', type: 'evidence_added', feature: 'F-200', kind: 'test', summary: 'suite green', author: 'human'},
+      {ts: '2026-05-13T08:02:00Z', type: 'evidence_added', feature: 'F-200', kind: 'gate_auto_run', summary: 'auto', author: 'llm'},
+      // legacy event (pre-F-167) — author field absent, falls back to kind derivation
+      {ts: '2026-05-13T08:03:00Z', type: 'evidence_added', feature: 'F-200', kind: 'gate_auto_run', summary: 'legacy auto'},
+      {ts: '2026-05-13T08:04:00Z', type: 'evidence_added', feature: 'F-200', kind: 'trivial', summary: 'legacy human'},
+    ];
+    const r = aggregate(evidenceEvents);
+    expect(r.evidence_by_author.human).toBe(3);
+    expect(r.evidence_by_author.llm).toBe(2);
+  });
 });
 
 describe('metrics.compute', () => {

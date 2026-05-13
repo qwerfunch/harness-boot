@@ -14,6 +14,7 @@ import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse as yamlParse } from 'yaml';
 import { STANDARD_GATES } from '../core/gates.js';
+import { deriveEvidenceAuthor } from '../core/state.js';
 import { agentsForShapes, detectShapes, hasAudioFlag, parallelGroupsForShapes, } from '../ceremonies/kickoff.js';
 import { maxOtherList, maxPendingList, maxUnregisteredList, } from './dashboardConfig.js';
 import { resolveLang } from './lang.js';
@@ -118,6 +119,30 @@ function countGatesPassed(gates) {
     return count;
 }
 /**
+ * F-167 — partitions an evidence array by author. Entries without an
+ * explicit `author` field (pre-F-167 state.yaml content) fall back to
+ * {@link deriveEvidenceAuthor} so historical data renders correctly.
+ */
+function countEvidenceByAuthor(evidence) {
+    let human = 0;
+    let llm = 0;
+    for (const ev of evidence) {
+        if (!isPlainObject(ev)) {
+            continue;
+        }
+        const author = ev['author'];
+        const kind = typeof ev['kind'] === 'string' ? ev['kind'] : '';
+        const resolved = author === 'human' || author === 'llm' ? author : deriveEvidenceAuthor(kind);
+        if (resolved === 'human') {
+            human += 1;
+        }
+        else {
+            llm += 1;
+        }
+    }
+    return { human, llm };
+}
+/**
  * Returns the most-recent blocker evidence summary, but only when
  * the very last evidence entry is a blocker — once the user adds
  * post-block evidence the suggestion flips to normal flow.
@@ -166,13 +191,26 @@ function renderActiveBlock(feature, spec, lang, harnessDir) {
     const title = featureTitle(fid, spec);
     const gates = isPlainObject(feature['gates']) ? feature['gates'] : {};
     const passed = countGatesPassed(gates);
-    const evidenceCount = asArray(feature['evidence']).length;
+    const evidenceArr = asArray(feature['evidence']);
+    const evidenceCount = evidenceArr.length;
+    // F-167 — when both human and machine evidence exist, render the
+    // split count so audit/dashboard surfaces "who actually verified".
+    const evidenceByAuthor = countEvidenceByAuthor(evidenceArr);
+    const showSplit = evidenceByAuthor.human > 0 && evidenceByAuthor.llm > 0;
     const lines = [t('active_feature', lang, { title })];
-    lines.push(t('progress_line', lang, {
-        passed,
-        total: STANDARD_GATES.length,
-        evidence: evidenceCount,
-    }));
+    lines.push(showSplit
+        ? t('progress_line_split', lang, {
+            passed,
+            total: STANDARD_GATES.length,
+            evidence: evidenceCount,
+            human: evidenceByAuthor.human,
+            llm: evidenceByAuthor.llm,
+        })
+        : t('progress_line', lang, {
+            passed,
+            total: STANDARD_GATES.length,
+            evidence: evidenceCount,
+        }));
     const [coverage, detailed] = loadCoverage(harnessDir, fid);
     if (coverage !== null && coverage < 1.0) {
         lines.push(formatCoverageLine(coverage, detailed));

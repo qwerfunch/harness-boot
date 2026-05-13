@@ -62,6 +62,47 @@ describe('dashboard.render — section ordering', () => {
     expect(out).toContain('진행: 검증 1/6 통과 · 근거 1 개');
   });
 
+  it('F-167 — progress line shows split (human + llm) when both > 0', () => {
+    const state = {
+      session: {active_feature_id: 'F-001'},
+      features: [
+        {
+          id: 'F-001',
+          status: 'in_progress',
+          gates: {gate_0: {last_result: 'pass'}},
+          evidence: [
+            {kind: 'gate_auto_run', summary: 'auto', author: 'llm'},
+            {kind: 'gate_auto_run', summary: 'auto', author: 'llm'},
+            {kind: 'gate_auto_run', summary: 'auto', author: 'llm'},
+            {kind: 'manual_check', summary: 'reviewed', author: 'human'},
+          ],
+        },
+      ],
+    };
+    const out = render(state, SPEC, [], {lang: 'ko'});
+    expect(out).toContain('근거 4 개 (사람 1, 기계 3)');
+  });
+
+  it('F-167 — progress line uses plain form when only one author class present', () => {
+    const state = {
+      session: {active_feature_id: 'F-001'},
+      features: [
+        {
+          id: 'F-001',
+          status: 'in_progress',
+          gates: {gate_0: {last_result: 'pass'}},
+          evidence: [
+            {kind: 'gate_auto_run', summary: 'auto', author: 'llm'},
+            {kind: 'gate_auto_run', summary: 'auto', author: 'llm'},
+          ],
+        },
+      ],
+    };
+    const out = render(state, SPEC, [], {lang: 'ko'});
+    expect(out).toContain('근거 2 개');
+    expect(out).not.toContain('(사람');
+  });
+
   it('blocker line emits when latest evidence is blocker', () => {
     const state = {
       session: {active_feature_id: 'F-001'},

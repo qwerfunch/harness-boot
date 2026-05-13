@@ -71,6 +71,19 @@ export const AUTOMATIC_EVIDENCE_KINDS = new Set(['gate_run', 'gate_auto_run']);
  * `.harness/.config.toml`.
  */
 export const IRON_LAW_WINDOW_DAYS = 7;
+/**
+ * Returns the {@link EvidenceAuthor} for a given evidence `kind`.
+ *
+ * Machine-emitted kinds (`gate_auto_run`, `gate_run`) attribute to
+ * `llm`; every other kind reflects an intentional declaration by the
+ * developer running the cycle.
+ */
+export function deriveEvidenceAuthor(kind) {
+    if (kind === 'gate_auto_run' || kind === 'gate_run') {
+        return 'llm';
+    }
+    return 'human';
+}
 /** Returns the current UTC timestamp formatted as `YYYY-MM-DDTHH:MM:SSZ`. */
 function nowIso() {
     const d = new Date();
@@ -278,6 +291,7 @@ export class State {
             ts: options.ts ?? nowIso(),
             kind,
             summary,
+            author: deriveEvidenceAuthor(kind),
         });
     }
     /**

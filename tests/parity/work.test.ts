@@ -197,6 +197,42 @@ describe('work.complete — Iron Law (prototype mode)', () => {
     expect(res.action).toBe('queried');
     expect(res.message).toContain('already done');
   });
+
+  it('F-167 — require_human_evidence default off: kind-based check still applies (unchanged)', () => {
+    // Without the new flag, complete() reaches the new guard but
+    // exits early — Iron Law's existing declared count (kind-based)
+    // already gates on `manual_check` so this case behaves like v0.15.4.
+    recordGate(ws.harness, 'F-001', 'gate_5', 'pass');
+    addEvidence(ws.harness, 'F-001', 'manual_check', 'reviewer ok');
+    const res = complete(ws.harness, 'F-001');
+    expect(res.action).toBe('completed');
+  });
+
+  it('F-167 — require_human_evidence allows when at least one human entry exists', () => {
+    writeFileSync(
+      join(ws.harness, 'harness.yaml'),
+      'iron_law:\n  require_human_evidence: true\n',
+      'utf-8',
+    );
+    recordGate(ws.harness, 'F-001', 'gate_5', 'pass');
+    addEvidence(ws.harness, 'F-001', 'manual_check', 'reviewer verified');
+    const res = complete(ws.harness, 'F-001');
+    expect(res.action).toBe('completed');
+  });
+
+  it('F-167 — require_human_evidence hotfix bypass keeps audit trail', () => {
+    writeFileSync(
+      join(ws.harness, 'harness.yaml'),
+      'iron_law:\n  require_human_evidence: true\n',
+      'utf-8',
+    );
+    // No human declared evidence at all, but hotfix-reason supplied.
+    // The hotfix itself counts as human, so this should pass without
+    // tripping the require_human_evidence guard.
+    recordGate(ws.harness, 'F-001', 'gate_5', 'pass');
+    const res = complete(ws.harness, 'F-001', {hotfixReason: 'prod down'});
+    expect(res.action).toBe('completed');
+  });
 });
 
 describe('work.complete — Iron Law (product mode)', () => {
