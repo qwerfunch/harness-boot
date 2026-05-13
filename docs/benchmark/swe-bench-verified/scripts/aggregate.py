@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""SWE-bench Verified A/B 결과 집계 + REPORT.md 갱신.
+"""SWE-bench Verified A/B result aggregator + REPORT.md rewriter.
 
-F-173: per-task JSON 을 vanilla / harness 두 디렉터리에서 읽고, REPORT.md 의
-§2 / §3 표를 정확히 자동 갱신. 사람 손이 결과 데이터에 안 닿게 (BR-014).
+F-173: reads per-task JSON files from `results/vanilla/` and
+`results/harness/`, then rewrites §2 / §3 tables in REPORT.md
+deterministically — humans don't touch the result tables (BR-014).
 
 Usage:
     python aggregate.py --results-dir <path> --tasks <path/tasks.json> \\
@@ -10,13 +11,14 @@ Usage:
 
     python aggregate.py --help
 
-표는 다음 4개 섹션을 갱신:
-- §2.1 Per-task (20 row × 11 column)
-- §2.2 Aggregate (resolve rate · token avg · etc.)
-- §2.3 Harness-only signals (drift catches 등)
-- §3 By harness-fit slice (multi-step / medium-step / single-fix 그룹별)
+The script updates four blocks:
+- §2.1 Per-task (20 rows × 11 columns)
+- §2.2 Aggregate (resolve rate · token mean · ...)
+- §2.3 Harness-only signals (drift catches etc.)
+- §3 By harness-fit slice (multi-step / medium-step / single-fix groups)
 
-§4 정성 관찰 / §5 결론은 갱신 X — 사람 손으로.
+§4 qualitative observations and §5 conclusion are human-authored;
+this script never touches them.
 """
 
 from __future__ import annotations
@@ -30,38 +32,38 @@ from typing import Any
 
 
 def parse_args() -> argparse.Namespace:
-    """CLI args parser — `--help` 가 exit 0 으로 끝나도록."""
+    """Parse CLI args; `--help` exits 0."""
     p = argparse.ArgumentParser(
-        description="SWE-bench Verified A/B 결과 집계 + REPORT.md 갱신",
+        description="Aggregate SWE-bench Verified A/B results and rewrite REPORT.md",
     )
     p.add_argument(
         "--results-dir",
         required=False,
         type=Path,
-        help="results/ 디렉터리 (vanilla/ + harness/ 가 그 아래)",
+        help="results/ directory (must contain vanilla/ and harness/ subdirs)",
     )
     p.add_argument(
         "--tasks",
         required=False,
         type=Path,
-        help="tasks.json 의 path (20 task selection)",
+        help="path to tasks.json (the 20-task selection)",
     )
     p.add_argument(
         "--report",
         required=False,
         type=Path,
-        help="REPORT.md 의 path (갱신 대상)",
+        help="path to REPORT.md (the rewrite target)",
     )
     p.add_argument(
         "--dry-run",
         action="store_true",
-        help="REPORT.md 쓰지 말고 stdout 으로 출력",
+        help="print the generated tables to stdout instead of writing REPORT.md",
     )
     return p.parse_args()
 
 
 def load_results(results_dir: Path, approach: str) -> dict[str, dict[str, Any]]:
-    """results/<approach>/*.json 을 task_id 키 dict 로."""
+    """Load `results/<approach>/*.json` into a {task_id: payload} dict."""
     out: dict[str, dict[str, Any]] = {}
     sub = results_dir / approach
     if not sub.is_dir():
@@ -79,7 +81,7 @@ def load_results(results_dir: Path, approach: str) -> dict[str, dict[str, Any]]:
 
 
 def fmt_cell(value: Any) -> str:
-    """결과 표 cell 의 표현 — None 이면 '—'."""
+    """Render a single table cell — None becomes '—'."""
     if value is None:
         return "—"
     if isinstance(value, bool):
@@ -90,7 +92,7 @@ def fmt_cell(value: Any) -> str:
 
 
 def fmt_delta(harness: float | int | None, vanilla: float | int | None) -> str:
-    """harness − vanilla 의 부호 포함 표현."""
+    """Render `harness − vanilla` with an explicit sign."""
     if harness is None or vanilla is None:
         return "—"
     delta = harness - vanilla
@@ -99,7 +101,7 @@ def fmt_delta(harness: float | int | None, vanilla: float | int | None) -> str:
 
 
 def aggregate_metric(rows: dict[str, dict[str, Any]], field: str) -> dict[str, Any]:
-    """rows 의 field 의 mean / median / count."""
+    """Compute mean / median / count for `field` across `rows`."""
     values = [r[field] for r in rows.values() if r.get(field) is not None]
     if not values:
         return {"mean": None, "median": None, "count": 0}
@@ -115,7 +117,7 @@ def per_task_table(
     vanilla: dict[str, dict[str, Any]],
     harness: dict[str, dict[str, Any]],
 ) -> str:
-    """§2.1 Per-task table — markdown."""
+    """Render the §2.1 per-task markdown table."""
     lines = [
         "| Task ID | Difficulty | Harness fit | Vanilla resolved | Vanilla tokens | Vanilla wall (s) | Harness resolved | Harness tokens | Harness wall (s) | Δ tokens | Δ resolve |",
         "|---|---|---|---|---|---|---|---|---|---|---|",
@@ -146,7 +148,7 @@ def aggregate_table(
     harness: dict[str, dict[str, Any]],
     total_n: int,
 ) -> str:
-    """§2.2 Aggregate metrics."""
+    """Render the §2.2 aggregate-metrics markdown table."""
 
     def row(label: str, field: str) -> str:
         v_stat = aggregate_metric(vanilla, field)
@@ -179,7 +181,7 @@ def aggregate_table(
 
 
 def harness_signals_table(harness: dict[str, dict[str, Any]]) -> str:
-    """§2.3 Harness-only signals."""
+    """Render the §2.3 harness-only signals markdown table."""
     drift_total = sum(
         r.get("harness_drift_catches", 0) or 0 for r in harness.values()
     )
@@ -194,11 +196,11 @@ def harness_signals_table(harness: dict[str, dict[str, Any]]) -> str:
 
     return "\n".join(
         [
-            "| Metric | Total | Per resolved task | 비고 |",
+            "| Metric | Total | Per resolved task | Notes |",
             "|---|---|---|---|",
-            f"| Drift catches | {drift_total} | {drift_per_resolved:.1f} | 15-detector 가 잡은 issue 수 |",
-            f"| Evidence kinds used | {sum(kinds_total.values())} | — | 분포: {kinds_str} |",
-            "| Iron Law 차단 발생 | — | — | F-172 follow-up (hook 자동화) 이후 자동 capture |",
+            f"| Drift catches | {drift_total} | {drift_per_resolved:.1f} | issues caught by the 15-detector |",
+            f"| Evidence kinds used | {sum(kinds_total.values())} | — | distribution: {kinds_str} |",
+            "| Iron Law blocks | — | — | auto-captured after the F-172 / F-174 hook automation lands |",
         ]
     )
 
@@ -206,11 +208,12 @@ def harness_signals_table(harness: dict[str, dict[str, Any]]) -> str:
 def main() -> int:
     args = parse_args()
 
-    # --help 만으로 호출되면 위 parser 가 이미 exit 0. 여기 도달하면 args 있음.
-    # 그러나 dry-run / 일반 호출 시 results-dir / tasks / report 필요.
+    # `--help` already exited 0 via argparse. We reach this point with
+    # real args, but the three path args are still optional at parse
+    # time so we can validate here together.
     if not args.results_dir or not args.tasks or not args.report:
         print(
-            "error: --results-dir, --tasks, --report 셋 모두 필수 (또는 --help)",
+            "error: --results-dir, --tasks, and --report are all required (or pass --help)",
             file=sys.stderr,
         )
         return 3
@@ -218,13 +221,13 @@ def main() -> int:
     tasks_data = json.loads(args.tasks.read_text())
     tasks = tasks_data.get("tasks", [])
     if not tasks:
-        print("error: tasks.json 에 tasks[] 없음", file=sys.stderr)
+        print("error: tasks.json has no tasks[] entries", file=sys.stderr)
         return 3
 
     vanilla = load_results(args.results_dir, "vanilla")
     harness = load_results(args.results_dir, "harness")
 
-    # tokens_total 을 미리 계산해서 mean 집계에 사용
+    # Precompute `tokens_total` so the mean aggregator can reuse it.
     for store in (vanilla, harness):
         for r in store.values():
             r["tokens_total"] = (r.get("tokens_input") or 0) + (r.get("tokens_output") or 0)
@@ -250,9 +253,9 @@ def main() -> int:
         print(signals)
         return 0
 
-    # REPORT.md 의 §2.1 / §2.2 / §2.3 표 자리를 sentinel comment 로 찾아서
-    # 통째로 교체. F-177 에서 구현 완료 — 이전엔 stdout 출력만 되고 실제
-    # 파일은 갱신되지 않던 부분을 막음.
+    # Substitute the §2.1 / §2.2 / §2.3 blocks in REPORT.md between
+    # matching sentinel comments. F-177 wired this up; before then the
+    # script only printed warnings and never wrote anything.
     report_path = args.report
     if not report_path.exists():
         print(f"error: REPORT.md not found at {report_path}", file=sys.stderr)

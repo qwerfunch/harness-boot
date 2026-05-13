@@ -1,29 +1,29 @@
 # SWE-bench Verified A/B — REPORT
 
-> 실측 결과 누적 문서. **이 파일의 표는 실측 시점에 자동 채워집니다.** Framework 가 v0.15.8 (F-173) 에 landed, v0.15.10 (F-176) 에서 task 목록 dataset 검증, v0.15.11 (F-177) 에서 aggregate.py 의 REPORT.md 자동 갱신이 실제로 작동하도록 fix + 첫 demo row 추가.
+> Live results ledger. **The tables in this file are filled automatically when measurements arrive.** Framework landed in v0.15.8 (F-173), task list dataset-validated in v0.15.10 (F-176), `aggregate.py` auto-write into REPORT.md actually wired up + first demo row in v0.15.11 (F-177).
 
 **Methodology**: see [`README.md`](./README.md). **Validity threats**: see [`analysis/threats-to-validity.md`](./analysis/threats-to-validity.md).
 
 ---
 
-## 1. 진행 상태
+## 1. Progress
 
-| Stage | 상태 | 비고 |
+| Stage | Status | Notes |
 |---|---|---|
 | Framework | ✅ landed | v0.15.8 / F-173 |
 | Task list dataset-validated | ✅ landed | v0.15.10 / F-176 |
-| aggregate.py 자동 write | ✅ landed | v0.15.11 / F-177 |
-| Pilot run (5 task) | ⏳ 1/5 (demo row only) | requests-2317 (same-session demo · caveats in JSON) — 진짜 pilot 은 외부 Docker 환경 |
-| Full run (20 task) | ⏳ pending | pilot 결과 보고 진행 결정 |
-| README link | ⏳ pending | 결과 안정화 후 project root README 의 marketing 자리에 link |
+| `aggregate.py` auto-write | ✅ landed | v0.15.11 / F-177 |
+| Pilot run (5 tasks) | ⏳ 1/5 (demo row only) | requests-2317 (same-session demo · caveats in JSON) — a real pilot still requires an external Docker environment |
+| Full run (20 tasks) | ⏳ pending | Decision depends on pilot outcome |
+| README link | ⏳ pending | Add to project root README "Benchmarks" section once results stabilize |
 
 **Last updated**: 2026-05-13 · runs: 1 / 20 (1 demo)
 
 ---
 
-## 2. 결과 표 (실측 후 채움)
+## 2. Results tables (filled by `aggregate.py`)
 
-각 task row 의 값은 `results/<approach>/<task_id>.json` 의 schema (README §2 참조) 에서 자동 집계.
+Every row is computed by `scripts/aggregate.py` from the per-task JSON files under `results/<approach>/`. See `README.md` §2 for the JSON schema.
 
 ### 2.1 Per-task
 
@@ -68,61 +68,61 @@
 ### 2.3 Harness-only signals
 
 <!-- aggregate:harness-signals:start -->
-| Metric | Total | Per resolved task | 비고 |
+| Metric | Total | Per resolved task | Notes |
 |---|---|---|---|
-| Drift catches | 0 | 0.0 | 15-detector 가 잡은 issue 수 |
-| Evidence kinds used | 0 | — | 분포: — |
-| Iron Law 차단 발생 | — | — | F-172 follow-up (hook 자동화) 이후 자동 capture |
+| Drift catches | 0 | 0.0 | issues caught by the 15-detector |
+| Evidence kinds used | 0 | — | distribution: — |
+| Iron Law blocks | — | — | auto-captured after the F-172 / F-174 hook automation lands |
 <!-- aggregate:harness-signals:end -->
 
 ---
 
-## 3. By harness-fit slice (가설 검증)
+## 3. By harness-fit slice (hypothesis check)
 
-`harness_fit` axis 로 grouping:
+Tasks grouped by their `harness_fit` axis:
 
-| Slice | Tasks | Vanilla resolve | Harness resolve | Token Δ | 가설 |
+| Slice | Tasks | Vanilla resolve | Harness resolve | Token Δ | Hypothesis |
 |---|---|---|---|---|---|
-| **multi-step** (9 tasks) | django-13551 · sympy-13031 · sympy-13852 · scikit-learn-10844 · sphinx-8721 · sphinx-9229 · pytest-6197 · pylint-7080 · astropy-12907 | — | — | — | harness 가 token / resolve 양쪽 우위 예상 |
-| **medium-step** (7 tasks) | scikit-learn-10297 · matplotlib-14623 · pytest-7236 · flask-5014 · astropy-14182 · pylint-6386 · xarray-4094 | — | — | — | 비슷 또는 약간 harness 우위 |
-| **single-fix** (4 tasks) | django-10097 · matplotlib-23314 · requests-1142 · requests-2317 | — | — | — | vanilla 가 약간 우위 (harness overhead) |
+| **multi-step** (9 tasks) | django-13551 · sympy-13031 · sympy-13852 · scikit-learn-10844 · sphinx-8721 · sphinx-9229 · pytest-6197 · pylint-7080 · astropy-12907 | — | — | — | harness wins on tokens and resolve rate |
+| **medium-step** (7 tasks) | scikit-learn-10297 · matplotlib-14623 · pytest-7236 · flask-5014 · astropy-14182 · pylint-6386 · xarray-4094 | — | — | — | similar or slight harness edge |
+| **single-fix** (4 tasks) | django-10097 · matplotlib-23314 · requests-1142 · requests-2317 | — | — | — | vanilla slightly ahead (harness overhead) |
 
 ---
 
-## 4. 정성적 관찰 (실측 시 채움)
+## 4. Qualitative observations (filled during measurement)
 
-### 4.1 Vanilla 시도의 흔한 실패 패턴
+### 4.1 Common vanilla failure patterns
 
-(실측 후 — 어떤 task 에서 fail 했는지, 왜)
+(After measurement — which tasks failed, and why.)
 
-### 4.2 Harness 시도의 흔한 우위 패턴
+### 4.2 Common harness wins
 
-(실측 후 — drift catch / Iron Law 차단이 fail 직전에 잡은 케이스)
+(After measurement — cases where the drift detector or Iron Law caught something the manual review would have missed.)
 
-### 4.3 Harness 시도의 흔한 손해 패턴
+### 4.3 Common harness costs
 
-(실측 후 — boilerplate / mode=product 의 evidence ≥ 3 overhead)
+(After measurement — boilerplate overhead, `mode=product`'s `evidence ≥ 3` ceremony cost, etc.)
 
 ---
 
-## 5. 결론 (실측 후 작성)
+## 5. Conclusion (written after measurement)
 
-이 섹션은 실측 데이터 기반으로만 채움. framework 만 landed 한 시점에서는 작성 X.
+Only filled from real data. Not authored while the framework is the only thing that exists.
 
-기대 형식:
+Expected format:
 
-> Across 20 SWE-bench Verified tasks, harness-boot resolved N tasks vs vanilla M (Δ +/−%). Mean token consumption was X for vanilla and Y for harness (Δ +/−%). The largest harness wins came on multi-step tasks (mean Δ −15%); single-fix tasks favored vanilla by +Z%. Harness's drift detector caught K issues that vanilla's manual review would have missed.
+> Across 20 SWE-bench Verified tasks, harness-boot resolved N tasks vs vanilla M (Δ +/−%). Mean token consumption was X for vanilla and Y for harness (Δ +/−%). The largest harness wins came on multi-step tasks (mean Δ −15%); single-fix tasks favored vanilla by +Z%. The harness drift detector caught K issues that vanilla's manual review would have missed.
 
-null result 도 정직하게:
+A null result is recorded with the same discipline:
 
-> No significant difference observed at N=20. Effect size too small to claim. Larger run (full 500) or different model would resolve.
+> No significant difference observed at N=20. Effect size too small to claim. A larger run (full 500) or a different model would resolve this.
 
 ---
 
 ## 6. Raw data
 
-- `results/vanilla/*.json` — per-task vanilla 결과
-- `results/harness/*.json` — per-task harness 결과
-- `scripts/aggregate.py` 가 이 두 디렉터리를 읽고 §2/§3 표를 갱신
+- `results/vanilla/*.json` — per-task vanilla outcomes
+- `results/harness/*.json` — per-task harness outcomes
+- `scripts/aggregate.py` reads both directories and rewrites §2 / §3 tables in place
 
-수동 갱신이 아니라 스크립트로 갱신 — 사람 손이 데이터를 만지지 않음 (BR-014 anti-rationalization).
+No human-edited tables — the script is the only writer (BR-014 anti-rationalization).
