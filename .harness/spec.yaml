@@ -2017,6 +2017,17 @@ features:
     test_strategy: tdd
     digest: Direct response to the v0.15.6 post-release verification gap. The user's
       real question — "harness vs 그냥 Claude — 작업 퀄...
+  - id: F-173
+    name: SWE-bench Verified A/B benchmark suite — methodology + scripts + report
+      skeleton
+    type: docs
+    status: planned
+    release_target: v0.15.8
+    modules:
+      - docs_benchmark
+    test_strategy: smoke
+    digest: Direct response to "어떤 benchmark 로 객관 평가" — user picked SWE-bench
+      Verified 20-task subset (option A). This feature la...
 goals: []
 constraints:
   tech_stack:
