@@ -2065,6 +2065,29 @@ features:
       honors HARNESS_DISABLE_TOKEN_HOOK=1 for a hard opt-out, and surfaces
       both the privacy stance and the opt-out flag in README + CHANGELOG.
       Locks both behaviors with 2 new parity cases (total 866).'
+  - id: F-176
+    name: SWE-bench tasks.json correction — replace 10 nonexistent task_ids
+    type: fix
+    status: planned
+    release_target: v0.15.10
+    modules:
+      - docs_benchmark
+    test_strategy: smoke
+    digest: 'When pilot prep started, validation against the actual
+      Verified dataset (500 rows from princeton-nlp/SWE-bench_Verified)
+      revealed that 10 of the 20 task_ids in tasks.json do not exist:
+      django-15347, sympy-20639, scikit-learn-13497, scikit-learn-25500,
+      matplotlib-23987, sphinx-10325, pytest-7220, pytest-11148,
+      flask-4045, and the entire pandas-dev/pandas repo (0 tasks in
+      Verified). Replaced each with the closest verified candidate per
+      repo + difficulty bucket, pandas slot reassigned to pylint
+      (second pylint task to preserve N=20 with real ids). All 20 ids
+      now verified to exist; tasks.json gains `base_commit_short` and
+      `verified_difficulty` columns for transparency. REPORT.md §2.1
+      table reflects new ids. threats-to-validity.md gains a note about
+      authorial-vs-real difficulty mapping. The pre-merge audit pattern
+      (F-175) caught this on the very next cycle — validates the
+      ISSUES-LOG return loop.'
 goals: []
 constraints:
   tech_stack:

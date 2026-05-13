@@ -15,7 +15,7 @@
 | Full run (20 task) | ⏳ pending | pilot 결과 보고 진행 결정 |
 | README link | ⏳ pending | 결과 안정화 후 project root README 의 marketing 자리에 link |
 
-**Last updated**: 2026-05-13 (framework landed) · runs: 0 / 20
+**Last updated**: 2026-05-13 (framework landed; task list dataset-validated v0.15.10) · runs: 0 / 20
 
 ---
 
@@ -27,26 +27,26 @@
 
 | Task ID | Difficulty | Harness fit | Vanilla resolved | Vanilla tokens | Vanilla wall (s) | Harness resolved | Harness tokens | Harness wall (s) | Δ tokens | Δ resolve |
 |---|---|---|---|---|---|---|---|---|---|---|
-| django__django-13551 | medium | multi-step | — | — | — | — | — | — | — | — |
-| django__django-15347 | easy | single-fix | — | — | — | — | — | — | — | — |
+| django__django-13551 | easy | multi-step | — | — | — | — | — | — | — | — |
+| django__django-10097 | easy | single-fix | — | — | — | — | — | — | — | — |
 | sympy__sympy-13031 | medium | multi-step | — | — | — | — | — | — | — | — |
-| sympy__sympy-20639 | hard | multi-step | — | — | — | — | — | — | — | — |
-| scikit-learn__scikit-learn-13497 | medium | medium-step | — | — | — | — | — | — | — | — |
-| scikit-learn__scikit-learn-25500 | medium | multi-step | — | — | — | — | — | — | — | — |
-| matplotlib__matplotlib-23314 | easy | single-fix | — | — | — | — | — | — | — | — |
-| matplotlib__matplotlib-23987 | medium | medium-step | — | — | — | — | — | — | — | — |
-| sphinx-doc__sphinx-8721 | medium | multi-step | — | — | — | — | — | — | — | — |
-| sphinx-doc__sphinx-10325 | hard | multi-step | — | — | — | — | — | — | — | — |
-| pytest-dev__pytest-7220 | medium | medium-step | — | — | — | — | — | — | — | — |
-| pytest-dev__pytest-11148 | hard | multi-step | — | — | — | — | — | — | — | — |
+| sympy__sympy-13852 | hard | multi-step | — | — | — | — | — | — | — | — |
+| scikit-learn__scikit-learn-10297 | medium | medium-step | — | — | — | — | — | — | — | — |
+| scikit-learn__scikit-learn-10844 | medium | multi-step | — | — | — | — | — | — | — | — |
+| matplotlib__matplotlib-23314 | medium | single-fix | — | — | — | — | — | — | — | — |
+| matplotlib__matplotlib-14623 | medium | medium-step | — | — | — | — | — | — | — | — |
+| sphinx-doc__sphinx-8721 | easy | multi-step | — | — | — | — | — | — | — | — |
+| sphinx-doc__sphinx-9229 | hard | multi-step | — | — | — | — | — | — | — | — |
+| pytest-dev__pytest-7236 | medium | medium-step | — | — | — | — | — | — | — | — |
+| pytest-dev__pytest-6197 | hard | multi-step | — | — | — | — | — | — | — | — |
 | psf__requests-1142 | easy | single-fix | — | — | — | — | — | — | — | — |
 | psf__requests-2317 | easy | single-fix | — | — | — | — | — | — | — | — |
-| pallets__flask-4045 | medium | medium-step | — | — | — | — | — | — | — | — |
-| pylint-dev__pylint-7080 | hard | multi-step | — | — | — | — | — | — | — | — |
+| pallets__flask-5014 | easy | medium-step | — | — | — | — | — | — | — | — |
+| pylint-dev__pylint-7080 | medium | multi-step | — | — | — | — | — | — | — | — |
 | astropy__astropy-12907 | medium | multi-step | — | — | — | — | — | — | — | — |
 | astropy__astropy-14182 | medium | medium-step | — | — | — | — | — | — | — | — |
-| pandas-dev__pandas-50266 | medium | medium-step | — | — | — | — | — | — | — | — |
-| pydata__xarray-4094 | medium | medium-step | — | — | — | — | — | — | — | — |
+| pylint-dev__pylint-6386 | medium | medium-step | — | — | — | — | — | — | — | — |
+| pydata__xarray-4094 | easy | medium-step | — | — | — | — | — | — | — | — |
 
 ### 2.2 Aggregate
 
@@ -76,9 +76,9 @@
 
 | Slice | Tasks | Vanilla resolve | Harness resolve | Token Δ | 가설 |
 |---|---|---|---|---|---|
-| **multi-step** (10 tasks) | django-13551 · sympy-13031 · sympy-20639 · scikit-learn-25500 · sphinx-8721 · sphinx-10325 · pytest-11148 · pylint-7080 · astropy-12907 | — | — | — | harness 가 token / resolve 양쪽 우위 예상 |
-| **medium-step** (6 tasks) | scikit-learn-13497 · matplotlib-23987 · pytest-7220 · pallets-flask-4045 · astropy-14182 · pandas-50266 · xarray-4094 (note: 7 = 6+1, fit-mix 재분류 가능) | — | — | — | 비슷 또는 약간 harness 우위 |
-| **single-fix** (4 tasks) | django-15347 · matplotlib-23314 · requests-1142 · requests-2317 | — | — | — | vanilla 가 약간 우위 (harness overhead) |
+| **multi-step** (9 tasks) | django-13551 · sympy-13031 · sympy-13852 · scikit-learn-10844 · sphinx-8721 · sphinx-9229 · pytest-6197 · pylint-7080 · astropy-12907 | — | — | — | harness 가 token / resolve 양쪽 우위 예상 |
+| **medium-step** (7 tasks) | scikit-learn-10297 · matplotlib-14623 · pytest-7236 · flask-5014 · astropy-14182 · pylint-6386 · xarray-4094 | — | — | — | 비슷 또는 약간 harness 우위 |
+| **single-fix** (4 tasks) | django-10097 · matplotlib-23314 · requests-1142 · requests-2317 | — | — | — | vanilla 가 약간 우위 (harness overhead) |
 
 ---
 
