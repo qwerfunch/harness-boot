@@ -33,6 +33,8 @@ export function recordLlmCall(input) {
     const payload = { ...line };
     if (input.event.model !== undefined)
         payload['model'] = input.event.model;
+    if (input.event.feature !== undefined)
+        payload['feature'] = input.event.feature;
     try {
         appendFileSync(input.eventsPath, JSON.stringify(payload) + '\n', 'utf8');
     }

@@ -13,14 +13,22 @@
  *
  * @module init/tokenLog
  */
+/**
+ * Scenario tag identifying which surface drove the LLM call.
+ *
+ * - `idea` / `plan_doc` / `existing_code` — init scenarios (F-159+).
+ * - `work` — F-172. General `harness work` cycle (subagent invocations,
+ *   manual self-report, hook-driven auto-capture).
+ */
+export type LlmCallScenario = 'idea' | 'plan_doc' | 'existing_code' | 'work';
 /** One LLM-call accounting event. */
 export interface LlmCallEvent {
     /** ISO-8601 UTC timestamp without milliseconds. */
     readonly ts: string;
     /** Always `'llm_call'`. */
     readonly type: 'llm_call';
-    /** Init scenario the call belongs to. */
-    readonly scenario: 'idea' | 'plan_doc' | 'existing_code';
+    /** Surface tag. */
+    readonly scenario: LlmCallScenario;
     /** Agent that made the call (e.g. `'researcher'`, `'product-planner'`). */
     readonly agent: string;
     /** Input tokens consumed. */
@@ -29,6 +37,8 @@ export interface LlmCallEvent {
     readonly tokens_out: number;
     /** Optional model identifier. */
     readonly model?: string;
+    /** F-172 — optional feature id when the call belongs to a work cycle. */
+    readonly feature?: string;
 }
 /** Required input for {@link recordLlmCall}. */
 export interface RecordLlmCallInput {

@@ -21063,7 +21063,7 @@ var init_validate = __esm({
 });
 
 // src/core/pluginRoot.ts
-import { existsSync as existsSync5, readFileSync as readFileSync19, realpathSync, statSync as statSync14 } from "node:fs";
+import { existsSync as existsSync6, readFileSync as readFileSync19, realpathSync, statSync as statSync14 } from "node:fs";
 import { homedir } from "node:os";
 import { delimiter as pathDelimiter, join as join18, resolve as resolvePath7 } from "node:path";
 function loadPluginJson(root) {
@@ -21279,7 +21279,7 @@ var init_pluginRoot = __esm({
 });
 
 // src/spec/archive.ts
-import { existsSync as existsSync6, readFileSync as readFileSync20, writeFileSync as writeFileSync11 } from "node:fs";
+import { existsSync as existsSync7, readFileSync as readFileSync20, writeFileSync as writeFileSync11 } from "node:fs";
 import { join as join19 } from "node:path";
 function condenseWhitespace(value) {
   return value.trim().replace(/\s+/g, " ");
@@ -21346,7 +21346,7 @@ function extractBody(entry) {
   return out;
 }
 function loadArchive(archivePath) {
-  if (!existsSync6(archivePath)) {
+  if (!existsSync7(archivePath)) {
     return blankArchive();
   }
   const parsed = (0, import_yaml12.parse)(readFileSync20(archivePath, "utf-8"));
@@ -21373,7 +21373,7 @@ function isFeatureRecord(value) {
 function bulkMigrate(harnessDir) {
   const statePath = join19(harnessDir, "state.yaml");
   const specPath = join19(harnessDir, "spec.yaml");
-  if (!existsSync6(statePath) || !existsSync6(specPath)) {
+  if (!existsSync7(statePath) || !existsSync7(specPath)) {
     return 0;
   }
   const state = (0, import_yaml12.parse)(readFileSync20(statePath, "utf-8"));
@@ -21423,7 +21423,7 @@ function bulkMigrate(harnessDir) {
 function autoArchiveOpenQuestions(harnessDir, options = {}) {
   const specPath = join19(harnessDir, "spec.yaml");
   const archivePath = join19(harnessDir, "spec.archive.yaml");
-  if (!existsSync6(specPath)) {
+  if (!existsSync7(specPath)) {
     return 0;
   }
   const spec = (0, import_yaml12.parse)(readFileSync20(specPath, "utf-8"));
@@ -22499,7 +22499,7 @@ var init_sync = __esm({
 
 // src/gate/runner.ts
 import { spawnSync as spawnSync2 } from "node:child_process";
-import { existsSync as existsSync7, readFileSync as readFileSync22, readdirSync as readdirSync6, statSync as statSync16 } from "node:fs";
+import { existsSync as existsSync8, readFileSync as readFileSync22, readdirSync as readdirSync6, statSync as statSync16 } from "node:fs";
 import { delimiter as pathDelimiter2, join as join21, sep as pathSep } from "node:path";
 function which(bin) {
   const pathEnv = process.env["PATH"] ?? "";
@@ -22799,7 +22799,7 @@ function detectGate3Command(projectRoot) {
   return null;
 }
 function detectGate4Command(projectRoot) {
-  if (!existsSync7(join21(projectRoot, ".git"))) {
+  if (!existsSync8(join21(projectRoot, ".git"))) {
     return null;
   }
   if (which("git") === null) {
@@ -24316,14 +24316,14 @@ __export(statusCommand_exports, {
   composeStatusText: () => composeStatusText,
   runDriveStatus: () => runDriveStatus
 });
-import { existsSync as existsSync8, readFileSync as readFileSync25 } from "node:fs";
+import { existsSync as existsSync9, readFileSync as readFileSync25 } from "node:fs";
 import { join as join23 } from "node:path";
 function isPlainObject16(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 function readSpecFeatures(harnessDir) {
   const path = join23(harnessDir, "spec.yaml");
-  if (!existsSync8(path)) {
+  if (!existsSync9(path)) {
     return [];
   }
   const raw = readFileSync25(path, "utf-8");
@@ -24422,7 +24422,7 @@ function sleep(ms) {
 async function runDriveStatus(options) {
   const out = options.out ?? ((s) => process.stdout.write(s));
   const harnessDir = options.harnessDir;
-  if (!existsSync8(harnessDir)) {
+  if (!existsSync9(harnessDir)) {
     out(`drive --status: harness dir not found: ${harnessDir}
 `);
     return 2;
@@ -24431,7 +24431,7 @@ async function runDriveStatus(options) {
   const watch = options.watch ?? false;
   const renderOnce = () => {
     const specPath = join23(harnessDir, "spec.yaml");
-    const goals = existsSync8(specPath) ? readGoals(specPath) : [];
+    const goals = existsSync9(specPath) ? readGoals(specPath) : [];
     const specFeatures = readSpecFeatures(harnessDir);
     const state = State.load(harnessDir);
     if (options.json === true) {
@@ -24481,7 +24481,7 @@ __export(checkpoint_exports, {
   stopFileExists: () => stopFileExists,
   stopFilePath: () => stopFilePath
 });
-import { appendFileSync as appendFileSync9, existsSync as existsSync9, mkdirSync as mkdirSync8, readFileSync as readFileSync26, statSync as statSync18, writeFileSync as writeFileSync15 } from "node:fs";
+import { appendFileSync as appendFileSync9, existsSync as existsSync10, mkdirSync as mkdirSync8, readFileSync as readFileSync26, statSync as statSync18, writeFileSync as writeFileSync15 } from "node:fs";
 import { dirname as dirname9, join as join24 } from "node:path";
 function isPlainObject17(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -24536,7 +24536,7 @@ function defaultCheckpoint(goalId, now = /* @__PURE__ */ new Date()) {
 }
 function loadCheckpoint(harnessDir) {
   const path = checkpointPath(harnessDir);
-  if (!existsSync9(path)) {
+  if (!existsSync10(path)) {
     return null;
   }
   let raw;
@@ -24585,7 +24585,7 @@ function saveCheckpoint(harnessDir, checkpoint, now = /* @__PURE__ */ new Date()
 }
 function clearCheckpoint(harnessDir) {
   const path = checkpointPath(harnessDir);
-  if (!existsSync9(path)) {
+  if (!existsSync10(path)) {
     return false;
   }
   try {
@@ -24604,7 +24604,7 @@ function appendProgress(harnessDir, line) {
   appendFileSync9(path, line + ending, "utf-8");
 }
 function stopFileExists(harnessDir) {
-  return existsSync9(stopFilePath(harnessDir));
+  return existsSync10(stopFilePath(harnessDir));
 }
 var import_yaml20, DEFAULT_MAX_ITERATIONS, DEFAULT_MAX_SECONDS;
 var init_checkpoint = __esm({
@@ -24729,7 +24729,7 @@ __export(planPhase_exports, {
   readGoalContext: () => readGoalContext,
   startPhaseA: () => startPhaseA
 });
-import { existsSync as existsSync10, mkdirSync as mkdirSync10, readFileSync as readFileSync27 } from "node:fs";
+import { existsSync as existsSync11, mkdirSync as mkdirSync10, readFileSync as readFileSync27 } from "node:fs";
 import { join as join26 } from "node:path";
 function briefPathFor(harnessDir, goalId) {
   return join26(goalArtifactDir(harnessDir, goalId), "brief.md");
@@ -24739,7 +24739,7 @@ function planPathFor(harnessDir, goalId) {
 }
 function readGoalFromSpec(harnessDir, goalId) {
   const specPath = join26(harnessDir, "spec.yaml");
-  if (!existsSync10(specPath)) {
+  if (!existsSync11(specPath)) {
     return null;
   }
   const goals = readGoals(specPath);
@@ -24747,7 +24747,7 @@ function readGoalFromSpec(harnessDir, goalId) {
 }
 function allocateGoalId(harnessDir) {
   const specPath = join26(harnessDir, "spec.yaml");
-  const specIds = existsSync10(specPath) ? readGoals(specPath).map((g) => g.id) : [];
+  const specIds = existsSync11(specPath) ? readGoals(specPath).map((g) => g.id) : [];
   const state = State.load(harnessDir);
   const stateIds = state.goals().map((g) => g.id);
   const union = Array.from(/* @__PURE__ */ new Set([...specIds, ...stateIds]));
@@ -24803,7 +24803,7 @@ function advancePhaseA(harnessDir, approvals = {}, now = /* @__PURE__ */ new Dat
       )
     };
   }
-  if (!existsSync10(ck.plan.brief_path)) {
+  if (!existsSync11(ck.plan.brief_path)) {
     return {
       kind: "halt",
       briefPath: ck.plan.brief_path,
@@ -24833,7 +24833,7 @@ function advancePhaseA(harnessDir, approvals = {}, now = /* @__PURE__ */ new Dat
     ck.plan.brief_approved = true;
     saveCheckpoint(harnessDir, ck, now);
   }
-  if (!existsSync10(ck.plan.plan_path)) {
+  if (!existsSync11(ck.plan.plan_path)) {
     return {
       kind: "halt",
       briefPath: ck.plan.brief_path,
@@ -24904,7 +24904,7 @@ function readGoalContext(harnessDir, goalId) {
   if (ck === null || ck.goal_id !== goalId) {
     return null;
   }
-  if (existsSync10(ck.plan.brief_path)) {
+  if (existsSync11(ck.plan.brief_path)) {
     const text = readFileSync27(ck.plan.brief_path, "utf-8");
     const heading = /^#\s+(.+)$/m.exec(text);
     if (heading !== null) {
@@ -25077,7 +25077,7 @@ var init_executor = __esm({
 });
 
 // src/drive/goalRetro.ts
-import { appendFileSync as appendFileSync11, existsSync as existsSync11, mkdirSync as mkdirSync11, readFileSync as readFileSync28, writeFileSync as writeFileSync16 } from "node:fs";
+import { appendFileSync as appendFileSync11, existsSync as existsSync12, mkdirSync as mkdirSync11, readFileSync as readFileSync28, writeFileSync as writeFileSync16 } from "node:fs";
 import { dirname as dirname11, join as join27 } from "node:path";
 function goalRetroPath(harnessDir, goalId) {
   return join27(goalArtifactDir(harnessDir, goalId), "retro.md");
@@ -25109,7 +25109,7 @@ function firstGateToFail(feature) {
 }
 function countHaltsFromProgressLog(harnessDir) {
   const path = progressLogPath(harnessDir);
-  if (!existsSync11(path)) {
+  if (!existsSync12(path)) {
     return { total: 0, perReason: {} };
   }
   const text = readFileSync28(path, "utf-8");
@@ -25128,7 +25128,7 @@ function countHaltsFromProgressLog(harnessDir) {
 }
 function featureRetroPreview(harnessDir, fid) {
   const path = join27(harnessDir, "_workspace", "retro", `${fid}.md`);
-  if (!existsSync11(path)) {
+  if (!existsSync12(path)) {
     return null;
   }
   const text = readFileSync28(path, "utf-8");
@@ -25218,11 +25218,11 @@ function composeRetro(goalSpec, features, halts, iteration, elapsedSec, startedA
 function generateGoalRetro(harnessDir, goalId, options = {}) {
   const path = goalRetroPath(harnessDir, goalId);
   const force = options.force ?? false;
-  if (existsSync11(path) && !force) {
+  if (existsSync12(path) && !force) {
     return { path, created: false, feature_count: 0, halt_count: 0 };
   }
   const specPath = join27(harnessDir, "spec.yaml");
-  const goals = existsSync11(specPath) ? readGoals(specPath) : [];
+  const goals = existsSync12(specPath) ? readGoals(specPath) : [];
   const goalSpec = goals.find((g) => g.id === goalId);
   if (goalSpec === void 0) {
     throw new Error(`drive goalRetro: ${goalId} not found in spec.yaml`);
@@ -25277,13 +25277,13 @@ var init_goalRetro = __esm({
 });
 
 // src/drive/realTest.ts
-import { appendFileSync as appendFileSync12, existsSync as existsSync12, mkdirSync as mkdirSync12, readFileSync as readFileSync29 } from "node:fs";
+import { appendFileSync as appendFileSync12, existsSync as existsSync13, mkdirSync as mkdirSync12, readFileSync as readFileSync29 } from "node:fs";
 import { dirname as dirname12, join as join28, resolve as resolvePath10 } from "node:path";
 import { spawnSync as spawnSync4 } from "node:child_process";
 function readTransientRetryConfig(harnessDir) {
   const path = join28(harnessDir, "harness.yaml");
   const fallback = { enabled: true, cap: DEFAULT_MAX_TRANSIENT_RETRIES };
-  if (!existsSync12(path)) {
+  if (!existsSync13(path)) {
     return fallback;
   }
   let parsed;
@@ -25323,7 +25323,7 @@ function nowIso15() {
 }
 function readConfig(harnessDir) {
   const path = join28(harnessDir, "harness.yaml");
-  if (!existsSync12(path)) {
+  if (!existsSync13(path)) {
     return null;
   }
   let parsed;
@@ -25450,7 +25450,7 @@ var init_realTest = __esm({
 });
 
 // src/drive/replan.ts
-import { appendFileSync as appendFileSync13, existsSync as existsSync13, mkdirSync as mkdirSync13, readFileSync as readFileSync30, writeFileSync as writeFileSync17 } from "node:fs";
+import { appendFileSync as appendFileSync13, existsSync as existsSync14, mkdirSync as mkdirSync13, readFileSync as readFileSync30, writeFileSync as writeFileSync17 } from "node:fs";
 import { dirname as dirname13, join as join29 } from "node:path";
 function emptyResult() {
   return { evaluated: false, deltas: { deferred: [], reordered: [] }, manifest_path: null };
@@ -25470,7 +25470,7 @@ function isPlainObject21(value) {
 }
 function isReplanEnabled(harnessDir) {
   const path = join29(harnessDir, "harness.yaml");
-  if (!existsSync13(path)) {
+  if (!existsSync14(path)) {
     return true;
   }
   try {
@@ -25496,7 +25496,7 @@ function replanAlreadyEvaluated(harnessDir, completedFid) {
 }
 function alreadyEvaluated(harnessDir, completedFid) {
   const path = join29(harnessDir, "events.log");
-  if (!existsSync13(path)) {
+  if (!existsSync14(path)) {
     return false;
   }
   const text = readFileSync30(path, "utf-8");
@@ -25516,7 +25516,7 @@ function alreadyEvaluated(harnessDir, completedFid) {
 }
 function alreadyDisabledOnce(harnessDir) {
   const path = join29(harnessDir, "events.log");
-  if (!existsSync13(path)) {
+  if (!existsSync14(path)) {
     return false;
   }
   const text = readFileSync30(path, "utf-8");
@@ -25530,7 +25530,7 @@ function appendEvent9(harnessDir, event) {
 }
 function readRetro(harnessDir, completedFid) {
   const path = join29(harnessDir, "_workspace", "retro", `${completedFid}.md`);
-  if (!existsSync13(path)) {
+  if (!existsSync14(path)) {
     return null;
   }
   try {
@@ -25545,7 +25545,7 @@ function retroSuggestsReplan(retroText) {
 }
 function readSupersededIds(harnessDir) {
   const path = join29(harnessDir, "spec.yaml");
-  if (!existsSync13(path)) {
+  if (!existsSync14(path)) {
     return /* @__PURE__ */ new Set();
   }
   let parsed;
@@ -25634,7 +25634,7 @@ function replanAfterCompletion(harnessDir, completedFid, goalId) {
       `${goalId}-after-${completedFid}.md`
     );
     mkdirSync13(dirname13(manifestPath), { recursive: true });
-    if (!existsSync13(manifestPath)) {
+    if (!existsSync14(manifestPath)) {
       writeFileSync17(manifestPath, renderManifest(goalId, completedFid, retroText), "utf-8");
     }
   }
@@ -25702,7 +25702,7 @@ __export(loop_exports, {
   runDriveStep: () => runDriveStep
 });
 import { execFileSync } from "node:child_process";
-import { appendFileSync as appendFileSync14, existsSync as existsSync14, readFileSync as readFileSync31 } from "node:fs";
+import { appendFileSync as appendFileSync14, existsSync as existsSync15, readFileSync as readFileSync31 } from "node:fs";
 import { dirname as dirname14, join as join30 } from "node:path";
 function appendRealTestRetryEvent(harnessDir, payload) {
   const path = join30(harnessDir, "events.log");
@@ -25798,7 +25798,7 @@ function allFeaturesDone(ck, state) {
 }
 function loadSpecForPlanner(harnessDir) {
   const path = join30(harnessDir, "spec.yaml");
-  if (!existsSync14(path)) {
+  if (!existsSync15(path)) {
     return null;
   }
   try {
@@ -26178,7 +26178,7 @@ var init_loop = __esm({
 });
 
 // src/cli/harness.ts
-import { existsSync as existsSync15, statSync as statSync19 } from "node:fs";
+import { existsSync as existsSync16, statSync as statSync19 } from "node:fs";
 import { basename as basename4, join as join31, resolve as resolvePath11 } from "node:path";
 
 // node_modules/commander/esm.mjs
@@ -28067,6 +28067,7 @@ function recordLlmCall(input) {
   };
   const payload = { ...line };
   if (input.event.model !== void 0) payload["model"] = input.event.model;
+  if (input.event.feature !== void 0) payload["feature"] = input.event.feature;
   try {
     appendFileSync3(input.eventsPath, JSON.stringify(payload) + "\n", "utf8");
   } catch {
@@ -28337,6 +28338,13 @@ function parseTs3(ts) {
   }
   return new Date(ms);
 }
+function numberFromEvent(ev, field) {
+  const value = ev[field];
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    return 0;
+  }
+  return Math.floor(value);
+}
 function featureId(ev) {
   let fid = ev["feature"] ?? ev["feature_id"];
   if ((fid === void 0 || fid === null) && isPlainObject8(ev["payload"])) {
@@ -28374,7 +28382,8 @@ function aggregate(events, options = {}) {
     lead_time_sec: { count: 0, min: null, median: null, mean: null, max: null },
     gate_stats: {},
     drift_incidents: 0,
-    evidence_by_author: { human: 0, llm: 0 }
+    evidence_by_author: { human: 0, llm: 0 },
+    tokens: { input_total: 0, output_total: 0, call_count: 0, by_model: {} }
   };
   const activatedLast = /* @__PURE__ */ new Map();
   const doneFirst = /* @__PURE__ */ new Map();
@@ -28400,6 +28409,17 @@ function aggregate(events, options = {}) {
       if (fid !== null && dt !== null && !doneFirst.has(fid)) {
         doneFirst.set(fid, dt);
       }
+    } else if (typ === "llm_call") {
+      const tIn = numberFromEvent(ev, "tokens_in");
+      const tOut = numberFromEvent(ev, "tokens_out");
+      const model = typeof ev["model"] === "string" && ev["model"].length > 0 ? ev["model"] : "unknown";
+      report.tokens.input_total += tIn;
+      report.tokens.output_total += tOut;
+      report.tokens.call_count += 1;
+      const bucket = report.tokens.by_model[model] ?? (report.tokens.by_model[model] = { input: 0, output: 0, calls: 0 });
+      bucket.input += tIn;
+      bucket.output += tOut;
+      bucket.calls += 1;
     } else if (typ === "evidence_added") {
       const author = ev["author"];
       const kind = typeof ev["kind"] === "string" ? ev["kind"] : "";
@@ -28553,7 +28573,7 @@ var import_yaml8 = __toESM(require_dist(), 1);
 init_gates();
 init_state();
 init_kickoff();
-import { readFileSync as readFileSync15, statSync as statSync11 } from "node:fs";
+import { existsSync as existsSync5, readFileSync as readFileSync15, statSync as statSync11 } from "node:fs";
 import { join as join14 } from "node:path";
 
 // src/ui/dashboardConfig.ts
@@ -28637,6 +28657,7 @@ var EN = {
   active_feature: 'working on: "{title}"',
   progress_line: "  progress: {passed}/{total} gates passed \xB7 {evidence} evidence entries",
   progress_line_split: "  progress: {passed}/{total} gates passed \xB7 {evidence} evidence ({human} human, {llm} llm)",
+  tokens_line: "  tokens: {input} in / {output} out ({calls} calls)",
   blocker_line: "  blocker: {note}",
   dashboard_title: "harness-boot",
   no_active: "no active feature.",
@@ -28673,6 +28694,7 @@ var KO = {
   active_feature: '\uC791\uC5C5 \uC911: "{title}"',
   progress_line: "  \uC9C4\uD589: \uAC80\uC99D {passed}/{total} \uD1B5\uACFC \xB7 \uADFC\uAC70 {evidence} \uAC1C",
   progress_line_split: "  \uC9C4\uD589: \uAC80\uC99D {passed}/{total} \uD1B5\uACFC \xB7 \uADFC\uAC70 {evidence} \uAC1C (\uC0AC\uB78C {human}, \uAE30\uACC4 {llm})",
+  tokens_line: "  \uD1A0\uD070: \uC785\uB825 {input} / \uCD9C\uB825 {output} ({calls} \uD68C)",
   blocker_line: "  \uCC28\uB2E8: {note}",
   dashboard_title: "harness-boot",
   no_active: "\uD604\uC7AC \uC791\uC5C5 \uC911\uC778 \uD53C\uCC98 \uC5C6\uC74C.",
@@ -28833,6 +28855,44 @@ function countGatesPassed(gates) {
   }
   return count;
 }
+function aggregateTokensForFeature(harnessDir, fid) {
+  if (harnessDir === null) {
+    return null;
+  }
+  const path = join14(harnessDir, "events.log");
+  if (!existsSync5(path)) {
+    return null;
+  }
+  let raw;
+  try {
+    raw = readFileSync15(path, "utf-8");
+  } catch {
+    return null;
+  }
+  let input = 0;
+  let output = 0;
+  let calls = 0;
+  for (const line of raw.split("\n")) {
+    if (line.length === 0) continue;
+    let parsed;
+    try {
+      parsed = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (!isPlainObject9(parsed) || parsed["type"] !== "llm_call") continue;
+    if (parsed["feature"] !== fid) continue;
+    const tIn = parsed["tokens_in"];
+    const tOut = parsed["tokens_out"];
+    if (typeof tIn === "number" && Number.isFinite(tIn) && tIn >= 0) input += Math.floor(tIn);
+    if (typeof tOut === "number" && Number.isFinite(tOut) && tOut >= 0) output += Math.floor(tOut);
+    calls += 1;
+  }
+  if (calls === 0) {
+    return null;
+  }
+  return { input, output, calls };
+}
 function countEvidenceByAuthor(evidence) {
   let human = 0;
   let llm = 0;
@@ -28915,6 +28975,16 @@ function renderActiveBlock(feature, spec, lang, harnessDir) {
   const [coverage, detailed] = loadCoverage(harnessDir, fid);
   if (coverage !== null && coverage < 1) {
     lines.push(formatCoverageLine(coverage, detailed));
+  }
+  const tokens = aggregateTokensForFeature(harnessDir, fid);
+  if (tokens !== null) {
+    lines.push(
+      t("tokens_line", lang, {
+        input: tokens.input,
+        output: tokens.output,
+        calls: tokens.calls
+      })
+    );
   }
   const blocker = latestBlockerNote(feature);
   if (blocker !== null) {
@@ -29449,6 +29519,18 @@ function formatWorkHuman(r) {
   return `${lines.join("\n")}
 `;
 }
+function parsePositiveInt(value, flag) {
+  if (typeof value !== "string" && typeof value !== "number") {
+    printError(`error: ${flag} requires a non-negative integer`);
+    process.exit(3);
+  }
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    printError(`error: ${flag} must be a non-negative integer (got ${String(value)})`);
+    process.exit(3);
+  }
+  return parsed;
+}
 function emitWork(result, json) {
   if (json) {
     printJson(workResultToJson(result));
@@ -29495,7 +29577,7 @@ function buildProgram() {
       const specPath = join31(harnessDir, "spec.yaml");
       let spec = null;
       try {
-        if (existsSync15(specPath)) {
+        if (existsSync16(specPath)) {
           spec = (0, import_yaml25.parse)(readFileSync32(specPath, "utf-8"));
         }
       } catch {
@@ -29839,6 +29921,53 @@ function buildProgram() {
       printJson(report);
     } else {
       printHuman(formatHuman3(report));
+    }
+  });
+  program2.command("token").description("record an llm_call event with token usage (F-172 measurement infra)").option("--harness-dir <dir>", "path to .harness directory", "./.harness").requiredOption("--in <num>", "input tokens (integer \u2265 0)").requiredOption("--out <num>", "output tokens (integer \u2265 0)").requiredOption("--model <id>", "model identifier (e.g. claude-sonnet-4-6)").option("--feature <fid>", "feature this call belongs to (F-NNN)").option(
+    "--kind <kind>",
+    "caller kind \u2014 `subagent` (automated), `user` (manual self-report)",
+    "user"
+  ).option("--json", "emit JSON result").action((options) => {
+    const harnessDir = resolveHarnessDir(options["harnessDir"]);
+    if (!isDirectory4(harnessDir)) {
+      printError(`error: ${harnessDir} not found`);
+      process.exit(2);
+    }
+    const tokensIn = parsePositiveInt(options["in"], "--in");
+    const tokensOut = parsePositiveInt(options["out"], "--out");
+    const model = typeof options["model"] === "string" ? options["model"].trim() : "";
+    if (model.length === 0) {
+      printError("error: --model cannot be empty");
+      process.exit(3);
+    }
+    const kind = typeof options["kind"] === "string" ? options["kind"].trim() : "user";
+    const feature = typeof options["feature"] === "string" && options["feature"].length > 0 ? options["feature"] : void 0;
+    recordLlmCall({
+      eventsPath: join31(harnessDir, "events.log"),
+      event: {
+        scenario: "work",
+        agent: kind,
+        tokens_in: tokensIn,
+        tokens_out: tokensOut,
+        model,
+        feature
+      }
+    });
+    if (options["json"]) {
+      printJson({
+        ok: true,
+        scenario: "work",
+        agent: kind,
+        tokens_in: tokensIn,
+        tokens_out: tokensOut,
+        model,
+        feature: feature ?? null
+      });
+    } else {
+      printHuman(
+        `token: recorded llm_call \xB7 ${tokensIn} in / ${tokensOut} out \xB7 model=${model}${feature ? ` \xB7 feature=${feature}` : ""}
+`
+      );
     }
   });
   program2.command("inbox").description("list open Q&A questions under .harness/_workspace/questions/").option("--harness-dir <dir>", "path to .harness directory", "./.harness").option("--feature <fid>", "filter to one feature id").option("--all", "include answered questions").option("--json", "emit JSON array").action((options) => {
@@ -30385,7 +30514,7 @@ function runPlanDocScenario(args) {
     process.exit(3);
   }
   const mdPath = resolvePath11(targetDir, mdRelative);
-  if (!existsSync15(mdPath) || !statSync19(mdPath).isFile()) {
+  if (!existsSync16(mdPath) || !statSync19(mdPath).isFile()) {
     printError(`init --scenario plan_doc: ${mdPath} does not exist or is not a file`);
     process.exit(3);
   }
@@ -30453,7 +30582,7 @@ function resolvePluginRootFromBinary() {
   const entry = process.argv[1] ?? ".";
   let dir = resolvePath11(entry, "..");
   for (let i = 0; i < 6; i += 1) {
-    if (existsSync15(join31(dir, ".claude-plugin", "plugin.json"))) {
+    if (existsSync16(join31(dir, ".claude-plugin", "plugin.json"))) {
       return dir;
     }
     const parent = resolvePath11(dir, "..");

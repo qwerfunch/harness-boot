@@ -62,6 +62,41 @@ describe('dashboard.render — section ordering', () => {
     expect(out).toContain('진행: 검증 1/6 통과 · 근거 1 개');
   });
 
+  it('F-172 — token line shows when llm_call events exist for active feature', () => {
+    const work = mkdtempSync(join(tmpdir(), 'dash-tokens-'));
+    try {
+      const harness = join(work, '.harness');
+      mkdirSync(harness, {recursive: true});
+      writeFileSync(
+        join(harness, 'events.log'),
+        '{"ts":"2026-05-13T10:00:00Z","type":"llm_call","scenario":"work","agent":"user","tokens_in":1500,"tokens_out":600,"model":"claude-sonnet-4-6","feature":"F-001"}\n' +
+          '{"ts":"2026-05-13T10:01:00Z","type":"llm_call","scenario":"work","agent":"subagent","tokens_in":500,"tokens_out":250,"model":"claude-sonnet-4-6","feature":"F-001"}\n',
+        'utf-8',
+      );
+      const state = {
+        session: {active_feature_id: 'F-001'},
+        features: [
+          {id: 'F-001', status: 'in_progress', gates: {}, evidence: []},
+        ],
+      };
+      const out = render(state, SPEC, [], {lang: 'ko', harnessDir: harness});
+      expect(out).toContain('토큰: 입력 2000 / 출력 850 (2 회)');
+    } finally {
+      rmSync(work, {recursive: true, force: true});
+    }
+  });
+
+  it('F-172 — token line hidden when no llm_call events for feature', () => {
+    const state = {
+      session: {active_feature_id: 'F-001'},
+      features: [
+        {id: 'F-001', status: 'in_progress', gates: {}, evidence: []},
+      ],
+    };
+    const out = render(state, SPEC, [], {lang: 'ko'});
+    expect(out).not.toContain('토큰:');
+  });
+
   it('F-167 — progress line shows split (human + llm) when both > 0', () => {
     const state = {
       session: {active_feature_id: 'F-001'},

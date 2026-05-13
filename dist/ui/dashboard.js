@@ -10,7 +10,7 @@
  *
  * @module ui/dashboard
  */
-import { readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse as yamlParse } from 'yaml';
 import { STANDARD_GATES } from '../core/gates.js';
@@ -119,6 +119,57 @@ function countGatesPassed(gates) {
     return count;
 }
 /**
+ * F-172 — sums `tokens_in` / `tokens_out` / call count from
+ * `events.log` `llm_call` entries scoped to a single feature. Returns
+ * `null` when no events file exists or no matching events are found,
+ * so the caller can hide the token line on a fresh project.
+ */
+function aggregateTokensForFeature(harnessDir, fid) {
+    if (harnessDir === null) {
+        return null;
+    }
+    const path = join(harnessDir, 'events.log');
+    if (!existsSync(path)) {
+        return null;
+    }
+    let raw;
+    try {
+        raw = readFileSync(path, 'utf-8');
+    }
+    catch {
+        return null;
+    }
+    let input = 0;
+    let output = 0;
+    let calls = 0;
+    for (const line of raw.split('\n')) {
+        if (line.length === 0)
+            continue;
+        let parsed;
+        try {
+            parsed = JSON.parse(line);
+        }
+        catch {
+            continue;
+        }
+        if (!isPlainObject(parsed) || parsed['type'] !== 'llm_call')
+            continue;
+        if (parsed['feature'] !== fid)
+            continue;
+        const tIn = parsed['tokens_in'];
+        const tOut = parsed['tokens_out'];
+        if (typeof tIn === 'number' && Number.isFinite(tIn) && tIn >= 0)
+            input += Math.floor(tIn);
+        if (typeof tOut === 'number' && Number.isFinite(tOut) && tOut >= 0)
+            output += Math.floor(tOut);
+        calls += 1;
+    }
+    if (calls === 0) {
+        return null;
+    }
+    return { input, output, calls };
+}
+/**
  * F-167 — partitions an evidence array by author. Entries without an
  * explicit `author` field (pre-F-167 state.yaml content) fall back to
  * {@link deriveEvidenceAuthor} so historical data renders correctly.
@@ -214,6 +265,16 @@ function renderActiveBlock(feature, spec, lang, harnessDir) {
     const [coverage, detailed] = loadCoverage(harnessDir, fid);
     if (coverage !== null && coverage < 1.0) {
         lines.push(formatCoverageLine(coverage, detailed));
+    }
+    // F-172 — token line surfaces only when llm_call events exist for
+    // the active feature. Hidden on fresh projects.
+    const tokens = aggregateTokensForFeature(harnessDir, fid);
+    if (tokens !== null) {
+        lines.push(t('tokens_line', lang, {
+            input: tokens.input,
+            output: tokens.output,
+            calls: tokens.calls,
+        }));
     }
     const blocker = latestBlockerNote(feature);
     if (blocker !== null) {

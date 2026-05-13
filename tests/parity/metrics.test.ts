@@ -90,6 +90,35 @@ describe('metrics.aggregate', () => {
     expect(r.drift_incidents).toBe(1);
   });
 
+  it('F-172 — aggregates llm_call events into tokens totals + per-model', () => {
+    const llmEvents = [
+      {ts: '2026-05-13T10:00:00Z', type: 'llm_call', scenario: 'work', agent: 'user', tokens_in: 1000, tokens_out: 500, model: 'claude-sonnet-4-6'},
+      {ts: '2026-05-13T10:05:00Z', type: 'llm_call', scenario: 'work', agent: 'subagent', tokens_in: 2000, tokens_out: 800, model: 'claude-sonnet-4-6'},
+      {ts: '2026-05-13T10:10:00Z', type: 'llm_call', scenario: 'idea', agent: 'researcher', tokens_in: 300, tokens_out: 150, model: 'claude-opus-4-7'},
+      // missing model → 'unknown' bucket
+      {ts: '2026-05-13T10:15:00Z', type: 'llm_call', scenario: 'work', agent: 'user', tokens_in: 100, tokens_out: 50},
+      // invalid (negative) → contributes 0 but counts as call
+      {ts: '2026-05-13T10:20:00Z', type: 'llm_call', scenario: 'work', agent: 'user', tokens_in: -5, tokens_out: 25, model: 'claude-sonnet-4-6'},
+    ];
+    const r = aggregate(llmEvents);
+    expect(r.tokens.call_count).toBe(5);
+    expect(r.tokens.input_total).toBe(1000 + 2000 + 300 + 100 + 0);
+    expect(r.tokens.output_total).toBe(500 + 800 + 150 + 50 + 25);
+    expect(r.tokens.by_model['claude-sonnet-4-6']).toEqual({input: 3000, output: 1325, calls: 3});
+    expect(r.tokens.by_model['claude-opus-4-7']).toEqual({input: 300, output: 150, calls: 1});
+    expect(r.tokens.by_model['unknown']).toEqual({input: 100, output: 50, calls: 1});
+  });
+
+  it('F-172 — zero tokens when no llm_call events', () => {
+    const r = aggregate([
+      {ts: '2026-05-13T10:00:00Z', type: 'feature_activated', feature: 'F-001'},
+    ]);
+    expect(r.tokens.call_count).toBe(0);
+    expect(r.tokens.input_total).toBe(0);
+    expect(r.tokens.output_total).toBe(0);
+    expect(r.tokens.by_model).toEqual({});
+  });
+
   it('F-167 — partitions evidence_added events by author', () => {
     const evidenceEvents = [
       {ts: '2026-05-13T08:00:00Z', type: 'evidence_added', feature: 'F-200', kind: 'manual_check', summary: 'reviewer ok', author: 'human'},

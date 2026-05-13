@@ -11,6 +11,52 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ### Queued
 
+## [0.15.7] — 2026-05-13
+
+**LLM token tracking infrastructure.** The v0.15.6 verification cycle
+surfaced a measurement gap: the user's real question — "harness vs
+그냥 Claude — 작업 퀄리티 결과물, 토큰 소비량" — could not be
+answered because `recordLlmCall` only fired in init scenarios.
+General `harness work` cycles never recorded LLM usage, so the
+plugin had zero data on per-cycle token consumption across 162+
+done features. v0.15.7 closes the plumbing so the next-cycle A/B
+case study (vanilla Claude vs harness on the same task) becomes
+actually measurable.
+
+### Added
+
+- **F-172** — `harness token --in <num> --out <num> --model <id>
+  [--feature F-N] [--kind <subagent|user>]` CLI writes a single
+  `llm_call` event via the existing `recordLlmCall` helper.
+  `--in` / `--out` validated as non-negative integers (exit 3 on
+  invalid). `--model` required.
+- **F-172** — `LlmCallEvent` extended: `scenario` union now includes
+  `'work'`, plus an optional `feature` field. Backward-compat:
+  existing init callsites work unchanged.
+- **F-172** — `MetricsReport.tokens` adds `input_total` +
+  `output_total` + `call_count` + per-model `by_model` breakdown.
+  Aggregated from `llm_call` events in the metrics window.
+- **F-172** — Dashboard renders `tokens: X in / Y out (N calls)`
+  line on the active feature when llm_call events exist; hidden on
+  fresh projects.
+
+### Tests
+
+- 854 → 862 (9 new: 5 tokenLog parity · 2 metrics aggregation · 2
+  dashboard render condition).
+- Empirical: 4 scenarios reproduced (CLI happy / metrics aggregation
+  / dashboard visibility / invalid input rejection).
+
+### Follow-up (not in this release)
+
+- Hook automation — auto-capture token usage from Claude Code
+  session boundaries (`SessionEnd` hook or message-level capture).
+  Currently requires manual self-report via `harness token`.
+- Phase 3 A/B case study — same task built two ways
+  (vanilla Claude vs harness) with this measurement plumbing in
+  place. Outcome metrics (code quality + token cost) finally
+  comparable.
+
 ## [0.15.6] — 2026-05-13
 
 **Starter automation.** Direct response to the user motive surfaced
