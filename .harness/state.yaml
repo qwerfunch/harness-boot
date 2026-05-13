@@ -3942,7 +3942,7 @@ features:
   started_at: 2026-05-13T02:20:23Z
   completed_at: 2026-05-13T02:29:52Z
 - id: F-173
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3982,9 +3982,9 @@ features:
     summary: F-173 SWE-bench Verified A/B benchmark framework — docs/benchmark/swe-bench-verified/ 8 files (README · REPORT skeleton · tasks.json 20 picks · scripts 4 · analysis/threats-to-validity.md) · aggregate.py --help smoke pass · self_check 6/6 + 854/854 vitest · framework only, 실측 데이터는 외부 환경에서 누적
     author: human
   started_at: 2026-05-13T03:23:26Z
-  completed_at: null
+  completed_at: 2026-05-13T03:29:47Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-173
   last_gate_passed: gate_5
-  active_feature_id: F-173
+  active_feature_id: null
