@@ -3900,7 +3900,7 @@ features:
   started_at: 2026-05-13T01:34:29Z
   completed_at: 2026-05-13T01:34:46Z
 - id: F-171
-  status: in_progress
+  status: done
   gates:
     gate_0:
       last_result: pass
@@ -3940,9 +3940,9 @@ features:
     summary: F-171 starter automation — autoDetect.ts (4 branches) + claudeMd.ts skip-if-exists + skeleton.ts CLAUDE.md auto-copy + CLI no-flag auto-routing + idea smart defaults + NON_PLAN_MARKDOWN excludes claude.md; 854/854 + 14 new init tests; 4-scenario empirical reproduction pass
     author: human
   started_at: 2026-05-13T02:20:23Z
-  completed_at: null
+  completed_at: 2026-05-13T02:29:52Z
 session:
   started_at: 2026-04-23T13:02:49Z
   last_command: /harness:work F-171
   last_gate_passed: gate_5
-  active_feature_id: F-171
+  active_feature_id: null

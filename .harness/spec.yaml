@@ -2002,51 +2002,8 @@ features:
       - skeleton
       - scenario_idea
     test_strategy: tdd
-    description: |-
-      Direct response to the user motive surfaced after the v0.15.5
-      multi-aspect verification: "모든 것은 사용자가 요청하는 것이
-      아니라, 내부적으로 적시에 자동 수행되어야 함". Translates to
-      two concrete automations on the init path:
-
-      1. `harness init` with no flags auto-detects the scenario from
-         directory state — plan_doc (single non-README markdown) >
-         existing_code (source dir + manifest) > skeleton-only
-         fallback. The detection functions
-         (`detectPlanDocCandidate`, `collectSignals`) already exist;
-         the CLI just doesn't wire them up — fixed here.
-      2. Every scenario (including `--skeleton-only`) auto-copies
-         `docs/templates/starter/CLAUDE.md.template` to
-         `<projectRoot>/CLAUDE.md` on completion, with strict
-         skip-if-exists semantics (overwrite forbidden). Closes the
-         gap where CLI-direct callers got no Claude Code context
-         file.
-      3. `--scenario idea` accepts missing args via smart defaults
-         (name from dir basename, vision placeholder, single
-         walking-skeleton feature) and marks the resulting spec as
-         `confidence: low` so users see the fill-in signal.
-
-      The project mode default stays `product` — that's a safety
-      threshold (commercial-grade output by default), not a usability
-      knob. User explicitly confirmed.
-    acceptance_criteria:
-      - "AC-1: `harness init` (no scenario, no skeleton-only flag)
-        auto-detects: plan.md single → plan_doc; src+manifest →
-        existing_code; empty → skeleton-only. Stdout shows the
-        detected scenario."
-      - "AC-2: Every scenario writes `<projectRoot>/CLAUDE.md` from
-        the template on completion. Existing CLAUDE.md is preserved
-        (skip + stderr `init: CLAUDE.md already exists — preserved`)."
-      - "AC-3: `--skeleton-only` alone now writes CLAUDE.md (closes
-        the gap caught in the v0.15.5 verification cycle)."
-      - "AC-4: `--scenario idea` without `--name` uses dir basename;
-        without `--vision` uses TBD placeholder; without `--features`
-        uses `[walking-skeleton]`. The result spec has
-        `metadata.source.confidence: low`."
-      - "AC-5: Test covers all 4 auto-detect branches and CLAUDE.md
-        skip-if-exists for at least 2 scenarios."
-      - "AC-6: Project mode default unchanged (product). A new test
-        asserts skeleton-only output has no `project.mode` set (falls
-        through to DEFAULT_MODE='product')."
+    digest: 'Direct response to the user motive surfaced after the v0.15.5
+      multi-aspect verification: "모든 것은 사용자가 요청하는 것이 아니라, 내부적...'
 goals: []
 constraints:
   tech_stack:
