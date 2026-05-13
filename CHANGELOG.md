@@ -11,6 +11,46 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versio
 
 ### Queued
 
+## [0.15.6] — 2026-05-13
+
+**Starter automation.** Direct response to the user motive surfaced
+during the v0.15.5 multi-aspect verification: *모든 것은 사용자가
+요청하는 것이 아니라, 내부적으로 적시에 자동 수행되어야 함*. The
+init path no longer requires the user to know which scenario flag
+to pass — `harness init` with no flags now reads the directory and
+routes itself, every scenario installs `CLAUDE.md` automatically,
+and `--scenario idea` accepts missing arguments via smart defaults.
+
+The project-mode default stays `product`. That's a safety threshold
+(commercial-grade output by default), not a usability knob — user
+explicitly confirmed.
+
+### Added
+
+- **F-171** — `harness init` (no flags) auto-detects the scenario
+  via the existing `detectPlanDocCandidate` + `collectSignals`
+  helpers: single non-README markdown → `plan_doc`; manifests or
+  src+tests layout → `existing_code`; empty / sparse →
+  `skeleton-only`. Stdout shows the detected reason.
+- **F-171** — every scenario (skeleton + idea + plan_doc +
+  existing_code) auto-copies
+  `docs/templates/starter/CLAUDE.md.template` to
+  `<projectRoot>/CLAUDE.md` on completion with strict skip-if-exists
+  semantics. The five-file skeleton output replaces the previous
+  four-file output; existing `CLAUDE.md` is preserved verbatim.
+- **F-171** — `harness init --scenario idea` accepts missing
+  `--name` / `--vision` / `--features` via smart defaults
+  (directory basename / `<TBD — fill in spec.yaml>` placeholder /
+  `[walking-skeleton]`). Result spec gets `confidence: low` via the
+  existing `pickConfidence` heuristic, plus a stderr nudge to fill
+  in real values.
+
+### Fixed
+
+- **F-171** — `CLAUDE.md` is added to
+  `init/codebase/mdDetect.ts::NON_PLAN_MARKDOWN` so the auto-router
+  never mistakes the Claude Code context file for a plan doc.
+
 ## [0.15.5] — 2026-05-13
 
 **Tier 1 trio — Iron Law trust axis.** Three additive features
