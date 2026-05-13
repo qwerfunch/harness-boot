@@ -18,7 +18,7 @@
  * @module cli/harness
  */
 import { existsSync, statSync } from 'node:fs';
-import { join, resolve as resolvePath } from 'node:path';
+import { basename, join, resolve as resolvePath } from 'node:path';
 import { Command } from 'commander';
 import { generateDesignReview } from '../ceremonies/designReview.js';
 import { runSkeletonInit } from '../init/skeleton.js';
@@ -27,6 +27,7 @@ import { collectSignals } from '../init/codebase/signals.js';
 import { writeConventions } from '../init/codebase/conventionsWriter.js';
 import { resolveConventionConflict, } from '../init/codebase/conflictResolver.js';
 import { detectPlanDocCandidate } from '../init/codebase/mdDetect.js';
+import { autoDetectScenario } from '../init/autoDetect.js';
 import { seedSpecFromPlanDoc } from '../init/scenarioPlanDoc.js';
 import { fillConventionsSection, SectionAlreadyFilledError, } from '../init/codebase/conventionsFill.js';
 import { recordLlmCall } from '../init/tokenLog.js';
@@ -948,19 +949,28 @@ function buildProgram() {
         .option('--plan <path>', '[scenario plan_doc] explicit path to the plan markdown (auto-detects when omitted and exactly one non-README md exists)')
         .option('--json', 'emit JSON result')
         .action((options) => {
-        const wantsSkeleton = Boolean(options['skeletonOnly']);
-        const scenario = typeof options['scenario'] === 'string' ? options['scenario'] : null;
-        if (!wantsSkeleton && !scenario) {
-            printError('init: pass --skeleton-only for the regression-safe path or ' +
-                '--scenario <idea|plan_doc|existing_code> for an authored draft. ' +
-                'The full UX (auto-routing across the three) lives in /harness-boot:init.');
-            process.exit(3);
-        }
+        let wantsSkeleton = Boolean(options['skeletonOnly']);
+        let scenario = typeof options['scenario'] === 'string' ? options['scenario'] : null;
         if (wantsSkeleton && scenario) {
             printError('init: --skeleton-only and --scenario are mutually exclusive');
             process.exit(3);
         }
         const targetDir = resolvePath(typeof options['harnessDir'] === 'string' ? options['harnessDir'] : '.');
+        // F-171 — no flag means "do the obvious thing": probe the
+        // directory and route to plan_doc / existing_code / skeleton-only
+        // automatically. The detection functions
+        // (detectPlanDocCandidate, collectSignals) already existed; this
+        // is just where they finally get wired into the CLI.
+        if (!wantsSkeleton && !scenario) {
+            const detected = autoDetectScenario(targetDir);
+            if (detected.scenario === 'skeleton-only') {
+                wantsSkeleton = true;
+            }
+            else {
+                scenario = detected.scenario;
+            }
+            printHuman(`init: auto-detected ${detected.reason}\n`);
+        }
         const pluginRoot = typeof options['pluginRoot'] === 'string'
             ? resolvePath(options['pluginRoot'])
             : resolvePluginRootFromBinary();
@@ -978,12 +988,16 @@ function buildProgram() {
                         files_written: result.filesWritten,
                         wall_time_ms: result.wallTimeMs,
                         llm_call_count: result.llmCallCount,
+                        claude_md_written: result.claudeMdWritten,
                     });
                 }
                 else {
                     printHuman(`init (skeleton-only): ${result.filesWritten.length} files written ` +
                         `to ${result.harnessDir} in ${result.wallTimeMs.toFixed(1)} ms ` +
                         `(0 LLM calls)\n`);
+                    if (!result.claudeMdWritten) {
+                        process.stderr.write('init: CLAUDE.md already exists — preserved\n');
+                    }
                 }
                 return;
             }
@@ -1000,7 +1014,7 @@ function buildProgram() {
                 return;
             }
             printError(`init: scenario '${scenario}' is not implemented yet. ` +
-                'Supported in v0.15.5: idea, existing_code, plan_doc.');
+                'Supported in v0.15.6: idea, existing_code, plan_doc.');
             process.exit(3);
         }
         catch (err) {
@@ -1101,17 +1115,20 @@ function buildProgram() {
  */
 function runIdeaScenario(args) {
     const { targetDir, pluginRoot, mode, options } = args;
-    const name = optionAsString(options, 'name');
-    const vision = optionAsString(options, 'vision');
-    const featuresRaw = optionAsString(options, 'features');
+    // F-171 — smart defaults for missing args. The slash command still
+    // collects rich answers from the researcher ticky-taka; CLI-direct
+    // callers who skip them get a fillable draft instead of an error.
+    const rawName = optionAsString(options, 'name');
+    const rawVision = optionAsString(options, 'vision');
+    const rawFeatures = optionAsString(options, 'features');
+    const dirBasename = basename(resolvePath(targetDir));
+    const name = rawName ?? dirBasename;
+    const vision = rawVision ?? '<TBD — fill in spec.yaml>';
+    const featuresRaw = rawFeatures ?? 'walking-skeleton';
+    const defaultsApplied = rawName === null || rawVision === null || rawFeatures === null;
     const projectMode = optionAsString(options, 'projectMode') ?? 'prototype';
     const qualityFocusRaw = optionAsString(options, 'qualityFocus') ?? '';
     const deliverableType = optionAsString(options, 'deliverableType') ?? 'cli';
-    if (!name || !vision || !featuresRaw) {
-        printError('init --scenario idea requires --name, --vision, and --features. ' +
-            'The slash command collects them from the researcher ticky-taka.');
-        process.exit(3);
-    }
     if (projectMode !== 'prototype' && projectMode !== 'product') {
         printError(`init: --project-mode must be 'prototype' or 'product' (got '${projectMode}')`);
         process.exit(3);
@@ -1149,6 +1166,8 @@ function runIdeaScenario(args) {
             spec_path: specPath,
             content_hash: generated.contentHash,
             confidence: generated.confidence,
+            defaults_applied: defaultsApplied,
+            claude_md_written: skel.claudeMdWritten,
             llm_call_count: 0,
         });
     }
@@ -1156,6 +1175,13 @@ function runIdeaScenario(args) {
         printHuman(`init (scenario: idea): wrote ${specPath} · confidence ${generated.confidence} · ` +
             `draft=true · ${features.length} features · hash ${generated.contentHash.slice(0, 19)}…\n` +
             `next: /harness-boot:work F-1 to start the first cycle\n`);
+        if (!skel.claudeMdWritten) {
+            process.stderr.write('init: CLAUDE.md already exists — preserved\n');
+        }
+        if (defaultsApplied) {
+            process.stderr.write('init: smart defaults applied for missing --name/--vision/--features — ' +
+                'edit .harness/spec.yaml to fill in real values\n');
+        }
     }
 }
 function optionAsString(options, key) {
@@ -1208,6 +1234,7 @@ function runExistingCodeScenario(args) {
             conflict_policy: policy,
             conflict_detected: resolution.detected,
             merged_into: resolution.mergedInto,
+            claude_md_written: skel.claudeMdWritten,
             llm_call_count: 0,
         });
     }
@@ -1224,6 +1251,9 @@ function runExistingCodeScenario(args) {
             `${signals.styleConfigs.length} style configs\n` +
             (conflictLine ? conflictLine + '\n' : '') +
             `next: edit .harness/spec.yaml (project.name + vision), then /harness-boot:work F-0\n`);
+        if (!skel.claudeMdWritten) {
+            process.stderr.write('init: CLAUDE.md already exists — preserved\n');
+        }
     }
 }
 function parseConflictPolicy(options) {
@@ -1266,6 +1296,7 @@ function runPlanDocScenario(args) {
             plan_doc_path: seeded.planDocPath,
             project_name: seeded.projectName,
             content_hash: seeded.contentHash,
+            claude_md_written: skel.claudeMdWritten,
             llm_call_count: 0,
         });
     }
@@ -1274,6 +1305,9 @@ function runPlanDocScenario(args) {
             `  project: ${seeded.projectName}\n` +
             `  summary: ${seeded.summary.slice(0, 100)}${seeded.summary.length > 100 ? '…' : ''}\n` +
             `  next: /harness-boot:work to invoke spec-conversion for the full spec\n`);
+        if (!skel.claudeMdWritten) {
+            process.stderr.write('init: CLAUDE.md already exists — preserved\n');
+        }
     }
 }
 function patchSpecWithSignals(specPath, signals) {

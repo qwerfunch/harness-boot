@@ -34,14 +34,28 @@ describe('runSkeletonInit', () => {
     rmSync(tmp, {recursive: true, force: true});
   });
 
-  it('writes spec.yaml · harness.yaml · state.yaml · events.log into .harness/', () => {
+  it('writes spec.yaml · harness.yaml · state.yaml · events.log + CLAUDE.md (F-171)', () => {
     const result = runSkeletonInit({targetDir: tmp, pluginRoot: PLUGIN_ROOT});
-    expect(result.filesWritten).toHaveLength(4);
+    // F-171 — CLAUDE.md auto-copy adds a 5th file.
+    expect(result.filesWritten).toHaveLength(5);
     expect(result.llmCallCount).toBe(0);
     expect(existsSync(join(tmp, '.harness', 'spec.yaml'))).toBe(true);
     expect(existsSync(join(tmp, '.harness', 'harness.yaml'))).toBe(true);
     expect(existsSync(join(tmp, '.harness', 'state.yaml'))).toBe(true);
     expect(existsSync(join(tmp, '.harness', 'events.log'))).toBe(true);
+    expect(existsSync(join(tmp, 'CLAUDE.md'))).toBe(true);
+    expect(result.claudeMdWritten).toBe(true);
+  });
+
+  it('F-171 — preserves an existing CLAUDE.md (skip-if-exists)', () => {
+    const existingPath = join(tmp, 'CLAUDE.md');
+    writeFileSync(existingPath, '# pre-existing\n', 'utf8');
+    const result = runSkeletonInit({targetDir: tmp, pluginRoot: PLUGIN_ROOT});
+    expect(result.claudeMdWritten).toBe(false);
+    // File content unchanged.
+    expect(readFileSync(existingPath, 'utf8')).toBe('# pre-existing\n');
+    // The file is NOT included in filesWritten when we didn't touch it.
+    expect(result.filesWritten).toHaveLength(4);
   });
 
   it('completes in under 500 ms (regression gate anchor)', () => {
